@@ -1,0 +1,534 @@
+<?php
+//版本号
+define('OF_VERSION', 200199);
+
+class of {
+    //站点配置文件
+    private static $config = null;
+    //注册的 L 类方法
+    private static $links = array();
+
+    /**
+     * 描述 : 初始化框架
+     * 作者 : Edgar.lee
+     */
+    public static function init() {
+        //注册spl
+        spl_autoload_register('of::loadClass');
+        //加载系统配置文件
+        self::loadSystemEnv();
+        //注册::halt事件
+        register_shutdown_function('of::event', 'of::halt', true);
+
+        //预先加载类
+        if (isset(self::$config['_of']['preloaded'])) {
+            foreach (self::$config['_of']['preloaded'] as &$v) {
+                self::loadClass($v);
+            }
+        }
+
+        //生成 L 类
+        $temp = 'class L {' . join(self::$links) . "\n}";
+        if ($temp = self::syntax($temp, true, true)) {
+            throw new Exception("{$temp['message']} on line {$temp['line']}\n----\n{$temp['tips']}");
+        }
+        self::$links = null;
+    }
+
+    /**
+     * 描述 : 设置调度信息
+     * 参数 :
+     *      class  : 读取调度或设置类名称, null(默认)=读取调度{"class" : 类名, "action" : 方法}, 字符串=("class" | "action")读取调度值
+     *      action : 调用的方法名, null(默认)=读取调度, 字符串=设置方法名
+     *      check  : 加载类返回值校验,false=不校验,null=永不通过
+     * 返回 :
+     *      返回null
+     * 注明 :
+     *      of::dispatch事件 : 调度时触发事件,无回调参数
+     * 作者 : Edgar.lee
+     */
+    public static function dispatch($class = null, $action = null, $check = false) {
+        static $dispatch = array('class' => '', 'action' => '');
+        //读取调度
+        if ($action === null) {
+            return isset($dispatch[$class]) ? $dispatch[$class] : $dispatch;
+        } else {
+            //记录调度入口
+            $dispatch = array('class' => $class, 'action' => $action);
+
+            //触发 of::dispatch 事件
+            self::event('of::dispatch', true);
+            $temp = class_exists($class, false) ? $check : self::loadClass($class);
+            if (
+                ($temp !== null && class_exists($class, false)) && 
+                ($check === false || $check === $temp) && 
+                is_callable(array($temp = new $class, &$action)) 
+            ) {
+                return $temp->$action();
+            }
+        }
+    }
+
+    /**
+     * 描述 : 读取config数据
+     * 参数 :
+     *      name    : 配置名,以'.'分割读取深层数据
+     *      default : 默认值(null)
+     *      format  : 格式化,off(默认)=不格式化,dir=格式化成目录,url=格式化成路径
+     * 返回 :
+     *      成功返回值,失败返回null
+     * 作者 : Edgar.lee
+     */
+    public static function config($name = null, $default = null, $format = 'off') {
+        //缓存配置文件
+        static $cacheConfig = null;
+        //配置文件引用
+        $config = &self::$config;
+
+        //有缓存
+        if (isset($cacheConfig[$name][$format])) {
+            $default = &$cacheConfig[$name][$format];
+        } else {
+            //引用数据
+            $cacheVaule = &$cacheConfig[$name][$format];
+            //数组定位
+            $cacheVaule = of::getArrData(array(&$name, &$config, &$default));
+
+            if( $cacheVaule !== null || ($cacheVaule = &$default) !== null ) {
+                $format === 'off' || $cacheVaule = self::formatPath($cacheVaule, $format === 'dir' ? ROOT_DIR : ROOT_URL);
+                $default = &$cacheVaule;
+            }
+        }
+
+        return $default;
+    }
+
+    /**
+     * 描述 : 为类提供回调事件
+     * 参数 :
+     *      key    : 事件类型
+     *      event  : true=触发事件,false=删除事件,null=管理事件,其它=添加事件(符合回调结构)
+     *      params : 触发时=自定义参数[_]键的值,删除时=指定删除的回调,添加时=true为特殊结构(不在触发事件范围内),默认null
+     * 返回 :
+     *      触发时返回一个数组包含所有触发返回的数据,管理时返回事件数据,其它无返回值
+     * 注明 :
+     *      事件列表结构如下($eventList) : {
+     *          事件类型 : {
+     *              "change" : 添加删除时会变true
+     *              "list"   : [{
+     *                  "isCall" : true=是回调类型,false=特殊结构
+     *                  "event"  : 回调事件
+     *                  "change" : 新加时会为true
+     *              }]
+     *          }
+     *      }
+     * 作者 : Edgar.lee
+     */
+    public static function &event($key, $event, $params = null) {
+        static $eventList = null;
+
+        //初始化事件列表
+        isset($eventList[$key]) || $eventList[$key] = array(
+            'change' => false,
+            'list'   => array()
+        );
+
+        //触发事件
+        if ($event === true) {
+            //返回结果集
+            $result = array();
+            reset($eventList[$key]['list']);
+            while( list($k, $v) = each($eventList[$key]['list']) ) {
+                //是回调 && 回调
+                $v['isCall'] && $result[$k] = &self::callFunc($v['event'], $params);
+            }
+        //管理事件
+        } elseif( $event === null ) {
+            $result = &$eventList[$key];
+        } else {
+            //引用事件
+            $event === false ? $index = &$params : $index = &$event;
+            //创建临时副本,防止打乱触发内循环
+            $temp = $eventList[$key]['list'];
+            //删除事件
+            foreach($temp as $k => &$v) {
+                if( $v['event'] == $index ) {
+                    $eventList[$key]['change'] = true;
+                    unset($eventList[$key]['list'][$k]);
+                    break;
+                }
+            }
+
+            //添加事件
+            if( $event !== false ) {
+                $eventList[$key]['change'] = true;
+                $eventList[$key]['list'][] = array(
+                    'isCall' => !$params,
+                    'event'  => &$event,
+                    'change' => true
+                );
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * 描述 : 注册L类的方法, 在预加载完成后生成
+     * 参数 :
+     *      name   : 方法名, 可以用 &name 来表示返回引用
+     *      args   : 参数列表, 参考 create_function
+     *      code   : 方法体, 参考 create_function
+     *      static : 是否为静态函数, true=静态, false=动态
+     * 返回 :
+     *      true=成功, false=失败
+     * 作者 : Edgar.lee
+     */
+    public static function link($name, $args, $code, $static = true) {
+        $links = &self::$links;
+
+        if ($links === null) {
+            return false;
+        } else {
+            $static = $static ? 'static' : '';
+            $links[ltrim($name, '&')] = "\npublic {$static} function {$name}({$args}) {\n{$code}\n}";
+            return true;
+        }
+    }
+
+    /**
+     * 描述 : 加载系统环境
+     * 作者 : Edgar.lee
+     */
+    private static function loadSystemEnv() {
+        //默认编码
+        ini_set('default_charset', 'UTF-8');
+        //默认时区
+        ini_get('date.timezone') || date_default_timezone_set('PRC');
+        //of磁盘路径
+        define('OF_DIR', strtr(dirname(__FILE__), '\\', '/'));
+
+        $temp = array(&$_GET, &$_POST, &$_REQUEST, &$_COOKIE);
+        //防注入脚本
+        get_magic_quotes_gpc() || self::slashesDeep($temp);
+
+        //引用配置
+        $config = &self::$config;
+        //加载全局配置文件
+        $global = include OF_DIR . '/config.php';
+
+        //加载站点配置文件
+        empty($global['config']) || $config = include $global['rootDir'] . $global['config'];
+        //合并系统配置
+        $config['_of'] = &self::arrayReplaceRecursive($global, $config['_of']);
+
+        //站点根目录,ROOT_DIR
+        define('ROOT_DIR', $config['_of']['rootDir']);
+        //自动计算ROOT_URL
+        if (!isset($config['_of']['rootUrl'])) {
+            //cli模式
+            if (PHP_SAPI === 'cli') {
+                $config['_of']['rootUrl'] = '';
+            //web模式
+            } else {
+                $temp = $_SERVER['SCRIPT_NAME'];
+                $scriptFilename = strtr($_SERVER['SCRIPT_FILENAME'] ,'\\','/');
+                while (true) {
+                    if ($temp === substr($scriptFilename, -strlen($temp))) {
+                        //除虚拟目录外执行脚本所在路径的长度
+                        $scriptNameLen = strlen($temp);
+                        break;
+                    } else {
+                        $temp = substr($temp, strcspn($temp, '/', 1) + 1);
+                    }
+                }
+                //非英文路径解析
+                $config['_of']['rootUrl'] = str_replace('%2F', '/', rawurlencode(
+                    substr($_SERVER['SCRIPT_NAME'], 0, -$scriptNameLen) . 
+                    substr(ROOT_DIR, strlen(substr($scriptFilename, 0, -$scriptNameLen)))
+                ));
+            }
+        }
+        //站点根路径,ROOT_URL
+        define('ROOT_URL', $config['_of']['rootUrl']);
+        //框架根路径,OF_URL
+        define('OF_URL', ROOT_URL . substr(OF_DIR, strlen(ROOT_DIR)));
+        //框架可写文件夹
+        define('OF_DATA', $config['_of']['dataDir']);
+        //是否 DEBUG 模式
+        define('OF_DEBUG', !empty($config['_of']['debug']) || isset($_REQUEST['__OF_DEBUG__']));
+        //of_类映射
+        self::event('of::loadClass', array(
+            'classPre' => 'of_', 'mapping' => substr(OF_DIR, strlen(ROOT_DIR) + 1) . '/'
+        ), true);
+    }
+
+    /**
+     * 描述 : 动态加载类
+     * 参数 :
+     *      className : 需要加载的类名
+     * 返回 :
+     *      成功类返回的值,默认1,失败返回null
+     * 注明 :
+     *      of::loadClass事件 : 类路径映射,指定前缀的类将按照其它前缀的类加载
+     *          第二参结构 : {
+     *              classPre : 类前缀
+     *              mapping  : 映射前缀,字符串=指定的前缀替换该字符串
+     *              asCall   : 函数回调,不能与mapping共存
+     *              params   : 回调参数,用[_]键指定类名位置
+     *          }
+     * 作者 : Edgar.lee
+     */
+    private static function loadClass($className) {
+        //读取of::loadClass事件
+        $event = &self::event('of::loadClass', null);
+        //修改过重新排序
+        if ($event['change']) {
+            $event['change'] = false;
+            //至少有of_这条数据
+            foreach ($event['list'] as $k => &$v) {
+                $sortList[$k] = &$v['event']['classPre'];
+                if ($v['change']) {
+                    $v['change'] = false;
+                    $v['classPreLen'] = strlen($v['event']['classPre']);
+                }
+            }
+            //重新排序
+            array_multisort($sortList, SORT_DESC, SORT_STRING, $event['list']);
+        }
+
+        //不用判断一定有数据
+        foreach( $event['list'] as &$v ) {
+            $k = $v['classPreLen'];
+            $v = &$v['event'];
+            if (strncmp($v['classPre'], $className, $k) === 0) {
+                if (isset($v['asCall'])) {
+                    $v['params']['_']['className'] = $className;
+                    return call_user_func_array($v['asCall'], $v['params']);
+                } else {
+                    $className = substr_replace($className, $v['mapping'], 0, $k);
+                    break;
+                }
+            }
+        }
+
+        if ($className) {
+            //指定路径 || 转换路径
+            $className[0] === '/' || $className = '/' . str_replace(array('_', '\\'), '/', $className);
+            //生成绝对路径
+            $className = ROOT_DIR . $className . '.php';
+
+            return is_file($className) ? include $className : null;
+        }
+    }
+
+    /*********************************************************************工具类
+     * 描述 : 深度加/删反斜杠
+     * 参数 :
+     *     &data : 指定替换的数组
+     *      func : addslashes(默认)=添加反斜杠, stripslashes=删除反斜杠
+     * 作者 : Edgar.lee
+     */
+    public static function &slashesDeep(&$data, $func = 'addslashes') {
+        //待处理列表
+        $waitList = array(&$data);
+
+        do {
+            $wk = key($waitList);
+            $wv = &$waitList[$wk];
+            unset($waitList[$wk]);
+
+            if (is_array($wv)) {
+                //结果列表
+                $result = array();
+                foreach ($wv as $k => &$v) {
+                    $result[$func($k)] = &$v;
+                    $waitList[] = &$v;
+                }
+                $wv = $result;
+            } else if( is_string($wv) ) {
+                $wv = $func($wv);
+            }
+        } while (!empty($waitList));
+
+        return $data;
+    }
+
+    /**
+     * 描述 : 深度替换属性
+     * 参数 :
+     *      baseData : 被替换的数据
+     *      replace  : 替换的数据
+     * 作者 : Edgar.lee
+     */
+    public static function &arrayReplaceRecursive(&$baseData, &$replace) {
+        if (is_array($replace)) {
+            //待处理列表
+            $waitList = array(&$replace);
+            //被替换列表
+            $baseList = array(&$baseData);
+
+            do {
+                $wk = key($waitList);
+                $wv = &$waitList[$wk];
+                $bv = &$baseList[$wk];
+                unset($waitList[$wk], $baseList[$wk]);
+
+                if (is_array($bv) && is_array($wv)) {
+                    foreach($wv as $k => &$v) {
+                        $waitList[] = &$v;
+                        $baseList[] = &$bv[$k];
+                    }
+                } else {
+                    $bv = $wv;
+                }
+            } while (!empty($waitList));
+        }
+
+        return $baseData;
+    }
+
+    /**
+     * 描述 : 回调函数
+     * 参数 :
+     *      call   :
+     *          1.符合 is_callable 格式的, 如 "class::action" 或 [object, action]
+     *          2.每次调用创建对象的格式, 如 [class, action], 会将会创建class的对象
+     *          3.自定义调用的信息 {
+     *              "asCall" : 符合上面两种规范
+     *              "params" : call_user_func_array 格式的参数,用[_]键指定类名位置
+     *          }
+     *      params : 传入到 [_] 位置的参数
+     * 返回 :
+     *      返回 调用函数 返回的数据
+     * 作者 : Edgar.lee
+     */
+    public static function &callFunc($call, $params = null) {
+        if (is_string($call) || !isset($call['asCall'])) {
+            $call = array('asCall' => $call);
+        }
+        if (is_array($call['asCall']) && is_string($call['asCall'][0])) {
+            $call['asCall'][0] = new $call['asCall'][0];
+        }
+        $call['params']['_'] = &$params;
+        $call = call_user_func_array($call['asCall'], $call['params']);
+        return $call;
+    }
+
+    /**
+     * 描述 : 格式化路径
+     * 参数 :
+     *      path   : 指定格式化的路径,'_'开头的去掉'_',其它字符以加上指定前缀,数组则以回调的返回值为值
+     *      prefix : path不以'_'开头字符串的前缀
+     * 返回 :
+     *      格式化的路径
+     * 作者 : Edgar.lee
+     */
+    public static function formatPath($path, $prefix) {
+        if (is_array($path) || !preg_match('@^(?:/|_|$)@', $path, $temp)) {
+            return self::callFunc($path, array('prefix' => $prefix));
+        } elseif( $temp[0] === '_' ) {
+            return substr($path, 1);
+        } else {
+            return $prefix . $path;
+        }
+    }
+
+    /**
+     * 描述 : 通过字符串获取数组深度数据
+     * 参数 :
+     *      key      : null(默认)=返回 data, 字符串=以"."作为分隔符表示数组深度, 数组=以数组的方式代替传参[key, data, default, isEscape]
+     *     &data     : 被查找的数组
+     *      default  : null, 没查找到的代替值
+     *      isEscape : 是否转义, false(默认)=不转义, true=以"`"作为key的转义字符 
+     * 返回 :
+     *      返回指定值 或 代替值
+     * 作者 : Edgar.lee
+     */
+    public static function &getArrData($arg_0, &$arg_1 = null, $arg_2 = null, $arg_3 = false) {
+        //数组转换成变量 $arg_xxx
+        is_array($arg_0) && extract($arg_0, EXTR_PREFIX_ALL | EXTR_REFS, 'arg');
+
+        if ($arg_0 === null) {
+            return $arg_1;
+        } else {
+            $index = &$arg_1;
+            //转义 key 值
+            $list = $arg_3 ?
+                explode("\0", strtr($arg_0, array('``' => '`', '`.' => '.', '.' => "\0"))) : explode('.', $arg_0);
+
+            foreach ($list as &$v) {
+                //指定位子存在
+                if (isset($index[$v])) {
+                    $index = &$index[$v];
+                //指定位子不存在
+                } else {
+                    unset($index);
+                    break;
+                }
+            }
+
+            isset($index) || $index = &$arg_2;
+            return $index;
+        }
+    }
+
+    /**
+     * 描述 : 校验php语法
+     * 参数 :
+     *     &code : 检查的代码, 符合 eval 的规范
+     *      exec : 是否执行 false=不执行, true=执行
+     *      tips : 是否显示行号源码 false=不显示, true=显示, 字符串=显示指定的代码
+     * 返回 :
+     *      语法通过返回 null
+     *      语法失败返回 {
+     *          "message" : 错误信息
+     *          "line"    : 错误行数
+     *          "tips"    : 按 tips 参数显示的代码
+     *      }
+     * 作者 : Edgar.lee
+     */
+    public static function &syntax(&$code, $exec = false, $tips = false) {
+        try {
+            $temp = ini_set('error_append_string', "\n----\n" . $code);
+
+            //是否执行
+            $exec ? $exec = &$code : $exec = 'if (0) {' . $code . "//<?php\n}";
+            if (@eval($exec) === false) {
+                $result = error_get_last();
+                unset($result['type'], $result['file']);
+                //清除错误
+                @trigger_error('');
+            }
+
+            ini_set('error_append_string', $temp);
+        //兼容php7
+        } catch (Error $e) {
+            $result = array(
+                //异常消息
+                'message' => $e->getMessage(),
+                //异常行
+                'line'    => $e->getLine()
+            );
+        }
+
+        //发生错误
+        if (isset($result)) {
+            //格式化提示代码
+            if ($tips) {
+                $tips = explode("\n", $tips === true ? $code : $tips);
+                //最大值的长度
+                $line = strlen(count($tips));
+                foreach($tips as $k => &$v) {
+                    $v = str_pad(++$k, $line, '0', STR_PAD_LEFT) . '| ' . $v;
+                }
+                $tips = join("\n", $tips);
+            } else {
+                $tips = &$code;
+            }
+            $result['tips'] = &$tips;
+        }
+
+        return $result;
+    }
+}
+of::init();

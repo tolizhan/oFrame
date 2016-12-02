@@ -1,0 +1,60 @@
+/**
+ * 描述 : 全局设置
+ * 作者 : Edgar.lee
+ */
+.of-paging_block{ border-collapse: collapse;  margin: 0; padding: 0; border:1px solid #D9D9D9; border-top: 0px; width:100%; position: relative;}
+.of-paging_block td, .of-paging_block th{ padding:5px;}
+.of-paging_wait tr{ 
+    position: absolute; height: 100%; width: 100%; background: url(images/loadLock.gif) #FFFFFF no-repeat center; z-index: 2; filter:alpha(opacity=30); opacity:0.3;
+    +script:expression(this.runtimeStyle.height=this.parentNode.parentNode.clientHeight); }                             /*IE < 8 height=100%*/
+.of-paging_empty td{ border: 1px solid #D9D9D9;}
+.of-paging_head th{ border: 1px solid #D9D9D9; background-color: #E6EBF2; font-weight: normal;}
+.of-paging_body td{ border: 1px solid #D9D9D9;}
+.of-paging_item_even{ background-color: #FAFAFA;}
+
+/**
+ * 描述 : 排序设置
+ * 作者 : Edgar.lee
+ */
+.of-paging_sort_def{ background:url(images/sort_default.gif) right center no-repeat; cursor:pointer; margin-right:5px; padding:0px 15px 0px 0px;}
+.of-paging_sort_asc{ background-image:url(images/sort_asc.gif);}
+.of-paging_sort_desc{ background-image:url(images/sort_desc.gif);}
+
+/**
+ * 描述 : 工具条
+ * 作者 : Edgar.lee
+ */
+.of-paging_fbar_bro{ position: absolute; overflow:hidden; background-color: #FFFFFF; height: 24px;}
+.of-paging_fbar_con{ word-break:keep-all; white-space:nowrap; display: inline;}
+.of-paging_fbar_con *{ word-break:keep-all; white-space:nowrap; display: inline; margin: 0 3px 0 0;}
+.of-paging_fbar_con a{ text-decoration:none; color: #555555;}
+.of-paging_fbar_con a:hover{ text-decoration:underline;}
+.of-paging_fbar_ico{ position: absolute; width: 10px; height: 10px; right:0px; top: 6px; background:url(images/page_fbar_open.png)  no-repeat;}
+.of-paging_fbar_bro:hover .of-paging_fbar_ico{ background:url(images/page_fbar_close.png) no-repeat;}
+
+/**
+ * 描述 : 动作设置
+ * 作者 : Edgar.lee
+ */
+.of-paging_action{ float: right; color: #888;}
+.of-paging_action a{ width:20px; height: 24px; text-decoration:none; display:inline-block; padding-top: 2px; margin:0 5px;}
+.of-paging_action a:hover{ text-decoration:none;}
+.of-paging_action input{ border: 0px; height: 24px; width: 32px; padding:1px 0px 1px 25px; margin:0 5px; line-height:24px;}
+
+/**
+ * 描述 : 具体动作
+ * 作者 : Edgar.lee
+ */
+.of-paging_first{ background:url(images/page_first_normal.png) no-repeat center center;}
+.of-paging_first:hover{ background:url(images/page_first_down.png) no-repeat center center;}
+.of-paging_prev{ background:url(images/page_prev_normal.png) no-repeat center center;}
+.of-paging_prev:hover{ background:url(images/page_prev_down.png) no-repeat center center;}
+.of-paging_next{ background:url(images/page_next_normal.png) no-repeat center center;}
+.of-paging_next:hover{ background:url(images/page_next_down.png) no-repeat center center;}
+.of-paging_last{ background:url(images/page_last_normal.png) no-repeat center center;}
+.of-paging_last:hover{ background:url(images/page_last_down.png) no-repeat center center;}
+.of-paging_jump{ background:url(images/page_pageSize_input.jpg) no-repeat 0 -26px; box-sizing: initial;}
+.of-paging_jump:hover{ background-position:-58px -26px;}
+.of-paging_size{ background:url(images/page_pageSize_input.jpg) no-repeat 0 0; box-sizing: initial;}
+.of-paging_size:hover{ background-position:-58px 0px;}
+.of-paging_page{ display:inline-block; height: 23px;}

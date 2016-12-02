@@ -1,0 +1,219 @@
+/**
+ * 描述 : 上传进度列表主界面
+ * 作者 : Edgar.lee
+ */
+/*提示块*/
+.of_addin_oUpload-block {
+    width: 20px;
+    height: 20px;
+    position: absolute;
+    top: -1000px;
+    left: -1000px;
+}
+/*数量显示区*/
+.of_addin_oUpload-block .of_addin_oUpload-count {
+    text-align: center;
+    color: #FFFFFF;
+    font-weight: bold;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    background: url(images/oUploadCount.png);
+}
+/*全部上传按钮*/
+.of_addin_oUpload-block .of_addin_oUpload-upload {
+    right: 100%;
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    background: url(images/oUploadStart.png);
+}
+/*全部上传按钮*/
+.of_addin_oUpload-block .of_addin_oUpload-cancel {
+    right: 200%;
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    background: url(images/oUploadCancel.png);
+}
+/*队列块*/
+.of_addin_oUpload-block .of_addin_oUpload-queue {
+    width: 300px;
+    border: 1px solid #32A8CB;
+    position: absolute;
+    top: 50%;
+    right: 50%;
+    padding: 5px 5px 0;
+    display: none;
+    background-color: #FFFFFF;
+}
+/*单条文件区*/
+.of_addin_oUpload-block .of_addin_oUpload-item {
+    margin-bottom: 5px;
+}
+/*文件详细区*/
+.of_addin_oUpload-block .of_addin_oUpload-item_data {
+    width: 65%;
+    display: inline-block;
+    border: 1px solid #32A8CB;
+    position: relative;
+}
+/*文件进度区*/
+.of_addin_oUpload-block .of_addin_oUpload-item_data_progress {
+    position: absolute;
+    background-color: #8DE2FB;
+    width: 1%;
+}
+/*进度条背景*/
+.of_addin_oUpload-block .of_addin_oUpload-item_data_fileName,
+.of_addin_oUpload-block .of_addin_oUpload-item_data_title {
+    position: absolute;
+    background-color: #F1FCFF;
+    width: 100%;
+}
+/*文件名显示*/
+.of_addin_oUpload-block .of_addin_oUpload-item_data_title {
+    background-color: transparent;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/*上传速度区*/
+.of_addin_oUpload-block .of_addin_oUpload-item_speed {
+    margin-left: 10px;
+    width: 20%;
+    text-align: center;
+    display: inline-block;
+}
+/*文件错误时*/
+.of_addin_oUpload-block .of_addin_oUpload-item_error {
+    border: 1px solid #F00;
+}
+/*开始上传样式*/
+.of_addin_oUpload-block .of_addin_oUpload-item_open {
+    width: 20px;
+    height: 20px;
+    margin-left: 12%;
+    cursor: pointer;
+    background: url(images/oUploadOpen.gif);
+}
+/*文件关闭区*/
+.of_addin_oUpload-block .of_addin_oUpload-item_close {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    text-align: center;
+    float: right;
+    cursor: pointer;
+    background: url(images/oUploadClose.gif);
+}
+
+/**
+ * 描述 : 上传进度列表边界
+ * 作者 : Edgar.lee
+ */
+/*边框:北*/
+.of_addin_oUpload-block .of_addin_oUpload-borderN {
+    display: none;
+    position: absolute;
+    top: -20px;
+    left: 0px;
+    width: 100%;
+    height: 20px;
+    overflow: hidden;
+    background: url(images/oUploadN.png);
+    _width: expression(this.parentNode.clientWidth + "px");
+}
+/*边框:南*/
+.of_addin_oUpload-block .of_addin_oUpload-borderS {
+    position: absolute;
+    bottom: -20px;
+    right: 0px;
+    width: 300px;
+    height: 20px;
+    overflow: hidden;
+    background: url(images/oUploadS.png);
+    _width: expression(this.parentNode.clientWidth + "px");
+}
+/*边框:西*/
+.of_addin_oUpload-block .of_addin_oUpload-borderW {
+    display: none;
+    position: absolute;
+    top: 0px;
+    left: -20px;
+    width: 20px;
+    height: 100%;
+    overflow: hidden;
+    background: url(images/oUploadW.png);
+    _height: expression(this.parentNode.clientHeight + "px");
+}
+/*边框:东*/
+.of_addin_oUpload-block .of_addin_oUpload-borderE {
+    position: absolute;
+    top: 0px;
+    right: -20px;
+    width: 20px;
+    height: 100%;
+    overflow: hidden;
+    background: url(images/oUploadE.png);
+    _height: expression(this.parentNode.clientHeight + "px");
+}
+/*边框:西北*/
+.of_addin_oUpload-block .of_addin_oUpload-borderWN {
+    display: none;
+    position: absolute;
+    left: -20px;
+    top: -20px;
+    width: 20px;
+    height: 20px;
+    overflow: hidden;
+    background: url(images/oUploadWN.png);
+}
+/*边框:东北*/
+.of_addin_oUpload-block .of_addin_oUpload-borderEN {
+    display: none;
+    position: absolute;
+    right: -20px;
+    top: -20px;
+    width: 20px;
+    height: 20px;
+    overflow: hidden;
+    background: url(images/oUploadEN.png);
+}
+/*边框:东南*/
+.of_addin_oUpload-block .of_addin_oUpload-borderES {
+    position: absolute;
+    right: -20px;
+    bottom: -20px;
+    width: 20px;
+    height: 20px;
+    overflow: hidden;
+    background: url(images/oUploadES.png);
+    _bottom: -21px;
+}
+/*边框:西南*/
+.of_addin_oUpload-block .of_addin_oUpload-borderWS {
+    position: absolute;
+    left: -10px;
+    bottom: -20px;
+    width: 20px;
+    height: 20px;
+    overflow: hidden;
+    background: url(images/oUploadWS.png);
+    _bottom: -21px;
+}
+/*IE6下边框光晕效果*/
+.of_addin_oUpload-block * {
+    _azimuth: expression(
+        this.ie6Png === '' ? (
+                this.ie6Png = this.currentStyle.backgroundImage.toString().replace('url("','').replace('")',''),
+                this.runtimeStyle.filter = "progid:DXImageTransform.Microsoft.AlphaImageLoader(src='" + this.ie6Png + "', sizingMethod='scale')",
+                this.runtimeStyle.backgroundImage = 'url("' + this.ie6Png + '/../transparent.gif")',
+                this.ie6Png = false
+            ) : null
+    );
+}

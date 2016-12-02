@@ -1,0 +1,5 @@
+SET FOREIGN_KEY_CHECKS=0;
+LOCK TABLES /*`N:T'*/`e_test_cc`/*`N:T'*/ WRITE;
+REPLACE INTO /*`N:T'*/`e_test_cc`/*`N:T'*/ (`ddd`) VALUES ('3');
+UNLOCK TABLES;
+SET FOREIGN_KEY_CHECKS=1;

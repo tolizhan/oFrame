@@ -1,0 +1,5 @@
+body{ background-image: url(imgBg.png); background-repeat: no-repeat; }
+.of_sso-login_func_block, input{ border: 1px solid #4acbf5; background-color: #fff;}
+.of_sso-login_func_block input{ font-size: 16px; height: auto; margin-bottom: 12px; padding: 7px 4px; width: 190px;}
+.of_sso-login_func_block a{ border-radius: 4px; border: 1px solid #E0E0E0; background-color: #4acbf5; padding: 6px 12px;}
+.of_sso-login_func_block{ padding-top: 25px;}

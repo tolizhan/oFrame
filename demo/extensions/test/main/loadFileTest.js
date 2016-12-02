@@ -1,0 +1,1 @@
+alert(L.getText('扩展语言包测试'));

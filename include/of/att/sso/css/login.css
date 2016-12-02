@@ -1,0 +1,14 @@
+html, body{ height: 100%; margin: 0px; overflow: hidden;}
+.of_sso-login_bgBlock{ position:absolute; width: 100%; height: 100%;}
+.of_sso-login_bgTip{ position:absolute; width: 50%; height: 30px; margin: 20px auto; text-align: center; right: 0; left: 0; +azimuth: expression(
+    this.runtimeStyle.left = document.documentElement.scrollLeft + (document.documentElement.clientWidth - this.scrollWidth) / 2 + 'px'
+);}
+.of_sso-login_func{ position:absolute; right:150px; margin: auto; top: 0; bottom: 0; height:0px; +azimuth: expression(
+    this.runtimeStyle.top = document.documentElement.scrollTop + (document.documentElement.clientHeight - this.scrollHeight) / 2 + 'px'
+);}
+.of_sso-login_func_block{ padding: 10px; border: 1px solid; margin-top: -50%; +margin-top: auto;}
+.of_sso-login_func_block form{ margin: 0px;}
+.of_sso-login_func_block td{ height: 30px; padding: 0px; text-align: right;}
+.of_sso-login_func_block input{ width: 150px; margin-left: 10px;}
+.of_sso-login_func_block a{ display: inline-block; text-align: center; text-decoration: none; color: #000;}
+.of_sso-login_func_captcha{ cursor: pointer;}

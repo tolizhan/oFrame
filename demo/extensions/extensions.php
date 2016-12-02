@@ -1,0 +1,1 @@
+<?php exit; ?> a:1:{s:4:"test";a:2:{s:7:"version";s:3:"1.0";s:5:"state";s:1:"1";}}

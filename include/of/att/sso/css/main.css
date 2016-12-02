@@ -1,0 +1,25 @@
+html, body{ height: 100%; margin: 0px; overflow: hidden;}
+.of_sso-main{ height: 100%; width: 100%; border-collapse: collapse;}
+.of_sso-main td{ border: 1px solid black; height: 30px;}
+.of_sso-main_thead{text-align: center; height: 30px; text-align: center;}
+.of_sso-main_thead th{border: 1px solid black; height: 27px;}
+.of_sso-main_thead_search_input{float:left; margin:0px; border:0px; padding:6px 0px; margin-right:-27px; width:100%; color:#A9A9A9; text-align:left;}
+.of_sso-main_thead_search_button{float:right; width:27px; height:27px; margin:0px; border:0px; padding:0px; cursor:pointer; background: url("../img/main/search.png");}
+.of_sso-main_tbody table{width: 100%;}
+.of_sso-main_tbody_td_div{overflow-x: hidden; overflow-y: auto; width: 100%; position: relative;}
+.of_sso-main_tbody_td_div thead tr{ margin-top: -5px; background: url("../img/main/loadLock.gif") #FFFFFF no-repeat center;}
+.of_sso-main_tbody_td_div td{ border: 0px;}
+.of_sso-main_tfoot_func{height: 30px; background-color: #b0b0b0;}
+.of_sso-main_tfoot_func_add{background: url("../img/main/add1.png"); width: 29px; height: 29px; display: inline-block; margin-left: 5px;}
+.of_sso-main_tfoot_func_del{background: url("../img/main/del1.png"); width: 29px; height: 29px; display: inline-block; margin-left: 5px;}
+.of_sso-main_tfoot_func_ice{background: url("../img/main/ice1.png"); width: 29px; height: 29px; display: inline-block; margin-left: 5px;}
+.of_sso-main_tfoot_func_prev{line-height:29px; width:10px; float:right; color:#FFF; margin-left:0px; margin-right:5px; display: inline-block;}
+.of_sso-main_tfoot_func_jump{float:right; margin-top:4px; height:21px; padding:4px 0px; border:0px; padding:0px; color:#969696; background-color:#fff; width:40px; display: inline-block;}
+.of_sso-main_tfoot_func_next{line-height:29px; width:10px; float:right; color:#FFF; margin-left:5px; margin-right:5px; display: inline-block;}
+.of_sso-main_tfoot_tip{text-align: center;}
+.of_sso-main_tfoot_import{float:left; margin-left:5px; padding: 1px 6px;}
+.of_sso-main_tfoot_logout{float:right; margin-right:5px; padding: 1px 6px;}
+.of_sso-main_tfoot_save{float:right; margin-right:5px; padding: 1px 6px;}
+.of_sso-main_tfoot_data{height: 150px; text-align: center;}
+.of_sso-main_tfoot_data td{height: 150px; border: 0px}
+.of_sso-main_tfoot_data label{display: inline-block; margin:5px;}

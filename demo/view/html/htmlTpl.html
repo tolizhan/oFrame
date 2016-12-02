@@ -1,0 +1,142 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title _="time()" >原标题</title>
+<link rel="stylesheet" href="sad.css" /> 
+<script __del type="text/javascript" src="/ss.js"></script>
+<script __del type="text/javascript" src="../ss.js"></script>
+<script __del type="text/javascript" src="http://s"></script>
+<script __del type="text/javascript"></script>
+<style __del type="text/css" 1></style>
+<style __del type="text/css" 2></style>
+</head>
+
+<body>
+<pre>
+标签键   : 紧跟html注释标签后的字符串,用来区分脚本注释与普通注释,如:&lt;--标签键 这里写一些php代码 --&gt;
+属性前缀 : 写在普通属性前面,用来区分脚本属性和普通属性
+功能前缀 : 用来影响解析行为的属性关键词,如:&lt;input __del &gt;这个标签标记删除(__del)
+脚本位置 : 
+    (1)写在带有标签键的注释中,如:&lt;--_ 这里写一些php代码 --&gt;与结束同一行的文本会被删掉
+    (2)或写在脚本属性中,如:&lt;input _value="echo '输出文本';" &gt;
+脚本写法 : 脚本有三种写法,
+    (1)符合URL路径结构的写法 : xx/以当前文件所在位置开始寻找, /xx以view下对应的文件夹(样式,图片,脚本)开始寻找, http://正常解析
+    (2)以';'或'}'结尾的脚本当逻辑程序运行
+    (3)其它模式当运算表达式处理
+头部特性 : 
+    (1)写在头部的注释脚本会优先运行
+    (2)涉及路径和标题的脚本写法只能使用(1)或(3)的模式
+    (3)title动态内容可以&lt;title _="time()"&gt;原标题&lt;/title&gt;
+    (4)包含路径的脚本会放在body最下面执行,其它的样式和脚本会放在body最上面执行
+<br><br><br>
+<table border=1>
+<tr>
+    <th>演示描述</th>
+    <th>源代码</th>
+    <th>演示效果</th>
+</tr>
+<tr>
+    <td>属性演示</td>
+    <td>&lt;input _style="'color: red;'" _="'value=_属性演示'" value="原属性" &gt;</td>
+    <td><input _style="'color: red;'" _="'value=_属性演示'" value="原属性" ></td>
+</tr>
+<tr>
+    <td>__del 演示</td>
+    <td>&lt;input __del="value" value="删除以' '为分割符的属性,为空删除当前节点" &gt;</td>
+    <td><input __del="value" value="删除以' '为分割符的属性,为空删除当前节点" ></td>
+</tr>
+<tr>
+    <td>__html 演示</td> 
+    <td>&lt;div __html="'&lt;font color=\'red\'&gt;这里写php&lt;/font&gt;'" &gt;&lt;span&gt;原html&lt;/span&gt;&lt;/div&gt;</td>
+    <td><div __html="'<font color=\'red\'>这里写php</font>'" ><span>原html</span></div></td>
+</tr>
+<tr>
+    <td>普通注释</td>
+    <td>&lt;!--  
+    echo '这是普通注释';
+--&gt;</td>
+    <td><!--
+    echo '这是普通注释';
+--></td>
+</tr>
+<tr>
+    <td>注释脚本</td>
+    <td>&lt;!--_
+    echo '运行php脚本';
+--&gt;这一行会被删除<font color="red">在script中不会删除这一行</font>
+上一行会被删除</td>
+    <td><!--_  
+    echo '运行php脚本';
+-->这一行会被删除
+上一行会被删除</td>
+</tr>
+<tr>
+    <td>js 脚本</td>
+    <td>&lt;script type="php"&gt;<font color="red">可以将 type 设置成 php,这样在浏览时便不会执行</font>
+document.write("&lt;!--_ echo '输出字符串'; --&gt; : 123");
+&lt;/script&gt;</td>
+    <td><script type="php">
+document.write("<!--_ echo '输出字符串'; --> : 123");
+</script></td>
+</tr>
+<tr>
+    <td>等效写法</td>
+    <td>
+&lt;img src="http://www.baidu.com/img/baidu_jgylogo3.gif?v=02045799.gif" /&gt;
+&lt;img _src="http://www.baidu.com/img/baidu_jgylogo3.gif?v=02045799.gif" /&gt;
+&lt;img _src="echo 'http://www.baidu.com/img/baidu_jgylogo3.gif?v=02045799.gif';" /&gt;
+&lt;img _src="'http://www.baidu.com/' . 'img/baidu_jgylogo3.gif?v=02045799.gif'" /&gt;
+    </td>
+    <td>
+        <img src="http://www.baidu.com/img/baidu_jgylogo3.gif?v=02045799.gif" />
+        <img _src="http://www.baidu.com/img/baidu_jgylogo3.gif?v=02045799.gif" />
+        <img _src="echo 'http://www.baidu.com/img/baidu_jgylogo3.gif?v=02045799.gif';" />
+        <img _src="'http://www.baidu.com/' . 'img/baidu_jgylogo3.gif?v=02045799.gif'" />
+    </td>
+</tr>
+<tr>
+    <td>动态标题</td>
+    <td>&lt;title _="time()"&gt;原标题&lt;/title&gt;</td>
+    <td>每次刷新页面会读取时间戳</td>
+</tr>
+<tr>
+    <td>路径解析</td>
+    <td>&lt;input _value="xx/mm.js" &gt;</td>
+    <td><input _value="xx/mm.js" ></td>
+</tr>
+<tr>
+    <td>for循环演示</td>
+    <td>&lt;!--_
+for($i = 1; $i &lt; 6; ++$i) {
+--&gt;
+&lt;input type="text" value="1" _value="$i"&gt;
+<font color="red">&lt;!--_
+/* 可以用"/* ... */"方式实现批量删除标签<font color="blue">不推荐</font>
+--&gt;</font>
+&lt;input type="text" value="2"&gt;
+&lt;input type="text" value="3"&gt;
+&lt;input type="text" value="4"&gt;
+&lt;input type="text" value="5"&gt;
+&lt;!--_
+<font color="red">*/</font>
+}
+--&gt;</td>
+    <td>
+<!--_
+for($i = 1; $i < 6; ++$i) {
+-->
+<input type="text" value="1" _value="$i">
+<input type="text" value="2" __del>
+<input type="text" value="3" __del>
+<input type="text" value="4" __del>
+<input type="text" value="5" __del>
+<!--_
+}
+--></td>
+</tr>
+</table>
+</pre>
+
+</body>
+</html>

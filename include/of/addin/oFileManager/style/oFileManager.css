@@ -1,0 +1,60 @@
+@charset "utf-8";
+
+/*主控区*/
+html { height:100%; }
+body { height:100%; margin:0px; padding:0px; color: #000000; font-family: 宋体, sans-serif, arial, verdana; font-size: 12px; overflow:hidden; background-color:#CCE8CC; }
+form, ul, li, p, dl, dt, dd, h1, h2, h3, h4, h5, h6 { margin:0px; padding:0px; }
+img { border:0px;}
+a { color:#000; text-decoration: none; }
+a:hover { text-decoration:underline; }
+
+/*一级导航区*/
+.nav { height:30px; background-color:#4E6A81; }
+.nav div { height:100%; width:100%; position:relative; }
+.nav .title { position:absolute; top:5px; left:10px; font-size:16px; font-weight:bold; color:#FFF; overflow:hidden; white-space:nowrap; }
+.nav .uinfo { font-weight:normal; font-size: 12px;}
+.nav .uinfo em{ color:#FF9931; cursor:pointer;}
+#loading { background-color:#CCC; position:absolute; right:3px; bottom:3px; text-align:right; display:none; }
+
+/*菜单栏(二级导航区)*/
+.menu { width:160px; }
+.menu div { height:100%; width:160px; overflow:auto; }
+.menu ul { padding:0px; list-style-type:none; }
+.menu ul ul { margin-left:2em;}
+.menu ol { padding:0px; margin:0px; white-space:nowrap; }
+.menu ol a { color: #000000; display: block; margin: 0 0 0 4px; padding: 4px 0 3px 10px; }
+.menu ol .notEmptyDir{ background: url("../images/liIcon.gif") no-repeat scroll 0px center transparent;}
+.menu ol a:hover { color: #5676B3; text-decoration: none; }
+
+/*主操作区*/
+.main div { height:100%; width:100%; overflow:auto; }
+#fileList { position:relative; }
+#fileList span { float:left; margin:5px; cursor:pointer; position:relative; white-space:nowrap; }
+#fileDownload { position:absolute; z-index:1; top:100%; right:0px; border:1px solid #FFFFFF; padding:2px; background-color:#FFF; width:41px; height:14px; cursor:pointer;}
+#fileDownload img { float:left;}
+#fileDownload strong { float:left;}
+#operation { width:200px; }
+#operation input{ border:0px; height:15px; margin-top:-4px; background-color:transparent; }
+#operation th{ text-align:center;}
+#operation td{ text-align:left;}
+#operation ul{ border:1px solid #999; background-color:#C1BFC4; margin-top:-0px; float:left; position:absolute; text-indent:0em; }/*无限菜单扩展 right:0px; margin-right:50px; 从右到左扩展*/
+#operation ul ul{ margin-top:-25px; margin-top:-23px \9; right:0px; margin-right:120px;}
+#operation ol{ padding:0px 0px 5px; margin:0px; width:120px; }
+#operation ol a{ padding:0px; margin:5px 5px 0px 5px; width:110px; display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+
+#fileQueue {width:180px; float:right; display:none; }
+#fileQueue div{width:auto;}		/*进度条样式*/
+#fileQueue .uploadifyQueueItem { font: 11px Verdana, Geneva, sans-serif; border: 2px solid #E5E5E5; background-color: #F5F5F5; margin-top: 5px; width: 176px;}
+#fileQueue .uploadifyQueueItem span{ display:block !important;}
+#fileQueue .uploadifyError { border: 2px solid #FBCBBC !important; background-color: #FDE5DD !important;}
+#fileQueue .uploadifyQueueItem .cancel { float: right;}
+#fileQueue .uploadifyProgress { background-color: #FFFFFF; border-top: 1px solid #808080; border-left: 1px solid #808080; border-right: 1px solid #C5C5C5; border-bottom: 1px solid #C5C5C5; margin-top: 10px; width: 174px; height: 3px;}
+#fileQueue .uploadifyProgressBar { background-color: #0099FF; width: 1px; height: 3px;}
+#fileQueue .percentage{ float:right; margin-top:-10px; }
+
+/*菜单栏切换*/
+.menuSwitch { width:7px; cursor:pointer; background-color:#6F777A; }
+/*页脚*/
+.footer { height:20px; background-color:#4E6A81; }
+.footer div { height:100%; width:100%; color:#FFF; position:relative; }
+.footer div span { position:absolute; left:5px; top:3px; }

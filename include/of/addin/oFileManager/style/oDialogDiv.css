@@ -1,0 +1,201 @@
+.oDialogDivBg {
+    width:100%;
+    height:100%;
+    background:#000;
+    filter:alpha(opacity=0);
+    opacity:0;
+    position:fixed;
+    _position:absolute;
+    top:0;
+    left:0;
+    _azimuth: expression(
+        navigator.appVersion
+                 .indexOf('MSIE 6.0') > 0 ? 
+            (
+                this.runtimeStyle.width = document.documentElement.clientWidth + 'px',
+                this.runtimeStyle.height = document.documentElement.clientHeight + 'px',
+                this.runtimeStyle.top = document.documentElement.scrollTop + 'px',
+                this.runtimeStyle.left = document.documentElement.scrollLeft + 'px'
+            ) : this.runtimeStyle.position = 'fixed'    /*兼容xp 360安全浏览器IE核心 6.3*/
+    );
+}
+.oDialogDiv {
+    position: absolute;
+    top: 50px;
+    left: 50px;
+    background-color:#FFFFFF;
+}
+.oDialogDiv .title{
+    cursor:move;
+    border-top:7px solid #FFFFFF;
+    margin-bottom:5px;
+    background: none repeat scroll 0 0 #67b9ff;
+    word-break: keep-all;
+    white-space: nowrap;
+    vertical-align:middle;
+}
+.oDialogDiv .title H4{
+    font-weight:normal; 
+    margin:0px 5px; 
+    padding:0px; 
+    display:inline;
+    line-height:33px;
+    color:#FFFFFF;
+}
+.oDialogDiv .title a{
+    position:absolute;
+    z-index:1;
+    cursor:pointer;
+    top:13px;
+    right:5px;
+    width:21px;
+    height:21px;
+    background-image:url(../images/oDialogDiv/oDialogDiv_CloseNormal.png);
+}
+.oDialogDiv .title a:hover{
+    background-image:url(../images/oDialogDiv/oDialogDiv_CloseOver.png);
+}
+.oDialogDiv .title .maskLayer{
+    position:absolute; 
+    width:100%;
+    height:0px;
+    overflow:hidden;
+}
+.oDialogDiv .scroll{
+    padding-bottom:5px;
+    overflow:auto;
+}
+.oDialogDiv .scroll .content{
+    display:inline-block;
+    margin:0px 5px;
+}
+.oDialogDiv .operating{
+    word-break:keep-all;
+    white-space:nowrap;
+    margin:5px auto 10px;
+    text-align:center;
+}
+.oDialogDiv .operating a{
+    width:auto !important;
+    padding-left:10px;
+    padding-right:10px;
+    min-width:60px !important;
+    overflow:hidden;
+    height:23px;
+    line-height:23px;
+    background:url(../images/oDialogDiv/btn3_normal.png) repeat-x top !important;
+    display:inline-block;
+    text-align:center;
+    text-decoration:none;
+    color:#687586 !important;
+    margin:0 5px;
+    border-radius:3px;
+    border:1px solid #c7cdd8;
+    font-weight:normal !important; font-size:13px !important;
+    vertical-align: top;
+}
+.oDialogDiv .operating a:hover{
+    background:url(../images/oDialogDiv/btn3_over.png) repeat-x top  !important;
+    color:#236BDE !important;
+    border:1px solid #01c1ff;
+    text-decoration:none !important;
+    line-height:23px !important;
+}
+.oDialogDiv .borderBgN {    /*北*/
+    position: absolute;
+    top: -20px;
+    width: 100%;
+    height: 20px;
+    overflow: hidden;
+    background: url(../images/oDialogDiv/oDialogDiv_N.png);
+    _width: expression(this.parentNode.clientWidth + "px");
+}
+.oDialogDiv .borderBgS {    /*南*/
+    position: absolute;
+    bottom: -20px;
+    width: 100%;
+    height: 20px;
+    overflow: hidden;
+    background: url(../images/oDialogDiv/oDialogDiv_S.png);
+    _width: expression(this.parentNode.clientWidth + "px");
+}
+.oDialogDiv .borderBgW {    /*西*/
+    position: absolute;
+    left: -20px;
+    width: 20px;
+    height: 100%;
+    overflow: hidden;
+    background: url(../images/oDialogDiv/oDialogDiv_W.png);
+    _height: expression(this.parentNode.clientHeight + "px");
+}
+.oDialogDiv .borderBgE {    /*东*/
+    position: absolute;
+    right: -20px;
+    width: 20px;
+    height: 100%;
+    overflow: hidden;
+    background: url(../images/oDialogDiv/oDialogDiv_E.png);
+    _height: expression(this.parentNode.clientHeight + "px");
+}
+.oDialogDiv .borderBgEN {    /*东北*/
+    position: absolute;
+    right: -20px;
+    top: -20px;
+    width: 20px;
+    height: 20px;
+    overflow: hidden;
+    background: url(../images/oDialogDiv/oDialogDiv_EN.png);
+}
+.oDialogDiv .borderBgES {    /*东南*/
+    position: absolute;
+    right: -20px;
+    bottom: -20px;
+    width: 20px;
+    height: 20px;
+    overflow: hidden;
+    background: url(../images/oDialogDiv/oDialogDiv_ES.png);
+}
+.oDialogDiv .borderBgWS {    /*西南*/
+    position: absolute;
+    left: -20px;
+    bottom: -20px;
+    width: 20px;
+    height: 20px;
+    overflow: hidden;
+    background: url(../images/oDialogDiv/oDialogDiv_WS.png);
+}
+.oDialogDiv .borderBgWN {    /*南北*/
+    position: absolute;
+    left: -20px;
+    top: -20px;
+    width: 20px;
+    height: 20px;
+    overflow: hidden;
+    background: url(../images/oDialogDiv/oDialogDiv_WN.png);
+}
+.oDialogDiv div {    /*IE 6下边框光晕效果*/
+    _azimuth: expression(
+        this.ie6Png === '' ? 
+            (
+                this.ie6Png = this.currentStyle.backgroundImage.toString().replace('url("','').replace('")',''),
+                this.runtimeStyle.filter = "progid:DXImageTransform.Microsoft.AlphaImageLoader(src='" + this.ie6Png + "', sizingMethod='scale')",
+                this.runtimeStyle.backgroundImage = 'url("' + this.ie6Png + '/../transparent.gif")',
+                this.ie6Png = false
+            ) : null
+    );
+}
+
+.tip {    /*操作提示*/
+    background-color:#080;
+    font-size:12px;
+    color:#FFF;
+    font-weight:bold;
+    padding:3px;
+    margin:0px;
+    line-height:12px;
+    overflow: hidden;
+    display:inline-block;
+    position:absolute;
+    top:-30px;
+    z-index:2147483584;
+}
