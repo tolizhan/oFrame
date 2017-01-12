@@ -8,7 +8,7 @@ $this->head(array(
     'css' => &$index
 ));
 
-echo '<script>var ofBaseSsoLogin = ' .json_encode($_GET). '</script>';
+echo '<script>var ofBaseSsoLogin = ' .of_base_com_data::json($_GET). '</script>';
 ?>
 <div class="of_sso-login_bgBlock"></div>
 <div class="of_sso-login_bgTip" id="tipBar"></div>

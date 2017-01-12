@@ -2,7 +2,7 @@
 /**
  * 描述 : 基于TCP的网络请求双向代理
  *      代理地址写在 HEDA["PROXY_URL"] 或 GET["_"], 其它参数正常
- *      头信息中可以使用"_"代替关键头, 如"_Authorization"代替"Authorization"
+ *      非apahe服务器, 头信息中可以使用"_"代替关键头, 如"_Authorization"代替"Authorization"
  *      请求时头中会自动包含 Proxy-Url(代理地址) 和 Proxy-Id(唯一ID)
  *      代码中 $tryNum 为尝试送达次数, 每次间隔5s
  *      响应 "error"字符串 或 状态码 不小于 400 为失败
@@ -10,7 +10,7 @@
  */
 
 //加载框架
-require dirname(dirname(dirname(__FILE__))) . '/include/of/of.php';
+require dirname(dirname(dirname(dirname(__FILE__)))) . '/include/of/of.php';
 
 //不存在中转URL
 if (empty($_SERVER['HTTP_PROXY_URL']) && empty($_GET['_'])) {
@@ -56,16 +56,29 @@ if (empty($_SERVER['HTTP_PROXY_URL']) && empty($_GET['_'])) {
 
     //生成请求头 getallheaders
     $data['header'] = array('Proxy-Url: ' . $url, 'Proxy-Id: ' . $proxyId);
-    foreach ($_SERVER as $k => &$v) {
-        //不在黑名单
-        if (empty($black[$k])) {
-            $k = explode('_', $k, 2);
+    //apache 服务器
+    if (function_exists('getallheaders')) {
+        $temp = getallheaders();
+        unset(
+            $temp['Host'], $temp['Connection'], 
+            $temp['Accept-Encoding'], $temp['Content-Length']
+        );
+        foreach ($temp as $k => &$v) {
+            $data['header'][] = $k . ': ' . $v;
+        }
+    //其它 服务器
+    } else {
+        foreach ($_SERVER as $k => &$v) {
+            //不在黑名单
+            if (empty($black[$k])) {
+                $k = explode('_', $k, 2);
 
-            if ($k[0] === 'HTTP') {
-                //关键词头替换
-                $k[1][0] === '_' && $k[1] = substr($k[1], 1);
-                //保存头信息
-                $data['header'][] = strtr($k[1], '_', '-') . ': ' . $v;
+                if ($k[0] === 'HTTP') {
+                    //关键词头替换
+                    $k[1][0] === '_' && $k[1] = substr($k[1], 1);
+                    //保存头信息
+                    $data['header'][] = strtr($k[1], '_', '-') . ': ' . $v;
+                }
             }
         }
     }
@@ -97,7 +110,12 @@ if (empty($_SERVER['HTTP_PROXY_URL']) && empty($_GET['_'])) {
     //为 -1 请失败
     if ($tryNum < 0) {
         //请求失败
-        header('HTTP/1.1 502 Bad Gateway');
+        if ($result['errno'] >= 400) {
+            header('HTTP/1.1 ' . $result['errno']);
+        } else {
+            header('HTTP/1.1 502 Bad Gateway');
+        }
+        echo $result['errstr'];
         trigger_error(
             date('Y-m-d H:i:s') . ">{$proxyId}>代理失败:\n--响应--\n" . 
             print_r($result, true) . 

@@ -147,7 +147,8 @@ if( !empty($_POST) ) {
             break;
     }
 
-    echo json_encode($result === null ? 1 : $result);
+    $temp = $result === null ? 1 : $result;
+    echo of_base_com_data::json($temp);
 } else {
     of_view::head(array());
 ?>

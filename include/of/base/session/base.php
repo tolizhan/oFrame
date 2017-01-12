@@ -37,8 +37,6 @@ class of_base_session_base {
             ini_set('session.cookie_path', ROOT_URL . '/');
             //启动session_set_save_handler
             ini_set('session.save_handler', 'user');
-            //会话对接
-            self::handler();
 
             //初始化session状态
             if (!function_exists('session_status')) {
@@ -164,7 +162,9 @@ function session_open() {
     static $repeat = null;
 
     //session_set_save_handler 在 php <= 5.2.14 存在bug
-    if ($repeat === true || $repeat === null && $repeat = version_compare(PHP_VERSION, '5.2.14', '<=')) {
+    if ($repeat === true || $repeat === null) {
+        //php < 5.3 每次开启均加载 handler
+        $repeat === null && $repeat = version_compare(PHP_VERSION, '5.3', '<');
         //会话接入
         of_base_session_base::handler();
     }

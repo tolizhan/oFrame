@@ -22,7 +22,7 @@ class of_base_com_csv {
         $fileArr = &self::$fileArr;
 
         //对行操作
-        if( is_bool($col) ) {
+        if (is_bool($col)) {
             //整理数据
             $td = &self::arrFill($fileArr, $row < 1 ? 0 : $row, count($val));
             //初始化行
@@ -30,16 +30,16 @@ class of_base_com_csv {
 
             array_splice($fileArr, $row, $col, array(&$val));
         //对列操作
-        } else if( is_bool($row) ) {
+        } else if (is_bool($row)) {
             //整理数据
             $td = &self::arrFill($fileArr, count($val), $col < 1 ? 0 : $col);
             //初始化列
             $col === null && $col = $td['col'];
             //初始数据
-            for($i = $col - count($val); $i > 0; $i-- ) $val[] = '';
+            for ($i = $col - count($val); $i > 0; $i-- ) $val[] = '';
 
             reset($fileArr);
-            foreach($val as &$v) {
+            foreach ($val as &$v) {
                 array_splice($fileArr[key($fileArr)], $col, $row, array(&$v));
                 next($fileArr);
             }
@@ -62,11 +62,11 @@ class of_base_com_csv {
         $fileArr = &self::$fileArr;
 
         self::arrFill($fileArr);
-        foreach($fileArr as $vs) {
-            foreach($vs as &$v) {
-                if( is_string($v) ) {
+        foreach ($fileArr as $vs) {
+            foreach ($vs as &$v) {
+                if (is_string($v)) {
                     //数字类型
-                    if( is_numeric($v) ) {
+                    if (is_numeric($v)) {
                         //防止科学记数法
                         $v .= "\t";
                     } else {
@@ -105,7 +105,7 @@ class of_base_com_csv {
         $fileArr = &self::$fileArr;
         is_array($filename) && $fileArr[] = $filename;
 
-        if( $sendHead === true ) {
+        if ($sendHead === true) {
             //永不超时
             ini_set('max_execution_time', 0);
             //默认文件名
@@ -131,7 +131,7 @@ class of_base_com_csv {
             header('Pragma:no-cache');
         }
 
-        if( !empty($fileArr) ) {
+        if (!empty($fileArr)) {
             echo self::toString(null, $sendHead), "\r\n";
             $fileArr = array();
         }
@@ -154,15 +154,15 @@ class of_base_com_csv {
             'cs' => $charset
         );
 
-        if( $index['fp'] && $result = fgetcsv($index['fp']) ) {
+        if ($index['fp'] && $result = fgetcsv($index['fp'])) {
             foreach($result as &$v) {
                 //初始非ASCII字符集
-                if( $index['cs'] === null && preg_match('@[^\x00\x09\x10\x13\x20-\x7F]@', $v) ) {
+                if ($index['cs'] === null && preg_match('@[^\x00\x09\x10\x13\x20-\x7F]@', $v)) {
                     //是 UTF-8 编码
-                    if( @iconv('UTF-8', 'UTF-8', $v) === $v ) {
+                    if (@iconv('UTF-8', 'UTF-8', $v) === $v) {
                         $index['cs'] = 'UTF-8';
                     //是用户群体编码
-                    } else if( @iconv($temp = of::config('_of.charset', 'GB18030'), $temp . '//IGNORE', $v) === $v ) {
+                    } else if (@iconv($temp = of::config('_of.charset', 'GB18030'), $temp, $v) === $v) {
                         $index['cs'] = $temp;
                     //未知编码
                     } else {
@@ -196,7 +196,7 @@ class of_base_com_csv {
         //最大值
         $result = array('row' => count($arr), 'col' => 0);
 
-        if( !empty($arr) ) {
+        if (!empty($arr)) {
             //最大列
             $col > ($result['col'] = max(array_map('count', $arr))) && $result['col'] = $col;
             //填充列

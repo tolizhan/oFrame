@@ -84,8 +84,8 @@ function login($params = null) {
                             ) VALUES (
                                 '{$temp[1]}', '{$temp[2]}', NOW()
                             ) ON DUPLICATE KEY UPDATE
-                                `pwd` = '{$temp[2]}',
-                                `pwd` = NOW()";
+                                `pwd`  = '{$temp[2]}',
+                                `time` = NOW()";
                             //记录在案
                             L::sql($sql);
                         }
@@ -195,19 +195,14 @@ function permit($params = null) {
  * 作者 : Edgar.lee
  */
 function syncUsers() {
+    set_time_limit(0);
     L::buffer(false);
-    //根DN
-    $baseDn = 'OU=youkeshu,DC=youkeshu,DC=com';
-    echo '<font color="red">开始同步帐号:</font> ', $baseDn;
+    $dnList = array('OU=youkeshu,DC=youkeshu,DC=com');
 
-    $count = 0;
-    if( $conn = ldap_connect('192.168.5.117', 389) ) {
-        if( 
-            ldap_bind($conn, 'dcadmin', 'rG8dDTta12UL') &&
-            $result = ldap_list($conn, $baseDn, '(OU=*)', array('OU'))
-        ) {
-            //查询部门
-            $depts = ldap_get_entries($conn, $result);
+    //连接成功
+    if ($conn = ldap_connect('192.168.5.117', 389)) {
+        //登录成功
+        if (ldap_bind($conn, 'dcadmin', 'rG8dDTta12UL')) {
             $sql = "UPDATE 
                 `_of_sso_user` 
             SET 
@@ -226,27 +221,52 @@ function syncUsers() {
             //冻结所以帐号
             L::sql($sql);
 
-            unset($depts['count']);
-            foreach($depts as &$vd) {
-                //部门标识
-                $dept = $vd['ou'][0];
-                //帐号 真名 职位
+            do {
+                $dk = key($dnList);
+                $dn = &$dnList[$dk];
+                unset($dnList[$dk]);
+
+                $result = ldap_list($conn, $dn, '(OU=*)', array('OU'));
+                //查询部门
+                $depts = ldap_get_entries($conn, $result);
+                unset($depts['count']);
+                //记录子部门
+                foreach($depts as &$vd) $dnList[] = $vd['dn'];
+
+                echo '<font color="red">开始同步:</font> ', $dn;
+
+                $count = 0;
                 $result = ldap_list(
-                    $conn, "OU={$dept},{$baseDn}", 
+                    $conn, $dn, 
                     //不包含两种禁用状态
                     '(&(CN=*)(!(useraccountcontrol=514))(!(useraccountcontrol=60050)))', array(
-                        'CN', 'description', 'title', 'pwdlastset'
+                        'CN', 'description', 'title', 'pwdlastset', 'mobile'
                     )
                 );
                 //查询部门
                 $users = ldap_get_entries($conn, $result);
-
                 unset($users['count']);
                 //计数
                 $count += count($users);
-                //修改用户数据
-                foreach($users as &$v) $this->setUser($v);
-            }
+                foreach($users as &$v) {
+                    //修改用户数据
+                    $this->setUser($v);
+
+                    //用户名
+                    $user = addslashes(iconv('GB18030', 'UTF-8//IGNORE', $v['cn'][0]));
+                    //手机号
+                    $mobile = isset($v['mobile']) ? addslashes(trim($v['mobile'][0])) : '';
+                    $sql = "INSERT INTO `{$this->_getConst('eDbPre')}smstip` (
+                        `name`, `mobile`, `pwdTip`
+                    ) VALUES (
+                        '{$user}', '{$mobile}', DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+                    ) ON DUPLICATE KEY UPDATE
+                        `mobile` = '{$mobile}'";
+                    L::sql($sql);
+                }
+
+                echo ' <font color="red">同步完成: </font>', $count, "<br>\n";
+            } while ($dnList);
 
             $sql = "UPDATE 
                 `_of_sso_user` 
@@ -260,9 +280,69 @@ function syncUsers() {
         //关闭连接源
         ldap_close($conn);
     }
-    $this->setTask();
 
-    echo ' <font color="red">同步完成: </font>', $count;
+    $temp = $_SERVER['REQUEST_TIME'] - of::config('_of.sso.expiry', 90) * 86400;
+    //过期时间
+    $exp = date('Y-m-d H:i:s', $temp);
+    //提醒时间
+    $tip = date('Y-m-d H:i:s', $temp - 3 * 86400);
+    $smstip = $this->_getConst('eDbPre') . 'smstip';
+
+    $sql = "SELECT
+        `_of_sso_user`.`name`, `{$smstip}`.`mobile`
+    FROM
+        `_of_sso_user`
+            LEFT JOIN `{$smstip}` ON
+                `{$smstip}`.`name` = `_of_sso_user`.`name`
+    WHERE
+        `_of_sso_user`.`state` = '1'                            /*有效帐号*/
+    AND `_of_sso_user`.`time` <= '{$exp}'                       /*没过期*/
+    AND `_of_sso_user`.`time` >= '{$tip}'                       /*快过期*/
+    AND `{$smstip}`.`mobile` <> ''                              /*有效手机号*/
+    AND `{$smstip}`.`pwdTip` < `_of_sso_user`.`time`            /*没提示过*/";
+
+    //非debug模式发短信
+    if (!OF_DEBUG) {
+        //过期日期
+        $exp = substr($exp, 0, 10);
+
+        //阿里短信接口
+        $this->_loadFile('/aliMsg/TopSdk.php');
+        $aliMsg = new TopClient;
+        $aliMsg->appkey = '    ';
+        $aliMsg->secretKey = '    ';
+        $aliReq = new AlibabaAliqinFcSmsNumSendRequest;
+        $aliReq->setSmsType('normal');
+        $aliReq->setSmsFreeSignName('    ');
+        $aliReq->setSmsTemplateCode('    ');
+
+        //遍历发送短信
+        while ($data = L::sql($sql)) {
+            foreach ($data as &$v) {
+                $sql = "UPDATE 
+                    `{$smstip}` 
+                SET 
+                    `pwdTip` = NOW() 
+                WHERE
+                    `name`='{$v['name']}'";
+
+                //数据库操作成功
+                if (L::sql($sql)) {
+                    $temp = json_encode(array(
+                        'username' => $v['name'],
+                        'date'     => &$exp,
+                        'admin'    => ' 刘兴旺 QQ:332189016'
+                    ));
+                    $aliReq->setSmsParam($temp);
+                    $aliReq->setRecNum($v['mobile']);
+                    //发送信息
+                    $aliMsg->execute($aliReq);
+                }
+            }
+        }
+    }
+
+    $this->setTask();
 }
 
 /**
@@ -315,10 +395,8 @@ function setUser(&$params) {
         `notes` = VALUES(`notes`),
         `state` = '1'";
 
-    //加斜线的密码
     //明确密码
     if( $temp['pwd'] ) {
-
         $sql .= ",
         `time` = IF(`pwd` = '' OR `pwd` = '{$temp['pwd']}', `time`, '{$temp['time']}'), 
         `pwd` = '{$temp['pwd']}'";

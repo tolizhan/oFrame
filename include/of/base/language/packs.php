@@ -37,8 +37,7 @@
  *      }
  * 作者 : Edgar.Lee
  */
-class of_base_language_packs
-{
+class of_base_language_packs {
     //环境变量
     private static $envVar = null;
     //是否开发模式

@@ -71,7 +71,7 @@
  *      private relationship            取得一个包含匹配的元素集合中每一个元素紧邻的全部元素集合
 
  *      筛选器
- *      private selectors               选择器核心
+ *      public  selectors               选择器核心
  *      private filterNodeKeys          按规则过滤伪类或属性
  *      private filterAttrNodeKeys      过滤属性节点键
  *      private filterPseudoNodeKeys    过滤伪类节点键(未实现与样式有关的伪类)
@@ -81,11 +81,12 @@
  *      public  twoNodeKeySort          比对两个节点的先后顺序(仅由nodeKeysUniqueSort调用)
 
  *      工具区
+ *      public  nodeAttr                读取设置指定节点键属性
+ *      public  nodeConn                读取与指定节点相关系的节点
+ *      public  nodeSplice              移除或插入指定节点
+ *      private hasChildTag             判断是否有子节点标签
  *      private entities                html实体转换
- *      private getNodeKeyAttr          读取设置指定节点键属性
  *      private htmlFormat              遍历指定节点的子节点,返回格式化的数组
- *      private spliceNode              移除或插入指定节点
- *      private nodeRelationship        读取与指定节点相关系的节点
  *      private cloneNode               克隆节点
  *      private nodeCollection          节点回收工具(GC)
 
@@ -120,12 +121,9 @@ class of_base_com_hParse {
     //块级标签
     private static $blockTag = array('p' => 1, 'h1' => 1, 'h2' => 1, 'h3' => 1, 'h4' => 1, 'h5' => 1, 'h6' => 1, 'div' => 1, 'ul' => 1, 'ol' => 1, 'dl' => 1, 'menu' => 1, 'dir' => 1, 'pre' => 1, 'hr' => 1, 'blockquote' => 1, 'address' => 1, 'center' => 1, 'noframes' => 1, 'isindex' => 1, 'fieldset' => 1, 'table' => 1);
 
-    //单标签
-    private static $singleTag = array('!text' => 1 /*字符串标签*/, '!doctype' => 1 /*文档类型标签*/, '!--' => 1 /*注释标签*/, 'base' => 1, 'meta' => 1, 'link' => 1, 'hr' => 1, 'br' => 1, 'basefont' => 1, 'param' => 1, 'img' => 1, 'area' => 1, 'input' => 1, 'isindex' => 1, 'col' => 1);
-
-    //无子节点标签
+    //无子节点标签(1=单标签, 2=仅包含文本, 4=包含注释及文本)
     private static $notChrTag = array(
-        'script' => 1 /*脚本标签*/, 'noscript' => 1 /*代替脚本标签*/, 'noframes' => 1 /*代替框架标签*/, 'style' => 1 /*样式标签*/, 'textarea' => 1 /*文本域标签*/, 'title' => 1 /*标题标签*/,  'option' => 0/*列表选项(不包含非注释的html标签)*/,
+        'script' => 2 /*脚本标签*/, 'noscript' => 2 /*代替脚本标签*/, 'noframes' => 2 /*代替框架标签*/, 'style' => 2 /*样式标签*/, 'textarea' => 2 /*文本域标签*/, 'title' => 2 /*标题标签*/,  'option' => 4/*列表选项(不包含非注释的html标签)*/,
         '!text' => 1 /*字符串标签*/, '!doctype' => 1 /*文档类型标签*/, '!--' => 1 /*注释标签*/, 'base' => 1, 'meta' => 1, 'link' => 1, 'hr' => 1, 'br' => 1, 'basefont' => 1, 'param' => 1, 'img' => 1, 'area' => 1, 'input' => 1, 'isindex' => 1, 'col' => 1
     );
 
@@ -216,10 +214,10 @@ class of_base_com_hParse {
     public function addClass($className) {
         $className = array_flip(explode(' ', preg_replace('/\s+/', ' ', $className)));
         foreach($this->objAttr['nodeList'] as &$nodeKey) {
-            $temp = array_flip(explode(' ', self::getNodeKeyAttr($nodeKey, 'class')));
+            $temp = array_flip(explode(' ', self::nodeAttr($nodeKey, 'class')));
             $temp += array_diff_key($className, $temp);
             unset($temp['']);
-            self::getNodeKeyAttr($nodeKey, 'class', join(' ', array_keys($temp)));
+            self::nodeAttr($nodeKey, 'class', join(' ', array_keys($temp)));
         }
         return $this;
     }
@@ -235,7 +233,7 @@ class of_base_com_hParse {
     public function hasClass($className) {
         $className = explode(' ', preg_replace('/\s+/', ' ', $className));
         foreach($this->objAttr['nodeList'] as &$nodeKey) {
-            $temp = array_flip(explode(' ', self::getNodeKeyAttr($nodeKey, 'class')));
+            $temp = array_flip(explode(' ', self::nodeAttr($nodeKey, 'class')));
             foreach($className as &$v) {
                 if( !isset($temp[$v]) ) {
                     $temp = false;
@@ -253,20 +251,21 @@ class of_base_com_hParse {
     /**
      * 描述 : 读取或设置匹配节点的innerHTML值
      * 参数 :
-     *      str : false(默认)=获取第一个元素中innerHTML内容, true=获取第一个元素中outerHTML内容, 字符串=设置每一个匹配元素的html内容
+     *      text : false(默认)=获取第一个元素中innerHTML内容, true=获取第一个元素中outerHTML内容, 字符串=设置每一个匹配元素的html内容
+     *      mode : text为bool时有效, true=补全未闭合标签, false=按原解析方式
      * 返回 :
      *      读取时返回字符串
      *      设置时返回当前对象
      * 作者 : Edgar.lee
      */
-    public function html($str = false) {
-        if (is_string($str)) {
+    public function html($text = false, $mode = true) {
+        if (is_string($text)) {
             foreach($this->objAttr['nodeList'] as &$nodeKey) {
-                self::getNodeKeyAttr($nodeKey, 'innerHTML', $str);
+                self::nodeAttr($nodeKey, 'innerHTML', $text);
             }
             return $this;
         } else if (isset($this->objAttr['nodeList'][0])) {
-            return self::getNodeKeyAttr($this->objAttr['nodeList'][0], $str ? 'outerHTML' : 'innerHTML');
+            return self::nodeAttr($this->objAttr['nodeList'][0], $text ? 'outerHTML' : 'innerHTML', null, $mode);
         }
     }
 
@@ -283,7 +282,7 @@ class of_base_com_hParse {
         //设置
         if( is_string($str) ) {
             foreach($this->objAttr['nodeList'] as &$nodeKey) {
-                self::getNodeKeyAttr($nodeKey, 'textContent', $str);
+                self::nodeAttr($nodeKey, 'textContent', $str);
             }
             return $this;
         } else {
@@ -341,12 +340,12 @@ class of_base_com_hParse {
                 $nodeKeys = &$objAttr['nodeList'];
                 foreach($nodeKeys as &$nodeKey) {
                     foreach($attr as $k => &$v) {
-                        self::getNodeKeyAttr($nodeKey, $k, (string)$v);
+                        self::nodeAttr($nodeKey, $k, (string)$v);
                     }
                 }
             //读取属性
             } else {
-                return self::getNodeKeyAttr($objAttr['nodeList'][0], $attr);
+                return self::nodeAttr($objAttr['nodeList'][0], $attr);
             }
         } elseif($value === null && !is_array($attr)) {
             return null;
@@ -365,7 +364,7 @@ class of_base_com_hParse {
      */
     public function removeAttr($attr) {
         foreach($this->objAttr['nodeList'] as &$nodeKey) {
-            self::getNodeKeyAttr($nodeKey, $attr, false);
+            self::nodeAttr($nodeKey, $attr, false);
         }
         return $this;
     }
@@ -381,12 +380,12 @@ class of_base_com_hParse {
     public function removeClass($className) {
         $className = explode(' ', preg_replace('/\s+/', ' ', $className));
         foreach($this->objAttr['nodeList'] as &$nodeKey) {
-            $temp = array_flip(explode(' ', self::getNodeKeyAttr($nodeKey, 'class')));
+            $temp = array_flip(explode(' ', self::nodeAttr($nodeKey, 'class')));
             unset($temp['']);
             foreach($className as &$v) {
                 unset($temp[$v]);
             }
-            self::getNodeKeyAttr($nodeKey, 'class', join(' ', array_keys($temp)));
+            self::nodeAttr($nodeKey, 'class', join(' ', array_keys($temp)));
         }
         return $this;
     }
@@ -525,9 +524,9 @@ class of_base_com_hParse {
                         //option标签 && value匹配
                         if(
                             $parseNode[$childNodeKey]['tagName'] === 'option' &&
-                            self::getNodeKeyAttr($childNodeKey, 'selected') !== null
+                            self::nodeAttr($childNodeKey, 'selected') !== null
                         ) {
-                            $temp[] = self::getNodeKeyAttr($childNodeKey, 'textContent');
+                            $temp[] = self::nodeAttr($childNodeKey, 'textContent');
                         }
                     }
 
@@ -539,10 +538,10 @@ class of_base_com_hParse {
                     }
                 //input标签
                 } elseif( $tagName === 'input' ) {
-                    return self::getNodeKeyAttr($nodeKey, 'value');
+                    return self::nodeAttr($nodeKey, 'value');
                 //如果子节点仅为文本节点
-                } elseif(isset(self::$notChrTag[$tagName]) && !isset(self::$singleTag[$tagName])) {
-                    return self::getNodeKeyAttr($nodeKey, 'textContent');
+                } else if(self::hasChildTag($tagName) & 6) {
+                    return self::nodeAttr($nodeKey, 'textContent');
                 }
             }
             return null;
@@ -560,31 +559,31 @@ class of_base_com_hParse {
                         //option标签 && value匹配
                         if(
                             $parseNode[$childNodeKey]['tagName'] === 'option' &&
-                            array_search(self::getNodeKeyAttr($childNodeKey, 'textContent'), $valueArr) !== false
+                            array_search(self::nodeAttr($childNodeKey, 'textContent'), $valueArr) !== false
                         ) {
-                            self::getNodeKeyAttr($childNodeKey, 'selected', 'selected');
+                            self::nodeAttr($childNodeKey, 'selected', 'selected');
                         }
                     }
                 //input标签
                 } elseif( $tagName === 'input' ) {
-                    switch( self::getNodeKeyAttr($nodeKey, 'type') ) {
+                    switch( self::nodeAttr($nodeKey, 'type') ) {
                         //多选按钮
                         case 'checkbox':
                         //单选按钮
                         case 'radio'   :
-                            if(array_search(self::getNodeKeyAttr($nodeKey, 'value'), $valueArr) !== false) {
-                                self::getNodeKeyAttr($nodeKey, 'checked', 'checked');
+                            if(array_search(self::nodeAttr($nodeKey, 'value'), $valueArr) !== false) {
+                                self::nodeAttr($nodeKey, 'checked', 'checked');
                             }
                             break;
                         //其它类型修改value属性
                         default        :
-                            self::getNodeKeyAttr($nodeKey, 'value', $valueStr);
+                            self::nodeAttr($nodeKey, 'value', $valueStr);
                     }
                 } elseif( $tagName === 'option' ) {
-                    self::getNodeKeyAttr($nodeKey, 'value', $valueStr);
+                    self::nodeAttr($nodeKey, 'value', $valueStr);
                 //如果子节点仅为文本节点
-                } elseif(isset(self::$notChrTag[$tagName]) && !isset(self::$singleTag[$tagName])) {
-                    self::getNodeKeyAttr($nodeKey, 'textContent', $valueStr);
+                } elseif(self::hasChildTag($tagName) & 6) {
+                    self::nodeAttr($nodeKey, 'textContent', $valueStr);
                 }
             }
             return $this;
@@ -616,7 +615,7 @@ class of_base_com_hParse {
                     //拆分样式
                     preg_match_all(
                         '@([\w-]+)\s*:\s*((?:[^(;]*(?:\(.*\))*)+)@',
-                        self::getNodeKeyAttr($nodeKey, 'style'),
+                        self::nodeAttr($nodeKey, 'style'),
                         //接受拆分的数组
                         $temp,
                         PREG_SET_ORDER
@@ -630,7 +629,7 @@ class of_base_com_hParse {
                     foreach($temp as $k => &$v) {
                         $style[$k] = $k .':'. $v;
                     }
-                    self::getNodeKeyAttr($nodeKey, 'style', join(';', $style));
+                    self::nodeAttr($nodeKey, 'style', join(';', $style));
                 }
             //读取样式
             } else {
@@ -639,7 +638,7 @@ class of_base_com_hParse {
                     //匹配指定样式名
                     preg_match(
                         '@' .$name. '\s*:\s*((?:[^(;]*(?:\(.*\))*)+)@',
-                        self::getNodeKeyAttr($objAttr['nodeList'][0], 'style'),
+                        self::nodeAttr($objAttr['nodeList'][0], 'style'),
                         //接受拆分的数组
                         $temp
                     );
@@ -837,7 +836,6 @@ class of_base_com_hParse {
         $parseNode = &self::$parseNode;
         //对象
         if( is_object($context) ) {
-        
             $sharedData = $context->get(false);
         } else {
             if( !is_string($context) ) {
@@ -868,7 +866,7 @@ class of_base_com_hParse {
                 $sharedData['nodeList'] = array($temp);
             //解析html
             } elseif( $rootObj === true || (isset($context[0]) && $context[0] === '<') ) {
-                $sharedData['nodeList'] = self::nodeRelationship(self::htmlParse($context), 'child', false, true);
+                $sharedData['nodeList'] = self::nodeConn(self::htmlParse($context), 'child', false, true);
             //选择器
             } else {
                 //$rootObj=null时使用根节点
@@ -920,10 +918,7 @@ class of_base_com_hParse {
         if( isset($oNodeKeys[0]) ) {
             //存储克隆的节点
             $cloneNodeKeys = $oNodeKeys;
-            //移除全部插入节点
-            foreach($oNodeKeys as &$nodeKey) {
-                self::spliceNode($nodeKey);
-            }
+
             foreach($this->objAttr['nodeList'] as &$nodeKey) {
                 //如果克隆节点为空,则重新克隆
                 if( $cloneNodeKeys === null ) {
@@ -950,7 +945,7 @@ class of_base_com_hParse {
 
                             foreach($cloneNodeKeys as &$cloneNodeKey) {
                                 //将克隆节点依次插入当前节点下一个节点的前面
-                                self::spliceNode($cloneNodeKey, $pNodeKey, $insPos);
+                                self::nodeSplice($cloneNodeKey, $pNodeKey, $insPos);
                             }
 
                             $cloneNodeKeys = null;
@@ -962,7 +957,7 @@ class of_base_com_hParse {
                             $parseNode[$nodeKey]['cKeys'][0] : false;
                         foreach($cloneNodeKeys as &$cloneNodeKey) {
                             //将克隆节点依次插入当前节点子节点最后面
-                            self::spliceNode($cloneNodeKey, $nodeKey, $insPos);
+                            self::nodeSplice($cloneNodeKey, $nodeKey, $insPos);
                         }
 
                         $cloneNodeKeys = null;
@@ -972,11 +967,11 @@ class of_base_com_hParse {
                         if( ($pNodeKey = $parseNode[$nodeKey]['pKey']) !== null ) {
                             foreach($cloneNodeKeys as &$cloneNodeKey) {
                                 //将克隆节点依次插入当前节点下一个节点的前面
-                                self::spliceNode($cloneNodeKey, $pNodeKey, $nodeKey);
+                                self::nodeSplice($cloneNodeKey, $pNodeKey, $nodeKey);
                             }
 
                             //移除当前节点
-                            self::spliceNode($nodeKey);
+                            self::nodeSplice($nodeKey);
                             $cloneNodeKeys = null;
                         }
                         break;
@@ -1014,7 +1009,7 @@ class of_base_com_hParse {
         $parseNode = &self::$parseNode;
         foreach($this->objAttr['nodeList'] as &$nodeKey) {
             foreach($parseNode[$nodeKey]['cKeys'] as $chlidKey) {
-                self::spliceNode($chlidKey);
+                self::nodeSplice($chlidKey);
             }
         }
         return $this;
@@ -1034,7 +1029,7 @@ class of_base_com_hParse {
             self::selectors($this->objAttr['nodeList'], $selector, false);
 
         foreach($removeNodeKeys as &$nodeKey) {
-            self::spliceNode($nodeKey);
+            self::nodeSplice($nodeKey);
         }
         return $this;
     }
@@ -1052,9 +1047,9 @@ class of_base_com_hParse {
             if( isset($parseNode[$nodeKey]['pKey']) ) {
                 $pNodeKey = $parseNode[$nodeKey]['pKey'];
                 foreach($parseNode[$pNodeKey]['cKeys'] as $siblingKey) {
-                    self::spliceNode($siblingKey, $parseNode[$pNodeKey]['pKey'], $pNodeKey);
+                    self::nodeSplice($siblingKey, $parseNode[$pNodeKey]['pKey'], $pNodeKey);
                 }
-                self::spliceNode($pNodeKey);
+                self::nodeSplice($pNodeKey);
             }
         }
         return $this;
@@ -1130,16 +1125,16 @@ class of_base_com_hParse {
                         //寻找第一个没有非文本子节点的节点
                         foreach($childNodeKeys as &$childNodeKey) {
                             //没有非文本子节点
-                            if( self::nodeRelationship($childNodeKey, 'child', 0) === null ) {
+                            if( self::nodeConn($childNodeKey, 'child', 0) === null ) {
                                 $insertNodeKey = $childNodeKey;
                                 break;
                             }
                         }
-                    } elseif(
+                    } elseif (
                         //常规解决
                         $parseNode[$nodeKey]['nodeType'] === 'node' &&
                         //不是单标签
-                        !isset(self::$singleTag[$parseNode[$nodeKey]['tagName']])
+                        self::hasChildTag($parseNode[$nodeKey]['tagName']) > 1
                     ) {
                         $insertNodeKey = $nodeKey;
                     }
@@ -1152,7 +1147,7 @@ class of_base_com_hParse {
                 //将匹配节点插入到当前节点最后
                 if( $insertNodeKey !== null ) {
                     //插入节点祖先父节点
-                    $parentNodeKey = self::nodeRelationship($insertNodeKey, 'parent', -1);
+                    $parentNodeKey = self::nodeConn($insertNodeKey, 'parent', -1);
                     if( $parentNodeKey === null ) {
                         $parentNodeKey = $insertNodeKey;
                         $insertNodeKeyPos = null;
@@ -1171,9 +1166,9 @@ class of_base_com_hParse {
                         //匹配节点插入的节点
                         $cloneNodekeyChild = $insertNodeKeyPos === null ?
                             $cloneNodekey : $cloneNodekeyChild[$insertNodeKeyPos];
-                        self::spliceNode($cloneNodekey, $parseNode[$nodeKey]['pKey'], $nodeKey);
+                        self::nodeSplice($cloneNodekey, $parseNode[$nodeKey]['pKey'], $nodeKey);
                         foreach($this->objAttr['nodeList'] as &$nodeKey) {
-                            self::spliceNode($nodeKey, $cloneNodekeyChild, false);
+                            self::nodeSplice($nodeKey, $cloneNodekeyChild, false);
                         }
                     } else {
                         foreach($this->objAttr['nodeList'] as &$nodeKey) {
@@ -1190,8 +1185,8 @@ class of_base_com_hParse {
                                 case 'wrap'     :
                                     //克隆节点插入到匹配节点前,匹配节点插入的克隆节点中
                                     if( isset($parseNode[$nodeKey]['pKey']) ) {
-                                        self::spliceNode($cloneNodekey, $parseNode[$nodeKey]['pKey'], $nodeKey);
-                                        self::spliceNode($nodeKey, $cloneNodekeyChild, false);
+                                        self::nodeSplice($cloneNodekey, $parseNode[$nodeKey]['pKey'], $nodeKey);
+                                        self::nodeSplice($nodeKey, $cloneNodekeyChild, false);
                                         $cloneNodekey = null;
                                     }
                                     break;
@@ -1199,10 +1194,10 @@ class of_base_com_hParse {
                                     //记录匹配节点的子记得
                                     $cKeys = $parseNode[$nodeKey]['cKeys'];
                                     //替换插入(清空匹配节点子节点)
-                                    self::spliceNode($cloneNodekey, $nodeKey, null);
+                                    self::nodeSplice($cloneNodekey, $nodeKey, null);
                                     foreach($cKeys as &$childNodeKey) {
                                         //子节点插入克隆子节点的最后
-                                        self::spliceNode($childNodeKey, $cloneNodekeyChild, false);
+                                        self::nodeSplice($childNodeKey, $cloneNodekeyChild, false);
                                     }
                                     $cloneNodekey = null;
                                     break;
@@ -1276,7 +1271,7 @@ class of_base_com_hParse {
     public function children($selector = '') {
         $nodeKeyList = array();
         foreach( $this->objAttr['nodeList'] as &$nodeKey ) {
-            $nodeKeyList[] = self::nodeRelationship($nodeKey, 'child');
+            $nodeKeyList[] = self::nodeConn($nodeKey, 'child');
         }
         if( isset($nodeKeyList[1]) ) {
             //生成过滤列表
@@ -1309,7 +1304,7 @@ class of_base_com_hParse {
             $nodeKeyList[0] = $this->objAttr['nodeList'];
             foreach($nodeKeyList[0] as &$nodeKey) {
                 //读取全部父节点
-                $nodeKeyList[] = self::nodeRelationship($nodeKey, 'parent');
+                $nodeKeyList[] = self::nodeConn($nodeKey, 'parent');
             }
             //生成过滤列表
             $nodeKeyList = call_user_func_array('array_merge', $nodeKeyList);
@@ -1355,7 +1350,7 @@ class of_base_com_hParse {
         foreach($this->objAttr['nodeList'] as &$nodeKey) {
             if( $type === true ) {
                 //读取全部子节点
-                $nodeKeyList[] = self::nodeRelationship($nodeKey, 'child', false, true);
+                $nodeKeyList[] = self::nodeConn($nodeKey, 'child', false, true);
             } else {
                 //遍历全部子节点
                 self::htmlFormat($nodeKey, $nodeKeyList, $type, false);
@@ -1419,11 +1414,12 @@ class of_base_com_hParse {
      * 描述 : 输出文档节点
      * 参数 :
      *      type : obj(默认)=返回根文档对象,str=返回字符串
+     *      mode : type为str时有效, true=补全未闭合标签, false=按原解析方式
      * 返回 :
      *      返回根文档对象或字符串
      * 作者 : Edgar.lee
      */
-    public function doc($type = 'obj') {
+    public function doc($type = 'obj', $mode = true) {
         if( $type === 'obj' ) {
             self::$sharedData['newInitData'] = array(
                 //调用当前实体的实体
@@ -1436,7 +1432,7 @@ class of_base_com_hParse {
             return new self;
         } else {
             $temp = array();
-            self::htmlFormat($this->objAttr['docNodeKey'], $temp, true);
+            self::htmlFormat($this->objAttr['docNodeKey'], $temp, true, $mode);
             return join($temp);
         }
     }
@@ -1663,7 +1659,7 @@ class of_base_com_hParse {
     private static function relationship($thisObj, $selector, $type, $filter) {
         $nodeKeyList = array();
         foreach($thisObj->objAttr['nodeList'] as &$nodeKey) {
-            $temp = self::nodeRelationship($nodeKey, $type, false, $selector === true || is_object($selector));
+            $temp = self::nodeConn($nodeKey, $type, false, $selector === true || is_object($selector));
             if( isset($temp[0]) ) {
                 $nodeKeyList[] = $filter === 'single' ? array($temp[0]) : $temp;
             }
@@ -1742,7 +1738,7 @@ class of_base_com_hParse {
             $nodeKey = $temp[0];
             //查询包含自己的兄节点
             if( $selector === null ) {
-                $nodeList = self::nodeRelationship($nodeKey, 'prev');
+                $nodeList = self::nodeConn($nodeKey, 'prev');
                 $nodeList[] = $nodeKey;
             //是字符串
             } elseif( !isset($nodeList) ) {
@@ -1765,18 +1761,18 @@ class of_base_com_hParse {
     /**                                                                                     筛选器
      * 描述 : 选择器核心
      * 参数 :
-     *      nodeKeys : 指的选择器的根节点键,可以数数字或数组
+     *      nodeKeys : 指的选择器的根节点键,数组
      *      selector : 过滤字符串,已jQuery为参照
-     *      sChild   : true(默认)=从子节点开始,false=从自身节点开始
+     *      isChild  : true(默认)=从子节点开始,false=从自身节点开始
      * 返回 :
      *      匹配的节点键数组
      * 作者 : Edgar.lee
      */
-    private static function selectors($nodeKeys, $selector, $sChild = true) {
+    public static function selectors($nodeKeys, $selector, $isChild = true) {
         if( !$selector = ltrim($selector) ){return array();}    //空字符串返回空数组
         $parseNode = &self::$parseNode;                         //解析节点引用
         $const = &self::$selectorsConst;                        //引用选择器常量
-        $sChild = $sChild ? ' ' : '';                           //是否从子节点开始查起 ? ' ' : ''
+        $isChild = $isChild ? ' ' : '';                           //是否从子节点开始查起 ? ' ' : ''
         self::nodeKeysUniqueSort($nodeKeys, true);              //分组去重排序
 
         $env = array(
@@ -1785,7 +1781,7 @@ class of_base_com_hParse {
             //'nowType'      => ' ',                             //当前分析类型,'['=分析属性,':'=伪类分析,'.'=分析类,'#'=分析ID,' '=分析节点    ,'>'=分析节点,'+'=分析节点,'~'=分析节点,','=分析节点
             'rNodeKeys'     => array(),                         //返回节点键列表
             'selectParse'   => array(),                         //选择列表解析{'type' : reverse=倒序,filter=过滤,group=分组, 'list' : 列表}
-            'selector'      => $sChild . $selector . ',',       //过滤字符串
+            'selector'      => $isChild . $selector . ',',      //过滤字符串
             'temp'          => array(
                 'filterNodeKeys'  => null,                      //循环nodeKeys分组结果集时,存储最后过滤匹配的数据
                 'prevEmptyChrPos' => 0,                         //上次判定空字符分隔符位置
@@ -1874,7 +1870,7 @@ class of_base_com_hParse {
                     $temp = $env['nMatchPos']['position'] + 1;
                     //清除','之后的多余空字符
                     $env['selector'] = substr($env['selector'], 0, $temp) .
-                        $sChild . ltrim(substr($env['selector'], $temp));
+                        $isChild . ltrim(substr($env['selector'], $temp));
                     break;
                 //分析ID
                 case '#':
@@ -1932,7 +1928,7 @@ class of_base_com_hParse {
                                 'name'  => $matchV,
                             );
                             //查询到属性分隔符
-                            if( $match = strpos($matchV, '=', $matchV[0] === '=') ) {
+                            if( $matchV[0] !== '@' && $match = strpos($matchV, '=', $matchV[0] === '=') ) {
                                 //生成属性值
                                 if(
                                     //截取属性值,并且不为空字符串
@@ -1973,7 +1969,7 @@ class of_base_com_hParse {
             //清空匹配节点
             $matchAllNodeKeys = array();
             //过滤模式
-            if( $sChild === '' ) {
+            if( $isChild === '' ) {
                 //仅过滤列表(如果使用子查询模式,无法处理移除的节点)
                 $matchAllNodeKeys = array_combine($filterNodeKeys, $filterNodeKeys);
             //self::htmlFormat($rootNodeKey, $matchAllNodeKeys, null, false);                                       //(范围过大而低效)读取根节点的所有非文本类型的子节点
@@ -1985,7 +1981,7 @@ class of_base_com_hParse {
                     //读取过滤节点子节点
                     self::htmlFormat($nodeKey, $matchAllNodeKeys, null, false);
                     //读取过滤节点之下全部节点
-                    $matchAllNodeKeys += self::nodeRelationship($nodeKey, 'next', false, false, false);
+                    $matchAllNodeKeys += self::nodeConn($nodeKey, 'next', false, false, false);
                 }
             }
             //初始化匹配过滤结果集
@@ -2010,7 +2006,7 @@ class of_base_com_hParse {
                                         case ' ':
                                             foreach($nowNodeKeys as &$nodeKey) {
                                                 //读取所有父节点
-                                                $temp = self::nodeRelationship($nodeKey, 'parent', false, true, false);
+                                                $temp = self::nodeConn($nodeKey, 'parent', false, true, false);
                                                 //存在父节点级
                                                 if( !empty($temp) ) {
                                                     $tempNodeKeys += $temp;
@@ -2021,7 +2017,7 @@ class of_base_com_hParse {
                                         case '>':
                                             foreach($nowNodeKeys as &$nodeKey) {
                                                 //读取一级父节点
-                                                $temp = self::nodeRelationship($nodeKey, 'parent', 0, true);
+                                                $temp = self::nodeConn($nodeKey, 'parent', 0, true);
                                                 //存在之间父节点
                                                 if( $temp !== null ) {
                                                     $tempNodeKeys[$temp] = $temp;
@@ -2032,7 +2028,7 @@ class of_base_com_hParse {
                                         case '+':
                                             foreach($nowNodeKeys as &$nodeKey) {
                                                 //读取一级父节点
-                                                $temp = self::nodeRelationship($nodeKey, 'prev', 0, false);
+                                                $temp = self::nodeConn($nodeKey, 'prev', 0, false);
                                                 //存在之间父节点
                                                 if( $temp !== null ) {
                                                     $tempNodeKeys[$temp] = $temp;
@@ -2042,7 +2038,7 @@ class of_base_com_hParse {
                                         case '~':
                                             foreach($nowNodeKeys as &$nodeKey) {
                                                 //读取所有父节点
-                                                $temp = self::nodeRelationship($nodeKey, 'prev', false, false, false);
+                                                $temp = self::nodeConn($nodeKey, 'prev', false, false, false);
                                                 //存在父节点级
                                                 if( !empty($temp) ) {
                                                     $tempNodeKeys += $temp;
@@ -2161,8 +2157,17 @@ class of_base_com_hParse {
                     break;
                 //指定标签属性
                 case 'attr':
+                    //正则匹配
+                    if ($attrList['name'][0] === '@') {
+                        //读取全部属性
+                        $attrs = self::nodeAttr($nodeKey, null);
+                        foreach ($attrs as $ka => &$va) {
+                            //匹配成功 跳出
+                            if (preg_match($attrList['name'], $ka . '=' . $va)) break 2;
+                        }
+                        unset($nodeKeys[$k]);
                     //存在属性
-                    if( is_string($attrValue = self::getNodeKeyAttr($nodeKey, $attrList['name'])) ) {
+                    } else if (is_string($attrValue = self::nodeAttr($nodeKey, $attrList['name']))) {
                         if(!(
                             //仅判断存在
                             $attrList['param'] === null || (
@@ -2286,7 +2291,7 @@ class of_base_com_hParse {
                         //input标签
                         $parseNode[$nodeKey]['tagName'] === 'input' &&
                         //type属性为button
-                        self::getNodeKeyAttr($nodeKey, 'type') === 'button' ||
+                        self::nodeAttr($nodeKey, 'type') === 'button' ||
                         //为button标签
                         $parseNode[$nodeKey]['tagName'] === 'button'
                     )) {
@@ -2323,10 +2328,10 @@ class of_base_com_hParse {
                         //input标签
                         $parseNode[$nodeKey]['tagName'] === 'input' &&
                         //存在checked属性
-                        self::getNodeKeyAttr($nodeKey, 'checked') !== null &&
+                        self::nodeAttr($nodeKey, 'checked') !== null &&
                         (
                             //多选
-                            ($temp = self::getNodeKeyAttr($nodeKey, 'type')) === 'checkbox' ||
+                            ($temp = self::nodeAttr($nodeKey, 'type')) === 'checkbox' ||
                             //单选
                             $temp === 'radio'
                         )
@@ -2341,7 +2346,7 @@ class of_base_com_hParse {
                 //引用块级标签
                 $blockTag = &self::$blockTag;
                 foreach($nodeKeys as $k => &$nodeKey) {
-                    if(strpos(self::getNodeKeyAttr($nodeKey, 'textContent'), $pseudoList['param']) === false) {
+                    if(strpos(self::nodeAttr($nodeKey, 'textContent'), $pseudoList['param']) === false) {
                         //删除节点键
                         unset($nodeKeys[$k]);
                     }
@@ -2375,7 +2380,7 @@ class of_base_com_hParse {
             case 'only-child' :
                 $temp = intval($pseudoList['value'] === 'only-child');
                 foreach($nodeKeys as $k => &$nodeKey) {
-                    if( count(self::nodeRelationship($nodeKey, 'child', false, true)) !== $temp ) {
+                    if( count(self::nodeConn($nodeKey, 'child', false, true)) !== $temp ) {
                         //删除节点键
                         unset($nodeKeys[$k]);
                     }
@@ -2384,7 +2389,7 @@ class of_base_com_hParse {
             //选择所有含有子元素或者文本的父级元素
             case 'parent'     :
                 foreach($nodeKeys as $k => &$nodeKey) {
-                    if( count(self::nodeRelationship($nodeKey, 'child', false, true)) === 0 ) {
+                    if( count(self::nodeConn($nodeKey, 'child', false, true)) === 0 ) {
                         //删除节点键
                         unset($nodeKeys[$k]);
                     }
@@ -2429,7 +2434,7 @@ class of_base_com_hParse {
                     if(
                         //是图片类型input标签
                         ($parseNode[$nodeKey]['tagName'] === 'input' &&
-                        self::getNodeKeyAttr($nodeKey, 'type') !== 'image') ||
+                        self::nodeAttr($nodeKey, 'type') !== 'image') ||
                         //不是图片标签
                         ($parseNode[$nodeKey]['tagName'] !== 'image' &&
                         $parseNode[$nodeKey]['tagName'] !== 'input')
@@ -2461,7 +2466,7 @@ class of_base_com_hParse {
                         //不为option标签
                         $parseNode[$nodeKey]['tagName'] !== 'option' ||
                         //没有selected属性
-                        self::getNodeKeyAttr($nodeKey, 'selected') === null
+                        self::nodeAttr($nodeKey, 'selected') === null
                     ) {
                         //删除节点键
                         unset($nodeKeys[$k]);
@@ -2475,7 +2480,7 @@ class of_base_com_hParse {
                         ($parseNode[$nodeKey]['tagName'] === 'input' ||
                         //是提交类型input或button标签
                         $parseNode[$nodeKey]['tagName'] === 'button') &&
-                        self::getNodeKeyAttr($nodeKey, 'type') !== 'submit'
+                        self::nodeAttr($nodeKey, 'type') !== 'submit'
                     ) || (
                         //不是input,button标签
                         $parseNode[$nodeKey]['tagName'] !== 'button' &&
@@ -2520,7 +2525,7 @@ class of_base_com_hParse {
 
                 foreach($nodeKeys as $k => &$nodeKey) {
                     //没有父类
-                    if( ($temp = self::nodeRelationship($nodeKey, 'parent', 0, true)) === null ) {
+                    if( ($temp = self::nodeConn($nodeKey, 'parent', 0, true)) === null ) {
                         if(
                             //是常规节点
                             $parseNode[$nodeKey]['nodeType'] === 'node' &&
@@ -2532,7 +2537,7 @@ class of_base_com_hParse {
                             $siblings = array();
                         }
                     } else {
-                        $siblings = self::nodeRelationship($temp, 'child');
+                        $siblings = self::nodeConn($temp, 'child');
                     }
 
                     //读取一个节点键
@@ -2716,7 +2721,7 @@ class of_base_com_hParse {
 
         foreach($nodeKeys as &$nodeKey) {
             //读取父节点列表
-            $cacheNodeParentKeys[$nodeKey] = array_reverse(self::nodeRelationship($nodeKey, 'parent', false, true));
+            $cacheNodeParentKeys[$nodeKey] = array_reverse(self::nodeConn($nodeKey, 'parent', false, true));
             //追加子节点
             $cacheNodeParentKeys[$nodeKey][] = &$nodeKey;
             //拆分成不同组
@@ -2772,14 +2777,14 @@ class of_base_com_hParse {
             //读取所有父节点
             if( !isset($cacheNodeParentKeys[$a]) ) {
                 //读取父节点列表
-                $cacheNodeParentKeys[$a] = array_reverse(self::nodeRelationship($a, 'parent', false, true));
+                $cacheNodeParentKeys[$a] = array_reverse(self::nodeConn($a, 'parent', false, true));
                 //追加子节点
                 $cacheNodeParentKeys[$a][] = $a;
             }
             //读取所有父节点
             if( !isset($cacheNodeParentKeys[$b]) ) {
                 //读取父节点列表
-                $cacheNodeParentKeys[$b] = array_reverse(self::nodeRelationship($b, 'parent', false, true));
+                $cacheNodeParentKeys[$b] = array_reverse(self::nodeConn($b, 'parent', false, true));
                 //追加子节点
                 $cacheNodeParentKeys[$b][] = $b;
             }
@@ -2805,7 +2810,7 @@ class of_base_com_hParse {
                 if( $apIndex !== $bpIndex ) {
                     //读取全部弟节点,并反转
                     if( !isset($cacheNodeNextKeys[$apIndex]) ) {
-                        $cacheNodeNextKeys[$apIndex] = array_flip(self::nodeRelationship($apIndex, 'next', false, true));
+                        $cacheNodeNextKeys[$apIndex] = array_flip(self::nodeConn($apIndex, 'next', false, true));
                     }
                     //a在b前
                     if( isset($cacheNodeNextKeys[$apIndex][$bpIndex]) ) {
@@ -2822,33 +2827,17 @@ class of_base_com_hParse {
     }
 
     /**                                                                                     工具区
-     * 描述 : html实体转换
-     * 参数 :
-     *      str    : 指定转换的字符串
-     *      type   : true=文本转换html,false=html转换文本
-     * 返回 :
-     *      转换后的字符串
-     * 作者 : Edgar.lee
-     */
-    private static function entities($str, $type) {
-        if( $type ) {
-            return html_entity_decode($str, ENT_QUOTES, 'UTF-8');
-        } else {
-            return htmlentities($str, ENT_QUOTES, 'UTF-8');
-        }
-    }
-
-    /**
      * 描述 : 读取指定节点键属性
      * 参数 :
      *      nodeKey : 指定遍历的节点键
      *      attr    : 属性名称,null=读取所有真实属性
      *      value   : 字符串=设置属性,null(默认)=读取属性,false=删除属性
+     *      mode    : value为null时有效, true=补全未闭合标签, false=按原解析方式
      * 返回 :
      *      返回读取数据,未读到返回null
      * 作者 : Edgar.lee
      */
-    private static function getNodeKeyAttr($nodeKey, $attr, $value = null) {
+    public static function nodeAttr($nodeKey, $attr = null, $value = null, $mode = true) {
         //引用节点
         $parseNode = &self::$parseNode;
         if( isset($parseNode[$nodeKey]) ) {
@@ -2863,14 +2852,14 @@ class of_base_com_hParse {
                     case 'tagName'    :
                         return $node['tagName'];
                     case 'innerHTML'  :
-                        self::htmlFormat($nodeKey, $temp, true);
+                        self::htmlFormat($nodeKey, $temp, true, $mode);
                         return join($temp);
                     case 'outerHTML'  :
                         //创建临时节点
                         $parseNode[$tKey = ++self::$nodeCount] = self::$defaultNode;
                         //只有当前子节点
                         $parseNode[$tKey]['cKeys'] = array(&$nodeKey);
-                        self::htmlFormat($tKey, $temp, true);
+                        self::htmlFormat($tKey, $temp, true, $mode);
                         unset($parseNode[$tKey]);
                         return join($temp);
                     case 'textContent':
@@ -2890,7 +2879,7 @@ class of_base_com_hParse {
                             $node['attr']['type'] === 'radio'
                         ) {
                             //存在父节点
-                            if(($parentNodeKey = self::nodeRelationship($nodeKey, 'parent', -1, true)) !== null) {
+                            if(($parentNodeKey = self::nodeConn($nodeKey, 'parent', -1, true)) !== null) {
                                 //读取所有数据
                                 self::htmlFormat($parentNodeKey, $temp, null);
                                 //保留当前节点键之后的节点键
@@ -2926,7 +2915,7 @@ class of_base_com_hParse {
                             $node['tagName'] === 'option'
                         ) {
                             //全部父节点
-                            $parentNodeKeys = self::nodeRelationship($nodeKey, 'parent', false, true);
+                            $parentNodeKeys = self::nodeConn($nodeKey, 'parent', false, true);
                             //存在父节点
                             if( isset($parentNodeKeys[0]) ) {
                                 foreach($parentNodeKeys as &$parentNodeKey) {
@@ -2956,35 +2945,39 @@ class of_base_com_hParse {
                         }
                         break;
                 }
-                if( isset($node['attr'][$attr = strtolower($attr)]) ) {
+
+                (!$attr || $attr[0] !== '>') && $attr = strtolower($attr);
+                if( isset($node['attr'][$attr]) ) {
                     return $node['attr'][$attr];
                 }
             //删除属性
-            } elseif( $value === false ) {
+            } elseif ($value === false) {
                 unset($node['attr'][strtolower($attr)]);
-            } elseif(
+            } elseif (
                 //碎片节点仅允许修改innerHTML和textContent
                 ($node['nodeType'] === 'node' || $attr === 'innerHTML' || $attr === 'textContent') &&
+                //不能修改关闭节点
+                $node['tagName'][0] !== '/' &&
                 //不为文本类节点
                 ($node['tagName'][0] !== '!' || $attr === '') &&
-                //不修改标签名
-                $attr !== 'tagName'
+                //不修内部属性
+                (!$attr || $attr[0] !== '>')
             ) {
                 switch( $attr ) {
                     case 'innerHTML'  :
                         //允许有子节点
-                        if( !isset(self::$singleTag[$node['tagName']]) ) {
-                            self::spliceNode(self::htmlParse($value), $nodeKey, null);
+                        if (self::hasChildTag($node['tagName']) > 1) {
+                            self::nodeSplice(self::htmlParse($value), $nodeKey, null);
                         }
                         break;
                     //替换当前节点
                     case 'outerHTML'  :
-                        self::spliceNode(self::htmlParse($value), $parseNode[$nodeKey]['pKey'], $nodeKey);
-                        self::spliceNode($nodeKey);
+                        self::nodeSplice(self::htmlParse($value), $parseNode[$nodeKey]['pKey'], $nodeKey);
+                        self::nodeSplice($nodeKey);
                         break;
                     case 'textContent':
                         //允许有子节点
-                        if( !isset(self::$singleTag[$node['tagName']]) ) {
+                        if (self::hasChildTag($node['tagName']) > 1) {
                             //新文本节点键
                             $parseNode[$temp = ++self::$nodeCount] = array(
                                 'attr'    => array(
@@ -2992,192 +2985,12 @@ class of_base_com_hParse {
                                 ),
                                 'tagName' => '!text'
                             ) + self::$defaultNode;
-                            self::spliceNode($temp, $nodeKey, null);
+                            self::nodeSplice($temp, $nodeKey, null);
                         }
                         break;
                     default           :
                         $node['attr'][strtolower($attr)] = (string)$value;
                 }
-            }
-        }
-    }
-
-    /**
-     * 描述 : 遍历指定节点的子节点,返回格式化的数组
-     * 参数 :
-     *      nodeKey : 指定遍历的节点键
-     *     &dataArr : 接收返回的数据
-     *      type    : true=接收html的字符串,false(默认)=接收所有节点键,null=非文本节类点,字符串=指定标签名
-     *      autoKey : type不为true时有效,自增键,true(默认)=连续的键值,false=以节点键为键
-     * 作者 : Edgar.lee
-     */
-    private static function htmlFormat($nodeKey, &$dataArr, $type = false, $autoKey = true) {
-        //解析节点引用
-        $parseNode = &self::$parseNode;
-
-        foreach( $parseNode[$nodeKey]['cKeys'] as &$cNodeKey ) {
-            //生成html的字符串
-            if ($type === true) {
-                //字符串节点
-                if ($parseNode[$cNodeKey]['tagName'] === '!text') {
-                    $temp = $parseNode[$cNodeKey]['attr'][''];
-                //注释标签
-                } elseif( $parseNode[$cNodeKey]['tagName'] === '!--' ) {
-                    $temp = '<!--' . $parseNode[$cNodeKey]['attr'][''] . '-->';
-                //非字符串节点
-                } else {
-                    $temp = '<' . $parseNode[$cNodeKey]['tagName'];
-                    if( isset($parseNode[$cNodeKey]['attr']['']) ) {
-                        //前缀
-                        $temp .= ($parseNode[$cNodeKey]['tagName'][0] === '!' ? '' : ' ') .
-                            //特殊属性值
-                            $parseNode[$cNodeKey]['attr'][''];
-                        unset($parseNode[$cNodeKey]['attr']['']);
-                    }
-                    foreach($parseNode[$cNodeKey]['attr'] as $k => &$v) {
-                        //不输出内部属性
-                        if( $k[0] !== '>' ) {
-                            $temp .= ' ' . $k . '="' . self::entities($v, false) . '"';
-                        }
-                    }
-                    $temp .= '>';
-                }
-
-                //存储开始标签
-                $dataArr[] = $temp;
-                self::htmlFormat($cNodeKey, $dataArr, $type, $autoKey);
-
-                //非单节点存储关闭标签
-                if( !isset(self::$singleTag[$parseNode[$cNodeKey]['tagName']]) ) {
-                    $dataArr[] = '</' . $parseNode[$cNodeKey]['tagName'] . '>';
-                }
-            //读取指定节点的子节点
-            } else {
-                if(
-                    $type === false ||
-                    ($type === null && $parseNode[$cNodeKey]['tagName'][0] !== '!') ||
-                    $parseNode[$cNodeKey]['tagName'] === $type
-                ) {
-                    $temp = $type && $type[0] === '!' ? $parseNode[$cNodeKey]['attr'][''] : $cNodeKey;
-                    $autoKey ? $dataArr[] = $temp : $dataArr[$cNodeKey] = $temp;
-                }
-                self::htmlFormat($cNodeKey, $dataArr, $type, $autoKey);
-            }
-        }
-    }
-
-    /**
-     * 描述 : 移除或插入指定节点
-     * 参数 :
-     *      nNodeKey : 指定移除或插入的节点键
-     *      pNodeKey : null=移除节点,数字=插入到的目标节点键(碎片插入仅文本子节点时,除碎片子节点后挑一级文本节点插入)
-     *      insType  : 插入时有效,true=插入头部,false(默认)=插入尾部,数字=插入指定节点键前,null=替换插入(移除目标子节点后插入)
-     * 作者 : Edgar.lee
-     */
-    private static function spliceNode($nNodeKey, $pNodeKey = null, $insType = false) {
-        //解析节点引用
-        $parseNode = &self::$parseNode;
-
-        //移除节点
-        if ($pNodeKey === null) {
-            if( isset($parseNode[$nNodeKey]) && ($temp = $parseNode[$nNodeKey]['pKey']) !== null ) {
-                //移除父节点对子节点关系
-                array_splice(
-                    $parseNode[$temp]['cKeys'],
-                    array_search($nNodeKey, $parseNode[$temp]['cKeys']),
-                    1
-                );
-                $parseNode[$nNodeKey]['pKey'] = null;
-            }
-        //插入节点
-        } elseif (
-            //子节点键有效
-            isset($parseNode[$nNodeKey]) &&
-            //目标节点键有效
-            isset($parseNode[$pNodeKey]) &&
-            //目标节点可以有子节点
-            !isset(self::$singleTag[$parseNode[$pNodeKey]['tagName']]) && (
-                //替换操作
-                $insType === null ||
-                //true=插入第一个位置,false=插入最后一个位置
-                is_bool($insType) ||
-                //插入指定节点前(参考节点有效 && 是目标节点的一级子节点)
-                (isset($parseNode[$insType]) && $pNodeKey === $parseNode[$insType]['pKey'])
-            )
-        ) {
-            $temp = $pNodeKey;
-            //pNodeKey不能为nNodeKey或nNodeKey的父节点
-            do {
-                if( $temp === $nNodeKey ) {
-                    return ;
-                }
-            } while( ($temp = $parseNode[$temp]['pKey']) !== null );
-
-            //常规节点
-            if( $parseNode[$nNodeKey]['nodeType'] === 'node' ) {
-                //移动节点列表
-                $insertList = array($nNodeKey);
-                //节点未处于移除状态
-                if( ($temp = $parseNode[$nNodeKey]['pKey']) !== null ) {
-                    //移除父节点对子节点关系
-                    array_splice(
-                        $parseNode[$temp]['cKeys'],
-                        array_search($nNodeKey, $parseNode[$temp]['cKeys']),
-                        1
-                    );
-                }
-            //碎片节点
-            } else {
-                //移动节点列表
-                $insertList = $parseNode[$nNodeKey]['cKeys'];
-                //移除父节点对子节点关系
-                $parseNode[$nNodeKey]['cKeys'] = array();
-
-                //回收空碎片节点
-                $temp = array($nNodeKey);
-                self::nodeCollection($temp);
-            }
-
-            //不是单节点,并且没有子节点(仅有文本节点)
-            if( isset(self::$notChrTag[$parseNode[$pNodeKey]['tagName']]) ) {
-                foreach($insertList as $k => &$nodeKey) {
-                    //移除子与父节点映射关系
-                    $parseNode[$nodeKey]['pKey'] = null;
-                    //过滤出文本节点,仅将文本节点插入父节点
-                    if( $parseNode[$nodeKey]['tagName'] !== '!text' ) {
-                        unset($insertList[$k]);
-                    }
-                }
-            }
-
-            //替换操作
-            if( $insType === null ) {
-                $insPos = 0;
-                $temp = $parseNode[$pNodeKey]['cKeys'];
-
-                //移除目标节点全部子记得
-                foreach($parseNode[$pNodeKey]['cKeys'] as &$nodeKey) {
-                    self::spliceNode($nodeKey);
-                }
-
-                //回收被替换的节点
-                self::nodeCollection($temp);
-            //插入头部
-            } elseif( $insType === true ) {
-                $insPos = 0;
-            //插入尾部
-            } elseif( $insType === false ) {
-                $insPos = count($parseNode[$pNodeKey]['cKeys']);
-            //插入指定节点位置
-            } else {
-                $insPos = array_search($insType, $parseNode[$pNodeKey]['cKeys']);
-            }
-
-            //更新目标节点的子节点
-            array_splice($parseNode[$pNodeKey]['cKeys'], $insPos, 0, $insertList);
-            //更新nNodeKey节点的父节点
-            foreach($insertList as &$nodeKey) {
-                $parseNode[$nodeKey]['pKey'] = $pNodeKey;
             }
         }
     }
@@ -3195,7 +3008,7 @@ class of_base_com_hParse {
      *      needle=数字, 返回一个节点键,未查到返回null
      * 作者 : Edgar.lee
      */
-    private static function nodeRelationship($nodeKey, $type, $needle = false, $textNode = false, $autoKey = true) {
+    public static function nodeConn($nodeKey, $type, $needle = false, $textNode = false, $autoKey = true) {
         //解析节点引用
         $parseNode = &self::$parseNode;
         //返回数据
@@ -3276,6 +3089,240 @@ class of_base_com_hParse {
     }
 
     /**
+     * 描述 : 移除或插入指定节点
+     * 参数 :
+     *      nNodeKey : 指定移除或插入的节点键
+     *      pNodeKey : null=移除节点,数字=插入到的目标节点键(碎片插入仅文本子节点时,除碎片子节点后挑一级文本节点插入)
+     *      insType  : 插入时有效,true=插入头部,false(默认)=插入尾部,数字=插入指定节点键前,null=替换插入(移除目标子节点后插入)
+     * 作者 : Edgar.lee
+     */
+    public static function nodeSplice($nNodeKey, $pNodeKey = null, $insType = false) {
+        //解析节点引用
+        $parseNode = &self::$parseNode;
+
+        //移除节点
+        if ($pNodeKey === null) {
+            if( isset($parseNode[$nNodeKey]) && ($temp = $parseNode[$nNodeKey]['pKey']) !== null ) {
+                //移除父节点对子节点关系
+                array_splice(
+                    $parseNode[$temp]['cKeys'],
+                    array_search($nNodeKey, $parseNode[$temp]['cKeys']),
+                    1
+                );
+                $parseNode[$nNodeKey]['pKey'] = null;
+
+                //回收删除节点
+                $temp = array($nNodeKey);
+                self::nodeCollection($temp);
+            }
+        //插入节点
+        } elseif (
+            //子节点键有效
+            isset($parseNode[$nNodeKey]) &&
+            //目标节点键有效
+            isset($parseNode[$pNodeKey]) &&
+            //目标节点可以有子节点
+            self::hasChildTag($parseNode[$pNodeKey]['tagName']) > 1 && (
+                //替换操作
+                $insType === null ||
+                //true=插入第一个位置,false=插入最后一个位置
+                is_bool($insType) ||
+                //插入指定节点前(参考节点有效 && 是目标节点的一级子节点)
+                (isset($parseNode[$insType]) && $pNodeKey === $parseNode[$insType]['pKey'])
+            )
+        ) {
+            $temp = $pNodeKey;
+            //pNodeKey不能为nNodeKey或nNodeKey的父节点
+            do {
+                if( $temp === $nNodeKey ) {
+                    return ;
+                }
+            } while( ($temp = $parseNode[$temp]['pKey']) !== null );
+
+            //常规节点
+            if( $parseNode[$nNodeKey]['nodeType'] === 'node' ) {
+                //移动节点列表
+                $insertList = array($nNodeKey);
+                //节点未处于移除状态
+                if( ($temp = $parseNode[$nNodeKey]['pKey']) !== null ) {
+                    //移除父节点对子节点关系
+                    array_splice(
+                        $parseNode[$temp]['cKeys'],
+                        array_search($nNodeKey, $parseNode[$temp]['cKeys']),
+                        1
+                    );
+                }
+            //碎片节点
+            } else {
+                //移动节点列表
+                $insertList = $parseNode[$nNodeKey]['cKeys'];
+                //移除父节点对子节点关系
+                $parseNode[$nNodeKey]['cKeys'] = array();
+
+                //回收空碎片节点
+                $temp = array($nNodeKey);
+                self::nodeCollection($temp);
+            }
+
+            //不是单节点,并且没有子节点(仅有文本节点)
+            if (self::hasChildTag($parseNode[$pNodeKey]['tagName']) & 6) {
+                $temp = array();
+
+                foreach($insertList as $k => &$nodeKey) {
+                    //移除子与父节点映射关系
+                    $parseNode[$nodeKey]['pKey'] = null;
+                    //过滤出文本节点,仅将文本节点插入父节点
+                    if ($parseNode[$nodeKey]['tagName'] !== '!text') {
+                        unset($insertList[$temp[] = $k]);
+                    }
+                }
+
+                //回收空碎片节点
+                $temp && self::nodeCollection($temp);
+            }
+
+            //替换操作
+            if( $insType === null ) {
+                $insPos = 0;
+                $temp = $parseNode[$pNodeKey]['cKeys'];
+
+                //移除目标节点全部子节点
+                foreach($parseNode[$pNodeKey]['cKeys'] as &$nodeKey) {
+                    self::nodeSplice($nodeKey);
+                }
+
+                //回收被替换的节点
+                self::nodeCollection($temp);
+            //插入头部
+            } elseif( $insType === true ) {
+                $insPos = 0;
+            //插入尾部
+            } elseif( $insType === false ) {
+                $insPos = count($parseNode[$pNodeKey]['cKeys']);
+            //插入指定节点位置
+            } else {
+                $insPos = array_search($insType, $parseNode[$pNodeKey]['cKeys']);
+            }
+
+            //更新目标节点的子节点
+            array_splice($parseNode[$pNodeKey]['cKeys'], $insPos, 0, $insertList);
+            //更新nNodeKey节点的父节点
+            foreach($insertList as &$nodeKey) {
+                $parseNode[$nodeKey]['pKey'] = $pNodeKey;
+            }
+        }
+    }
+
+    /**
+     * 描述 : 判断是否有子节点标签
+     * 参数 :
+     *      name : 标签名
+     * 返回 :
+     *      1=是单标签, 2=只包含文本, 4=可注释和文本, 8=可以有子标签
+     * 作者 : Edgar.lee
+     */
+    private static function hasChildTag($name) {
+        if (isset(self::$notChrTag[$name])) {
+            return self::$notChrTag[$name];
+        } else {
+            return $name[0] === '/' ? 1 : 8;
+        }
+    }
+
+    /**
+     * 描述 : html实体转换
+     * 参数 :
+     *      str    : 指定转换的字符串
+     *      type   : true=文本转换html,false=html转换文本
+     * 返回 :
+     *      转换后的字符串
+     * 作者 : Edgar.lee
+     */
+    private static function entities($str, $type) {
+        if( $type ) {
+            return html_entity_decode($str, ENT_QUOTES, 'UTF-8');
+        } else {
+            return htmlentities($str, ENT_QUOTES, 'UTF-8');
+        }
+    }
+
+    /**
+     * 描述 : 遍历指定节点的子节点,返回格式化的数组
+     * 参数 :
+     *      nodeKey : 指定遍历的节点键
+     *     &dataArr : 接收返回的数据
+     *      type    : true=接收html的字符串,false(默认)=接收所有节点键,null=非文本节类点,字符串=指定标签名
+     *      autoKey : 
+     *          type 为 true时: 闭合标签方式, true=补全未闭合标签, false=按原解析方式
+     *          type不为true时: 自增键, true=连续的键值, false=以节点键为键
+     * 作者 : Edgar.lee
+     */
+    private static function htmlFormat($nodeKey, &$dataArr, $type = false, $autoKey = true) {
+        //解析节点引用
+        $parseNode = &self::$parseNode;
+
+        foreach( $parseNode[$nodeKey]['cKeys'] as &$cNodeKey ) {
+            //引用节点
+            $index = &$parseNode[$cNodeKey];
+            $temp = false;
+
+            //生成html的字符串
+            if ($type === true) {
+                //字符串节点
+                if ($index['tagName'] === '!text') {
+                    $temp = $index['attr'][''];
+                //注释标签
+                } elseif( $index['tagName'] === '!--' ) {
+                    $temp = '<!--' . $index['attr'][''];
+                    ($autoKey || $index['attr']['>tagState::end']) && $temp .= '-->';
+                //非字符串节点
+                } else if ($index['tagName'][0] !== '/' || !$autoKey) {
+                    $temp = '<' . $index['tagName'];
+                    if( isset($index['attr']['']) ) {
+                        //前缀
+                        $temp .= ($index['tagName'][0] === '!' ? '' : ' ') .
+                            //特殊属性值
+                            $index['attr'][''];
+                        unset($index['attr']['']);
+                    }
+                    foreach($index['attr'] as $k => &$v) {
+                        //不输出内部属性
+                        if( $k[0] !== '>' ) {
+                            $temp .= ' ' . $k . '="' . self::entities($v, false) . '"';
+                        }
+                    }
+                    $temp .= '>';
+                }
+
+                if ($temp) {
+                    //存储开始标签
+                    $dataArr[] = $temp;
+                    self::htmlFormat($cNodeKey, $dataArr, $type, $autoKey);
+
+                    //非单节点存储关闭标签
+                    if (
+                        self::hasChildTag($index['tagName']) > 1 &&
+                        ($autoKey || $index['attr']['>tagState::end'])
+                    ) {
+                        $dataArr[] = '</' . $index['tagName'] . '>';
+                    }
+                }
+            //读取指定节点的子节点
+            } else {
+                if(
+                    $type === false ||
+                    ($type === null && $index['tagName'][0] !== '!') ||
+                    $index['tagName'] === $type
+                ) {
+                    $temp = $type && $type[0] === '!' ? $index['attr'][''] : $cNodeKey;
+                    $autoKey ? $dataArr[] = $temp : $dataArr[$cNodeKey] = $temp;
+                }
+                self::htmlFormat($cNodeKey, $dataArr, $type, $autoKey);
+            }
+        }
+    }
+
+    /**
      * 描述 : 克隆节点
      * 参数 :
      *      nodeKey : 指定遍历的节点键
@@ -3335,32 +3382,35 @@ class of_base_com_hParse {
         $rootNodes = array();
 
         foreach ($nodeKeys as &$vc) {
-            //当前父节点
-            $root = $vc;
-            //父节点存在
-            while($parseNode[$root]['pKey'] !== null) {
-                //更新父节点
-                $root = $parseNode[$root]['pKey'];
-            }
-
-            //父节点未进行垃圾分析
-            if (!isset($rootNodes[$root])) {
-                //添加根节点
-                $data = array($root);
-                //读取所有子孙节点
-                self::htmlFormat($root, $data);
-
-                foreach ($data as &$v) {
-                    //有对象引用
-                    if ($parseNode[$v]['refcount']) {
-                        $rootNodes[$root] = false;
-                        break;
-                    }
+            //节点在本次循环中未被兄节点清理掉 && 引用数为0
+            if (isset($parseNode[$vc]) && !$parseNode[$vc]['refcount']) {
+                //当前父节点
+                $root = $vc;
+                //父节点存在
+                while($parseNode[$root]['pKey'] !== null) {
+                    //更新父节点
+                    $root = $parseNode[$root]['pKey'];
                 }
 
-                //可以清理
-                if ($rootNodes[$root] = !isset($rootNodes[$root])) {
-                    foreach ($data as &$v) unset($parseNode[$v]);
+                //父节点未进行垃圾分析
+                if (!isset($rootNodes[$root])) {
+                    //添加根节点
+                    $data = array($root);
+                    //读取所有子孙节点
+                    self::htmlFormat($root, $data);
+
+                    foreach ($data as &$v) {
+                        //有对象引用
+                        if ($parseNode[$v]['refcount']) {
+                            $rootNodes[$root] = false;
+                            break;
+                        }
+                    }
+
+                    //可以清理
+                    if ($rootNodes[$root] = !isset($rootNodes[$root])) {
+                        foreach ($data as &$v) unset($parseNode[$v]);
+                    }
                 }
             }
         }
@@ -3462,6 +3512,8 @@ class of_base_com_hParse {
                             $env['tempNode'] = self::$defaultNode;
                             //标签所在行
                             $env['tempNode']['attr']['>tagLine::start'] = $env['nowLine'];
+                            //标签闭合状态
+                            $env['tempNode']['attr']['>tagState::end'] = 0;
                         //结束标签'/'
                         } elseif($temp === 47) {
                             self::createStringNode($env);
@@ -3481,9 +3533,11 @@ class of_base_com_hParse {
                                 $env['tempNode']['tagName'] = '!doctype';
                                 if( ($temp = strpos($htmlStrL, $matchPos['match'] = '>', $matchPos['position'] + 9)) > 0 ) {
                                     $env['tempNode']['attr'][''] = substr($htmlStr, $matchPos['position'] + 9, $temp - $matchPos['position'] - 9);
+                                    $env['tempNode']['attr']['>tagState::end'] = 1;
                                     $matchPos['position'] = $temp;
                                 } else {
                                     $env['tempNode']['attr'][''] = substr($htmlStr, $matchPos['position'] + 9);
+                                    $env['tempNode']['attr']['>tagState::end'] = 0;
                                     $matchPos['position'] = $env['htmlStrLen'] - 1;
                                 }
                             //声明注释,包括已'!'开始的无效声明
@@ -3495,14 +3549,16 @@ class of_base_com_hParse {
                                 $temp = array($matchPos['position'] + strlen($matchPos['match']) + 1);
                                 if( ($temp[1] = strpos($htmlStrL, $matchPos['match'] === '!' ? '>' : '-->', $temp[0])) > 0 ) {
                                     $env['tempNode']['attr'][''] = substr($htmlStr, $temp[0], $temp[1] - $temp[0]);
+                                    $env['tempNode']['attr']['>tagState::end'] = 1;
                                     $matchPos['position'] = $temp[1];
                                 } else {
                                     $env['tempNode']['attr'][''] = substr($htmlStr, $temp[0]);
+                                    $env['tempNode']['attr']['>tagState::end'] = 0;
                                     $matchPos['position'] = $env['htmlStrLen'] - 3;
                                 }
                             }
                             //内属性的换行数
-                            $env['nowLine'] +=substr_count($env['tempNode']['attr'][''], "\n");
+                            $env['nowLine'] += substr_count($env['tempNode']['attr'][''], "\n");
                             //存入正式节点
                             self::tempToFormalNode($env);
                         //无效标签
@@ -3576,7 +3632,10 @@ class of_base_com_hParse {
                             $temp = self::tempToFormalNode($env);
 
                             //不是单节点 && 已"/"结尾的标签,如:<mm xx />
-                            if( !isset(self::$singleTag[$temp]) && $htmlStr[$matchPos['position'] - 1] === '/' ) {
+                            if (
+                                self::hasChildTag($temp) > 1 && 
+                                $htmlStr[$matchPos['position'] - 1] === '/'
+                            ) {
                                 //作为单节点关闭
                                 self::planNode($env, $parseNode[$temp]['tagName']);
                             }
@@ -3694,10 +3753,7 @@ class of_base_com_hParse {
         }
 
         //脚本标签查找结束标签
-        if(
-            isset(self::$notChrTag[$env['tempNode']['tagName']]) &&
-            !isset(self::$singleTag[$env['tempNode']['tagName']])
-        ) {
+        if (self::hasChildTag($env['tempNode']['tagName']) & 6) {
             $temp = array(
                 //关闭标签(包括'</')
                 'closeTag'    => '</' . $env['tempNode']['tagName'],
@@ -3722,6 +3778,7 @@ class of_base_com_hParse {
                         isset(self::$defaultAttrSplit[$env['htmlStrL'][$temp['searchPos'] + $temp['closeTagLen']]])
                     ) {
                         $env['tempNode']['attr'][''] = substr($env['htmlStr'], $temp['subPos'], $temp['searchPos'] - $temp['subPos']);
+                        $env['tempNode']['attr']['>tagState::end'] = 1;
                         $env['nMatchPos']['position'] = ($temp['searchPos'] = strpos($env['htmlStrL'], '>', $temp['searchPos'] + $temp['closeTagLen'])) > 0 ? $temp['searchPos'] + 1 : $env['htmlStrLen'];
                         break;
                     }
@@ -3736,7 +3793,7 @@ class of_base_com_hParse {
             $nowLine = $env['nowLine'] += substr_count($env['tempNode']['attr'][''], "\n");
 
             //不包含非注释的html文本
-            if( self::$notChrTag[$env['tempNode']['tagName']] === 0 ) {
+            if (self::hasChildTag($env['tempNode']['tagName']) === 4 ) {
                 //匹配出注释和标签
                 preg_match_all(
                     '@<!((?:--)?)(.*?)\1>|(.+?)(?:(?=<!)|$)@s', 
@@ -3760,6 +3817,8 @@ class of_base_com_hParse {
                     $nowLine -= substr_count($parseNode[$k]['attr'][''], "\n");
                     //文本标签行数
                     $parseNode[$k]['attr']['>tagLine::start'] = $nowLine;
+                    //标签闭合状态
+                    $parseNode[$k]['attr']['>tagState::end'] = 1;
                 }
             } else {
                 //文本域内容解码
@@ -3782,12 +3841,14 @@ class of_base_com_hParse {
                     $nowLine -= substr_count($parseNode[$k]['attr'][''], "\n");
                     //文本标签行数
                     $parseNode[$k]['attr']['>tagLine::start'] = $nowLine;
+                    //标签闭合状态
+                    $parseNode[$k]['attr']['>tagState::end'] = 1;
                 }
             }
 
             unset($env['tempNode']['attr']['']);
         //更新父节点键(单标签没有子节点)
-        } elseif( !isset(self::$notChrTag[$env['tempNode']['tagName']]) ) {
+        } elseif (self::hasChildTag($env['tempNode']['tagName']) === 8) {
             $env['pKey'] = $nKey;
         }
 
@@ -3831,6 +3892,8 @@ class of_base_com_hParse {
             ) + self::$defaultNode;
             //标签行数
             $index['attr']['>tagLine::start'] = $env['nowLine'] - substr_count($index['attr'][''], "\n");
+            //标签闭合状态
+            $index['attr']['>tagState::end'] = 1;
         }
     }
 
@@ -3878,10 +3941,12 @@ class of_base_com_hParse {
                     }
                 } while( isset($temp['pNode']['pKey']) && ($temp['pNode'] = &$parseNode[$temp['pNode']['pKey']]) !== null );
             }
-        //对关闭节点容错
-        } else {
+        //对关闭节点容错, 不保存 </> 标签
+        } else if ($type) {
             //有效结束标签
             if( $parseNode[$env['pKey']]['tagName'] === $type ) {
+                //标签闭合状态
+                $parseNode[$env['pKey']]['attr']['>tagState::end'] = 1;
                 //更新父节点键
                 $env['pKey'] = $parseNode[$env['pKey']]['pKey'];
                 //有效p结束标签,关闭内联标签
@@ -3891,17 +3956,36 @@ class of_base_com_hParse {
                 $parseNode[$env['pKey']]['cKeys'][] = ++self::$nodeCount;
                 $parseNode[self::$nodeCount] = array(
                     'pKey'    => $env['pKey'],
-                    'tagName' => 'p'
+                    'tagName' => 'p',
+                    'attr'    => array(
+                        '>tagLine::start' => $env['nowLine'],
+                        '>tagState::end'  => 1
+                    )
                 ) + self::$defaultNode;
             //按双标签处理(匹配父节点列中任意未结束节点)
             } else {
                 $temp = $env['pKey'];
                 while( ($temp = $parseNode[$temp]['pKey']) !== null ) {
                     if( $parseNode[$temp]['tagName'] === $type ) {
+                        //标签闭合状态
+                        $parseNode[$temp]['attr']['>tagState::end'] = 1;
                         //更新父节点键
                         $env['pKey'] = $parseNode[$temp]['pKey'];
                         break;
                     }
+                }
+
+                //结束标签没匹配到
+                if ($temp === null) {
+                    $parseNode[$env['pKey']]['cKeys'][] = ++self::$nodeCount;
+                    $parseNode[self::$nodeCount] = array(
+                        'pKey'    => $env['pKey'],
+                        'tagName' => '/' . $type,
+                        'attr'    => array(
+                            '>tagLine::start' => $env['nowLine'],
+                            '>tagState::end'  => 0
+                        )
+                    ) + self::$defaultNode;
                 }
             }
             //开始分析新标签

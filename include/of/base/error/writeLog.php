@@ -167,7 +167,7 @@ class of_base_error_writeLog {
 
         //输出错误日志
         $temp = htmlentities($backtrace['environment']['message'], ENT_QUOTES, 'UTF-8');
-        self::writeLog($backtrace, 'sql', "[{$backtrace['environment']['type']}] : \"{$temp}\"</pre> in {$backtrace['environment']['file']} on line {$backtrace['environment']['line']}");
+        self::writeLog($backtrace, 'sql', "[{$backtrace['environment']['type']}] : \"{$temp}\" in {$backtrace['environment']['file']} on line {$backtrace['environment']['line']}");
     }
 
     /**
@@ -186,7 +186,7 @@ class of_base_error_writeLog {
         $logData['time'] = time();
 
         //debug模式
-        if( OF_DEBUG ) {
+        if( OF_DEBUG && $printStr ) {
             //打印日志
             echo '<pre style="color:#F00; font-weight:bold; margin: 0px;">',
                 $printStr, 

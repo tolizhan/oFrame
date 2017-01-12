@@ -8,7 +8,7 @@ $this->head(array(
         '_' . OF_URL . '/att/sso/css/main.css'
     )
 ));
-echo '<script>var ofBaseSsoMain = ' .json_encode($_SESSION['_of']['of_base_sso']['mgmt']). '</script>';
+echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of_base_sso']['mgmt']). '</script>';
 ?>
 <table class="of_sso-main" style="">
     <thead class="of_sso-main_thead">

@@ -22,7 +22,7 @@ class of_base_com_disk {
         //缓存路径
         static $cachePath = null;
 
-        if( is_resource($filePath) ) {
+        if (is_resource($filePath)) {
             $fp = &$filePath;
         } else {
             //引用文件流
@@ -33,9 +33,9 @@ class of_base_com_disk {
             //嵌套创建文件夹
             is_dir($temp = dirname($filePath)) || @mkdir($temp, 0777, true);
             //读写方式打开
-            if( $fp = fopen($filePath, 'a+') ) {
+            if ($fp = fopen($filePath, 'a+')) {
                 //读取文件 || 获得只读源
-                if( is_bool($data) || ($data === null && $protected === false) ) {
+                if (is_bool($data) || ($data === null && $protected === false)) {
                     //加共享锁
                     flock($fp, LOCK_SH);
                 //写入文件 || 获取写入源
@@ -50,10 +50,9 @@ class of_base_com_disk {
         }
 
         //返回文件源
-        if( $data === null )
-        {
+        if( $data === null ) {
             //追加写入
-            if( $protected === null ) {
+            if ($protected === null) {
                 //移动到最后
                 fseek($fp, 0, SEEK_END);
             } else {
@@ -62,12 +61,12 @@ class of_base_com_disk {
             }
             return $fp;
         //读取数据
-        } elseif( is_bool($data) ) {
+        } elseif (is_bool($data)) {
             $temp = array();
             //判断是否跳过保护
             fseek($fp, $protected ? 15 : 0);
             //读取数据
-            while( !feof($fp) ) {
+            while (!feof($fp)) {
                 $temp[] = fread($fp, 8192);
             }
             $temp = join($temp);
@@ -78,7 +77,7 @@ class of_base_com_disk {
         //写入数据
         } else {
             //追加写入
-            if( $protected === null ) {
+            if ($protected === null) {
                 //移动到最后
                 fseek($fp, 0, SEEK_END);
             //常规写入
@@ -111,35 +110,31 @@ class of_base_com_disk {
         ($nowDir = &$cahceDir[$dir]) === null && $data = null;
 
         //读取数据
-        if( $data !== false )
-        {
+        if ($data !== false) {
             //初始化连接
             $nowDir === null && $nowDir[$dir] = true;
             //开始读取目录
             $data = false;
 
-            while( $path = key($nowDir) )
-            {
+            while ($path = key($nowDir)) {
                 $index = &$nowDir[$path];
                 unset($nowDir[$path]);
 
                 //目录被排除 || 目录不存在
-                if( $index === null || !file_exists($path) ) {
+                if ($index === null || !file_exists($path)) {
                     continue;
                 //打开目录
-                } else if( $handle = opendir($path) ) {
-                    while( is_string($fileName = readdir($handle)) ) {
-                        if( $fileName !== '.' && $fileName !== '..' )
-                        {
+                } else if ($handle = opendir($path)) {
+                    while (is_string($fileName = readdir($handle))) {
+                        if ($fileName !== '.' && $fileName !== '..') {
                             $fileName = $path .'/'. $fileName;
-                            if( $data[$fileName] = is_dir($fileName) )
-                            {
+                            if ($data[$fileName] = is_dir($fileName)) {
                                 $nowDir[$fileName] = &$data[$fileName];
                             }
                         }
                     }
                     closedir($handle);
-                    if( $single ) break;
+                    if ($single) break;
                 //目录打开失败
                 } else {
                     $data = false;
@@ -147,12 +142,11 @@ class of_base_com_disk {
                 }
             }
             //深度读取
-            if( !$single ) unset($cahceDir[$dir]);
+            if (!$single) unset($cahceDir[$dir]);
         }
 
         //结束遍历
-        if( $data === false )
-        {
+        if ($data === false) {
             unset($cahceDir[$dir]);
             return false;
         } else {
@@ -172,7 +166,7 @@ class of_base_com_disk {
         static $tempDir = null;
         if ($tempDir === null) {
             //php > 5.2.1
-            if( function_exists('sys_get_temp_dir') ) {
+            if (function_exists('sys_get_temp_dir')) {
                 $tempDir = sys_get_temp_dir();
             } else {
                 //读取相关环境变量
@@ -201,12 +195,12 @@ class of_base_com_disk {
     public static function delete($path, $clear = false) {
         $result = false;
 
-        if( is_file($path) ) {
+        if (is_file($path)) {
             $result = unlink($path);
-        } else if( is_dir($path) ) {
-            if($dp = opendir($path)) {
-                while(($file=readdir($dp)) !== false) {
-                    if ($file !== '.' && $file !== '..' ) {
+        } else if (is_dir($path)) {
+            if ($dp = opendir($path)) {
+                while (($file=readdir($dp)) !== false) {
+                    if ($file !== '.' && $file !== '..') {
                         self::delete($path .'/'. $file);
                     }
                 }
@@ -215,9 +209,9 @@ class of_base_com_disk {
             $result = rmdir($path);
         }
 
-        if( $clear ) {
+        if ($clear) {
             //移除空文件夹
-            while( !glob(($path = dirname($path)) . '/*') ) $result = rmdir($path);
+            while (!glob(($path = dirname($path)) . '/*')) $result = rmdir($path);
         }
 
         return $result;
@@ -233,19 +227,15 @@ class of_base_com_disk {
      *      成功返回true,失败返回false
      * 作者 : Edgar.lee
      */
-    public static function copy($source, $dest, &$exclude = array())
-    {
-        if( is_file($source) )
-        {
+    public static function copy($source, $dest, &$exclude = array()) {
+        if (is_file($source)) {
             is_dir($isDir = dirname($dest)) || mkdir($isDir, 0777, true);    //创建目录
             return copy($source, $dest);
-        } else if( is_dir($source) ) {
+        } else if (is_dir($source)) {
             is_dir($dest) || mkdir($dest, 0777, true);    //创建目录
-            if($dp = opendir($source))
-            {
-                while(($file=readdir($dp)) != false) {
-                    if ($file !== '.' && $file !== '..' )
-                    {
+            if ($dp = opendir($source)) {
+                while (($file=readdir($dp)) != false) {
+                    if ($file !== '.' && $file !== '..') {
                         if( !isset($exclude[$temp = "{$source}/{$file}"]) )
                         {
                             self::copy("{$source}/{$file}", "{$dest}/{$file}", $exclude);

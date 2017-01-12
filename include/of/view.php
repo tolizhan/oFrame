@@ -8,7 +8,7 @@ class of_view {
      * 作者 : Edgar.lee
      */
     final public function __construct() {
-        if(self::$instanceObj !== true) {
+        if (self::$instanceObj !== true) {
             //这个类仅能通过 self::inst() 被实例化
             trigger_error('The class can only be instantiate by self::inst()');
             exit;
@@ -22,7 +22,7 @@ class of_view {
      * 作者 : Edgar.lee
      */
     public static function inst() {
-        if( self::$instanceObj === null ) {
+        if (self::$instanceObj === null) {
             self::$instanceObj = true;
             self::$instanceObj = new self;
         }
@@ -59,13 +59,13 @@ class of_view {
         $tplExt = of::config('_of.view.tplExt');
 
         //常规模板
-        if( $tpl === null || $tpl[0] !== '_' && $tpl[0] !== '/' ) {
+        if ($tpl === null || $tpl[0] !== '_' && $tpl[0] !== '/') {
             $temp = of::dispatch();
             $tpl === null && $tpl = $temp['action'] . $tplExt;
             $tpl = '/tpl/' . strtr($temp['class'], '_', '/') . '/' . $tpl;
         }
 
-        if( $tpl[0] === '_' ) {
+        if ($tpl[0] === '_') {
             $tpl = substr($tpl, 1);
         } else {
             $tpl = self::path() . $tpl;
@@ -93,44 +93,45 @@ class of_view {
      */
     public static function head($params = array(), $data = null) {
         //保留传入的参数
-        static $paramList = array();
+        static $_ = array('body' => array());
 
         //输出头信息
-        if( empty($paramList['init']) && is_array($params) ) {
-            $paramList['init'] = true;
+        if (empty($_['init']) && is_array($params)) {
+            $_['init'] = self::inst();
             //注册结束尾输出
             of::event('of::halt', array('asCall' => 'of_view::head', 'params' => array(false)));
 
-            foreach($params as &$v) !is_array($v) || empty($v) || $v = array_combine($v, $v);
-            of::arrayReplaceRecursive($paramList, $params);
+            foreach ($params as &$v) is_array($v) && $v && $v = array_combine($v, $v);
+            of::arrayReplaceRecursive($_, $params);
 
             echo '<!DOCTYPE html>',
                 '<html>',
                 '<head>',
-                '<title>', isset($paramList['title']) ? $paramList['title'] : '', of::config('_of.view.title'), '</title>',
+                '<title>', isset($_['title']) ? $_['title'] : '', of::config('_of.view.title'), '</title>',
                 '<meta http-equiv="X-UA-Compatible" content="IE=edge" />';
                 //of.php已发送头,同时IE6 p3p隐私共享会因utf-8导致js cookie不可写
                 //'<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />',
             //开始注入html[head]
-            isset($paramList['head']) && self::eachPrintJsOrCss($paramList['head']);
+            empty($_['head']) || $_['init']->objInclude($_['head']);
             //输出css引用样式
-            isset($paramList['css']) && self::eachPrintJsOrCss($paramList['css'], 'css');
-            echo '</head><body>';
+            empty($_['css']) || self::eachPrintJsOrCss($_['css'], 'css');
+            //输出body属性
+            echo '</head><body ', join(' ', $_['body']), '>';
 
             //开始注入html[before]
-            isset($paramList['before']) && self::eachPrintJsOrCss($paramList['before']);
+            empty($_['before']) || self::eachPrintJsOrCss($_['before']);
         //输出尾信息
-        } else if($params === false && isset($paramList['init'])) {
+        } else if($params === false && isset($_['init'])) {
             //开始注入html[head]
-            isset($paramList['head']) && self::eachPrintJsOrCss($paramList['head']);
+            empty($_['head']) || $_['init']->objInclude($_['head']);
             //开始注入html[after]
-            isset($paramList['after']) && self::eachPrintJsOrCss($paramList['after']);
-            isset($paramList['css']) && self::eachPrintJsOrCss($paramList['css'], 'css');
-            isset($paramList['js']) && self::eachPrintJsOrCss($paramList['js'], 'js');
+            empty($_['after']) || self::eachPrintJsOrCss($_['after']);
+            empty($_['css']) || self::eachPrintJsOrCss($_['css'], 'css');
+            empty($_['js']) || self::eachPrintJsOrCss($_['js'], 'js');
 
             echo '</body></html>';
-        } elseif( is_string($params) && !isset($paramList[$params][$data]) ) {
-            $paramList[$params][$data] = &$data;
+        } else if (is_string($params) && !isset($_[$params][$data])) {
+            $_[$params][$data] = &$data;
         }
     }
 
@@ -149,13 +150,35 @@ class of_view {
         );
         $type && $url = self::path(true) .'/'. $type;
 
-        foreach( $list as &$v ) {
-            if( $v ) {
-                echo $head[$type][0], $type ? of::formatPath($v, $url) : $v, $head[$type][1];
-                //标记已加载
-                $v = false;
-            }
+        foreach ($list as &$v) {
+            echo $head[$type][0], $type ? of::formatPath($v, $url) : $v, $head[$type][1];
         }
+
+        $list = null;
+    }
+
+    /**
+     * 描述 : 对象加载head部, "<"开头的会输出, 否则会include
+     * 参数 :
+     *      &list : 头部列表
+     * 作者 : Edgar.lee
+     */
+    private function objInclude(&$_l) {
+        $_p =  self::path(false);
+
+        do {
+            $_k = key($_l);
+            $_v = &$_l[$_k];
+            unset($_l[$_k]);
+
+            //加载路径
+            if ($_v[0] === '_' || $_v[0] === '/') {
+                include of::formatPath($_v, $_p);
+            //打印标签
+            } else {
+                echo $_v;
+            }
+        } while ($_l);
     }
 
     /**

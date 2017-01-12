@@ -507,7 +507,7 @@ class of_base_com_com {
                     $attr['call'] && of::callFunc($attr['call'], array('data' => &$attr['data']));
                     //响应数据
                     $post['data'] = &$attr['data'];
-                    echo json_encode($post);
+                    echo of_base_com_data::json($post);
                 }
 
                 //重置全局配置

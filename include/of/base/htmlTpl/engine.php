@@ -91,7 +91,7 @@ class of_base_htmlTpl_engine {
                 $parseObj->append('<!-- tplDir : ' . $tplDir . ' -->');
 
                 //输出编译文件
-                of_base_com_disk::file($comFile, $parseObj->html());
+                of_base_com_disk::file($comFile, $parseObj->html(false, false));
                 //模板修改时间
                 touch($comFile, filemtime($tplFile));
             }
@@ -136,7 +136,7 @@ class of_base_htmlTpl_engine {
 
         //处理__html功能符
         $temp = array($config['funcPre'] . 'html');
-        foreach($parseObj->find('[' . $temp[0] . ']')->eq() as $nodeObj) {
+        foreach($parseObj->find('[' . $temp[0] . '][tagName!=title]')->eq() as $nodeObj) {
             $line = $nodeObj->attr('>attrLine::' . $temp[0]);
             //读取__html值
             $temp[1] = $nodeObj->attr($temp[0]);
@@ -159,18 +159,29 @@ class of_base_htmlTpl_engine {
         //head对象
         $headObj = $parseObj->find('head:eq(0)');
         //添加 of_view::head
-        if( $headObj->size() )
-        {
+        if ($headObj->size()) {
             //注释键长度
             $tagKeyLen = strlen($config['tagKey']);
             //打印头数据
             $printHeadArr = null;
             //body对象
             $bodyObj = $headObj->nextAll('body');
-            //body对象第一个子节点
-            $firstNode = $bodyObj->contents(true)->eq(0);
             //在第一个节点上加入一个节点
-            $beforeNode = $firstNode->m("</> ")->insertBefore($firstNode);
+            $beforeNode = $bodyObj->m('</> ')->prependTo($bodyObj);
+            //在第二个节点上加入一个节点
+            $afterNode = $bodyObj->m('</> ')->insertAfter($beforeNode);
+
+            //处理 load.js 的 include
+            $temp = array(substr($config['tplRoot'], strlen(of_view::path(null))));
+            foreach($parseObj->find('script[include]')->eq() as $nodeObj) {
+                //计算相对路径
+                $temp[1] = $temp[0] . '/' . $nodeObj->attr('src') . '/../' . $nodeObj->attr('include');
+                $temp[1] = of_base_com_str::realpath($temp[1]);
+
+                //转换注释标签
+                $printHeadArr['head'][] = "'_' . L::getHtmlTpl('{$temp[1]}')";
+                $nodeObj->remove();
+            }
 
             //过滤节点
             $filterObj = $headObj->find('link, script, style')->add($headObj->contents('!--'));
@@ -181,8 +192,7 @@ class of_base_htmlTpl_engine {
                 $attrName = $nodeObj->attr('tagName') === 'link' ? 'href' : 'src';
 
                 //脚本移动到最先执行
-                if( $tagName === '!--' )
-                {
+                if( $tagName === '!--' ) {
                     strncmp($config['tagKey'], $nodeObj->attr(''), $tagKeyLen) ||
                         $beforeNode->before($nodeObj);
                 //移动到 body 标签中
@@ -194,7 +204,7 @@ class of_base_htmlTpl_engine {
                         $nodeObj->attr($config['attrPre'] . 'src') === null 
                     )
                 ) {
-                    $firstNode->before("</>\n")->before($nodeObj);
+                    $afterNode->before("</>\n")->before($nodeObj);
                 //样式 和 脚本 转移到 头中
                 } else if(
                     (
@@ -206,18 +216,31 @@ class of_base_htmlTpl_engine {
                 }
             }
 
+            //读取body属性
+            $temp = $bodyObj->attr();
+            foreach ($temp as $k => &$v) {
+                $k[0] === '>' || $printHeadArr['body'][] = $k . '="' . htmlspecialchars($v, ENT_QUOTES, 'UTF-8') . '"';
+            }
+
             //生成 head
             $printHeadArr[''][] = "<!--{$config['tagKey']}\nof_view::head(array(\n    'title' => ";
             //获取标题
             $temp = array($headObj->find('title'));
-            if( $temp[1] = $temp[0]->attr($config['attrPre']) ) {
-                $printHeadArr[''][] = self::formatAttr($nodeObj->attr('>attrLine::' . $temp[1]), $temp[1], false);
+            if( $temp[1] = $temp[0]->attr($config['funcPre'] . 'html') ) {
+                $printHeadArr[''][] = self::formatAttr($temp[0]->attr('>tagLine::start'), $temp[1], false);
             } else {
                 $printHeadArr[''][] = 'L::getText(\'' . addslashes($temp[0]->text()) . '\')';
             }
             $printHeadArr[''][] = ",\n";
-
             $temp = str_repeat(' ', 8);
+
+            //生成head
+            if( isset($printHeadArr['head']) ) {
+                $printHeadArr[''][] = "    'head'   => array(\n{$temp}";
+                $printHeadArr[''][] = join(",\n{$temp}", $printHeadArr['head']);
+                $printHeadArr[''][] = "\n    ),\n";
+            }
+
             //生成css
             if( isset($printHeadArr['link']) ) {
                 $printHeadArr[''][] = "    'css'   => array(\n{$temp}";
@@ -231,9 +254,18 @@ class of_base_htmlTpl_engine {
                 $printHeadArr[''][] = join(",\n{$temp}", $printHeadArr['script']);
                 $printHeadArr[''][] = "\n    ),\n";
             }
+
+            //生成body attr
+            if( isset($printHeadArr['body']) ) {
+                $printHeadArr[''][] = "    'body'  => array(\n{$temp}'";
+                $printHeadArr[''][] = join("',\n{$temp}'", $printHeadArr['body']);
+                $printHeadArr[''][] = "'\n    ),\n";
+            }
+
             //完成 head
             $printHeadArr[''][] = "));\n-->\n";
             $beforeNode->after(join($printHeadArr['']))->remove();
+            $afterNode->remove();
 
             //更新解析位置
             $parseObj = $bodyObj;
@@ -258,6 +290,8 @@ class of_base_htmlTpl_engine {
             $tagName = $nodeObj->attr('tagName');
             //确定属性名
             $attrName = $tagName === 'link' || $tagName === 'a' ? 'href' : 'src';
+            //使用模版专用标签
+            $tagName === 'script' && $nodeObj->attr('type') === 'tpl' && $nodeObj->removeAttr('type');
 
             if( 
                 //不存在属性符
@@ -277,7 +311,7 @@ class of_base_htmlTpl_engine {
         //属性前缀长度
         $attrPreLen = strlen($config['attrPre']);
         //替换属性操作
-        foreach($parseObj->find('*')->eq() as $nodeObj) {
+        foreach($parseObj->find('[@^' .$config['attrPre']. '@]')->eq() as $nodeObj) {
             //读取所有属性
             $attrList = $nodeObj->attr(null);
             $emptyAttr = empty($attrList['']) ? array() : array($attrList['']);
@@ -344,40 +378,38 @@ class of_base_htmlTpl_engine {
         self::checkSyntax($checkSyntaxList);
 
         //添加语言包
-        foreach($parseObj->contents('!text')->eq() as $nodeObj) {
-            //文本父节点
-            $nodeParentObj = $nodeObj->parent();
+        foreach ($parseObj->contents('!text')->get() as $nodeKey) {
+            //文本父节点键
+            $parentKey = of_base_com_hParse::nodeConn($nodeKey, 'parent', 0);
             //注释行数
-            $line = ' /*line : ' . $nodeObj->attr('>tagLine::start') . '*/';
+            $line = ' /*line : ' . of_base_com_hParse::nodeAttr($nodeKey, '>tagLine::start') . '*/';
+            $text = of_base_com_hParse::nodeAttr($nodeKey, '');
 
             //是 js 脚本
-            if( $nodeParentObj->attr('tagName') === 'script' ) {
-                $str = $nodeObj->attr('');
+            if (of_base_com_hParse::nodeAttr($parentKey, 'tagName') === 'script') {
                 //待校验列表
                 $checkSyntaxList = array();
                 preg_match_all(
                     //匹配<!--_ -->标签
                     '@<!--' . preg_quote($config['tagKey']) . '(.*?)-->@s',
-                    $str, $temp, PREG_SET_ORDER | PREG_OFFSET_CAPTURE
+                    $text, $temp, PREG_SET_ORDER | PREG_OFFSET_CAPTURE
                 );
 
                 for($i = count($temp); --$i >= 0; ) {
                     $index = &$temp[$i];
                     $checkSyntaxList[] = $line . $index[1][0];
-                    $str = substr_replace($str, "<?php{$line}{$index[1][0]}?>", $index[0][1], strlen($index[0][0]));
+                    $text = substr_replace($text, "<?php{$line}{$index[1][0]}?>", $index[0][1], strlen($index[0][0]));
                 }
 
                 //语法检查(异常)
                 self::checkSyntax($checkSyntaxList);
                 //属性写回
-                $nodeObj->attr('', $str);
-                //解析后当js运行
-                $nodeParentObj->attr('type') === 'php' && $nodeParentObj->removeAttr('type');
+                of_base_com_hParse::nodeAttr($nodeKey, '', $text);
             //存文本节点
-            } else if( preg_match('@^(\s*)([^<\s].+?)(\s*)$@s', $nodeObj->attr(''), $temp) ) {
+            } else if( preg_match('@^(\s*)([^<\s].+?)(\s*)$@s', $text, $temp) ) {
                 $temp[2] = "<?php{$line} echo L::getText('{$temp[2]}'); ?>\n";
                 //修改为php标签
-                $nodeObj->attr('', $temp[1] . $temp[2]. $temp[3]);
+                of_base_com_hParse::nodeAttr($nodeKey, '', $temp[1] . $temp[2]. $temp[3]);
             }
         }
     }
@@ -426,7 +458,6 @@ class of_base_htmlTpl_engine {
      *      line    : 属性所在行数
      *     &url     : 指定转换的代码
      *      isPrint : true(默认)=返回带打印的代码, false=返回可赋值的代码
-     *     &tagName : 标签名,已/开头时使用
      * 返回 :
      *      成功返回格式化的字符串, 失败 异常
      * 作者 : Edgar.lee

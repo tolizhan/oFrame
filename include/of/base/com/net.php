@@ -78,13 +78,13 @@ class of_base_com_net {
         //永不超时
         ini_set('max_execution_time', 0);
         //二次请求
-        if( $url === null ) {
+        if ($url === null) {
             //配置引用
             $config = &self::$config;
             //请求数据流
             $data = file_get_contents('php://input');
 
-            if( 
+            if (
                 ($config['mode'] === true && $config['async']['host'] === self::$params['host']) ||
                 ($config['mode'] === false && $_SERVER['REMOTE_ADDR'] === $_SERVER['SERVER_ADDR']) ||
                 ($config['mode'] === null && isset($_GET['md5']) && md5($data . $config['check']) === $_GET['md5'])
@@ -116,9 +116,9 @@ class of_base_com_net {
         }
 
         //同步请求
-        if( $mode === false ) {
+        if ($mode === false) {
             //post格式化
-            if( isset($data['post']) ) {
+            if (isset($data['post'])) {
                 $data['type'] = 'POST';
                 $data['data'] = &$data['post'];
             }
@@ -135,7 +135,7 @@ class of_base_com_net {
             //解析目标网址
             $data['url'] = parse_url($url);
             //外网地址
-            if( isset($data['url']['host']) && $data['url']['host'] !== self::$params['host'] ) {
+            if (isset($data['url']['host']) && $data['url']['host'] !== self::$params['host']) {
                 //格式化协议
                 $data['url']['scheme'] = isset($data['url']['scheme']) ? strtolower($data['url']['scheme']) : 'http';
                 //初始化接口
@@ -147,10 +147,10 @@ class of_base_com_net {
             $data['url']['query'] .= ($data['url']['query'] === '' || $data['get'] === '' ? '' : '&') . $data['get'];
 
             //cookie整合
-            if( $data['cookie'] ) {
+            if ($data['cookie']) {
                 is_array($data['cookie']) && $data['cookie'] = http_build_query($data['cookie'], '', '; ');
                 $data['cookie'] = explode('; ', $data['cookie']);
-                foreach($data['cookie'] as &$v) {
+                foreach ($data['cookie'] as &$v) {
                     $temp = explode('=', $v, 2);
                     self::cookie(array(
                         'domain' => &$data['url']['host'],
@@ -199,64 +199,70 @@ class of_base_com_net {
             $index = &$data['url']['port'], $errno, $errstr, $data['timeout']
         );
         //连接成功
-        if ( $fp ) {
-            $data['header'] && $data['header'] .= "\r\n";
-            strpos($data['header'], 'Content-Type:') === false && $data['header'] .= "Content-Type: application/x-www-form-urlencoded\r\n";
+        if ($fp) {
+            //请求类型
+            $data['type'] = empty($data['type']) ? 'GET' : strtoupper($data['type']);
+            //自定请求头
+            $data['header'] = trim($data['header'], "\r\n");
             //简单标准化处理 https(443) 和 http(80) 默认不传端口
             $temp = $index === 443 || $index === 80 ? '' : ':' . $index;
 
-            //请求类型
-            $data['type'] = empty($data['type']) ? 'GET' : strtoupper($data['type']);
-            $out[] = $data['type'] . " {$data['url']['path']}?{$data['url']['query']} HTTP/1.1\r\n";
-            $out[] = "Host: {$data['url']['host']}{$temp}\r\n";
-            //会替换下面的默认值
-            $out[] = $data['header'];
-            //支持的 MIME 类型
-            $out[] = "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n";
-            //使用的浏览器
-            $out[] = "User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:26.0) Gecko/20100101 Firefox/26.0\r\n";
+            //组合请求数据
+            $out[] = $data['type'] . " {$data['url']['path']}?{$data['url']['query']} HTTP/1.1";
+            $out[] = 'Host: ' . $data['url']['host'] . $temp;
             //禁止缓存
-            $out[] = "Connection: Close\r\n";
+            $out[] = 'Connection: Close';
             //禁止压缩
-            $out[] = "Accept-Encoding: none\r\n";
-            //发送cookie
-            $out[] = "Cookie: {$data['cookie']}\r\n";
+            $out[] = 'Accept-Encoding: none';
             //post数据长度
-            $out[] = 'Content-Length: ' .strlen($data['data']). "\r\n";
-            $out[] = "\r\n";
+            $out[] = 'Content-Length: ' . strlen($data['data']);
+            //支持的 MIME 类型
+            preg_match('@^Accept *:@im', $data['header']) || $out[] = 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
+            //报文类型
+            preg_match('@^Content-Type *:@im', $data['header']) || $out[] = 'Content-Type: application/x-www-form-urlencoded';
+            //发送cookie
+            $data['cookie'] && $out[] = 'Cookie: ' . $data['cookie'];
+            //会替换下面的默认值
+            $data['header'] && $out[] = &$data['header'];
+            //使用的浏览器
+            $out[] = 'User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:26.0) Gecko/20100101 Firefox/26.0';
+            $out[] = '';
             //post数据
-            $out[] = "{$data['data']}\r\n";
-            fwrite($fp, join($out));
+            $out[] = &$data['data'];
+
+            fwrite($fp, join("\r\n", $out));
 
             $res = null;
             //同步调用
-            if( $mode === false ) {
-                while ( !feof($fp) ) {
-                    //当读取全部头后
-                    if( ($receive[] = fgets($fp, 2048)) === "\r\n" && $res === null ) {
-                        $res['header'] = join($receive);
-                        $receive = null;
-                        //部分服务器无响应时 feof 失效
-                        if( preg_match('@^Content-Length: 0\b@m', $res['header']) ) {
-                            break;
-                        }
+            if ($mode === false) {
+                $index = &$res['header'];
+                //读取响应
+                while ($temp = fgets($fp, 2048)) {
+                    $index[] = $temp;
+                    if (!isset($res['response']) && $temp === "\r\n") {
+                        $index = &$res['response'];
                     }
                 }
-                //兼容GFW屏蔽地址
-                isset($res['header']) || $res['header'] = '';
-                //响应信息
-                $res['response'] = empty($receive) ? '' : join($receive);
+
+                //响应头, empty=可能掉线或被GFW屏蔽地址
+                if (empty($res['header'])) {
+                    $res = array('header' => ' 503 ', 'response' => 'Internet failure');
+                } else {
+                    $res['header'] = join($res['header']);
+                    $res['response'] = empty($res['response']) ? '' : join($res['response']);
+                }
+
                 //chunk传输
-                if( strpos($res['header'], 'Transfer-Encoding: chunked') !== false ) {
+                if (strpos($res['header'], 'Transfer-Encoding: chunked') !== false) {
                     //chunk还原
                     $res['response'] = &self::dechunk($res['response']);
                 }
 
                 //请求成功
-                if( preg_match('/.* (\d+) .*/', $res['header'], $temp) && $temp[1] < '400') {
+                if (preg_match('/.* (\d+) .*/', $res['header'], $temp) && $temp[1] < 400) {
                     preg_match_all('@^Set-Cookie: ([^=\s]+)=(.*?)(?:; .*|$)$@m', $res['header'], $match, PREG_SET_ORDER);
                     //提取cookie
-                    foreach($match as &$v) {
+                    foreach ($match as &$v) {
                         preg_match('@expires=(.*?)(?:; |$)@', $v[0], $v['expires']);
                         preg_match('@path=(.*?)(?:; |$)@', $v[0], $v['path']);
                         preg_match('@domain=(.*?)(?:; |$)@', $v[0], $v['domain']);
@@ -308,9 +314,9 @@ class of_base_com_net {
         //返回结果集
         $result = false;
 
-        while( ($nowPos = strpos($str, $eol, $offset)) !== false ) {
+        while (($nowPos = strpos($str, $eol, $offset)) !== false) {
             //有效数字
-            if( is_numeric($len = hexdec(substr($str, $offset, $nowPos - $offset))) ) {
+            if (is_numeric($len = hexdec(substr($str, $offset, $nowPos - $offset)))) {
                 $result[] = substr($str, $nowPos + 2, $len);
                 //更新偏移量
                 $offset = $len + $nowPos + 2;
@@ -357,14 +363,14 @@ class of_base_com_net {
         $cookie = &self::$cookie;
 
         //是数组 && 域名有效 && 路径有效
-        if( is_array($config) && isset($config['domain']) && isset($config['path']) ) {
+        if (is_array($config) && isset($config['domain']) && isset($config['path'])) {
             //反转域名
             $domain = strrev($config['domain']);
             //路径格式化
             $path   = substr($config['path'], -1) === '/' ? $config['path'] : $config['path'] . '/';
 
             //读取 cookie
-            if( empty($config['name']) ) {
+            if (empty($config['name'])) {
                 //当期时间戳
                 $time = time();
                 //有效数据
@@ -372,18 +378,18 @@ class of_base_com_net {
                 //达到根域在上子域在下的效果
                 ksort($cookie);
 
-                foreach($cookie as $kd => &$vd) {
+                foreach ($cookie as $kd => &$vd) {
                     //有效域名
-                    if( strncasecmp($kd, $domain, strlen($kd)) === 0 ) {
+                    if (strncasecmp($kd, $domain, strlen($kd)) === 0) {
                         //根路径在上,子路径在下
                         ksort($vd);
 
-                        foreach($vd as $kp => &$vp) {
+                        foreach ($vd as $kp => &$vp) {
                             //读取根路径数据
-                            if( strncasecmp($kp, $path, strlen($kp)) === 0 ) {
-                                foreach($vp as $k => &$v) {
+                            if (strncasecmp($kp, $path, strlen($kp)) === 0) {
+                                foreach ($vp as $k => &$v) {
                                     //数据过期
-                                    if( is_numeric($v['expire']) && $v['expire'] < $time ) {
+                                    if (is_numeric($v['expire']) && $v['expire'] < $time) {
                                         unset($cookie[$domain][$kp][$k]);
                                     } else {
                                         $result[$k] = $k .'='. $v['value'];

@@ -140,7 +140,8 @@ class of_base_sso_main extends of_base_sso_api {
         if( !empty($params['search']) ) {
             $sql .= " WHERE 
                 INSTR(`name`, '{$params['search']}')
-            OR  INSTR(`nike`, '{$params['search']}')";
+            OR  INSTR(`nike`, '{$params['search']}')
+            OR  INSTR(`notes`, '{$params['search']}')";
 
             //添加选中项
             //$inStr && $sql .= " OR `id` IN ({$inStr})";
@@ -231,6 +232,7 @@ class of_base_sso_main extends of_base_sso_api {
         if( !empty($params['search']) ) {
             $sql .= " WHERE 
                 INSTR(`name`, '{$params['search']}')
+            OR  INSTR(`lable`, '{$params['search']}')
             OR  INSTR(`notes`, '{$params['search']}')";
 
             //添加选中项
@@ -241,7 +243,7 @@ class of_base_sso_main extends of_base_sso_api {
         $sql .= ' ORDER BY ';
         //选中置顶
         $inStr && $sql .= "`sort`, ";
-        $sql .= '`notes`';
+        $sql .= '`lable`';
 
         $config = array(
             'data'   => &$sql,
@@ -544,7 +546,7 @@ class of_base_sso_main extends of_base_sso_api {
             $temp = L::sql($sql, self::$config['dbPool']);
         }
 
-        echo isset($temp[0]) ? json_encode($temp[0]) : "\0";
+        echo isset($temp[0]) ? of_base_com_data::json($temp[0]) : "\0";
     }
 
     /**
@@ -776,7 +778,7 @@ class of_base_sso_main extends of_base_sso_api {
                 }
             }
 
-            echo json_encode($result);
+            echo of_base_com_data::json($result);
         } else {
             echo '{"state":"error","msg":"验证码错误"}';
         }

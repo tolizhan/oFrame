@@ -17,9 +17,8 @@ class demo_index extends L {
         //在模板中使用$this->str得到
         $this->view->str = '这是从控制层发送过来的字符串';
         //常规分页调用
-        //加载模板
         $this->view->_pagingHtml = &$this->paging();
-
+        //加载模板
         $this->display();
     }
 

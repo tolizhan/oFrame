@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200199);
+define('OF_VERSION', 200201);
 
 class of {
     //站点配置文件
@@ -94,7 +94,7 @@ class of {
             //数组定位
             $cacheVaule = of::getArrData(array(&$name, &$config, &$default));
 
-            if( $cacheVaule !== null || ($cacheVaule = &$default) !== null ) {
+            if ($cacheVaule !== null || ($cacheVaule = &$default) !== null) {
                 $format === 'off' || $cacheVaule = self::formatPath($cacheVaule, $format === 'dir' ? ROOT_DIR : ROOT_URL);
                 $default = &$cacheVaule;
             }
@@ -143,7 +143,7 @@ class of {
                 $v['isCall'] && $result[$k] = &self::callFunc($v['event'], $params);
             }
         //管理事件
-        } elseif( $event === null ) {
+        } elseif ( $event === null ) {
             $result = &$eventList[$key];
         } else {
             //引用事件
@@ -151,8 +151,8 @@ class of {
             //创建临时副本,防止打乱触发内循环
             $temp = $eventList[$key]['list'];
             //删除事件
-            foreach($temp as $k => &$v) {
-                if( $v['event'] == $index ) {
+            foreach ($temp as $k => &$v) {
+                if ($v['event'] == $index) {
                     $eventList[$key]['change'] = true;
                     unset($eventList[$key]['list'][$k]);
                     break;
@@ -160,7 +160,7 @@ class of {
             }
 
             //添加事件
-            if( $event !== false ) {
+            if ($event !== false) {
                 $eventList[$key]['change'] = true;
                 $eventList[$key]['list'][] = array(
                     'isCall' => !$params,
@@ -207,14 +207,47 @@ class of {
         //of磁盘路径
         define('OF_DIR', strtr(dirname(__FILE__), '\\', '/'));
 
-        $temp = array(&$_GET, &$_POST, &$_REQUEST, &$_COOKIE);
-        //防注入脚本
-        get_magic_quotes_gpc() || self::slashesDeep($temp);
-
         //引用配置
         $config = &self::$config;
         //加载全局配置文件
         $global = include OF_DIR . '/config.php';
+
+        //解析cli模式下的请求参数
+        if (PHP_SAPI === 'cli') {
+            //将参数转成GET POST COOKIE 方式
+            foreach ($_SERVER['argv'] as &$v) {
+                //"get:a=test&c=demo_index" 模式解析
+                $temp = explode(':', $v, 2);
+                $temp[0] = '_' . strtoupper($temp[0]);
+
+                //"xx:yy"模式的参数 && 存在 $GLOBALS 变量中
+                if (!empty($temp[1]) && isset($GLOBALS[$temp[0]])) {
+                    //解析到对应超全局变量中
+                    parse_str($temp[1], $temp[2]);
+                    $GLOBALS[$temp[0]] = $temp[2] + $GLOBALS[$temp[0]];
+                    //设置原始请求
+                    $temp[0] === '_GET' && $_SERVER['QUERY_STRING'][] = &$temp[1];
+                }
+            }
+            //整合到 request 中
+            $_REQUEST = $_GET + $_POST + $_COOKIE;
+            //设置项目跟目录
+            $_SERVER['DOCUMENT_ROOT'] = $global['rootDir'];
+            //计算一些路径
+            $temp = get_included_files();
+            $_SERVER['SCRIPT_FILENAME'] = strtr($temp[0], '\\' , '/');
+            isset($_SERVER['PATH_INFO']) || $_SERVER['PATH_INFO'] = '';
+            $_SERVER['QUERY_STRING'] = empty($_SERVER['QUERY_STRING']) ? '' : join('&', $_SERVER['QUERY_STRING']);
+            $_SERVER['SCRIPT_NAME'] = substr($_SERVER['SCRIPT_FILENAME'], strlen($global['rootDir']));
+            $_SERVER['REQUEST_URI'] = $_SERVER['PHP_SELF'] = $_SERVER['SCRIPT_NAME'] . $_SERVER['PATH_INFO'];
+            $_SERVER['PATH_TRANSLATED'] = $global['rootDir'] . $_SERVER['PATH_INFO'];
+            $_SERVER['QUERY_STRING'] && $_SERVER['REQUEST_URI'] .= '?' . $_SERVER['QUERY_STRING'];
+        }
+
+        //防注入处理的超全局变量
+        $temp = array(&$_GET, &$_POST, &$_COOKIE, &$_REQUEST);
+        //防注入脚本
+        get_magic_quotes_gpc() || self::slashesDeep($temp);
 
         //加载站点配置文件
         empty($global['config']) || $config = include $global['rootDir'] . $global['config'];
@@ -231,7 +264,7 @@ class of {
             //web模式
             } else {
                 $temp = $_SERVER['SCRIPT_NAME'];
-                $scriptFilename = strtr($_SERVER['SCRIPT_FILENAME'] ,'\\','/');
+                $scriptFilename = strtr($_SERVER['SCRIPT_FILENAME'], '\\' , '/');
                 while (true) {
                     if ($temp === substr($scriptFilename, -strlen($temp))) {
                         //除虚拟目录外执行脚本所在路径的长度
@@ -491,8 +524,8 @@ class of {
         try {
             $temp = ini_set('error_append_string', "\n----\n" . $code);
 
-            //是否执行
-            $exec ? $exec = &$code : $exec = 'if (0) {' . $code . "//<?php\n}";
+            //是否执行, 屏蔽 __halt_compiler 语法错误
+            $exec ? $exec = &$code : $exec = 'if (0) {' . str_replace('__halt_compiler', 'c', $code) . "//<?php\n}";
             if (@eval($exec) === false) {
                 $result = error_get_last();
                 unset($result['type'], $result['file']);

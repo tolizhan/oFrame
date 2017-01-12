@@ -648,7 +648,7 @@ L === undefined && (L = {
             try {
                 //强制编码 || 不是字符串
                 if( encode || typeof value !== 'string' ) {
-                    return str('', {'': value});
+                    return str('', {'': value}).replace(/</g, '\\u003C').replace(/>/g, '\\u003E');
                 //json解码
                 } else {
                     return (new Function('return ' + value + ';'))();

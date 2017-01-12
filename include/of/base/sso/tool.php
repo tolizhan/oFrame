@@ -264,7 +264,7 @@ class of_base_sso_tool extends of_base_sso_api {
      *      
      * 作者 : Edgar.lee
      */
-    public static function &func($func = null, $data = array()) {
+    public static function func($func = null, $data = array()) {
         $data['a'] = 'func';
         $data['type'] = &$func;
         return self::request($data);

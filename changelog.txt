@@ -1,3 +1,109 @@
+版本: 201
+作者: Edgar
+日期: 2017年1月12日 15:04:52
+信息:
+说明: cli 模式下可以传 get post 等参数
+      支持更好的面向接口的开发方式
+      hParse 可以面向 节点键 操作, 效率更高
+      of_view::head 支持向 body 加入属性
+      of_view::head 支持向 head 中 include 文件
+      添加 of_base_com_data::json 更安全的 json
+      添加 of_base_com_data::rule 校验数据格式
+      模版引擎支持 /demo/tool/jsLoad 的 include 功能
+      模版引擎编译后使用的js script[type=php] 改为 script[type=tpl]
+      模版引擎title动态标题由 _ 属性改为 __html 属性
+      大幅度优化 模版引擎 编译速度
+      修正 of_base_com_net::request 通信掉线卡死问题
+      ssoSyncLdap 扩展支持 淘宝短信接口
+      单点登录管理界面排序搜索优化
+----
+已修改 : /trunk
+已修改 : /trunk/changelog.txt
+已增加 : /trunk/demo/extensions/ssoSyncLdap/_info
+已增加 : /trunk/demo/extensions/ssoSyncLdap/_info/backupData
+已增加 : /trunk/demo/extensions/ssoSyncLdap/_info/backupData/installData
+已增加 : /trunk/demo/extensions/ssoSyncLdap/_info/backupData/installData/backupData.sql
+已增加 : /trunk/demo/extensions/ssoSyncLdap/_info/backupData/installData/structure.sql
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/Autoloader.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/TopSdk.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/aliyun
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/aliyun/AliyunClient.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/ApplicationVar.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/ClusterTopClient.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/HttpdnsGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/RequestCheckUtil.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/ResultSet.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/SpiUtils.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/TopClient.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/TopLogger.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain/Area.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain/BizResult.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain/FcPartnerSmsDetailDto.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain/KfcSearchResult.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain/Result.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain/Subtask.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain/Task.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/httpdns.conf
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcFlowChargeProvinceRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcFlowChargeRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcFlowGradeRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcFlowQueryRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcSmsNumQueryRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcSmsNumSendRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcTtsNumSinglecallRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcVoiceNumDoublecallRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcVoiceNumSinglecallRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AppipGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AreasGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/HttpdnsGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/KfcKeywordSearchRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/TimeGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/TopAuthTokenCreateRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/TopAuthTokenRefreshRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/TopIpoutGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/TopSecretGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/TopatsResultGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/TopatsTaskDeleteRequest.php
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/demo/index.php
+已增加 : /trunk/demo/tool/jsLoad
+已增加 : /trunk/demo/tool/jsLoad/code
+已增加 : /trunk/demo/tool/jsLoad/code/load.js
+已增加 : /trunk/demo/tool/jsLoad/foot.html
+已增加 : /trunk/demo/tool/jsLoad/head.html
+已增加 : /trunk/demo/tool/jsLoad/index.html
+已增加 : /trunk/demo/tool/jsLoad/readme.txt
+已增加 : /trunk/demo/tool/proxy
+已增加 : /trunk/demo/tool/proxy/proxy.php
+已删除 : /trunk/demo/tool/proxy.php
+已修改 : /trunk/demo/view/tpl/demo/index/viewTest.tpl.php
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/att/link/L.js
+已修改 : /trunk/include/of/att/sso/tpl/login.tpl.php
+已修改 : /trunk/include/of/att/sso/tpl/main.tpl.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/csv.php
+已增加 : /trunk/include/of/base/com/data.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/language/packs.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+已修改 : /trunk/index.php
+
 版本: 199
 作者: Edgar
 日期: 2016年12月1日 12:42:49

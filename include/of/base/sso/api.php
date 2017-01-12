@@ -5,7 +5,7 @@
  *      统一响应状态码 : {
  *          200 : 成功
  *          401 : 域名账号可能已停用
- *          402 : 登录失败
+ *          402 : 帐号密码错误
  *          403 : 功能操作无效
  *          404 : 需先修改帐号信息
  *          501 : 安全校验失败
@@ -215,13 +215,13 @@ class of_base_sso_api {
             }
 
             if( isset($_GET['callback']) ) {
-                echo $_GET['callback'], '(' .json_encode($temp). ');';
+                echo $_GET['callback'], '(' .of_base_com_data::json($temp). ');';
             } else if( !empty($_GET['referer']) ) {
                 if( $temp['state'] === 200 && isset($_GET['check']) ) {
                     $temp = array('data' => self::check(true));
                     $temp['md5'] = md5($temp['data'] . $_GET['check'] . $pwd);
                 } else {
-                    $temp = array('data' => json_encode($temp));
+                    $temp = array('data' => of_base_com_data::json($temp));
                 }
                 return $temp;
             }
@@ -300,7 +300,7 @@ class of_base_sso_api {
                     }
                 } else {
                     $json['state'] = 402;
-                    $json['msg'] = '登录失败';
+                    $json['msg'] = '帐号密码错误';
                 }
             } else {
                 $json['state'] = 503;
@@ -352,7 +352,7 @@ class of_base_sso_api {
             }
         }
 
-        $json = json_encode($json);
+        $json = &of_base_com_data::json($json);
         if( $isReturn ) return $json; else echo $json;
     }
 
@@ -468,7 +468,7 @@ class of_base_sso_api {
         }
 
         $json['ticket'] = &$index['realm'][$_GET['name']]['ticket'];
-        echo json_encode($json);
+        echo of_base_com_data::json($json);
     }
 
     /**

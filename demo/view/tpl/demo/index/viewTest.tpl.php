@@ -1,7 +1,7 @@
 <?php
 $this->head( array(
     'title' => L::getText('测试输出的标题'),
-    'css'=>array(                  //加载css
+    'css'   => array(
         //'/main.css',
         //'/components/paging/paging.css'
     )
