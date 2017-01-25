@@ -134,6 +134,19 @@ config = {
                 return this.oUpload;
             }
         }
+    },
+
+    /**
+     * 描述 : 数据填充工具
+     * 作者 : Edgar.lee
+     */
+    'oFill' : {
+        'list'  : {
+            '/oFill/oFill.js'  : false
+        },
+        'init'  : function (p) {
+            return this.oFill;
+        }
     }
 };
 

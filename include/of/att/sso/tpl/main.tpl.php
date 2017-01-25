@@ -14,7 +14,7 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
     <thead class="of_sso-main_thead">
         <tr>
             <th id="userTitle" colspan="3">用户</th>
-            <th id="realmTitle" colspan="3">域名</th>
+            <th id="realmTitle" colspan="3">系统</th>
             <th id="packTitle" colspan="3">角色</th>
             <th id="funcTitle" colspan="3">权限</th>
         </tr>
@@ -38,17 +38,17 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
         </tr>
         <tr>
             <th><input type="checkbox" value="" onclick="ofBaseSsoMain.allBox('user', this.checked)"></th>
-            <th>账号</th>
             <th>昵称</th>
-            <th><input type="checkbox" value="" onclick="ofBaseSsoMain.allBox('realm', this.checked)"></th>
             <th>账号</th>
+            <th><input type="checkbox" value="" onclick="ofBaseSsoMain.allBox('realm', this.checked)"></th>
             <th>简称</th>
+            <th>账号</th>
             <th><input type="checkbox" value="" onclick="ofBaseSsoMain.allBox('pack', this.checked)"></th>
-            <th>键值</th>
             <th>名称</th>
+            <th>键值</th>
             <th><input type="checkbox" value="" onclick="ofBaseSsoMain.allBox('func', this.checked)"></th>
-            <th>键值</th>
             <th>名称</th>
+            <th>键值</th>
         </tr>
     </thead>
     <tbody class="of_sso-main_tbody">
@@ -64,8 +64,8 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
                         <tbody>
                             <tr name="pagingItem" key="{`id`}" style="display: none;" onclick="ofBaseSsoMain.item('user', '{`id`}');">
                                 <td><input type="checkbox">{`_state`}</td>
-                                <td>{`name`}</td>
                                 <td>{`nike`}</td>
+                                <td>{`name`}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -82,8 +82,8 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
                         <tbody>
                             <tr name="pagingItem" key="{`id`}" style="display: none;" onclick="ofBaseSsoMain.item('realm', '{`id`}');">
                                 <td><input type="checkbox">{`_state`}</td>
-                                <td>{`name`}</td>
                                 <td>{`lable`}</td>
+                                <td>{`name`}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -100,8 +100,8 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
                         <tbody>
                             <tr name="pagingItem" key="{`id`}" style="display: none;" onclick="ofBaseSsoMain.item('pack', '{`id`}');">
                                 <td><input type="checkbox">{`_state`}</td>
-                                <td>{`name`}</td>
                                 <td>{`lable`}</td>
+                                <td>{`name`}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -118,8 +118,8 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
                         <tbody>
                             <tr name="pagingItem" key="{`id`}" style="display: none;" onclick="ofBaseSsoMain.item('func', '{`id`}');">
                                 <td><input type="checkbox">{`_state`}</td>
-                                <td>{`name`}</td>
                                 <td>{`lable`}</td>
+                                <td>{`name`}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -189,8 +189,8 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
                     <label>
                         对接 : 
                         <select name="trust">
-                            <option value="1">仅前台对接 (可操作当前用户和域名的数据)</option>
-                            <option value="3">前后台对接 (还可通过帐号密码操作用户域名)</option>
+                            <option value="1">仅前台对接 (可操作当前用户和系统的数据)</option>
+                            <option value="3">前后台对接 (还可通过帐号密码操作用户数据)</option>
                             <!-- <option value="7">用户管理权 (还可获取用户列表并无限制操作用户)</option> -->
                         </select>
                     </label>

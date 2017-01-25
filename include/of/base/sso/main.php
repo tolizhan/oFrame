@@ -164,7 +164,7 @@ class of_base_sso_main extends of_base_sso_api {
     }
 
     /**
-     * 描述 : 域名分页
+     * 描述 : 系统分页
      * 作者 : Edgar.lee
      */
     public function realmPaging(&$params = array()) {

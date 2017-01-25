@@ -64,13 +64,11 @@ return array(
         'maxLifeTime' => 60,                                                        //最大生存时间(分钟)
         'params'      => array(                                                     //各调度参数
             //*                                                                     files 模式, 文件存储方式
-            'path'    => '/data/_of/of_accy_session_files'                          //存储的文件路径
+            'path'    => '/data/_of/of_accy_session_files'                          //存储的文件路径 // */
             /*                                                                      mysql 模式, mysql存储表信息(推荐Innodb,MEM
             'dbPool' => 'default',                                                  //数据库连接池 // */
-            /*                                                                      memcache 模式, 连接信息,可以使用二维数组连接集群
-            'host' => '127.0.0.1',
-            'port' => 11211,
-            // */
+            /*                                                                      k-v 模式
+            'kvPool' => 'default',                                                  //k-v 连接池 // */
         )
     ),
     'language'    => array(
@@ -105,15 +103,20 @@ return array(
             'check' => '',                                                          //异步请求安全校验, ""=IP地址核对, url=内网网址, str=校验密码
         ),
         'timer' => array(                                                           //计划任务
-            'path'    => '/data/_of/of_base_com_timer',                             //存储的文件路径
-            'crontab' => '/data/timer/crontab.php',                                 //静态计划任务文件
-            'adapter' => 'files',                                                   //存储方式, files=文件模式, mysql=数据库模式
-            'params'  => array(
-                /*                                                                  mysql 模式, mysql存储表信息(推荐Innodb)
-                'dbPool' => 'default',                                              //数据库连接池 // */
+            'path' => '/data/_of/of_base_com_timer',                                //存储的文件路径
+            'task' => array(                                                        //动态任务
+                'adapter' => 'files',                                               //存储方式, files=文件模式, mysql=数据库模式
+                'params'  => array(
+                    /*                                                              mysql 模式, mysql存储表信息(推荐Innodb)
+                    'dbPool' => 'default',                                          //数据库连接池 // */
+                )
+            ),
+            'cron' => array(                                                        //静态任务
+                'path'   => '',                                                     //静态计划任务文件
+                'kvPool' => 'default'                                               //k-v 池, 分布式时防重复执行
             )
         ),
-        'kv' => array(                                                              //key-value 数据存储
+        'kv' => array(                                                              //key-value 数据存储 可分连接池
             'adapter' => 'files',                                                   //适配文件 of_accy_com_kv_xxx
             'params'  => array(                                                     //对应的配置
                 'path' => '/data/_of/of_accy_com_kv_files'                          //files 存储路径

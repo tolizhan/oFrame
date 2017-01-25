@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200201);
+define('OF_VERSION', 200204);
 
 class of {
     //站点配置文件

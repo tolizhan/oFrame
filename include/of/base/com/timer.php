@@ -12,18 +12,21 @@ class of_base_com_timer {
      */
     public static function init() {
         $config = &self::$config;
-        $config = of::config('_of.com.timer', array()) + array(
-            //存储方式
-            'adapter' => 'files',
-            'params'  => array()
-        );
+        $config = of::config('_of.com.timer', array());
+
         //文件锁路径
         empty($config['path']) && $config['path'] = OF_DATA . '/_of/of_base_com_timer';
-        //格式化为磁盘路径
         $config['path'] = of::formatPath($config['path'], ROOT_DIR);
-        //静态任务
-        $config['crontab'] = empty($config['crontab']) ? '' : of::formatPath($config['crontab'], ROOT_DIR);
-        $config['adapter'] === 'mysql' && empty($config['params']['dbPool']) && $config['params']['dbPool'] = 'default';
+
+        //初始 动态任务 配置
+        ($index = &$config['task']) || $index = array();
+        $index += array('adapter' => 'files', 'params'  => array());
+
+        //初始 静态任务 配置
+        ($index = &$config['cron']) || $index = array();
+        $index += array('path' => '', 'kvPool'  => 'default');
+        empty($index['path']) || $index['path'] = of::formatPath($index['path'], ROOT_DIR);
+
         //嵌套创建文件夹
         is_dir($config['path']) || @mkdir($config['path'], 0777, true);
     }
@@ -39,10 +42,10 @@ class of_base_com_timer {
         $lock = fopen($path . '/' . $name, 'a');
 
         //加锁失败
-        if( !flock($lock, LOCK_EX | LOCK_NB) ) {
+        if (!flock($lock, LOCK_EX | LOCK_NB)) {
             return ;
         //主动触发(非异步)
-        } else if( $type === null ) {
+        } else if ($type === null) {
             //连接解锁
             flock($lock, LOCK_UN);
             //加载定时器
@@ -51,7 +54,7 @@ class of_base_com_timer {
                 'params' => array($name, true)
             ));
         //任务列表遍历检查
-        } else if( $name === 'taskLock' ) {
+        } else if ($name === 'taskLock') {
             while (true) {
                 //静态计划任务
                 ($crontab = &self::crontab()) && self::fireCalls($crontab);
@@ -186,18 +189,20 @@ class of_base_com_timer {
      * 作者 : Edgar.lee
      */
     private static function &taskList($mode) {
+        //防止宕机
+        static $safe = array('task' => array());
         //引用配置
-        $config = &self::$config;
+        $config = &self::$config['task'];
 
         //添加计划任务
-        if( is_array($mode) ) {
+        if (is_array($mode)) {
             //生成md5
             $hash = md5(serialize($mode['call']));
 
             //文本模式
-            if( $config['adapter'] === 'files' ) {
+            if ($config['adapter'] === 'files') {
                 //读取加锁源
-                $fp = of_base_com_disk::file($config['path'] . '/taskList.php', null, null);
+                $fp = of_base_com_disk::file(self::$config['path'] . '/taskList.php', null, null);
                 //读取任务列表
                 $task = of_base_com_disk::file($fp, true, true);
 
@@ -226,20 +231,39 @@ class of_base_com_timer {
             $nowtime = time();
 
             //文本模式
-            if( $config['adapter'] === 'files' ) {
+            if ($config['adapter'] === 'files') {
                 //读取加锁源
-                $fp = of_base_com_disk::file($config['path'] . '/taskList.php', null, null);
+                $fp = of_base_com_disk::file(self::$config['path'] . '/taskList.php', null, null);
 
                 //任务列表不为空 && 读取详细信息
                 if (($result = ftell($fp) > 21) && $mode === false) {
                     $result = array();
                     //读取任务列表
                     $task = of_base_com_disk::file($fp, true, true);
+
+                    //删除上次计划日志
+                    if ($safe['task']) {
+                        foreach ($safe['task'] as &$v) {
+                            unset($task[$safe['time']][$v]);
+                        }
+
+                        if (!$task[$safe['time']]) unset($task[$safe['time']]);
+                        $callback = true;
+                    }
+
+                    //重置保险时间
+                    $safe['time'] = $nowtime + 600;
+                    $safe['task'] = array();
+
                     //有到期任务
-                    while( ($time = key($task)) && $nowtime >= $time ) {
-                        foreach($task[$time] as &$callback) {
+                    while (($time = key($task)) && $nowtime >= $time) {
+                        foreach($task[$time] as $k => &$callback) {
                             //引用回调
                             $result[] = &$callback;
+                            //保存唯一键
+                            $safe['task'][] = $k;
+                            //计划任务切换到保险位置
+                            $task[$safe['time']][$k] = &$callback;
                         }
                         //删除完成的任务
                         unset($task[$time]);
@@ -263,6 +287,19 @@ class of_base_com_timer {
 
                 //是否有数据 && 读取详细信息
                 if (($result = !empty($temp)) && $mode === false) {
+                    //删除上次计划日志
+                    if ($safe['task']) {
+                        $sql = 'DELETE FROM
+                            `_of_com_timer`
+                        WHERE
+                            `hash` IN ("' .join("','", $safe['task']). '")';
+                        of_db::sql($sql, $config['params']['dbPool']);
+                    }
+
+                    //重置保险时间
+                    $safe['time'] = $nowtime + 600;
+                    $safe['task'] = array();
+
                     $sql = "SELECT
                         `hash`, `task`
                     FROM
@@ -276,15 +313,19 @@ class of_base_com_timer {
                     $result = array();
 
                     //获取任务数据
-                    foreach($temp as &$v) {
+                    foreach ($temp as &$v) {
                         $result[] = unserialize($v['task']);
-                        $v = $v['hash'];
+
+                        //保存唯一键
+                        $safe['task'][] = $v['hash'];
                     }
 
-                    $sql = 'DELETE FROM
+                    $sql = 'UPDATE
                         `_of_com_timer`
+                    SET
+                        `time` = "' .$safe['time']. '"
                     WHERE
-                        `hash` IN ("' .join('","', $temp). '")';
+                        `hash` IN ("' .join('","', $safe['task']). '")';
                     of_db::sql($sql, $config['params']['dbPool']);
                 }
 
@@ -304,13 +345,14 @@ class of_base_com_timer {
      */
     private static function &crontab() {
         static $lastTime = null;
+        $config = &self::$config['cron'];
         $timeList = $result = array();
         $nowTime = time();
 
         //取整分时间
-        $lastTime === null && $lastTime = $nowTime - $nowTime % 60;
+        $lastTime === null && $lastTime = $nowTime - $nowTime % 60 - 60;
         //执行间隔60s
-        while( $nowTime - $lastTime > 59 ) {
+        while ($nowTime - $lastTime > 59) {
             $lastTime += 60;
             $timeList[] = array(
                 'nowTime' => $lastTime,
@@ -319,12 +361,12 @@ class of_base_com_timer {
             );
         }
 
-        if( $timeList ) {
+        if ($timeList) {
             //最新静态任务
-            is_file(self::$config['crontab']) && $crontab = include self::$config['crontab'];
+            is_file($config['path']) && $cron = include $config['path'];
 
-            if( !empty($crontab) && is_array($crontab) ) {
-                foreach($crontab as &$vt) {
+            if (!empty($cron) && is_array($cron)) {
+                foreach ($cron as &$vt) {
                     preg_match('@(?:^|\s+)(?:(?:\d+(?:-\d+)?(?:/\d+)?|\*/\d+)(?:,|))+(?:\s+|$)@', $vt['time'], $temp, PREG_OFFSET_CAPTURE);
 
                     if( $index = &$temp[0] ) {
@@ -340,18 +382,18 @@ class of_base_com_timer {
                     //每项时间分割
                     $item = preg_split('@\s+@', $vt['time']);
 
-                    foreach($timeList as &$timeBox) {
-                        foreach($item as $ki => &$vi) {
+                    foreach ($timeList as &$timeBox) {
+                        foreach ($item as $ki => &$vi) {
                             $index = &$timeBox['nowNode'][$ki];
                             //每列时间集合[14-30/3]
                             preg_match_all('@(\d+|\*)(?:-(\d+))?(?:/(\d+))?(,|$)@', $vi, $list, PREG_SET_ORDER);
 
-                            foreach($list as &$vl) {
+                            foreach ($list as &$vl) {
                                 //x 模式
-                                if( !$vl[2] ) {
+                                if (!$vl[2]) {
                                     $temp = $index == $vl[1] || $vl[1] === '*';
                                 //大-小 模式
-                                } else if( $vl[1] > $vl[2] ) {
+                                } else if ($vl[1] > $vl[2]) {
                                     $temp = $index >= $vl[1] || $index <= $vl[2];
                                 //小-大 模式
                                 } else {
@@ -359,7 +401,7 @@ class of_base_com_timer {
                                 }
 
                                 //范围通过 && 频率通过
-                                if( $temp && (!$vl[3] || $index % $vl[3] === 0) ) {
+                                if ($temp && (!$vl[3] || $index % $vl[3] === 0)) {
                                     //进入下一项校验
                                     continue 2;
                                 }
@@ -369,10 +411,28 @@ class of_base_com_timer {
                             continue 2;
                         }
 
-                        //更新当前时间
-                        $vt['time'] = $timeBox['nowTime'];
-                        //记录成功项
-                        $result[] = $vt;
+                        //计算分布标记键
+                        $tKey = 'of_base_com_timer::crontab#' . $vt['time'] . serialize($vt['call']);
+                        $lock = $tKey . '~lock~';
+
+                        //加锁直到成功
+                        if (of_base_com_kv::add($lock, '', 60, $config['kvPool'], 1)) {
+                            //读取当前任务最后执行时间戳
+                            $temp = of_base_com_kv::get($tKey, 0, $config['kvPool']);
+
+                            //对应时间整点没有执行过
+                            if ($temp < $timeBox['nowTime']) {
+                                //更新当前时间
+                                $vt['time'] = $timeBox['nowTime'];
+                                //记录成功项
+                                $result[] = &$vt;
+                                //记录最后更新时间戳
+                                of_base_com_kv::set($tKey, $vt['time'], 86400, $config['kvPool']);
+                            }
+
+                            //解锁
+                            of_base_com_kv::del($lock, $config['kvPool']);
+                        }
                     }
                 }
             } else {
@@ -394,7 +454,7 @@ class of_base_com_timer {
      * 作者 : Edgar.lee
      */
     private static function fireCalls(&$list) {
-        foreach($list as &$v) {
+        foreach ($list as &$v) {
             //触发任务
             of_base_com_net::request(OF_URL . '/index.php', array(), array(
                 'asCall' => 'of_base_com_timer::taskCall',

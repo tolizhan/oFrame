@@ -4,13 +4,13 @@
  * 注明 :
  *      统一响应状态码 : {
  *          200 : 成功
- *          401 : 域名账号可能已停用
+ *          401 : 系统账号可能已停用
  *          402 : 帐号密码错误
  *          403 : 功能操作无效
  *          404 : 需先修改帐号信息
  *          501 : 安全校验失败
  *          502 : 通信结构错误
- *          503 : 域名帐号操作权限不够
+ *          503 : 系统帐号操作权限不够
  *          504 : 票据失效
  *      }
  *      单点登录session存储结构($_SESSION['_of']['of_base_sso']) : {
@@ -23,10 +23,10 @@
  *          },
  *          "realm" : 已登陆的系统集合 {
  *              已登录系统的帐号 : {
- *                  "realmId" : 域名ID
+ *                  "realmId" : 系统ID
  *                  "ticket"  : 未使用的票
  *                  "pwd"     : 密码
- *                  "trust"   : 是否允许对接 1=可操作当前用户和域名的数据,3=还可通过帐号密码操作用户域名,7=还可获取用户列表并无限制操作用户
+ *                  "trust"   : 是否允许对接 1=可操作当前用户和系统的数据,3=还可通过帐号密码操作用户数据,7=还可获取用户列表并无限制操作用户
  *                  "cookie"  : 回调 notify 时附带的 cookie
  *                  "notify"  : 当期用户状态发生变化时回调的url
  *              }
@@ -175,7 +175,7 @@ class of_base_sso_api {
      *      }
      * 注明 :
      *      GET参数结构 : {
-     *          "name"     : 对接系统的域名账号
+     *          "name"     : 对接系统的系统账号
      *          "url"      : 简单登录时存在
      *          "callback" : jsonp回调时存在
      *      }
@@ -193,7 +193,7 @@ class of_base_sso_api {
                 `name`  = '{$_GET['name']}'
             AND `state` <> '0'";
 
-            //域名账号可用
+            //系统账号可用
             if( $temp = L::sql($sql, self::$config['dbPool']) ) {
                 //保存密码和后台授权
                 $index['realm'][$_GET['name']] = &$temp[0];
@@ -210,7 +210,7 @@ class of_base_sso_api {
                 //响应失败
                 $temp = array(
                     'state' => 401,
-                    'msg'   => '域名账号可能已停用'
+                    'msg'   => '系统账号可能已停用'
                 );
             }
 
@@ -270,7 +270,7 @@ class of_base_sso_api {
      *      }
      * 注明 : 
      *      GET参数结构 : {
-     *          "name"   : 对接系统的域名账号
+     *          "name"   : 对接系统的系统账号
      *          "notify" : 当期用户状态发生变化时回调的url
      *          "cookie" : 回调 notify 时附带的 cookie
      *          "space"  : 登录用户所属空间
@@ -304,7 +304,7 @@ class of_base_sso_api {
                 }
             } else {
                 $json['state'] = 503;
-                $json['msg'] = '域名帐号操作权限不够';
+                $json['msg'] = '系统帐号操作权限不够';
             }
         }
 
@@ -359,7 +359,7 @@ class of_base_sso_api {
     /**
      * 描述 : 回调退出登录
      * 参数 : 
-     *      name : 排除的域名账号
+     *      name : 排除的系统账号
      * 作者 : Edgar.lee
      */
     public static function logout() {
@@ -384,7 +384,7 @@ class of_base_sso_api {
      * 描述 : 修改系统数据
      * 注明 :
      *      GET参数结构 : {
-     *          "name" : 对接系统的域名账号
+     *          "name" : 对接系统的系统账号
      *          "type" : 操作类型, "getUser"=获取用户数据
 
      *              获取用户数据时,type 为 getUser
@@ -464,7 +464,7 @@ class of_base_sso_api {
             }
         } else {
             $json['state'] = 503;
-            $json['msg'] = '域名帐号操作权限不够';
+            $json['msg'] = '系统帐号操作权限不够';
         }
 
         $json['ticket'] = &$index['realm'][$_GET['name']]['ticket'];

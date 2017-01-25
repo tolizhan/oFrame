@@ -121,7 +121,7 @@ var ofBaseSsoMain = {
     /**
      * 描述 : 操作指定类型的分页
      * 参数 :
-     *      type : 分页类型, "user"=用户分页, "realm"=域名分页, "pack"=角色分页, "func"=功能分页
+     *      type : 分页类型, "user"=用户分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
      *      mode : 操作模式, 默认=搜索, 其它=分页操作
      * 返回 :
      *      
@@ -136,7 +136,7 @@ var ofBaseSsoMain = {
     /**
      * 描述 : 搜索分页
      * 参数 :
-     *      type  : 分页类型, "user"=用户分页, "realm"=域名分页, "pack"=角色分页, "func"=功能分页
+     *      type  : 分页类型, "user"=用户分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
      *      event : 触发事件
      * 返回 :
      *      
@@ -152,7 +152,7 @@ var ofBaseSsoMain = {
     /**
      * 描述 : 分页跳转
      * 参数 :
-     *      type  : 分页类型, "user"=用户分页, "realm"=域名分页, "pack"=角色分页, "func"=功能分页
+     *      type  : 分页类型, "user"=用户分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
      *      event : 操作的事件
      * 作者 : Edgar.lee
      */
@@ -168,7 +168,7 @@ var ofBaseSsoMain = {
     /**
      * 描述 : 选中分页条目
      * 参数 :
-     *      type : 分页类型, "user"=用户分页, "realm"=域名分页, "pack"=角色分页, "func"=功能分页
+     *      type : 分页类型, "user"=用户分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
      *      key  : 选中的条目ID
      * 作者 : Edgar.lee
      */
@@ -230,7 +230,7 @@ var ofBaseSsoMain = {
      * 描述 : 激活或隐藏编辑区
      * 参数 :
      *      mode : 隐藏或展示 ofBaseSsoMain.state.selNode 编辑区, true=显示, false=隐藏
-     *      type : 分页类型, 添加时使用, "user"=用户分页, "realm"=域名分页, "pack"=角色分页, "func"=功能分页
+     *      type : 分页类型, 添加时使用, "user"=用户分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
      * 作者 : Edgar.lee
      */
     'edit' : function (mode, type) {
@@ -362,7 +362,7 @@ var ofBaseSsoMain = {
     /**
      * 描述 : 分页批量操作
      * 参数 :
-     *      type : 分页类型, "user"=用户分页, "realm"=域名分页, "pack"=角色分页, "func"=功能分页
+     *      type : 分页类型, "user"=用户分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
      *      mode : 操作模式, "del"=删除, "ice"=冻结
      * 作者 : Edgar.lee
      */
@@ -405,7 +405,7 @@ var ofBaseSsoMain = {
     /**
      * 描述 : 联动操作
      * 参数 :
-     *      type : 分页类型, "user"=用户分页, "realm"=域名分页, "pack"=角色分页, "func"=功能分页
+     *      type : 分页类型, "user"=用户分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
      * 作者 : Edgar.lee
      */
     'linkage' : function (type) {
@@ -426,7 +426,7 @@ var ofBaseSsoMain = {
     /**
      * 描述 : 获取指定分页类型下钱的复选框
      * 参数 :
-     *      type : 分页类型, "user"=用户分页, "realm"=域名分页, "pack"=角色分页, "func"=功能分页
+     *      type : 分页类型, "user"=用户分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
      *      mode : 是否选中, 默认=不操作, bool=选中或取消
      * 返回 : {
      *          数据ID : 复选框对象

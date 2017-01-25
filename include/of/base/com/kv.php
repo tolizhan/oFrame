@@ -90,14 +90,28 @@ class of_base_com_kv {
      *      value : ('')添加的数据
      *      time  : (0) 过期时间
      *      pool  : ('default') 连接池
+     *      retry : 尝试重试到成功, 0=不尝试, 正整数=尝试不超过秒数
      * 返回 :
      *      false=指定键名已存在, true=成功创建
      * 作者 : Edgar.lee
      */
-    final public static function add($name, $value = '', $time = 0, $pool = 'default') {
+    final public static function add($name, $value = '', $time = 0, $pool = 'default', $retry = 0) {
         self::pool($pool);
         $value = serialize($value);
-        return self::$instList[$pool]['inst']->_add($name, $value, self::formatTime($time));
+        $index = &self::$instList[$pool]['inst'];
+        $retry *= 5000;
+
+        do {
+            $result = $index->_add($name, $value, self::formatTime($time));
+            if ($result || !$retry) {
+                break ;
+            } else {
+                $retry -= 1;
+                usleep(200);
+            }
+        } while (true);
+
+        return $result;
     }
 
     /**

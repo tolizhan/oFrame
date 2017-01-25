@@ -215,7 +215,8 @@ function syncUsers() {
             $sql = "UPDATE 
                 `_of_sso_user` 
             SET 
-                `state` = '2'
+                `state` = '2',
+                `time`  = `time`
             WHERE
                 `id` > 1";
             //冻结所以帐号
@@ -239,7 +240,7 @@ function syncUsers() {
                 $result = ldap_list(
                     $conn, $dn, 
                     //不包含两种禁用状态
-                    '(&(CN=*)(!(useraccountcontrol=514))(!(useraccountcontrol=60050)))', array(
+                    '(&(CN=*)(!(useraccountcontrol=514))(!(useraccountcontrol=66050)))', array(
                         'CN', 'description', 'title', 'pwdlastset', 'mobile'
                     )
                 );
@@ -271,7 +272,8 @@ function syncUsers() {
             $sql = "UPDATE 
                 `_of_sso_user` 
             SET 
-                `state` = '0'
+                `state` = '0',
+                `time`  = `time`
             WHERE
                 `state` = '2'";
             //冻结无用帐号
@@ -281,31 +283,32 @@ function syncUsers() {
         ldap_close($conn);
     }
 
-    $temp = $_SERVER['REQUEST_TIME'] - of::config('_of.sso.expiry', 90) * 86400;
+    //过期天数
+    $dExp = of::config('_of.sso.expiry', 90);
+    //过期描述
+    $temp = $_SERVER['REQUEST_TIME'] - $dExp * 86400;
     //过期时间
     $exp = date('Y-m-d H:i:s', $temp);
     //提醒时间
-    $tip = date('Y-m-d H:i:s', $temp - 3 * 86400);
+    $tip = date('Y-m-d H:i:s', $temp + 3 * 86400);
     $smstip = $this->_getConst('eDbPre') . 'smstip';
 
-    $sql = "SELECT
-        `_of_sso_user`.`name`, `{$smstip}`.`mobile`
+    $sqle = "SELECT
+        `_of_sso_user`.`name`, `{$smstip}`.`mobile`, 
+        DATE_ADD(`_of_sso_user`.`time`, INTERVAL {$dExp} DAY) `dExp`
     FROM
         `_of_sso_user`
             LEFT JOIN `{$smstip}` ON
                 `{$smstip}`.`name` = `_of_sso_user`.`name`
     WHERE
         `_of_sso_user`.`state` = '1'                            /*有效帐号*/
-    AND `_of_sso_user`.`time` <= '{$exp}'                       /*没过期*/
-    AND `_of_sso_user`.`time` >= '{$tip}'                       /*快过期*/
+    AND `_of_sso_user`.`time` <= '{$tip}'                       /*快过期*/
+    AND `_of_sso_user`.`time` >= '{$exp}'                       /*没过期*/
     AND `{$smstip}`.`mobile` <> ''                              /*有效手机号*/
     AND `{$smstip}`.`pwdTip` < `_of_sso_user`.`time`            /*没提示过*/";
 
     //非debug模式发短信
     if (!OF_DEBUG) {
-        //过期日期
-        $exp = substr($exp, 0, 10);
-
         //阿里短信接口
         $this->_loadFile('/aliMsg/TopSdk.php');
         $aliMsg = new TopClient;
@@ -317,7 +320,7 @@ function syncUsers() {
         $aliReq->setSmsTemplateCode('    ');
 
         //遍历发送短信
-        while ($data = L::sql($sql)) {
+        while ($data = L::sql($sqle)) {
             foreach ($data as &$v) {
                 $sql = "UPDATE 
                     `{$smstip}` 
@@ -330,7 +333,7 @@ function syncUsers() {
                 if (L::sql($sql)) {
                     $temp = json_encode(array(
                         'username' => $v['name'],
-                        'date'     => &$exp,
+                        'date'     =>  substr($v['dExp'], 0, 10),
                         'admin'    => ' 刘兴旺 QQ:332189016'
                     ));
                     $aliReq->setSmsParam($temp);

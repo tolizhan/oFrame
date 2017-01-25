@@ -1,5 +1,10 @@
 <?php
 class of_base_com_data {
+    protected static $rule = array(
+        'return' => true,
+        'result' => null
+    );
+
     /**
      * 描述 : 安全的json
      * 参数 :
@@ -26,6 +31,13 @@ class of_base_com_data {
      *     &data : 待填充校验的数据
      *      rule : 校验规则 {
      *          "."与"*"为关键词, "`"为转义字符的分割键名 : 参数结构如下, 字符串代表数组的type {
+     *              "default" : 默认值, null=必存在, 其它=默认值
+     *              "keys"    : 按顺序验证键名中各"*"的类型 [
+     *                  null为不验证, 
+     *                  type字符串验证类型(正则或内置), 
+     *                  {"type" => 同值类型, "min" => 数组最小个数, "max" => 数组最大个数},
+     *                  ...
+     *              ],
      *              "type"    : 值的类型 
      *                  数组=子节点验证,
      *                  "@"开头字符串=正则验证,
@@ -59,20 +71,13 @@ class of_base_com_data {
      *                      "call"   : 回调验证, null=验证成功, 其它=提示错误, argv参数符合回调结构, 接收参数 {
      *                          "check" :&引用的验证数据
      *                      }
-     *              "default" : 默认值, null=必存在, 其它=默认值
-     *              "keys"    : 按顺序验证键名中各"*"的类型 [
-     *                  null为不验证, 
-     *                  type字符串验证类型(正则或内置), 
-     *                  {"type" => 同值类型, "min" => 数组最小个数, "max" => 数组最大个数},
-     *                  ...
-     *              ],
      *              "argv"    : 对应类型提供的参数 {
      *                  
      *              }
      *          }
      *      }
      * 返回 :
-     *      false=成功, array=失败 {
+     *      null=成功, array=失败 {
      *          点分割的键名 : 错误描述信息,
      *          ...
      *      }
@@ -82,7 +87,7 @@ class of_base_com_data {
         static $revert = array('`' => '``', '.' => '`.', '*' => '`*');
         //处理列表, [校验数据, 校验规则, 相对定位, 类型验证(true=定位键值, false=验证键值, null=验证键名)]
         $list[] = array(&$data, &$rule, '', true);
-        $error = false;
+        self::$rule['result'] = &$error;
 
         do {
             $shift = array_shift($list);
@@ -131,7 +136,10 @@ class of_base_com_data {
 
                                         //继续引导定位
                                         if ($vs['boot']) {
-                                            $list[] = array(&$v, array(&$vs), $temp, true);
+                                            $list[] = array(&$v, array($vs), $temp, true);
+                                        //分组定位
+                                        } else if (is_array($vs['type'])) {
+                                            $list[] = array(&$v, &$vs['type'], $temp, true);
                                         //最后类型判断
                                         } else {
                                             $list[] = array(&$v, &$vs, $temp, false);
@@ -162,12 +170,15 @@ class of_base_com_data {
                             if (($isArr = is_array($index)) && isset($index[$pos])) {
                                 $index = &$index[$pos];
 
-                                //分组定位
-                                if (is_array($vs['type'])) {
-                                    $list[] = array(&$index, &$vs['type'], $postr, true);
-                                //最后类型判断
-                                } else if (!isset($ks[$kp + 1])) {
-                                    $list[] = array(&$index, &$vs, $postr, false);
+                                //最后一项
+                                if (!isset($ks[$kp + 1])) {
+                                    //分组定位
+                                    if (is_array($vs['type'])) {
+                                        $list[] = array(&$index, &$vs['type'], $postr, true);
+                                    //类型判断
+                                    } else {
+                                        $list[] = array(&$index, &$vs, $postr, false);
+                                    }
                                 }
                             //无效定位, 可初始化
                             } else if (($isArr || $index === null) && isset($vs['default'])) {
@@ -183,7 +194,7 @@ class of_base_com_data {
                     }
                 }
             //数据类型验证(不在范围内的均通过)
-            } else if ($shift[1]['type']) {
+            } else if (isset($shift[1]['type'][0])) {
                 $index = &$shift[1];
 
                 //正则匹配
@@ -318,6 +329,8 @@ class of_base_com_data {
             }
         } while ($list);
 
-        return $error;
+        if (self::$rule['return']) {
+            return $error;
+        }
     }
 }

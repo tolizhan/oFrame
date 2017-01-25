@@ -56,13 +56,13 @@ class of_base_htmlTpl_engine {
         is_string($params) ? $tplFile = of::formatPath($params, of_view::path()) : $tplFile = &$params['tplDir'];
 
         //扩展是html
-        if( strtolower(pathinfo($tplFile, PATHINFO_EXTENSION)) === 'html' ) {
+        if (strtolower(pathinfo($tplFile, PATHINFO_EXTENSION)) === 'html') {
             //模版相对路径
             $tplDir = substr($tplFile, strlen(ROOT_DIR));
             //编译文件路径
             $comFile = $config['path'] . substr($tplDir, 0, -4) . 'php';
 
-            if(
+            if (
                 //编译文件存在
                 is_file($comFile) ?
                     //debug && 模板存在 && 模板有变动
@@ -114,11 +114,11 @@ class of_base_htmlTpl_engine {
 
         //处理__del功能符
         $temp = array($config['funcPre'] . 'del');
-        foreach($parseObj->find('[' . $temp[0] . ']')->eq() as $nodeObj) {
+        foreach ($parseObj->find('[' . $temp[0] . ']')->eq() as $nodeObj) {
             //删除属性
-            if( $temp[1] = $nodeObj->attr($temp[0]) ) {
+            if ($temp[1] = $nodeObj->attr($temp[0])) {
                 $nodeObj->removeAttr($temp[0]);
-                foreach(explode(' ', $temp[1]) as $temp[2]) {
+                foreach (explode(' ', $temp[1]) as $temp[2]) {
                     $nodeObj->removeAttr($temp[2]);
                 }
             //删除节点
@@ -127,7 +127,7 @@ class of_base_htmlTpl_engine {
                 $nodeObj->remove();
 
                 //是文本节点
-                if( $textObj->attr('tagName') === '!text' ) {
+                if ($textObj->attr('tagName') === '!text') {
                     //删除换行符
                     $textObj->attr('', preg_replace('@(?:\n|\r\n|\r)(.*)@s', '\1', $textObj->attr('')));
                 }
@@ -136,7 +136,7 @@ class of_base_htmlTpl_engine {
 
         //处理__html功能符
         $temp = array($config['funcPre'] . 'html');
-        foreach($parseObj->find('[' . $temp[0] . '][tagName!=title]')->eq() as $nodeObj) {
+        foreach ($parseObj->find('[' . $temp[0] . '][tagName!=title]')->eq() as $nodeObj) {
             $line = $nodeObj->attr('>attrLine::' . $temp[0]);
             //读取__html值
             $temp[1] = $nodeObj->attr($temp[0]);
@@ -173,30 +173,34 @@ class of_base_htmlTpl_engine {
 
             //处理 load.js 的 include
             $temp = array(substr($config['tplRoot'], strlen(of_view::path(null))));
-            foreach($parseObj->find('script[include]')->eq() as $nodeObj) {
+            foreach ($parseObj->find('script[include]')->eq() as $nodeObj) {
                 //计算相对路径
                 $temp[1] = $temp[0] . '/' . $nodeObj->attr('src') . '/../' . $nodeObj->attr('include');
                 $temp[1] = of_base_com_str::realpath($temp[1]);
 
                 //转换注释标签
-                $printHeadArr['head'][] = "'_' . L::getHtmlTpl('{$temp[1]}')";
+                if ($nodeObj->parents('head')->size()) {
+                    $printHeadArr['head'][] = "'_' . L::getHtmlTpl('{$temp[1]}')";
+                } else {
+                    $nodeObj->after("<!--{$config['tagKey']} include L::getHtmlTpl('{$temp[1]}'); -->");
+                }
                 $nodeObj->remove();
             }
 
             //过滤节点
             $filterObj = $headObj->find('link, script, style')->add($headObj->contents('!--'));
-            foreach($filterObj->eq() as $nodeObj) {
+            foreach ($filterObj->eq() as $nodeObj) {
                 //读取标签名
                 $tagName = $nodeObj->attr('tagName');
                 //获取连接属性名
                 $attrName = $nodeObj->attr('tagName') === 'link' ? 'href' : 'src';
 
                 //脚本移动到最先执行
-                if( $tagName === '!--' ) {
+                if ($tagName === '!--') {
                     strncmp($config['tagKey'], $nodeObj->attr(''), $tagKeyLen) ||
                         $beforeNode->before($nodeObj);
                 //移动到 body 标签中
-                } else if(
+                } else if (
                     //是 style 或 非引用js
                     $tagName === 'style' || (
                         $tagName === 'script' &&
@@ -206,7 +210,7 @@ class of_base_htmlTpl_engine {
                 ) {
                     $afterNode->before("</>\n")->before($nodeObj);
                 //样式 和 脚本 转移到 头中
-                } else if(
+                } else if (
                     (
                         ($temp = $nodeObj->attr($config['attrPre'] . $attrName)) ||
                         $temp = $nodeObj->attr($attrName)
@@ -226,7 +230,7 @@ class of_base_htmlTpl_engine {
             $printHeadArr[''][] = "<!--{$config['tagKey']}\nof_view::head(array(\n    'title' => ";
             //获取标题
             $temp = array($headObj->find('title'));
-            if( $temp[1] = $temp[0]->attr($config['funcPre'] . 'html') ) {
+            if ($temp[1] = $temp[0]->attr($config['funcPre'] . 'html')) {
                 $printHeadArr[''][] = self::formatAttr($temp[0]->attr('>tagLine::start'), $temp[1], false);
             } else {
                 $printHeadArr[''][] = 'L::getText(\'' . addslashes($temp[0]->text()) . '\')';
@@ -235,28 +239,28 @@ class of_base_htmlTpl_engine {
             $temp = str_repeat(' ', 8);
 
             //生成head
-            if( isset($printHeadArr['head']) ) {
+            if (isset($printHeadArr['head'])) {
                 $printHeadArr[''][] = "    'head'   => array(\n{$temp}";
                 $printHeadArr[''][] = join(",\n{$temp}", $printHeadArr['head']);
                 $printHeadArr[''][] = "\n    ),\n";
             }
 
             //生成css
-            if( isset($printHeadArr['link']) ) {
+            if (isset($printHeadArr['link'])) {
                 $printHeadArr[''][] = "    'css'   => array(\n{$temp}";
                 $printHeadArr[''][] = join(",\n{$temp}", $printHeadArr['link']);
                 $printHeadArr[''][] = "\n    ),\n";
             }
 
             //生成js
-            if( isset($printHeadArr['script']) ) {
+            if (isset($printHeadArr['script'])) {
                 $printHeadArr[''][] = "    'js'    => array(\n{$temp}";
                 $printHeadArr[''][] = join(",\n{$temp}", $printHeadArr['script']);
                 $printHeadArr[''][] = "\n    ),\n";
             }
 
             //生成body attr
-            if( isset($printHeadArr['body']) ) {
+            if (isset($printHeadArr['body'])) {
                 $printHeadArr[''][] = "    'body'  => array(\n{$temp}'";
                 $printHeadArr[''][] = join("',\n{$temp}'", $printHeadArr['body']);
                 $printHeadArr[''][] = "'\n    ),\n";
@@ -285,7 +289,7 @@ class of_base_htmlTpl_engine {
         $tagKeyLen = strlen($config['tagKey']);
 
         //路径格式化
-        foreach($parseObj->find('link, img, iframe, script, a')->eq() as $nodeObj) {
+        foreach ($parseObj->find('link, img, iframe, script, a')->eq() as $nodeObj) {
             //读取标签名
             $tagName = $nodeObj->attr('tagName');
             //确定属性名
@@ -293,7 +297,7 @@ class of_base_htmlTpl_engine {
             //使用模版专用标签
             $tagName === 'script' && $nodeObj->attr('type') === 'tpl' && $nodeObj->removeAttr('type');
 
-            if( 
+            if (
                 //不存在属性符
                 $nodeObj->attr($config['attrPre'] . $attrName) === null &&
                 //有效的属性
@@ -311,14 +315,14 @@ class of_base_htmlTpl_engine {
         //属性前缀长度
         $attrPreLen = strlen($config['attrPre']);
         //替换属性操作
-        foreach($parseObj->find('[@^' .$config['attrPre']. '@]')->eq() as $nodeObj) {
+        foreach ($parseObj->find('[@^' .$config['attrPre']. '@]')->get() as $nodeKey) {
             //读取所有属性
-            $attrList = $nodeObj->attr(null);
+            $attrList = of_base_com_hParse::nodeAttr($nodeKey);
             $emptyAttr = empty($attrList['']) ? array() : array($attrList['']);
 
-            foreach($attrList as $k => &$v) {
+            foreach ($attrList as $k => &$v) {
                 //是替换属性
-                if( strncmp($k, $config['attrPre'], $attrPreLen) === 0 ) {
+                if (strncmp($k, $config['attrPre'], $attrPreLen) === 0) {
                     //替换属性的行数
                     $line = isset($attrList[$line = '>attrLine::' . $k]) ? $attrList[$line] : null;
                     //引号模式(单引 双引 或 空字符)
@@ -330,21 +334,22 @@ class of_base_htmlTpl_engine {
                     //解析新属性
                     $emptyAttr[] = $attrName ? "{$attrName}={$quote}{$temp}{$quote}" : $temp;
                     //移除功能属性及元属性
-                    $nodeObj->removeAttr($attrName)->removeAttr($k);
+                    of_base_com_hParse::nodeAttr($nodeKey, $attrName, false);
+                    of_base_com_hParse::nodeAttr($nodeKey, $k, false);
                 }
             }
 
             //替换全部功能属性
-            empty($emptyAttr) || $nodeObj->attr('', join(' ', $emptyAttr));
+            empty($emptyAttr) || of_base_com_hParse::nodeAttr($nodeKey, '', join(' ', $emptyAttr));
         }
 
         $checkSyntaxList = array();
         //解析注释中的脚本
-        foreach($parseObj->contents('!--')->eq() as $nodeObj) {
+        foreach ($parseObj->contents('!--')->eq() as $nodeObj) {
             //是注释脚本
-            if( strncmp($config['tagKey'], $temp = $nodeObj->attr(''), $tagKeyLen) === 0 ) {
+            if (strncmp($config['tagKey'], $temp = $nodeObj->attr(''), $tagKeyLen) === 0) {
                 //存在脚本
-                if( ltrim($temp = substr($temp, $tagKeyLen)) ) {
+                if (ltrim($temp = substr($temp, $tagKeyLen))) {
                     //注释行数
                     $temp = ' /*line : ' . $nodeObj->attr('>tagLine::start') . '*/' . $temp;
                     //存入语法检测列表
@@ -363,7 +368,7 @@ class of_base_htmlTpl_engine {
                 }
 
                 //是文本节点
-                if( $textObj->attr('tagName') === '!text' ) {
+                if ($textObj->attr('tagName') === '!text') {
                     $temp = explode("\n", $textObj->attr(''), 2);
                     //删除相邻的字符串
                     $temp[0] = '';
@@ -395,7 +400,7 @@ class of_base_htmlTpl_engine {
                     $text, $temp, PREG_SET_ORDER | PREG_OFFSET_CAPTURE
                 );
 
-                for($i = count($temp); --$i >= 0; ) {
+                for ($i = count($temp); --$i >= 0; ) {
                     $index = &$temp[$i];
                     $checkSyntaxList[] = $line . $index[1][0];
                     $text = substr_replace($text, "<?php{$line}{$index[1][0]}?>", $index[0][1], strlen($index[0][0]));
@@ -405,8 +410,8 @@ class of_base_htmlTpl_engine {
                 self::checkSyntax($checkSyntaxList);
                 //属性写回
                 of_base_com_hParse::nodeAttr($nodeKey, '', $text);
-            //存文本节点
-            } else if( preg_match('@^(\s*)([^<\s].+?)(\s*)$@s', $text, $temp) ) {
+            //纯文本节点
+            } else if (preg_match('@^(\s*)([^<\s].*?)(\s*)$@s', $text, $temp)) {
                 $temp[2] = "<?php{$line} echo L::getText('{$temp[2]}'); ?>\n";
                 //修改为php标签
                 of_base_com_hParse::nodeAttr($nodeKey, '', $temp[1] . $temp[2]. $temp[3]);
@@ -430,11 +435,11 @@ class of_base_htmlTpl_engine {
         $format = trim($code);
 
         //是路径格式
-        if( preg_match('@^(?:\w+:/)?(?:[\w\-.%]*(?:/[\w\-.%]*|[\w\-.%]+\.\w+|^))+([?#][^ :$]*)?$@s', $format) ) {
+        if (preg_match('@^(?:\w+:/)?(?:[\w\-.%]*(?:/[\w\-.%]*|[\w\-.%]+\.\w+|^))+([?#][^ :$]*)?$@s', $format)) {
             $format = &self::formatUrl($line, $format, $isPrint);
         //以;和}结尾的脚本
-        } else if( preg_match('@^.*[;}]\s*$@s', $format) ) {
-            if( $isPrint ) {
+        } else if (preg_match('@^.*[;}]\s*$@s', $format)) {
+            if ($isPrint) {
                 $format = '<?php /*line : ' .$line. '*/ ' . $format . ' ?>';
             } else {
                 $temp = substr(self::$config['tplFile'], strlen(ROOT_DIR));
@@ -467,11 +472,11 @@ class of_base_htmlTpl_engine {
         $line = "/*line : {$line}*/";
 
         //有属性值 && 不是网络路径
-        if( isset($format[0]) && !strpos($format, ':') ) {
+        if (isset($format[0]) && !strpos($format, ':')) {
             //非'/'开始的定位到 模板路径 下
             $format[0] === '/' || $format = of_base_com_str::realpath(self::$config['tplRoot'] . '/' . $format);
             $format = $isPrint ? "<?php {$line} echo ROOT_URL; ?>" . $format : $line . ' ROOT_URL . \'' . $format . '\'';
-        } else if( !$isPrint ) {
+        } else if (!$isPrint) {
             $format = $line . ' \'' .$format. '\'';
         }
 
@@ -491,21 +496,21 @@ class of_base_htmlTpl_engine {
         is_array($code) ? $check = join("?>\n<?php", $code) : $check = &$code;
 
         //语法检查
-        if( $check && $check = &of::syntax($check) ) {
+        if ($check && $check = &of::syntax($check)) {
             $check['file'] = substr(self::$config['tplFile'], strlen(ROOT_DIR));
 
             //生成提示信息
-            if( $tip === null ) {
+            if ($tip === null) {
                 //脚本行数计数
                 $line = array(0, 0);
                 //是数组
-                if( is_array($code) ) {
-                    foreach($code as &$v) {
+                if (is_array($code)) {
+                    foreach ($code as &$v) {
                         //脚本换行数
                         $line[0] += substr_count($v, "\n") + 1;
 
                         //在错误范围
-                        if( $line[0] >= $check['line'] ) {
+                        if ($line[0] >= $check['line']) {
                             //重新定位行
                             $check['line'] -= $line[1];
                             $tip = &$v;
@@ -523,7 +528,7 @@ class of_base_htmlTpl_engine {
             $check['tip'] = explode("\n", $tip);
             //最大值的长度
             $line = strlen(count($check['tip']));
-            foreach($check['tip'] as $k => &$v) {
+            foreach ($check['tip'] as $k => &$v) {
                 $v = str_pad(++$k, $line, '0', STR_PAD_LEFT) . ($check['line'] === $k ? '>>' : '| ') . $v;
             }
             $check['tip'] = join("\n", $check['tip']);

@@ -1,3 +1,42 @@
+版本: 204
+作者: Edgar
+日期: 2017年1月25日 17:29:12
+信息:
+说明: 计划任务支持分布式
+      修复sso LDAP密码不过期问题
+      sessinon memcache 方式改为 kv
+      添加 oFill js数据填充工具
+      修复 of_base_com_data::rule 规则校验 bug
+      of_base_com_kv::add 增加第五个参数 添加失败重试
+      html 模版引擎 动态title属性 由_改为__html
+      添加 L::rule 接口请求参数规则校验
+      添加 of_base_tool_test::check 支持接口单元测试
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/config.php
+已修改 : /trunk/demo/extensions/ssoSyncLdap/config.php
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已增加 : /trunk/include/of/accy/session/kv.php
+已删除 : /trunk/include/of/accy/session/memcache.php
+已修改 : /trunk/include/of/addin/config.js
+已增加 : /trunk/include/of/addin/oFill
+已增加 : /trunk/include/of/addin/oFill/oFill.js
+已修改 : /trunk/include/of/att/sso/js/main.js
+已修改 : /trunk/include/of/att/sso/tpl/main.tpl.php
+已修改 : /trunk/include/of/base/com/data.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/link/request.php
+已修改 : /trunk/include/of/base/link/setup.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/db/data.sql
+已修改 : /trunk/include/of/base/sso/db/table.sql
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/tool/test.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+
 版本: 201
 作者: Edgar
 日期: 2017年1月12日 15:04:52
@@ -16,6 +55,7 @@
       修正 of_base_com_net::request 通信掉线卡死问题
       ssoSyncLdap 扩展支持 淘宝短信接口
       单点登录管理界面排序搜索优化
+      加强 php 5.2 兼容性
 ----
 已修改 : /trunk
 已修改 : /trunk/changelog.txt

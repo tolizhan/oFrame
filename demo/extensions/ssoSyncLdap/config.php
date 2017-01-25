@@ -2,10 +2,11 @@
 return array(
     'properties' => array(                                  //扩展相关属性
         'name'        => '单点登录系统对接LDAP',            //显示给用户的扩展名
-        'version'     => '1.0',                             //当前版本号
+        'version'     => '2.0',                             //当前版本号
         'description' => '所有帐号来源均为LDAP系统',        //简单说明扩展的功能
         'changeLog'   => array(                             //按时间升序说明每版本的更新内容
-            '1.0' => '更新说明'
+            '2.0' => '添加短信提醒',
+            '1.0' => '更新说明',
         )
     ),
     //'options' => 'main_demo::test',                       //选项界面,当点击扩展管理界面中的选项按钮时会调用main_demo对象的test方法

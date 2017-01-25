@@ -14,7 +14,10 @@ return array(
         ),
         'com' => array(
             'timer' => array(
-                'crontab' => '/demo/timer/crontab.php'
+                'cron' => array(                                                        //计划任务
+                    'path'   => '/demo/timer/crontab.php',                              //静态计划任务文件
+                    'kvPool' => 'default'                                               //k-v 池
+                )
             )
         )
     )

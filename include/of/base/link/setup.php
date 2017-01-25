@@ -101,6 +101,22 @@ of::link('header', '$code, $text = null', 'return of_base_link_response::header(
 of::link('&buffer', '$mode = true, $pool = null', 'return of_base_link_response::buffer($mode, $pool);');
 
 /**
+ * 描述 : 请求参数规则验证
+ * 参数 :
+ *     &rule : 验证的规则 {
+ *          调度的方法名 : {
+ *              $GLOBALS 中的get post等键名 : {
+ *                  符合 of_base_com_data::rule 规则
+ *              }
+ *          }
+ *      }
+ * 返回 :
+ *      无返回, 校验失败直接 exit
+ * 作者 : Edgar.lee
+ */
+of::link('rule', '&$rule', 'of_base_link_request::rule($rule);');
+
+/**
  * 描述 : 加载集成插件
  * 参数 :
  *      name : 插件名称, 在 "/addin/config.php" 中定义的
