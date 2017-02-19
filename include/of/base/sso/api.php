@@ -91,13 +91,13 @@ class of_base_sso_api {
     public function __construct() {
         $temp = of::dispatch();
 
-        if( $temp['class'] === 'of_base_sso_api' ) {
-            if( 
+        if ($temp['class'] === 'of_base_sso_api') {
+            if (
                 isset($_GET['name']) && (
                     $temp['action'] === 'ticket' || isset($_GET['md5']) && isset($_GET['ticket'])
                 ) 
             ) {
-                if( $temp['action'] === 'ticket' ) {
+                if ($temp['action'] === 'ticket') {
                     //开启SESSION
                     self::openSession();
                 //验证参数
@@ -106,7 +106,7 @@ class of_base_sso_api {
                     unset($_GET['md5']);
 
                     //切换SESSION
-                    if( session_id() !== $temp[1] ) {
+                    if (session_id() !== $temp[1]) {
                         session_write_close();
                         //修改session
                         session_id($temp[1]);
@@ -114,8 +114,8 @@ class of_base_sso_api {
                     }
 
                     //票据存在
-                    if( $index = &of::getArrData("_of.of_base_sso.realm.{$_GET['name']}", $_SESSION) ) {
-                        if(
+                    if ($index = &of::getArrData("_of.of_base_sso.realm.{$_GET['name']}", $_SESSION)) {
+                        if (
                             //票据相同
                             $index['ticket'] === $_GET['ticket'] &&
                             //md5验证通过
@@ -182,7 +182,7 @@ class of_base_sso_api {
      * 作者 : Edgar.lee
      */
     public static function ticket() {
-        if( isset($_GET['name']) ) {
+        if (isset($_GET['name'])) {
             $index = &$_SESSION['_of']['of_base_sso'];
 
             $sql = "SELECT
@@ -194,7 +194,7 @@ class of_base_sso_api {
             AND `state` <> '0'";
 
             //系统账号可用
-            if( $temp = L::sql($sql, self::$config['dbPool']) ) {
+            if ($temp = L::sql($sql, self::$config['dbPool'])) {
                 //保存密码和后台授权
                 $index['realm'][$_GET['name']] = &$temp[0];
                 //对接权限转整型
@@ -214,9 +214,9 @@ class of_base_sso_api {
                 );
             }
 
-            if( isset($_GET['callback']) ) {
+            if (isset($_GET['callback'])) {
                 echo $_GET['callback'], '(' .of_base_com_data::json($temp). ');';
-            } else if( !empty($_GET['referer']) ) {
+            } else if (!empty($_GET['referer'])) {
                 if( $temp['state'] === 200 && isset($_GET['check']) ) {
                     $temp = array('data' => self::check(true));
                     $temp['md5'] = md5($temp['data'] . $_GET['check'] . $pwd);
@@ -286,11 +286,11 @@ class of_base_sso_api {
             'ticket' => $realm['ticket'],
         );
 
-        if( isset($_GET['user']) && isset($_GET['pwd']) ) {
-            if( $realm['trust'] & 2 ) {
+        if (isset($_GET['user']) && isset($_GET['pwd'])) {
+            if ($realm['trust'] & 2) {
                 //尝试登录
-                if( $temp = self::getLogin($_GET['user'], $_GET['pwd']) ) {
-                    if( $temp['time'] ) {
+                if ($temp = self::getLogin($_GET['user'], $_GET['pwd'])) {
+                    if ($temp['time']) {
                         //登入回调
                         self::pushState($_GET['space'], $temp);
                         $index = &$_SESSION['_of']['of_base_sso']['users'][$_GET['space']];
@@ -309,13 +309,13 @@ class of_base_sso_api {
         }
 
         //已登录
-        if( $json['state'] === 200 ) {
+        if ($json['state'] === 200) {
             //回调cookie
             $realm['cookie'] = isset($_GET['cookie']) ? $_GET['cookie'] : '';
             //登入回调
             empty($_GET['notify']) || $realm['notify'] = $_GET['notify'];
 
-            if( isset($index['user']) ) {
+            if (isset($index['user'])) {
                 //登入成功返回值
                 $json += array(
                     'user' => &$index['user'],
@@ -324,7 +324,7 @@ class of_base_sso_api {
                 );
 
                 //获取权限
-                if( $role = isset($_GET['role']) ? (int)$_GET['role'] : 0 ) {
+                if ($role = isset($_GET['role']) ? (int)$_GET['role'] : 0) {
                     $sql = "SELECT
                         GROUP_CONCAT(DISTINCT `_of_sso_pack`.id) packIds,
                         GROUP_CONCAT(DISTINCT `_of_sso_role`.funcId) funcIds
@@ -353,7 +353,7 @@ class of_base_sso_api {
         }
 
         $json = &of_base_com_data::json($json);
-        if( $isReturn ) return $json; else echo $json;
+        if ($isReturn) return $json; else echo $json;
     }
 
     /**
@@ -580,7 +580,7 @@ class of_base_sso_api {
      */
     protected static function getUrl($url, $get = array(), $key = '') {
         $url = $url ? parse_url(stripslashes($url)) : array();
-        isset($url['host']) && ($url['port'] = empty($url['port']) ? '' : ':' . $url['port']);
+        isset($url['host']) && empty($url['port']) && $url['port'] = '';
         $url += of_base_com_net::$params;
         $url['port'] && $url['port'] = ':' . $url['port'];
         parse_str($url['query'], $url['query']);

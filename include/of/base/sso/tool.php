@@ -29,7 +29,7 @@ class of_base_sso_tool extends of_base_sso_api {
             //去斜线
             $_POST['data'][1] === '"' || $_POST['data'] = stripslashes($_POST['data']);
 
-            if( 
+            if (
                 isset($tool['check']) && isset($_POST['md5']) &&
                 md5($_POST['data'] . $tool['check'] . $config['key']) === $_POST['md5'] 
             //校验通过
@@ -44,9 +44,9 @@ class of_base_sso_tool extends of_base_sso_api {
                 echo '校验失败: ', $_POST['data'];
                 exit;
             }
-        } else if( $type && empty($tool['ticket']) ) {
+        } else if ($type && empty($tool['ticket'])) {
             //接口回写
-            if( isset($_COOKIE['of_base_sso']['ticket'][$space]) ) {
+            if (isset($_COOKIE['of_base_sso']['ticket'][$space])) {
                 $tool['ticket'] = $_COOKIE['of_base_sso']['ticket'][$space];
                 //删除票据
                 setcookie(rawurlencode('of_base_sso[ticket][' .$space. ']'), null, null, null);
@@ -54,7 +54,7 @@ class of_base_sso_tool extends of_base_sso_api {
                 self::login(null, $space);
             } else {
                 echo "<script>var callback = function (json) {
-                    if( json.state === 200 ) {
+                    if (json.state === 200) {
                         document.cookie = encodeURIComponent('of_base_sso[ticket][{$space}]') + '=' + encodeURIComponent(json.ticket);
                         window.location.reload();
                     } else {
@@ -68,7 +68,7 @@ class of_base_sso_tool extends of_base_sso_api {
         }
 
         //没登入
-        if( empty($tool['online'][$space]['user']) ) {
+        if (empty($tool['online'][$space]['user'])) {
             return false;
         //已登录
         } else {
@@ -112,7 +112,7 @@ class of_base_sso_tool extends of_base_sso_api {
         );
 
         //跳转模式的登录路径
-        if( is_string($args) ) {
+        if (is_string($args)) {
             empty($tool['check']) && $tool['check'] = uniqid();
             $data = array(
                 'a'       => 'index',
@@ -124,7 +124,7 @@ class of_base_sso_tool extends of_base_sso_api {
             $data = of_base_sso_api::getUrl($config['url'], $data);
             return $data;
         } else {
-            if( is_array($args) ) {
+            if (is_array($args)) {
                 //指定帐号密码登入
                 !empty($args['user']) && $data += array(
                     'user' => &$args['user'],
@@ -134,9 +134,9 @@ class of_base_sso_tool extends of_base_sso_api {
 
             $data = &self::request($data, $space);
             $tool = &$_SESSION['_of']['of_base_sso']['tool'];
-            if( $data['state'] === 200 ) {
+            if ($data['state'] === 200) {
                 //用户未登录
-                if( empty($data['user']) ) {
+                if (empty($data['user'])) {
                     //移除登入状态
                     unset($tool['online'][$space]);
                 } else {
@@ -169,7 +169,7 @@ class of_base_sso_tool extends of_base_sso_api {
         $data = &self::request($params, $space);
 
         //解析成功
-        if( $data['state'] === 200 ) {
+        if ($data['state'] === 200) {
             unset($_SESSION['_of']['of_base_sso']['tool']['online'][$space]);
             return true;
         }
@@ -215,7 +215,7 @@ class of_base_sso_tool extends of_base_sso_api {
      * 作者 : Edgar.lee
      */
     public static function &user($key = null, $space = 'default') {
-        if( isset($_SESSION['_of']['of_base_sso']['tool']['online'][$space]) ) {
+        if (isset($_SESSION['_of']['of_base_sso']['tool']['online'][$space])) {
             $result = &$_SESSION['_of']['of_base_sso']['tool']['online'][$space];
             if( is_string($key) ) {
                 isset($result[$key]) ?
@@ -231,7 +231,7 @@ class of_base_sso_tool extends of_base_sso_api {
      * 作者 : Edgar.lee
      */
     public static function state() {
-        if( 
+        if (
             isset($_SESSION['_of']['of_base_sso']['tool']['ticket']) && 
             $_SESSION['_of']['of_base_sso']['tool']['ticket'] === $_GET['ticket'] 
         ) {
@@ -298,7 +298,7 @@ class of_base_sso_tool extends of_base_sso_api {
         //重启session
         $mode && (function_exists('session_open') ? session_open() : session_start());
 
-        if( $response['state'] && $data = json_decode($data, true) ) {
+        if ($response['state'] && $data = json_decode($data, true)) {
             $_SESSION['_of']['of_base_sso']['tool']['ticket'] = &$data['ticket'];
             unset($data['ticket']);
         } else {
@@ -308,10 +308,10 @@ class of_base_sso_tool extends of_base_sso_api {
             );
         }
 
-        if( $data['state'] >= 500 ) {
+        if ($data['state'] >= 500) {
             unset($_SESSION['_of']['of_base_sso']['tool']);
 
-            if( $data['state'] !== 504 ) {
+            if ($data['state'] !== 504) {
                 //相关校验信息未通过
                 trigger_error("Bad request: " . print_r($response, true));
                 exit;

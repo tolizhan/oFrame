@@ -1,0 +1,14 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>js include 演示</title>
+    <script src="code/load.js" include="../head.html"></script>
+</head>
+<body>
+    <script>alert('主体展示')</script>
+    主体内容
+    <script>L.open('tip')('静态页面调用框架集成插件演示成功', false);</script>
+    <script src="code/load.js" include="../foot.html"></script>
+</body>
+</html>

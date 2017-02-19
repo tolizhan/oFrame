@@ -39,14 +39,14 @@ L === undefined && (L = {
         result.config.success = result.config.error = function () {}
 
         //完整请求(对象)
-        if( typeof value === 'object' ) {
+        if (typeof value === 'object') {
             L.each(result.config, value);
             typeof result.config.data === 'string' && (result.config.data = {'post' : result.config.data});
         //简单请求(字符串)
         } else {
             //不是空字符串 && 设置请求地址
             value && (result.config.url = value);
-            switch( L.type(data) ) {
+            switch (L.type(data)) {
                 //作为成功回调
                 case 'function':
                     func = data;
@@ -68,7 +68,7 @@ L === undefined && (L = {
         typeof result.config.data.post === 'string' || (result.config.data.post = L.param(result.config.data.post));
         //get文本化
         typeof result.config.data.get === 'string' || (result.config.data.get = L.param(result.config.data.get));
-        if( result.config.data.get ) {
+        if (result.config.data.get) {
             //追加?和&
             result.config.url += result.config.url.indexOf('?') == -1 ?
                 '?' : result.config.url.slice(-1) === '?' ? '' : '&';
@@ -84,8 +84,9 @@ L === undefined && (L = {
         result.ajax.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 
         result.ajax.onreadystatechange = function() {
-            if( result.ajax.readyState === 4 ) {
-                if( result.ajax.status === 200 ) {
+            if (result.ajax.readyState === 4) {
+                //网络响应 200 || 本地响应 0
+                if (result.ajax.status === 200 || result.ajax.status === 0) {
                     result.config.success.call(result.config.context, result.ajax.responseText, result);
                 } else {
                     result.config.error.call(result.config.context, result);
@@ -93,7 +94,7 @@ L === undefined && (L = {
             }
         };
 
-        try{ result.ajax.send(result.config.data.post); } catch(e) {}
+        try { result.ajax.send(result.config.data.post); } catch(e) {}
         return result;
     },
 
@@ -142,15 +143,15 @@ L === undefined && (L = {
         var result = [], temp, ekey, type, mode = !L.type(value, true);
 
         //返回完整cookie
-        if( value == null ) return fullCookie;
+        if (value == null) return fullCookie;
 
         //路径设置
         path = path == null && (path = '/') || path ? '; path=' + ROOT_URL + path + (path === '/' ? '' : '/'): '';
         //时间戳格式
-        if( (temp = String(expi)).match(/^\d+$/) ) {
+        if ((temp = String(expi)).match(/^\d+$/)) {
             (expi = new Date).setTime(expi.getTime() + parseInt(temp));
         //日期格式
-        } else if( temp = temp.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?: (\d{1,2}):(\d{1,2}):(\d{1,2}))?$/) ) {
+        } else if (temp = temp.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?: (\d{1,2}):(\d{1,2}):(\d{1,2}))?$/)) {
             expi = new Date(temp[1], temp[2] - 1, parseInt(temp[3], 10), temp[4] || 0, temp[5] || 0, temp[6] || 0);
         }
         //date对象 ? 指定过期 : 关闭过期
@@ -158,19 +159,19 @@ L === undefined && (L = {
 
         //遍历数据, cookie引用, 前缀
         (function (data, cookie, head) {
-            for(var i in data) {
+            for (var i in data) {
                 //编码键值
                 ekey = encodeURIComponent(i);
                 //编码头
                 head += encodeURIComponent(head ? '[' +ekey+ ']' : ekey);
 
                 //是字符串 && 文本参数
-                if( (type = L.type(data[i])) === 'string' && mode ) {
+                if ((type = L.type(data[i])) === 'string' && mode) {
                     //'`'关键词转换
                     type = typeof (data[i] = data[i] === '`t' || data[i] !== '`f' && data[i].replace(/``/g, '`'));
                 }
 
-                switch( type ) {
+                switch (type) {
                     //可遍历
                     case 'object' : case 'array':
                         arguments.callee(data[i], cookie[i] || {}, head);
@@ -185,14 +186,14 @@ L === undefined && (L = {
                     //设置数据
                     default       :
                         delRegExp = [RegExp('(?:^|; )(' +head+ '(?=%5B|=)[^=]*)', 'g'), document.cookie];
-                        while( temp = delRegExp[0].exec(delRegExp[1]) ) {
+                        while (temp = delRegExp[0].exec(delRegExp[1])) {
                             document.cookie = temp[1] + '=' +path+ '; expires=Sat, 31 Jan 1970 16:00:00 GMT';
                         }
                         type === 'boolean' || (document.cookie = head +'='+ encodeURIComponent(data[i]) + path + expi);
                 }
             }
         //不可遍历 ? 当字符串解析 : 引用对象
-        })( mode ? value = L.param(String(value), '; ') : value, fullCookie, '' );
+        })(mode ? value = L.param(String(value), '; ') : value, fullCookie, '');
 
         return result.length > 1 ? result : result[0];
     },
@@ -210,9 +211,9 @@ L === undefined && (L = {
         //长度统计, 是否真实长度
         var length = 0, real = asNum ? L.type(asNum) === 'object' : !(asNum = false);
 
-        for(var i in value) {
+        for (var i in value) {
             //转成对象 || 键是数字
-            if( real || /^\d+$/.test(i) ) {
+            if (real || /^\d+$/.test(i)) {
                 //提取新数组
                 asNum[i] = value[i];
                 real ? ++length : length = Math.max(parseInt(i, 10) + 1, length);
@@ -244,19 +245,19 @@ L === undefined && (L = {
             var temp;
 
             //删除数据
-            if( typeof name !== 'string' ) {
+            if (typeof name !== 'string') {
                 //读取原始数据
                 temp = L.val(data, value, L.val(data, value));
                 //删除结构
                 delete temp.pos[temp.key];
                 return temp.val;
             //设置数据
-            } else if( arguments.length > 1 ) {
+            } else if (arguments.length > 1) {
                 //去重
-                if( unique !== false && /\[\]$/.test(name) ) {
+                if (unique !== false && /\[\]$/.test(name)) {
                     temp = L.val(data, name.slice(0, -2));
 
-                    if(
+                    if (
                         //方法去重
                         unique == null && typeof value === 'function' && L.search(temp, value) ||
                         //完整去重
@@ -288,22 +289,22 @@ L === undefined && (L = {
     'each'          : (function(){
         //数组方法, 替换方式, 回调方法, 默认回调
         var arg, type, call, func = function(data, arg){
-            for(var i in arg) {
+            for (var i in arg) {
                 //单层合并
-                if( type === undefined ) {
+                if (type === undefined) {
                     data[i] = arg[i];
                 //深度合并 || 深层补充
-                } else if( type || type === null ) {
+                } else if (type || type === null) {
                     //参数可遍历 && 数据可遍历
-                    if( L.type(arg[i], true) && L.type(data[i], true) ) {
+                    if (L.type(arg[i], true) && L.type(data[i], true)) {
                         //深度遍历
                         func(data[i], arg[i]);
                     //深度合并 || 数据无值
-                    } else if( type || data[i] === undefined ) {
+                    } else if (type || data[i] === undefined) {
                         data[i] = arg[i];
                     }
                 //单层补充
-                } else if( data[i] === undefined ) {
+                } else if (data[i] === undefined) {
                     data[i] = arg[i];
                 }
             }
@@ -313,7 +314,7 @@ L === undefined && (L = {
             //type(undefined = 单层合并, null=深层补充)
             arg = arguments, type = arg[1] ? undefined : null;
 
-            switch(typeof arg[1]) {
+            switch (typeof arg[1]) {
                 //自定义回调
                 case 'function':
                     //使用指定回调
@@ -330,7 +331,7 @@ L === undefined && (L = {
                     //提取原始对象
                     call = Array.prototype.shift.call(arg) || {};
                     //遍历数据 IE6 arguments 不能forin
-                    for(var i = 0, iL = arg.length; i < iL; ++i) func(call, arg[i]);
+                    for (var i = 0, iL = arg.length; i < iL; ++i) func(call, arg[i]);
                     return call;
             }
         }
@@ -349,7 +350,7 @@ L === undefined && (L = {
         var t = document.createElement("div");
 
         //解码
-        if( encode === false ) {
+        if (encode === false) {
             t.innerHTML = ('-' + value).replace(/<br>|\r\n|\r|\n/ig, '\1');
             return (t.innerText || t.textContent).substr(1).replace(/\x01/ig, '\n');
         //编码
@@ -410,9 +411,9 @@ L === undefined && (L = {
             var key = false, objWin = L.window(obj), index;
 
             //解决 IE 多次 resize 问题
-            if( isIe && type === 'resize' && obj === objWin ) {
+            if (isIe && type === 'resize' && obj === objWin) {
                 //IE < 9 的 body 还未加载完成
-                if( obj.document.body === null ) {
+                if (obj.document.body === null) {
                     //自定义参数转移
                     param && (func = param, param = undefined);
                     L.event(function () {
@@ -422,12 +423,12 @@ L === undefined && (L = {
                     return ;
                 }
 
-                if( !(index = objWin.document.getElementsByTagName('L.event.resize')[0]) ) {
+                if (!(index = objWin.document.getElementsByTagName('L.event.resize')[0])) {
                     objWin.document.body.appendChild(index = document.createElement('L.event.resize'));
                     L.each(index.runtimeStyle, {'width': '50%', 'height': '50%', 'position' : 'absolute', 'top' : '-100%'});
 
                     //解决 IE 6 百分比高度失效
-                    if( L.browser.version == 6 && objWin.document.body.currentStyle.height === 'auto' ) {
+                    if (L.browser.version == 6 && objWin.document.body.currentStyle.height === 'auto') {
                         objWin.document.body.style.height = '90%';
                     }
                 }
@@ -435,7 +436,7 @@ L === undefined && (L = {
                 obj = index;
             }
 
-            for(var i in list) {
+            for (var i in list) {
                 //找到 && 读取key
                 list[i].target === obj && (key = i);
             }
@@ -445,10 +446,10 @@ L === undefined && (L = {
             index = list[key].event[type] || (list[key].event[type] = {'back' : []});
 
             //函数操作
-            if( func ) {
-                for(var i in index.back) {
+            if (func) {
+                for (var i in index.back) {
                     //找到函数
-                    if( index.back[i] === func ) {
+                    if (index.back[i] === func) {
                         //添加操作 || 删除函数
                         isAdd || index.back.splice(i, 1);
                         //列表不空 || 删除事件
@@ -458,17 +459,17 @@ L === undefined && (L = {
                 }
 
                 //需要监听
-                if( !index.call ) {
+                if (!index.call) {
                     index.call = function ( evt ) {
                         //备份事件
                         var o = {'b' : L.event.e};
 
-                        switch( type ) {
+                        switch (type) {
                             //标准浏览器穿入穿出
                             case 'mouseenter': case 'mouseleave':
-                                if( !isIe && (o.t = evt.relatedTarget)) {
+                                if (!isIe && (o.t = evt.relatedTarget)) {
                                     do {
-                                        if( o.t === obj ) return ;
+                                        if (o.t === obj) return ;
                                     } while ( o.t = o.t.parentNode );
                                 }
                                 break;
@@ -481,8 +482,8 @@ L === undefined && (L = {
                         param = undefined;
 
                         //遍历调用
-                        for(var i in index.back) {
-                            if( index.back[i].call(obj, o.c) === false ) {
+                        for (var i in index.back) {
+                            if (index.back[i].call(obj, o.c) === false) {
                                 //禁止默认, 禁止冒泡
                                 o.c.isDefault = o.c.isBubble = false;
                                 break;
@@ -499,10 +500,10 @@ L === undefined && (L = {
                 }
 
                 //添加操作
-                if( isAdd ) {
+                if (isAdd) {
                     //追加函数
                     index.back[index.back.length] = func;
-                    if( type === 'ready' && core.isRead !== false ) {
+                    if (type === 'ready' && core.isRead !== false) {
                         core.isRead ? func.call(obj, {'target' : obj, 'type' : type, 'event' : {}}) : (function () {
                             try {
                                 //IE && 调用元素是否出错
@@ -517,7 +518,7 @@ L === undefined && (L = {
                     }
                 }
             //删除事件
-            } else if( func === false ) {
+            } else if (func === false) {
                 index.call && (isIe ? 
                     obj.detachEvent(alias[type] || 'on' + type, index.call) : obj.removeEventListener(alias[type] || type, index.call, false)
                 );
@@ -527,7 +528,7 @@ L === undefined && (L = {
             //触发事件
             } else {
                 //IE
-                if( isIe ) {
+                if (isIe) {
                     //系统触发
                     try{
                         obj.fireEvent(alias[type] || 'on' + type);
@@ -555,14 +556,14 @@ L === undefined && (L = {
             typeof a === 'function' && (c = a, a = document, b = 'ready');
 
             //事件操作
-            if( b ) {
+            if (b) {
                 //多事件拆分
                 b = b.match(/^\s*(.*?)\s*$/)[1].split(/\s+/);
                 //保存触发参数
                 L.type(c, true) && (p = c, c = null);
 
                 //事件批量操作
-                for(var i in b) (param = p, core(a, b[i], c, d == null || d));
+                for (var i in b) (param = p, core(a, b[i], c, d == null || d));
             //获取元素
             } else {
                 b = arguments.callee.caller, d = {'l' : []};
@@ -570,7 +571,7 @@ L === undefined && (L = {
                     //第一个参数
                     c = b.arguments[0];
                     //是对象 && (旧IE事件 || 事件对象)
-                    if( L.type(c) === 'object' && (!c.toString || (c + '').indexOf('Event') > 0) ) {
+                    if (L.type(c) === 'object' && (!c.toString || (c + '').indexOf('Event') > 0)) {
                         d.e = c; 
                         break;
                     } else {
@@ -579,7 +580,7 @@ L === undefined && (L = {
                     }
                 } while ( (b = b.caller) && !b.__eached );
                 //清除遍历标记
-                for(var i in d.l) delete d.l[i].__eached;
+                for (var i in d.l) delete d.l[i].__eached;
 
                 //读取成功 || 尝试两套备用方案
                 d.e || (d.e = (a || (a = window)).event || L.val(a, 'L.event.e'));
@@ -612,7 +613,7 @@ L === undefined && (L = {
         var str = function (key, holder) {
             var i, k, v, length, partial, value = holder[key];
 
-            if( value == null ) return 'null';
+            if (value == null) return 'null';
 
             switch (typeof value) {
                 case 'string':
@@ -623,7 +624,7 @@ L === undefined && (L = {
                     return String(value);
                 case 'object':
                     partial = [];
-                    if( L.type(value) === 'array' && L.count(value) === value.length && L.count(value, true) === value.length ) {
+                    if (L.type(value) === 'array' && L.count(value) === value.length && L.count(value, true) === value.length) {
                         length = value.length;
                         for (i = 0; i < length; i += 1) {
                             partial[i] = str(i, value) || 'null'
@@ -647,7 +648,7 @@ L === undefined && (L = {
         return function (value, encode) {
             try {
                 //强制编码 || 不是字符串
-                if( encode || typeof value !== 'string' ) {
+                if (encode || typeof value !== 'string') {
                     return str('', {'': value}).replace(/</g, '\\u003C').replace(/>/g, '\\u003E');
                 //json解码
                 } else {
@@ -683,14 +684,14 @@ L === undefined && (L = {
             list ? list = cache[list].list : cache[cache.length] = {'obj' : win, 'list' : list = {}};
 
             //已加载过
-            if( list[url] ) {
+            if (list[url]) {
                 //无需加载
                 return false;
             //未加载过
             } else {
                 L.ajax({'url' : OF_URL + '/addin' + url, 'async' : false, 'success' : function (code, ajax) {
                     //css
-                    if( /.*css$/.test(url) ) {
+                    if (/.*css$/.test(url)) {
                         var div = win.document.createElement("div");
                         //提取url(xxx)
                         code = code.replace(/url\((\'|\"|)([\w\/\.]*)\1\)/ig, function(){
@@ -718,7 +719,7 @@ L === undefined && (L = {
             config || sync('/config.js', null), win || (win = window);
 
             //插件存在
-            if( run = config[name] ) {
+            if (run = config[name]) {
                 //加载前调用
                 run.ready && run.ready.call(win, param, run, name);
                 for(var i in run.list) {
@@ -744,30 +745,30 @@ L === undefined && (L = {
         typeof separ === 'string' || (separ = '&');
 
         //转成对象
-        if( typeof value === 'string' ) {
+        if (typeof value === 'string') {
             math = new RegExp('(?:^|' +separ+ ')((?:(?!' +separ+ ')[^\\[\\]=])+)((?:\\[(?:(?!' +separ+ ')[^\\]=])*\\])*)(?:=((?:(?!' +separ+ ').)*))?', 'g');
             result = {};
 
-            while( temp = math.exec(value) ) {
+            while (temp = math.exec(value)) {
                 //键转义
                 temp[1] = decodeURIComponent(temp[1].replace(/\+/g, '%20'));
                 //值为undefined || 初始化''
                 temp[3] = temp[3] ? decodeURIComponent(temp[3].replace(/\+/g, '%20')) : '';
 
                 //字符数组
-                if( temp[2] ) {
+                if (temp[2]) {
                     //转成实体数组
                     temp[2] = temp[2].substr(1, temp[2].length - 2).split('][');
                     //初始键并引用
                     temp.index = L.type(result[temp[1]], true) ? result[temp[1]] : (result[temp[1]] = {});
 
-                    for(var i = 0, iL = temp[2].length - 1; i <= iL; ++i) {
+                    for (var i = 0, iL = temp[2].length - 1; i <= iL; ++i) {
                         //当前key值
                         temp.key = temp[2][i] ?
                             decodeURIComponent(temp[2][i].replace(/\+/g, '%20')) : L.count(temp.index, true);
 
                         //最后一个元素
-                        if( i === iL ) {
+                        if (i === iL) {
                             temp.index[temp.key] = temp[3];
                         //还有其它元素
                         } else {
@@ -784,13 +785,13 @@ L === undefined && (L = {
         } else {
             result = [];
             (function (value, preStr) {
-                for(var i in value) {
+                for (var i in value) {
                     temp = encodeURIComponent(i), math = true;
                     //有前缀 ? 前缀[键] : 键
                     temp = preStr ? preStr + '[' +temp+ ']' : temp;
 
                     //可遍历 && 不为空
-                    if( L.type(value[i], true) && (math = L.count(value[i])) ) {
+                    if (L.type(value[i], true) && (math = L.count(value[i]))) {
                         arguments.callee(value[i], temp);
                     } else {
                         result[result.length] = temp + '=' + (math && value[i] ? encodeURIComponent(value[i]) : '');
@@ -817,7 +818,7 @@ L === undefined && (L = {
         //返回的结果集
         var result = [];
 
-        for(var i in data) (area ? L.val(data[i], area) : data[i]) === value && (result[result.length] = i);
+        for (var i in data) (area ? L.val(data[i], area) : data[i]) === value && (result[result.length] = i);
 
         return result.length ? result : false;
     },
@@ -864,36 +865,36 @@ L === undefined && (L = {
 
         pos.substr(0, 1) === '[' && (regex.lastIndex = 1);
         //读取下一键值
-        while( match = regex.exec(pos) ) {
+        while (match = regex.exec(pos)) {
             //更新引用对象
             index.key === undefined || (index.obj = index.obj[index.key]);
 
             //提取并优化键值
             index.key = match[1].replace(/`(.|\s)/g, '$1');
             //是数组 && (负数 || '')
-            if( match[2] && /^(?:-\d+|)$/.test(index.key) ) {
+            if (match[2] && /^(?:-\d+|)$/.test(index.key)) {
                 //负数或''键值转换成正数键
                 index.key = L.count(index.obj, true) + (index.key ? parseInt(index.key, 10) : 0);
                 index.key < 0 && (index.key = 0);
             }
 
             //读取模式
-            if( arguments.length === 2 ) {
+            if (arguments.length === 2) {
                 //对象无效
-                if( index.obj[index.key] === undefined ) return ;
+                if (index.obj[index.key] === undefined) return ;
             } else {
                 //可引用 || 赋值 = (数组 ? [] : {})
                 L.type(index.obj[index.key], false) || (index.obj[index.key] = match[2] ? [] : {});
             }
 
-            switch( pos.substr(regex.lastIndex, 1) ) {
+            switch (pos.substr(regex.lastIndex, 1)) {
                 //(结束 || '[' || '.') && 分析移动一位
                 case '': case '[': case '.': regex.lastIndex += 1;
             }
         }
 
         //读取模式
-        if( arguments.length === 2 ) {
+        if (arguments.length === 2) {
             return index.obj[index.key];
         //设置模式
         } else {

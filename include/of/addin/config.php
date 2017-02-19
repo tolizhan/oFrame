@@ -1,5 +1,5 @@
 <?php
-switch( $name ) {
+switch ($name) {
     //phpExcel
     case 'excel':
         class_exists('PHPExcel', false) || require OF_DIR . '/addin/PHPOffice/PHPExcel.php';

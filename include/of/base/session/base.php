@@ -16,8 +16,8 @@ class of_base_session_base {
      * 描述 : 初始化
      * 作者 : Edgar.lee
      */
-    final public static function init($type = false) {
-        if ($type) {
+    final public static function init($type) {
+        if ($type === true) {
             //session类
             self::$adapterClass = 'of_accy_session_' . of::config('_of.session.adapter', 'files');
             //session最大生存时间(秒)
@@ -57,26 +57,6 @@ class of_base_session_base {
             //自动开启session
             session_open();
         }
-    }
-
-    /**
-     * 描述 : 自定义会话函数
-     * 作者 : Edgar.lee
-     */
-    final public static function handler() {
-        session_set_save_handler(
-            //顺序 1
-            'of_base_session_base::open', 
-            //顺序 5
-            'of_base_session_base::close', 
-            //顺序 2
-            'of_base_session_base::read', 
-            //顺序 4
-            'of_base_session_base::write', 
-            //read->destroy->close
-            'of_base_session_base::destroy', 
-            //顺序 3 开启SESSION时调用
-            'of_base_session_base::gc');
     }
 
     /**
@@ -166,7 +146,20 @@ function session_open() {
         //php < 5.3 每次开启均加载 handler
         $repeat === null && $repeat = version_compare(PHP_VERSION, '5.3', '<');
         //会话接入
-        of_base_session_base::handler();
+        session_set_save_handler(
+            //顺序 1
+            'of_base_session_base::open', 
+            //顺序 5
+            'of_base_session_base::close', 
+            //顺序 2
+            'of_base_session_base::read', 
+            //顺序 4
+            'of_base_session_base::write', 
+            //read->destroy->close
+            'of_base_session_base::destroy', 
+            //顺序 3 开启SESSION时调用
+            'of_base_session_base::gc'
+        );
     }
 
     return session_status() === 2 || session_start();

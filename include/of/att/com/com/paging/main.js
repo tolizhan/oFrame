@@ -470,7 +470,7 @@ L.paging || (function () {
                         for(var i in temp.w) if( temp.w[i].call(this, 'before') === false ) return ;
 
                         //整理排序列表
-                        for(var i in temp.d) /^[\w-`]+$/.test(i) && temp.t.push(i + ' ' + temp.d[i]);
+                        for(var i in temp.d) /^[\w.-`]+$/.test(i) && temp.t.push(i + ' ' + temp.d[i]);
                         //排序字段
                         temp.post.sort = temp.t.join(', ');
                         //共享参数

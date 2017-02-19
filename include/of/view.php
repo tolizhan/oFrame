@@ -71,7 +71,7 @@ class of_view {
             $tpl = self::path() . $tpl;
         }
 
-        //触发 of::dispatch 事件
+        //触发 of_view::display 事件
         of::event('of_view::display', true, array('tplDir' => &$tpl, 'viewObj' => $temp = self::inst()));
         $temp->objDisplay($tpl);
     }

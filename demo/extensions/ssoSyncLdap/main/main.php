@@ -27,7 +27,7 @@ function mgmt() {
  * 作者 : Edgar.lee
  */
 function login($params = null) {
-    if( $params ) {
+    if (isset($params['sql'])) {
         //用户登录SQL
         if( strpos($params['sql'], 'AND `pwd`   = MD5(') ) {
             $temp = '@SELECT.*FROM\\s+`_of_sso_user`\\s+WHERE\\s+`name`  = \'(.*)\'\\s+AND `pwd`   = MD5\\(\'(.*)\'\\)\\s+AND `state` <> \'0\'@s';
@@ -388,11 +388,13 @@ function setUser(&$params) {
         ),
         'pwd'  => empty($params['pwd']) ? '' : md5($params['pwd'])
     ));
+    //(无密码 || 初始密码) && 使用过期时间
+    (!$temp['pwd'] || strlen($params['pwd']) < 8) && $temp['time'] = '2000-01-01 00:00:00';
 
     $sql = "INSERT INTO `_of_sso_user` (
         `name`, `pwd`, `nike`, `notes`, `state`, `find`, `time`
     ) VALUES (
-        '{$temp['user']}', '{$temp['pwd']}', '{$temp['name']}', '{$temp['dept']}::{$temp['post']}', '1', '', '2000-01-01 00:00:00'
+        '{$temp['user']}', '{$temp['pwd']}', '{$temp['name']}', '{$temp['dept']}::{$temp['post']}', '1', '', '{$temp['time']}'
     ) ON DUPLICATE KEY UPDATE 
         `nike` = VALUES(`nike`),
         `notes` = VALUES(`notes`),
@@ -401,7 +403,7 @@ function setUser(&$params) {
     //明确密码
     if( $temp['pwd'] ) {
         $sql .= ",
-        `time` = IF(`pwd` = '' OR `pwd` = '{$temp['pwd']}', `time`, '{$temp['time']}'), 
+        `time` = IF('{$temp['pwd']}' = '' OR `pwd` = '{$temp['pwd']}', `time`, '{$temp['time']}'), 
         `pwd` = '{$temp['pwd']}'";
     //不改变时间
     } else {

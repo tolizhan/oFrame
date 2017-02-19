@@ -10,7 +10,7 @@
  */
 function initSql($params = null) {
     //SQL调用前
-    if( $params ) {
+    if (isset($params['sql'])) {
         //移除自身
         of::event('of_db::before', false, array($this, __FUNCTION__));
         //SQL执行前(最后位置)
@@ -159,7 +159,7 @@ function afterSql($params) {
  */
 function logMsg($params = null) {
     //::halt 事件
-    if ($params) {
+    if (isset($params['parse'])) {
         $parseObj = $params['parse']('obj');
         $logPath = $this->_getConst('eDir') . '/_info/log';
 

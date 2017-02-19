@@ -47,23 +47,21 @@ class of_base_extension_match {
      * 描述 : 初始化扩展
      * 作者 : Edgar.lee
      */
-    static public function init() {
+    static public function init($params) {
         //移除调度事件
         of::event('of::dispatch', false, 'of_base_extension_match::init');
 
         //全部扩展信息
         $extensionsInfo = of_base_extension_manager::getExtensionInfo();
-        //调度配置文件
-        $dispatchConfig = of::dispatch();
         //独享页面的类名
         $exclusive = of::config('_of.extension.exclusive', 'of_ex');
         //扩展配置文件
         $matchUri = of::config('_of.extension.format', array('', '_', '::', ''));
         //生成匹配标识符
-        $matchUri = $matchUri[0] . join($matchUri[1], explode('_', $dispatchConfig['class'])) .
-            $matchUri[2] . $dispatchConfig['action'] . $matchUri[3];
+        $matchUri = $matchUri[0] . join($matchUri[1], explode('_', $params['class'])) .
+            $matchUri[2] . $params['action'] . $matchUri[3];
         //限制扩展
-        $restricExtension = isset($_GET['e']) && $dispatchConfig['class'] === $exclusive ?
+        $restricExtension = isset($_GET['e']) && $params['class'] === $exclusive ?
             $_GET['e'] : null;
 
         //基类共享数据初始化
@@ -102,7 +100,7 @@ class of_base_extension_match {
 
                             //匹配成功
                             if( $temp ) {
-                                self::callExtension($eKey, $fileDir);
+                                self::callExtension($eKey, $fileDir, array(&$params));
                                 break;
                             }
                         }

@@ -11,7 +11,7 @@ class of_base_sso_main extends of_base_sso_api {
      */
     public function index() {
         //进入回调或管理
-        if( empty($_GET['referer']) ?
+        if (empty($_GET['referer']) ?
                 //管理平台未登录
                 !isset($_SESSION['_of']['of_base_sso']['mgmt']) :
                 //单点用户未登录
@@ -19,12 +19,12 @@ class of_base_sso_main extends of_base_sso_api {
         ) {
             self::loginMain();
         //已登录回跳
-        } else if( isset($_GET['referer']) ) {
+        } else if (isset($_GET['referer'])) {
             $_GET['form'] = of_base_sso_api::ticket();
             of_view::display('_' . OF_DIR . '/att/sso/tpl/login.tpl.php');
         //初始化管理权限
         } else {
-            if( empty($_SESSION['_of']['of_base_sso']['mgmt']) ) {
+            if (empty($_SESSION['_of']['of_base_sso']['mgmt'])) {
                 self::logoutMain('进入管理界面需要授权账号');
             } else {
                 of_view::display('_' . OF_DIR . '/att/sso/tpl/main.tpl.php');
@@ -40,8 +40,8 @@ class of_base_sso_main extends of_base_sso_api {
         //查询字符
         $inStr = empty($params['select']) ? '' : join(',', array_keys($params['select']));
         //操作动作
-        if( $inStr && !empty($params['action']) ) {
-            switch( $params['action'] ) {
+        if ($inStr && !empty($params['action'])) {
+            switch ($params['action']) {
                 //删除操作
                 case 'del':
                     $sql = "DELETE FROM 
@@ -62,23 +62,23 @@ class of_base_sso_main extends of_base_sso_api {
             $params['tip'] = empty($sql) || L::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
         }
         //保存变动
-        if( !empty($params['save']) ) {
+        if (!empty($params['save'])) {
             $id = &$params['save']['id'];
             empty($params['save']['answer']) || $params['save']['find'] = strlen($params['save']['question']) . 
                 '_' . $params['save']['question'] . md5($params['save']['answer']);
             unset($params['save']['id'], $params['save']['question'], $params['save']['answer']);
-            if( empty($params['save']['pwd']) ) {
+            if (empty($params['save']['pwd'])) {
                 unset($params['save']['pwd']);
             } else {
                 $params['save']['pwd'] = md5($params['save']['pwd']);
             }
 
-            foreach($params['save'] as $k => &$v) {
+            foreach ($params['save'] as $k => &$v) {
                 $v = "`{$k}` = '{$v}'";
             }
             $temp = join(',', $params['save']);
 
-            if( $id ) {
+            if ($id) {
                 $sql = "UPDATE
                     `_of_sso_user`
                 SET
@@ -92,13 +92,13 @@ class of_base_sso_main extends of_base_sso_api {
                     {$temp}";
             }
 
-            if( ($temp = L::sql($sql, self::$config['dbPool'])) === false ) {
+            if (($temp = L::sql($sql, self::$config['dbPool'])) === false) {
                 $params['tip'] = '用户名冲突';                                                                          //操作失败
             } else {
                 $params['tip'] = '保存成功';                                                                            //操作失败
 
                 //更改所属功能
-                if( isset($params['linksel']) ) {
+                if (isset($params['linksel'])) {
                     //使用的ID
                     $id || $id = $temp;
 
@@ -137,7 +137,7 @@ class of_base_sso_main extends of_base_sso_api {
             `_of_sso_user`";
 
         //查询数据
-        if( !empty($params['search']) ) {
+        if (!empty($params['search'])) {
             $sql .= " WHERE 
                 INSTR(`name`, '{$params['search']}')
             OR  INSTR(`nike`, '{$params['search']}')
@@ -171,7 +171,7 @@ class of_base_sso_main extends of_base_sso_api {
         //查询字符
         $inStr = empty($params['select']) ? '' : join(',', array_keys($params['select']));
         //操作动作
-        if( $inStr && !empty($params['action']) ) {
+        if ($inStr && !empty($params['action'])) {
             switch( $params['action'] ) {
                 //删除操作
                 case 'del':
@@ -193,16 +193,16 @@ class of_base_sso_main extends of_base_sso_api {
             $params['tip'] = empty($sql) || L::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
         }
         //保存变动
-        if( !empty($params['save']) ) {
+        if (!empty($params['save'])) {
             $id = &$params['save']['id'];
             unset($params['save']['id']);
 
-            foreach($params['save'] as $k => &$v) {
+            foreach ($params['save'] as $k => &$v) {
                 $v = "`{$k}` = '{$v}'";
             }
             $temp = join(',', $params['save']);
 
-            if( $id ) {
+            if ($id) {
                 $sql = "UPDATE
                     `_of_sso_realm`
                 SET
@@ -216,7 +216,8 @@ class of_base_sso_main extends of_base_sso_api {
                     {$temp}";
             }
 
-            $params['tip'] = L::sql($sql, self::$config['dbPool']) === false ? '用户名冲突' : '保存成功';               //操作失败
+            //操作失败
+            $params['tip'] = L::sql($sql, self::$config['dbPool']) === false ? '用户名冲突' : '保存成功';
         }
         //一次性使用
         unset($params['action'], $params['save']);
@@ -229,7 +230,7 @@ class of_base_sso_main extends of_base_sso_api {
             `_of_sso_realm`";
 
         //查询数据
-        if( !empty($params['search']) ) {
+        if (!empty($params['search'])) {
             $sql .= " WHERE 
                 INSTR(`name`, '{$params['search']}')
             OR  INSTR(`lable`, '{$params['search']}')
@@ -263,8 +264,8 @@ class of_base_sso_main extends of_base_sso_api {
         //查询字符
         $inStr = empty($params['select']) ? '' : join(',', array_keys($params['select']));
         //操作动作
-        if( $inStr && !empty($params['action']) ) {
-            switch( $params['action'] ) {
+        if ($inStr && !empty($params['action'])) {
+            switch ($params['action']) {
                 //删除操作
                 case 'del':
                     $sql = "DELETE FROM 
@@ -285,17 +286,17 @@ class of_base_sso_main extends of_base_sso_api {
             $params['tip'] = empty($sql) || L::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
         }
         //保存变动
-        if( !empty($params['save']) && !empty($params['linkage']['realm']) ) {
+        if (!empty($params['save']) && !empty($params['linkage']['realm'])) {
             $params['save']['realmId'] = $params['linkage']['realm'];
             $id = &$params['save']['id'];
             unset($params['save']['id']);
 
-            foreach($params['save'] as $k => &$v) {
+            foreach ($params['save'] as $k => &$v) {
                 $v = "`{$k}` = '{$v}'";
             }
             $temp = join(',', $params['save']);
 
-            if( $id ) {
+            if ($id) {
                 $sql = "UPDATE
                     `_of_sso_pack`
                 SET
@@ -309,13 +310,13 @@ class of_base_sso_main extends of_base_sso_api {
                     {$temp}";
             }
 
-            if( ($temp = L::sql($sql, self::$config['dbPool'])) === false ) {
+            if (($temp = L::sql($sql, self::$config['dbPool'])) === false) {
                 $params['tip'] = '键名冲突';                                                                            //操作失败
             } else {
                 $params['tip'] = '保存成功';                                                                            //操作失败
 
                 //更改所属功能
-                if( isset($params['linksel']) ) {
+                if (isset($params['linksel'])) {
                     //使用的ID
                     $id || $id = $temp;
 
@@ -345,11 +346,11 @@ class of_base_sso_main extends of_base_sso_api {
         unset($params['action'], $params['save'], $params['linksel']);
 
         //无效关联
-        if( empty($params['linkage']['realm']) ) {
+        if (empty($params['linkage']['realm'])) {
             $sql = array();
         } else {
             //添加选中项
-            if( !empty($params['linkage']['user']) ) {
+            if (!empty($params['linkage']['user'])) {
                 $sql = "SELECT
                     `_of_sso_pack`.`id`, `_of_sso_pack`.`name`, `_of_sso_pack`.`lable`, `_of_sso_pack`.`data`
                 FROM
@@ -361,7 +362,7 @@ class of_base_sso_main extends of_base_sso_api {
                 AND `_of_sso_permit`.`userId` = '{$params['linkage']['user']}'";
                 $temp = L::sql($sql, self::$config['dbPool']);
 
-                foreach($temp as &$v) {
+                foreach ($temp as &$v) {
                     //选中用户关联包
                     $params['select'][$v['id']] = $v;
                 }
@@ -380,7 +381,7 @@ class of_base_sso_main extends of_base_sso_api {
                 `realmId` = '{$params['linkage']['realm']}'";
 
             //查询数据
-            if( !empty($params['search']) ) {
+            if (!empty($params['search'])) {
                 $temp = "
                     INSTR(`name`, '{$params['search']}')
                 OR  INSTR(`lable`, '{$params['search']}')";
@@ -415,8 +416,8 @@ class of_base_sso_main extends of_base_sso_api {
         //查询字符
         $inStr = empty($params['select']) ? '' : join(',', array_keys($params['select']));
         //操作动作
-        if( $inStr && !empty($params['action']) ) {
-            switch( $params['action'] ) {
+        if ($inStr && !empty($params['action'])) {
+            switch ($params['action']) {
                 //删除操作
                 case 'del':
                     $sql = "DELETE FROM 
@@ -437,17 +438,17 @@ class of_base_sso_main extends of_base_sso_api {
             $params['tip'] = empty($sql) || L::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
         }
         //保存变动
-        if( !empty($params['save']) && !empty($params['linkage']['realm']) ) {
+        if (!empty($params['save']) && !empty($params['linkage']['realm'])) {
             $params['save']['realmId'] = $params['linkage']['realm'];
             $id = &$params['save']['id'];
             unset($params['save']['id']);
 
-            foreach($params['save'] as $k => &$v) {
+            foreach ($params['save'] as $k => &$v) {
                 $v = "`{$k}` = '{$v}'";
             }
             $temp = join(',', $params['save']);
 
-            if( $id ) {
+            if ($id) {
                 $sql = "UPDATE
                     `_of_sso_func`
                 SET
@@ -468,11 +469,11 @@ class of_base_sso_main extends of_base_sso_api {
         unset($params['action'], $params['save']);
 
         //无效关联
-        if( empty($params['linkage']['realm']) ) {
+        if (empty($params['linkage']['realm'])) {
             $sql = array();
         } else {
             //添加选中项
-            if( !empty($params['linkage']['pack']) ) {
+            if (!empty($params['linkage']['pack'])) {
                 $sql = "SELECT
                     `_of_sso_func`.`id`, `_of_sso_func`.`name`, `_of_sso_func`.`lable`, `_of_sso_func`.`data`
                 FROM
@@ -484,7 +485,7 @@ class of_base_sso_main extends of_base_sso_api {
                 AND `_of_sso_role`.`packId` = '{$params['linkage']['pack']}'";
                 $temp = L::sql($sql, self::$config['dbPool']);
 
-                foreach($temp as &$v) {
+                foreach ($temp as &$v) {
                     //选中用户关联包
                     $params['select'][$v['id']] = $v;
                 }
@@ -503,7 +504,7 @@ class of_base_sso_main extends of_base_sso_api {
                 `realmId` = '{$params['linkage']['realm']}'";
 
             //查询数据
-            if( !empty($params['search']) ) {
+            if (!empty($params['search'])) {
                 $temp = "
                     INSTR(`name`, '{$params['search']}')
                 OR  INSTR(`lable`, '{$params['search']}')";
@@ -535,7 +536,7 @@ class of_base_sso_main extends of_base_sso_api {
      * 作者 : Edgar.lee
      */
     public static function getUserInfo() {
-        if( isset($_POST['name']) ) {
+        if (isset($_POST['name'])) {
             $sql = "SELECT
                 `nike`,
                 SUBSTR(`find`, POSITION('_' IN `find`) + 1, SUBSTR(`find`, 1, POSITION('_' IN `find`) - 1)) `question`
@@ -563,14 +564,14 @@ class of_base_sso_main extends of_base_sso_api {
      * 作者 : Edgar.lee
      */
     public static function tplImport() {
-        if( is_file($path = ROOT_DIR . OF_DATA . $_POST['path']) ) {
+        if (is_file($path = ROOT_DIR . OF_DATA . $_POST['path'])) {
             //清空错误日志
             of_base_error_writeLog::lastError(true);
             //开启事务
             L::sql(null, self::$config['dbPool']);
 
             //解析CSV
-            while( $data = &of_base_com_csv::parse($path) ) {
+            while ($data = &of_base_com_csv::parse($path)) {
                 $data = array_map('addslashes', $data);
                 switch( $data[0] ) {
                     //导入系统
@@ -675,7 +676,7 @@ class of_base_sso_main extends of_base_sso_api {
             }
 
             //有错误";
-            if( of_base_error_writeLog::lastError() ) {
+            if (of_base_error_writeLog::lastError()) {
                 //回滚事务
                 L::sql(false, self::$config['dbPool']);
                 echo '导入产生错误';
@@ -697,8 +698,8 @@ class of_base_sso_main extends of_base_sso_api {
      */
     private static function loginMain() {
         //展示登录界面
-        if( empty($_POST) ) {
-            if( empty($_GET['referer']) ) {
+        if (empty($_POST)) {
+            if (empty($_GET['referer'])) {
                 $sql = 'SELECT
                     TABLE_NAME `name`            /*表名*/
                 FROM
@@ -708,7 +709,7 @@ class of_base_sso_main extends of_base_sso_api {
                 AND TABLE_TYPE = "BASE TABLE"    /*表类型*/
                 AND TABLE_NAME = "_of_sso_user"';
 
-                if( !L::sql($sql, self::$config['dbPool']) ) {
+                if (!L::sql($sql, self::$config['dbPool'])) {
                     $temp = of_base_tool_mysqlSync::init(array(
                         'callDb'  => array(
                             'asCall' => 'L::sql', 
@@ -719,20 +720,20 @@ class of_base_sso_main extends of_base_sso_api {
                         )
                     ));
 
-                    if( $temp ) {
+                    if ($temp) {
                         of_base_tool_mysqlSync::revertBase(OF_DIR . '/base/sso/db/table.sql');
                         of_base_tool_mysqlSync::revertData(OF_DIR . '/base/sso/db/data.sql');
                     }
                 }
             }
             of_view::display('_' . OF_DIR . '/att/sso/tpl/login.tpl.php');
-        } else if( of_base_com_com::captcha($_POST['captcha'], 'of_base_sso_main') ) {
+        } else if (of_base_com_com::captcha($_POST['captcha'], 'of_base_sso_main')) {
             $result = array('state' => 'done', 'msg' => '操作成功');
 
             //登录
-            if( $_POST['type'] === 'login' ) {
-                if( $temp = of_base_sso_api::getLogin($_POST['name'], $_POST['pwd']) ) {
-                    if( $temp['time'] ) {
+            if ($_POST['type'] === 'login') {
+                if ($temp = of_base_sso_api::getLogin($_POST['name'], $_POST['pwd'])) {
+                    if ($temp['time']) {
                         //登录信息
                         empty($_GET['referer']) ?
                             self::getMgmt($temp) : of_base_sso_api::pushState($_GET['space'], $temp);
@@ -748,7 +749,7 @@ class of_base_sso_main extends of_base_sso_api {
                 ($temp = strlen($_POST['question'])) && $temp .= '_' . $_POST['question'] . md5($_POST['answer']);
 
                 //找回操作
-                if( $_POST['type'] === 'find' ) {
+                if ($_POST['type'] === 'find') {
                     $sql = "UPDATE 
                         `_of_sso_user` 
                     SET 
@@ -809,17 +810,17 @@ class of_base_sso_main extends of_base_sso_api {
             `_of_sso_pack`.`id`";
 
         $temp = L::sql($sql, self::$config['dbPool']);
-        foreach($temp as &$v) {
+        foreach ($temp as &$v) {
             //添加默认权限
             $index += array_combine(
                 $v['temp'] = explode(',', $v['func']),
                 array_pad(array(), count($v['temp']), array())
             );
             //存在包数据
-            if( is_array($v['data'] = json_decode($v['data'], true)) ) {
-                foreach($v['data'] as $kf => &$vf) {
+            if (is_array($v['data'] = json_decode($v['data'], true))) {
+                foreach ($v['data'] as $kf => &$vf) {
                     //无效权限
-                    if( strpos($v['func'], $kf) === false ) {
+                    if (strpos($v['func'], $kf) === false) {
                         unset($v['data'][$kf]);
                     }
                 }

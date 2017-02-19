@@ -22,7 +22,7 @@ class of_base_tool_test extends of_base_com_data {
      */
     public static function check($class, $action) {
         //切换调度数据
-        of::dispatch($class, $action, null);
+        of::dispatch($class, $action, false);
         //校验不返回错误数据
         of_base_com_data::$rule['return'] = false;
         //验证综合规则

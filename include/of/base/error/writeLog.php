@@ -260,20 +260,28 @@ class of_base_error_writeLog {
         $logData['logType'] === 'exception' || array_splice($backtrace, 0, 1);
 
         //debug运行追踪
-        if( strpos($logData['environment']['file'], '(') !== false ) {
+        if (strpos($logData['environment']['file'], '(') !== false) {
             foreach($backtrace as $k => &$v) {
                 //大部分正常方式
                 if (isset($v['file'])) {
-                    if (
-                        empty($v['class']) && 
-                        isset($v['function']) &&
-                        $v['function'] === 'trigger_error' &&
-                        strpos($v['file'], '(')
-                    ) {
-                        // eval 中的 trigger_error 方法报错为 无效定位
-                        continue ;
-                    }
                     $temp = array(strtr($v['file'], '\\', '/'));
+
+                    //在 eval 中, 尝试精确的地址
+                    if (strpos($v['file'], '(')) {
+                        if (
+                            //通过类名变相定位 && sql类型下有效类名
+                            isset($v['class']) && (
+                                $logData['logType'] !== 'sqlError' || 
+                                strncmp($v['class'], 'of_', 3) && $v['class'] !== 'L'
+                            )
+                        ) {
+                            $temp = array(ROOT_DIR . '/' . strtr($v['class'], '_', '/') . '.php');
+                            $k > 0 && $temp[0] .= "({$backtrace[$k-1]['line']})";
+                        } else {
+                            //不存在类名 || sql类型无效类名
+                            continue ;
+                        }
+                    }
                 //回调中的类是通过 eval 生成的
                 } else if (isset($v['class'])) {
                     $temp = array(ROOT_DIR . '/' . strtr($v['class'], '_', '/') . '.php');
@@ -282,7 +290,10 @@ class of_base_error_writeLog {
                     continue ;
                 }
 
-                if ($logData['logType'] !== 'sqlError' || strncmp(OF_DIR, $temp[0], strlen(OF_DIR))) {
+                if (
+                    $logData['logType'] !== 'sqlError' || 
+                    strncmp(OF_DIR, $temp[0], strlen(OF_DIR))
+                ) {
                     //在eval中
                     if (($temp[1] = strpos($temp[0], '(')) !== false) {
                         $logData['environment']['file'] = substr($temp[0], 0, $temp[1]);
@@ -291,7 +302,9 @@ class of_base_error_writeLog {
                     } else {
                         $logData['environment']['file'] = $temp[0];
                         //通过 eval 编译的类 无 line
-                        isset($v['line']) && $logData['environment']['line'] = $v['line'];
+                        if ($logData['logType'] === 'sqlError' && isset($v['line'])) {
+                            $logData['environment']['line'] = $v['line'];
+                        }
                     }
                     array_splice($backtrace, 0, $k);
                     break;

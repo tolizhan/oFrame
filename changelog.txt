@@ -1,3 +1,45 @@
+版本: 206
+作者: Edgar
+日期: 2017年2月19日 13:59:14
+信息:
+说明: of::dispatch 第三个校验参数 false改为"永不通过", null改为"永远通过"
+      of::event 中"of::dispatch"事件添加触发参数 {"class" : &调度类名, "action" : &调度方法, "check" : &校验参数}
+      扩展入口同步添加"of::dispatch"事件触发参数
+      k-v 添加 redis 主从连接方式
+      jsLoad readme.txt 中添加一段 "本地调用框架中的js扩展" 演示代码
+      错误日志对 eval 中的错误提示位置更准确
+      加强 html 模版引擎对 htmlLoad 支持
+      修复 sso 状态同步失败的问题
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/extensions/sqlProfiling/main/main.php
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/demo/extensions/test/main/demo.php
+已增加 : /trunk/demo/tool/htmlLoad (从路径复制: /trunk/demo/tool/jsLoad, 版本, 205)
+已修改 : /trunk/demo/tool/htmlLoad/foot.html
+已修改 : /trunk/demo/tool/htmlLoad/head.html
+已修改 : /trunk/demo/tool/htmlLoad/index.html
+已修改 : /trunk/demo/tool/htmlLoad/readme.txt
+已删除 : /trunk/demo/tool/jsLoad
+已增加 : /trunk/include/of/accy/com/kv/redis.php
+已修改 : /trunk/include/of/addin/config.php
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/att/link/L.js
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/base/tool/test.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+已修改 : /trunk/index.php
+
 版本: 204
 作者: Edgar
 日期: 2017年1月25日 17:29:12

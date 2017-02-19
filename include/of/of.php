@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200204);
+define('OF_VERSION', 200206);
 
 class of {
     //站点配置文件
@@ -40,7 +40,7 @@ class of {
      * 参数 :
      *      class  : 读取调度或设置类名称, null(默认)=读取调度{"class" : 类名, "action" : 方法}, 字符串=("class" | "action")读取调度值
      *      action : 调用的方法名, null(默认)=读取调度, 字符串=设置方法名
-     *      check  : 加载类返回值校验,false=不校验,null=永不通过
+     *      check  : 加载类返回值校验,false=永不通过,null=永远通过
      * 返回 :
      *      返回null
      * 注明 :
@@ -48,20 +48,28 @@ class of {
      * 作者 : Edgar.lee
      */
     public static function dispatch($class = null, $action = null, $check = false) {
-        static $dispatch = array('class' => '', 'action' => '');
+        static $dh = array('class' => '', 'action' => '');
         //读取调度
         if ($action === null) {
-            return isset($dispatch[$class]) ? $dispatch[$class] : $dispatch;
+            return isset($dh[$class]) ? $dh[$class] : array(
+                'class'  => $dh['class'],
+                'action' => $dh['action'],
+            );
         } else {
             //记录调度入口
-            $dispatch = array('class' => $class, 'action' => $action);
+            $dh = array('class' => &$class, 'action' => &$action);
 
             //触发 of::dispatch 事件
-            self::event('of::dispatch', true);
+            self::event('of::dispatch', true, array(
+                'class'  => &$class,
+                'action' => &$action,
+                'check'  => &$check,
+            ));
+
             $temp = class_exists($class, false) ? $check : self::loadClass($class);
             if (
-                ($temp !== null && class_exists($class, false)) && 
-                ($check === false || $check === $temp) && 
+                ($temp !== false && class_exists($class, false)) && 
+                ($check === null || $check === $temp) && 
                 is_callable(array($temp = new $class, &$action)) 
             ) {
                 return $temp->$action();
@@ -207,10 +215,10 @@ class of {
         //of磁盘路径
         define('OF_DIR', strtr(dirname(__FILE__), '\\', '/'));
 
-        //引用配置
-        $config = &self::$config;
         //加载全局配置文件
-        $global = include OF_DIR . '/config.php';
+        $of = include OF_DIR . '/config.php';
+        //站点根目录,ROOT_DIR
+        define('ROOT_DIR', $of['rootDir']);
 
         //解析cli模式下的请求参数
         if (PHP_SAPI === 'cli') {
@@ -232,15 +240,15 @@ class of {
             //整合到 request 中
             $_REQUEST = $_GET + $_POST + $_COOKIE;
             //设置项目跟目录
-            $_SERVER['DOCUMENT_ROOT'] = $global['rootDir'];
+            $_SERVER['DOCUMENT_ROOT'] = ROOT_DIR;
             //计算一些路径
             $temp = get_included_files();
             $_SERVER['SCRIPT_FILENAME'] = strtr($temp[0], '\\' , '/');
             isset($_SERVER['PATH_INFO']) || $_SERVER['PATH_INFO'] = '';
             $_SERVER['QUERY_STRING'] = empty($_SERVER['QUERY_STRING']) ? '' : join('&', $_SERVER['QUERY_STRING']);
-            $_SERVER['SCRIPT_NAME'] = substr($_SERVER['SCRIPT_FILENAME'], strlen($global['rootDir']));
+            $_SERVER['SCRIPT_NAME'] = substr($_SERVER['SCRIPT_FILENAME'], strlen(ROOT_DIR));
             $_SERVER['REQUEST_URI'] = $_SERVER['PHP_SELF'] = $_SERVER['SCRIPT_NAME'] . $_SERVER['PATH_INFO'];
-            $_SERVER['PATH_TRANSLATED'] = $global['rootDir'] . $_SERVER['PATH_INFO'];
+            $_SERVER['PATH_TRANSLATED'] = ROOT_DIR . $_SERVER['PATH_INFO'];
             $_SERVER['QUERY_STRING'] && $_SERVER['REQUEST_URI'] .= '?' . $_SERVER['QUERY_STRING'];
         }
 
@@ -250,12 +258,12 @@ class of {
         get_magic_quotes_gpc() || self::slashesDeep($temp);
 
         //加载站点配置文件
-        empty($global['config']) || $config = include $global['rootDir'] . $global['config'];
+        empty($of['config']) || self::$config = include ROOT_DIR . $of['config'];
+        //引用配置
+        $config = &self::$config;
         //合并系统配置
-        $config['_of'] = &self::arrayReplaceRecursive($global, $config['_of']);
+        $config['_of'] = &self::arrayReplaceRecursive($of, $config['_of']);
 
-        //站点根目录,ROOT_DIR
-        define('ROOT_DIR', $config['_of']['rootDir']);
         //自动计算ROOT_URL
         if (!isset($config['_of']['rootUrl'])) {
             //cli模式
@@ -330,7 +338,7 @@ class of {
         }
 
         //不用判断一定有数据
-        foreach( $event['list'] as &$v ) {
+        foreach ($event['list'] as &$v) {
             $k = $v['classPreLen'];
             $v = &$v['event'];
             if (strncmp($v['classPre'], $className, $k) === 0) {

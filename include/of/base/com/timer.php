@@ -24,7 +24,7 @@ class of_base_com_timer {
 
         //初始 静态任务 配置
         ($index = &$config['cron']) || $index = array();
-        $index += array('path' => '', 'kvPool'  => 'default');
+        $index += array('path' => '', 'kvPool' => 'default');
         empty($index['path']) || $index['path'] = of::formatPath($index['path'], ROOT_DIR);
 
         //嵌套创建文件夹
@@ -62,7 +62,7 @@ class of_base_com_timer {
                 ($movTask = &self::taskList(false)) && self::fireCalls($movTask);
 
                 //无任何任务
-                if( $movTask === false && $crontab === false ) {
+                if ($movTask === false && $crontab === false) {
                     break;
                 //有未到期任务
                 } else {
@@ -73,7 +73,7 @@ class of_base_com_timer {
                 }
             }
         //保护进程
-        } else if( $name === 'protected' ) {
+        } else if ($name === 'protected') {
             $fp = fopen($path . '/taskLock', 'a');
 
             do {
@@ -120,7 +120,7 @@ class of_base_com_timer {
         $params += array('time' => 0, 'try' => array());
 
         //时间戳
-        if( is_numeric($params['time']) ) {
+        if (is_numeric($params['time'])) {
             //小于5年定义为xx后秒执行
             $params['time'] < 63072000 && $params['time'] += $_SERVER['REQUEST_TIME'];
         //时间格式
@@ -147,9 +147,9 @@ class of_base_com_timer {
             'try'  => &$call['try']
         );
         //回调失败
-        if( of::callFunc($call['call'], $params) === false ) {
+        if (of::callFunc($call['call'], $params) === false) {
             //不可重试
-            if( ($try = array_shift($call['try'])) === null ) {
+            if (($try = array_shift($call['try'])) === null) {
                 //达到最大尝试次数
                 trigger_error('Reached the maximum number of attempts.' );
             //可重试
@@ -257,7 +257,7 @@ class of_base_com_timer {
 
                     //有到期任务
                     while (($time = key($task)) && $nowtime >= $time) {
-                        foreach($task[$time] as $k => &$callback) {
+                        foreach ($task[$time] as $k => &$callback) {
                             //引用回调
                             $result[] = &$callback;
                             //保存唯一键
@@ -369,7 +369,7 @@ class of_base_com_timer {
                 foreach ($cron as &$vt) {
                     preg_match('@(?:^|\s+)(?:(?:\d+(?:-\d+)?(?:/\d+)?|\*/\d+)(?:,|))+(?:\s+|$)@', $vt['time'], $temp, PREG_OFFSET_CAPTURE);
 
-                    if( $index = &$temp[0] ) {
+                    if ($index = &$temp[0]) {
                         //每星期计划 || 不是
                         $index += strlen($vt['time']) === strlen($index[0]) + $index[1] ?
                             //替换计划

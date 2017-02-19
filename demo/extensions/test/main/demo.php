@@ -23,12 +23,17 @@ function extendDemo($event = null) {
 }
 
 /**
- * 描述 : 相关测试演示
+ * 描述 : 配置文件中 'main_demo::test' 的入口文件
  * 作者 : Edgar.lee
  */
-function test() {
-    //* //获取常量演示
+function test(&$params) {
     echo '<br>扩展的简单演示<pre>';
+    //*
+    echo '打印调度信息 ';
+    print_r($params);
+    // */
+    //*
+    echo '获取常量数据 ';
     print_r($this->_getConst());
     echo '</pre>';
     // */

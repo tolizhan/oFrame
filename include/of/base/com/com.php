@@ -65,7 +65,7 @@ class of_base_com_com {
      *              "action" : 翻页动作html, 默认=系统内部生成
      *              "attr"   : 分页属性, 默认="", 字符串=同 "table" 属性, 数组={
      *                  "table" : 整个分页属性
-     *                  "btr"   : 体 tr 属性
+     *                  "btr"   : 分页体 tr 属性
      *              }
      *              "empty"  : 空数据展示界面, 默认="", 字符串=同 "html" 属性, 数组={
      *                  "attr" : 界面属性, 默认=""
@@ -116,7 +116,7 @@ class of_base_com_com {
         static $global = array('attr' => null, 'conf' => null);
 
         //配置分页
-        if( is_array($config) ) {
+        if (is_array($config)) {
             //无列头分页
             isset($config['_attr']) || $config = array('_attr' => $config);
             //头信息
@@ -156,9 +156,9 @@ class of_base_com_com {
             of::slashesDeep($attr['params'], 'stripslashes');
 
             //存在列头, 生成分页头
-            if( !empty($config) ) {
+            if (!empty($config)) {
                 //method 不存在
-                if( empty($attr['method']) ) throw new Exception("_attr.method not found");
+                if (empty($attr['method'])) throw new Exception("_attr.method not found");
 
                 //最大深度和宽度
                 $env['maxRow'] = $env['maxCol'] = 0;
@@ -190,7 +190,7 @@ class of_base_com_com {
                 '</div>';
 
                 //数据拷贝
-                foreach($config as $k => &$v) {
+                foreach ($config as $k => &$v) {
                     is_array($v) || $v = array('_attr' => array('body' => array('html' => $v)));
                     $env['parse'][] = array('name' => $k, 'child' => &$v, 'parent' => null, 'attr' => &$v['_attr']);
                     //实际宽度
@@ -198,7 +198,7 @@ class of_base_com_com {
                     unset($v['_attr']);
                 }
                 //解析头关系
-                while( ($k = key($env['parse'])) !== null ) {
+                while (($k = key($env['parse'])) !== null) {
                     //引用当前节点
                     $index = &$env['parse'][$k];
 
@@ -225,7 +225,7 @@ class of_base_com_com {
                     $env['coor'][$index['rpos']][] = &$index;
 
                     //最深节点
-                    if( empty($index['child']) ) {
+                    if (empty($index['child'])) {
                         $env['tbody'][] = "<td {$index['attr']['body']['attr']}>{$index['attr']['body']['html']}</td>";
                         //最大宽度+1
                         $env['maxCol'] += 1;
@@ -236,7 +236,7 @@ class of_base_com_com {
                     //存在子节点
                     } else {
                         //引用子节点
-                        foreach($index['child'] as $k => &$v) {
+                        foreach ($index['child'] as $k => &$v) {
                             is_array($v) || $v = array('_attr' => array('body' => array('html' => $v)));
                             $env['parse'][] = array('name' => $k, 'child' => &$v, 'parent' => &$index, 'attr' => &$v['_attr']);
                             //临时实际宽度
@@ -254,10 +254,10 @@ class of_base_com_com {
                 preg_match_all('@[^:_]+@', $temp[0], $temp);
                 $env['flie'] = ROOT_DIR . '/' . join('/', $temp[0]) . '.php';
 
-                foreach($env['coor'] as $kc => &$vc) {
+                foreach ($env['coor'] as $kc => &$vc) {
                     //开始换行
                     $env['thead'][] = '<tr>';
-                    foreach($vc as &$v) {
+                    foreach ($vc as &$v) {
                         //无子 && 跨度 = 最大深度 - 实际位置
                         empty($v['child']) && $v['attr']['row'] = $env['maxRow'] - $kc;
                         $temp = $v['attr']['sort'] ? "name='{$attr['space']}pagingSort' sort='{$v['attr']['sort']}' class='of-paging_sort_def'" : '';
@@ -318,13 +318,13 @@ class of_base_com_com {
         //调用分页, 字符串=直调, null=POST
         } else {
             //POST 请求
-            if( $config === null ) {
+            if ($config === null) {
                 //复制post数据
                 $post = $_POST;
                 $config = $post['method'];
                 //不生成节点
                 $params['config'] = array();
-                if( isset($post['params'][0]) ) {
+                if (isset($post['params'][0])) {
                     //共享参数转成json
                     $params['params'] = json_decode(stripslashes($post['params']), true);
                     //防注入
@@ -332,7 +332,7 @@ class of_base_com_com {
                 }
             }
 
-            if(
+            if (
                 //框架内部分页
                 preg_match('@^of_\w+::\w+Paging$@', $config) || (
                     //权向验证读取
@@ -353,7 +353,7 @@ class of_base_com_com {
                 );
 
                 //开始查询数据
-                if( isset($post) ) {
+                if (isset($post)) {
                     //引用属性
                     $attr = &$global['attr'];
 
@@ -364,23 +364,23 @@ class of_base_com_com {
                     //单页数初始化
                     $post['size'] < 1 && $post['size'] = $attr['size'];
                     //重新计算分页
-                    if( empty($post['items']) ) {
+                    if (empty($post['items'])) {
                         //数字格式
-                        if( is_numeric($attr['items']) ) {
+                        if (is_numeric($attr['items'])) {
                             $post['items'] = $attr['items'] . '';
                         //sql语句
-                        } else if( is_string($attr['items']) ) {
+                        } else if (is_string($attr['items'])) {
                             $post['items'] = of_db::sql($attr['items'], $attr['dbPool']);
                             //获取总数量
                             $post['items'] = $post['items'][0]['c'];
                         //数组数据
-                        } else if( is_array($attr['data']) ) {
+                        } else if (is_array($attr['data'])) {
                             $post['items'] = '-1';
                         }
                     }
 
                     //执行sql读取数据
-                    if( is_string($attr['data']) ) {
+                    if (is_string($attr['data'])) {
                         $temp = array(
                             //关键词位置
                             'pos'    => false,
@@ -391,9 +391,10 @@ class of_base_com_com {
                             //匹配信息
                             'match'  => null
                         );
-                        while(true) {
-                            if( $temp['match'] = of_base_com_str::strArrPos($attr['data'], $temp['keys'], $temp['offset']) ) {
-                                if( ($temp['pos'] = strpos(
+                        while (true) {
+                            if ($temp['match'] = of_base_com_str::strArrPos($attr['data'], $temp['keys'], $temp['offset'])) {
+                                if (
+                                    ($temp['pos'] = strpos(
                                         substr($attr['data'], $temp['offset'], $temp['match']['position'] - $temp['offset']),
                                         '{`LIMIT`}'
                                     )) !== false
@@ -404,7 +405,7 @@ class of_base_com_com {
                                 }
 
                                 $temp['match'] = of_base_com_str::strArrPos($attr['data'], array($temp['match']['match'] => true), $temp['match']['position'] + 1);
-                                if( $temp['match'] ) {
+                                if ($temp['match']) {
                                     $temp['offset'] = $temp['match']['position'] + 1;
                                 //语法错误
                                 } else {
@@ -423,12 +424,12 @@ class of_base_com_com {
                         //$temp=LIMIT左[1]右[2]分割
                         preg_match("@^(.{{$temp['pos']}})(?:|.{9}(.*))()$@s", $attr['data'], $temp);
                         //提取内置排序
-                        if( preg_match('@ORDER\s+BY\s+([^()]+)$@i', $temp[1], $temp[3], PREG_OFFSET_CAPTURE) ) {
+                        if (preg_match('@ORDER\s+BY\s+([^()]+)$@i', $temp[1], $temp[3], PREG_OFFSET_CAPTURE)) {
                             $temp[1] = substr($temp[1], 0, $temp[3][0][1]);
                             $post['sort'] = empty($post['sort']) ? $temp[3][1][0] : "{$post['sort']}, {$temp[3][1][0]}";
                         }
 
-                        if( empty($post['items']) ) {
+                        if (empty($post['items'])) {
                             //去掉 SQL LIMIT 并转换成大写
                             $temp['uStr'] = strtoupper($temp[1] . $temp[2]);
                             //定位 FROM 关键栈
@@ -436,12 +437,12 @@ class of_base_com_com {
                             //SELECT后的位置 = 起始偏移量
                             $temp['sLen'] = $temp['offset'] = strpos($temp['uStr'], 'SELECT') + 6;
 
-                            while( $temp['match'] = of_base_com_str::strArrPos($temp['uStr'], end($temp['keys']), $temp['offset']) ) {
-                                switch( $temp['match']['match'] ) {
+                            while ($temp['match'] = of_base_com_str::strArrPos($temp['uStr'], end($temp['keys']), $temp['offset'])) {
+                                switch ($temp['match']['match']) {
                                     //定位成功
                                     case 'FROM':
                                         //类似 FROM_UNIXTIME
-                                        if( trim(substr($temp['uStr'], $temp['match']['position'] + 4, 1)) ) {
+                                        if (trim(substr($temp['uStr'], $temp['match']['position'] + 4, 1)) ) {
                                             break;
                                         //确定是 FROM 关键词
                                         } else {
@@ -463,7 +464,7 @@ class of_base_com_com {
                                     //结束 " 与 '
                                     default    :
                                         //已开启引号
-                                        if( isset($temp['quote']) ) {
+                                        if (isset($temp['quote'])) {
                                             //从关键栈中删除引号查询
                                             array_pop($temp['keys']);
                                             unset($temp['quote']);
@@ -485,7 +486,7 @@ class of_base_com_com {
                         }
 
                         //校正 $post['page']
-                        if( $post['items'] > -1 ) {
+                        if ($post['items'] > -1) {
                             //总页数 < 当期页数 && 当前页数 = 总页数
                             ($temp[0] = ceil($post['items'] / $post['size'])) < $post['page'] &&
                                 //纠正page < 1, ceil 返回 float
@@ -498,7 +499,7 @@ class of_base_com_com {
                         //查询data数据
                         $attr['data'] = of_db::sql($temp, $attr['dbPool']);
                     //校正 $post['page']
-                    } else if( $post['items'] > -1 ) {
+                    } else if ($post['items'] > -1) {
                         //总页数 < 当期页数 && 当前页数 = 总页数
                         ($temp = ceil($post['items'] / $post['size'])) < $post['page'] && $post['page'] = $temp;
                     }
@@ -542,13 +543,15 @@ class of_base_com_com {
      * 作者 : Edgar.lee
      */
     public static function captcha($captcha = false, $key = 0) {
+        $result = &$_SESSION['_of']['of_base_com_com']['captcha'];
+
         //验证码校验
-        if($captcha !== false) {
-            if(isset($_SESSION['_captcha'][$key]) && $_SESSION['_captcha'][$key] === strtoupper($captcha)) {
-                unset($_SESSION['_captcha'][$key]);
+        if ($captcha !== false) {
+            if (isset($result[$key]) && $result[$key] === strtoupper($captcha)) {
+                unset($result[$key]);
                 return true;
             } else {
-                unset($_SESSION['_captcha'][$key]);
+                unset($result[$key]);
                 return false;
             }
         //生成验证码图片
@@ -572,7 +575,7 @@ class of_base_com_com {
             $im = imagecreate($width, $height);
 
             //指定背景色
-            if( isset($_GET['bgColor']) ) {
+            if (isset($_GET['bgColor'])) {
                 preg_match_all('/[\da-z]{2}/i', $_GET['bgColor'], $bgColor, PREG_PATTERN_ORDER);
                 $bgColor = &$bgColor[0];
                 //背景色
@@ -585,13 +588,13 @@ class of_base_com_com {
             }
 
             //初始化SESSION[_captcha]
-            if( isset($_GET['key']) ) {
+            if (isset($_GET['key'])) {
                 $key = $_GET['key'];
             }
-            $_SESSION['_captcha'][$key] = '';
+            $result[$key] = '';
 
             //生成四个字母
-            for($i = 0; $i < 4; ++$i) {
+            for ($i = 0; $i < 4; ++$i) {
                 //imagestring($im, rand(2, 5), 10 * $i, rand(0,5), $char, ImageColorAllocate($im, rand(0,255), 0, rand(0,255)));
                 //生成大写字母
                 $char = chr(rand(65, 90));
@@ -600,7 +603,7 @@ class of_base_com_com {
                     $im, $fontSize, rand(-30, 30), $fontWidth * $i + $fontLeft, $fontPos, ImageColorAllocate($im, 0, 0, 0), 
                     OF_DIR . '/accy/com/com/captcha/' . rand(1, 4) . '.ttf', $char
                 );
-                $_SESSION['_captcha'][$key] .= $char;
+                $result[$key] .= $char;
             }
 
             //加入干扰象素
@@ -628,21 +631,21 @@ class of_base_com_com {
      * 作者 : Edgar.lee
      */
     public static function textToHtml(&$textList, $excludeArr = null, $encodeKey = false, $stripslashes = true) {
-        if( is_array($textList) ) {
+        if (is_array($textList)) {
             $newTextList = array();
-            foreach($textList as $k => &$v) {
+            foreach ($textList as $k => &$v) {
                 //下一次递归限制变量
                 $nextExcludeArr = null;
                 //根据$stripslashes的值得到的新键值
                 $newK = $stripslashes ? stripslashes($k) : $k;
-                if(
+                if (
                     !is_array($excludeArr) || 
                     !isset($excludeArr[$k]) || (
                         is_array($nextExcludeArr = &$excludeArr[$k]) && 
                         count($excludeArr[$k])
                     )
                 ) {
-                    if($encodeKey) {
+                    if ($encodeKey) {
                         $newTextList[strtr(htmlspecialchars($newK, ENT_QUOTES, 'UTF-8'), array('\\' => '&#92;'))] = &$v;
                     } else {
                         $newTextList[$newK] = &$v;
@@ -653,7 +656,7 @@ class of_base_com_com {
                 }
             }
             $textList = $newTextList;
-        } elseif( is_string($textList) ) {
+        } elseif (is_string($textList)) {
             $textList = strtr(htmlspecialchars(
                 $stripslashes ? stripslashes($textList) : $textList, 
                 ENT_QUOTES, 
@@ -684,7 +687,7 @@ class of_base_com_com {
         $cachePool = &$_SESSION['_of']['of_base_com_com']['cache'];
 
         //读取缓存
-        if($value === null && isset($cachePool[$key]) && $cachePool[$key]['where'] == $where) {
+        if ($value === null && isset($cachePool[$key]) && $cachePool[$key]['where'] == $where) {
             return $cachePool[$key]['value'];
         //写入缓存
         } else {
@@ -718,7 +721,7 @@ class of_base_com_com {
         //读取数据
         $data = of_db::sql($sql . $limt, $key);
         //无数据时快照过期
-        if( !$index['state'] = isset($data[0]) ) unset($snapshot[$key][$sql]);
+        if (!$index['state'] = isset($data[0])) unset($snapshot[$key][$sql]);
 
         return $index['state'];
     }
@@ -755,14 +758,14 @@ class of_base_com_com {
         ');
 
         //根据指定值排序
-        if($sortType === 0) {
-            foreach($sortArray as $k => &$v) {
+        if ($sortType === 0) {
+            foreach ($sortArray as $k => &$v) {
                 //排序比对参数分析
                 $setParamFun($accordingSortArr[$k]['value'], $v);
 
                 //分析排序索引
                 $arr = explode('.', $k);
-                for($i = count($arr) - 2; $i >= 0; --$i) {
+                for ($i = count($arr) - 2; $i >= 0; --$i) {
                     //去掉转义字符后的字符串
                     $trimV = rtrim($arr[$i], '`');
                     //转义字符长度
@@ -777,7 +780,7 @@ class of_base_com_com {
 
                 //重新编码排序索引
                 $accordingSortArr[$k]['evalKey'] = '';
-                foreach($arr as &$v) {
+                foreach ($arr as &$v) {
                     $accordingSortArr[$k]['evalKey'] .= '[\'' .addslashes($v). '\']';
                 }
             }
@@ -787,11 +790,11 @@ class of_base_com_com {
         }
 
         //处理原始排序数据,保持索引关系
-        foreach($arrayData as $k => &$v) {
+        foreach ($arrayData as $k => &$v) {
             //生成保持关联的索引数据
             $associateDataArr[' ' . $k] = &$v;
             //根据指定值排序
-            if($sortType === 0) {
+            if ($sortType === 0) {
                 foreach($sortArray as $kc => &$vc) {
                     eval('$accordingSortArr[\'' .addslashes($kc). '\'][\'dataArr\'][\' \' . $k] = &$v' . $accordingSortArr[$kc]['evalKey'] . ';');
                 }
@@ -801,14 +804,14 @@ class of_base_com_com {
         }
 
         //根据分析数据排序保持关联的数据
-        foreach($accordingSortArr as $k => &$v) {
+        foreach ($accordingSortArr as $k => &$v) {
             $evalSortStr .= '$accordingSortArr[\'' .addslashes($k). '\'][\'dataArr\'], ' . "{$v['value'][0]}, {$v['value'][1]}, ";
         }
         eval('array_multisort(' . $evalSortStr . '$associateDataArr);');
 
         //整理原始数据
         $arrayData = array();
-        foreach($associateDataArr as $k => &$v) {
+        foreach ($associateDataArr as $k => &$v) {
             $arrayData[substr($k, 1)] = &$v;
         }
     }

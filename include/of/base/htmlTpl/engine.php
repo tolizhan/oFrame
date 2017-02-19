@@ -171,21 +171,8 @@ class of_base_htmlTpl_engine {
             //在第二个节点上加入一个节点
             $afterNode = $bodyObj->m('</> ')->insertAfter($beforeNode);
 
-            //处理 load.js 的 include
-            $temp = array(substr($config['tplRoot'], strlen(of_view::path(null))));
-            foreach ($parseObj->find('script[include]')->eq() as $nodeObj) {
-                //计算相对路径
-                $temp[1] = $temp[0] . '/' . $nodeObj->attr('src') . '/../' . $nodeObj->attr('include');
-                $temp[1] = of_base_com_str::realpath($temp[1]);
-
-                //转换注释标签
-                if ($nodeObj->parents('head')->size()) {
-                    $printHeadArr['head'][] = "'_' . L::getHtmlTpl('{$temp[1]}')";
-                } else {
-                    $nodeObj->after("<!--{$config['tagKey']} include L::getHtmlTpl('{$temp[1]}'); -->");
-                }
-                $nodeObj->remove();
-            }
+            //处理 head 中的 htmlLoad
+            $printHeadArr['head'] = self::htmlLoadParse($headObj, false);
 
             //过滤节点
             $filterObj = $headObj->find('link, script, style')->add($headObj->contents('!--'));
@@ -240,7 +227,7 @@ class of_base_htmlTpl_engine {
 
             //生成head
             if (isset($printHeadArr['head'])) {
-                $printHeadArr[''][] = "    'head'   => array(\n{$temp}";
+                $printHeadArr[''][] = "    'head'  => array(\n{$temp}";
                 $printHeadArr[''][] = join(",\n{$temp}", $printHeadArr['head']);
                 $printHeadArr[''][] = "\n    ),\n";
             }
@@ -287,6 +274,9 @@ class of_base_htmlTpl_engine {
         $config = &self::$config;
         //注释键长度
         $tagKeyLen = strlen($config['tagKey']);
+
+        //处理 body 中的 htmlLoad
+        self::htmlLoadParse($parseObj, true);
 
         //路径格式化
         foreach ($parseObj->find('link, img, iframe, script, a')->eq() as $nodeObj) {
@@ -481,6 +471,40 @@ class of_base_htmlTpl_engine {
         }
 
         return $format;
+    }
+
+    /**
+     * 描述 : 解析 htmlLoad 功能
+     * 参数 :
+     *     &parseObj : 解析对象
+     *      isBody   : 是否主体解析
+     * 返回 :
+     *      [格式化的路径, ...]
+     * 作者 : Edgar.lee
+     */
+    private static function &htmlLoadParse(&$parseObj, $isBody = false) {
+        //引用配置文件
+        $config = &self::$config;
+        //返回结果
+        $result = array();
+
+        $temp = array(substr($config['tplRoot'], strlen(of_view::path(null))));
+        foreach ($parseObj->find('script[include]')->eq() as $nodeObj) {
+            //计算相对路径
+            $temp[1] = $temp[0] . '/' . $nodeObj->attr('src') . '/../' . $nodeObj->attr('include');
+            $temp[1] = of_base_com_str::realpath(strtr($temp[1], '?', '_'));
+
+            //转换注释标签
+            if ($isBody) {
+                $nodeObj->after("<!--{$config['tagKey']} include L::getHtmlTpl('{$temp[1]}'); -->");
+            } else {
+                $result[] = "'_' . L::getHtmlTpl('{$temp[1]}')";
+            }
+
+            $nodeObj->remove();
+        }
+
+        return $result;
     }
 
     /**

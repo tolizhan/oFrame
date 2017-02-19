@@ -9,7 +9,7 @@ require dirname(__FILE__) . '/include/of/of.php';
 //调度代码
 if (isset($_GET['c'])) {
     //类名, 动作, 安全校验
-    $result = of::dispatch($_GET['c'], isset($_GET['a']) ? $_GET['a'] : 'index',  true);
+    $result = of::dispatch($_GET['c'], isset($_GET['a']) ? $_GET['a'] : 'index', true);
     //返回数组转成json
     if (is_array($result)) echo of_base_com_data::json($result);
 }
