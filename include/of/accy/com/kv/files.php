@@ -1,6 +1,5 @@
 <?php
 class of_accy_com_kv_files extends of_base_com_kv {
-
     /**
      * 描述 : 存储源连接
      * 作者 : Edgar.lee

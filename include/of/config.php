@@ -136,8 +136,6 @@ return array(
     'extension'   => array(
         //可写的扩展路径
         'path'      => '/data/extensions',
-        //扩展的匹配字符串,如:['^','-','=','$']中a_b_c::d这个调度会变成'^a-b-c=d$'
-        'format'    => array('', '_', '::', ''),
         //设置独享页的类名
         'exclusive' => 'of_ex'
     ),
@@ -145,8 +143,8 @@ return array(
     'htmlTpl'     => array(
         //编译模版存储路径
         'path'    => '/data/_of/of_base_htmlTpl_engine',
-        //注释标签标识符 <!--标识符 php代码 -->
-        'tagKey'  => '_',
+        //注释脚本标识 <!--标识[0] php代码 标识[1]-->, [2]脚本匹配正则如'(?:\<\?|_)(.*?)(?:\?\>|)'
+        'tagKey'  => array('<?', '?>'),
         //属性的前缀 _value 相当于 value
         'attrPre' => '_',
         //功能的前缀 __del 代表删除 当前标签
@@ -177,8 +175,10 @@ return array(
         ),
         //网络请求
         'net' => array(
-            //异步请求安全校验, ""=IP地址核对, url=内网网址, str=校验密码
-            'check' => '',
+            //异步请求方案, ""=当前网址, url=指定网址
+            'async'  => '',
+            //k-v 池, 异步请求时用于安全校验
+            'kvPool' => 'default'
         ),
         //计划任务
         'timer' => array(
@@ -241,8 +241,8 @@ return array(
         'oUpload' => array(
             //禁止上传的扩展文件
             'filtExt' => '@^(?:exe|php|html|htm|js|css)$@',
-            //允许上传的文件夹(仅可匹配文件夹)
-            'folder'  => '@^(?:/data)/@'
+            //允许上传的文件夹(仅可匹配文件夹), 正则结果[1]可以指定根目录
+            'folder'  => '@^(/data)/upload/@'
         )
     )
 );

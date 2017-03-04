@@ -62,7 +62,7 @@ class of_accy_session_mysql extends of_base_session_base {
         of_db::sql($sql, 'of_accy_session_mysql');
     }
 
-    protected static function _gc(&$maxlifetime) {
+    protected static function _gc($maxlifetime) {
         $maxlifetime = date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME'] - $maxlifetime);
         $sql = "DELETE FROM 
             `_of_base_session`

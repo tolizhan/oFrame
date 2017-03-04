@@ -321,7 +321,7 @@ class of_base_com_com {
             if ($config === null) {
                 //复制post数据
                 $post = $_POST;
-                $config = $post['method'];
+                $config = $post['method'] = stripslashes($post['method']);
                 //不生成节点
                 $params['config'] = array();
                 if (isset($post['params'][0])) {

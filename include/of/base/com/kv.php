@@ -180,10 +180,10 @@ class of_base_com_kv {
     }
 
     /* '/of/accy/kv/xx.php' 文件使用继承该类,并实现以下方法
-abstract protected function _connect();                                     //连接到存储结构
-abstract protected function _add(&$name, &$value, &$time);                  //添加数据
-abstract protected function _del(&$name);                                   //删除数据
-abstract protected function _set(&$name, &$value, &$time);                  //设置数据
-abstract protected function _get(&$name);                                   //读取数据
-abstract protected function _close();                                       //关闭连接源// */
+    abstract protected function _connect();                         //连接到存储结构
+    abstract protected function _add(&$name, &$value, &$time);      //添加数据
+    abstract protected function _del(&$name);                       //删除数据
+    abstract protected function _set(&$name, &$value, &$time);      //设置数据
+    abstract protected function _get(&$name);                       //读取数据
+    abstract protected function _close();                           //关闭连接源// */
 }

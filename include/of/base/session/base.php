@@ -102,7 +102,7 @@ class of_base_session_base {
      * 作者 : Edgar.lee
      */
     final public static function destroy(&$sessionId) {
-        call_user_func(self::$adapterClass . '::_destroy', $sessionId);
+        call_user_func_array(self::$adapterClass . '::_destroy', array(&$sessionId));
         return true;
     }
 
@@ -126,7 +126,7 @@ protected static function _write(&$sessionId, &$data, $maxLifeTime);            
 
 protected static function _destroy(&$sessionId);                                    //清除session
 
-protected static function _gc(&$maxlifetime);                                       //清理过期session */
+protected static function _gc($maxlifetime);                                        //清理过期session */
 }
 
 of_base_session_base::init(true);

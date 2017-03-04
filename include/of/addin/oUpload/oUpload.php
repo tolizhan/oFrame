@@ -26,7 +26,7 @@ session_write_close();
 //读取配置文件
 $config = of::config('_of.addin.oUpload', array()) + array(
     'filtExt' => '@^(?:exe|php|html|htm|js|css)$@',
-    'folder'  => '@^(?:/data)/@'
+    'folder'  => '@^' . OF_DATA . '/@'
 );
 //保证有字符输出
 echo ' ';
@@ -62,5 +62,5 @@ if(
     //文件移动
     move_uploaded_file($_FILES['fileData']['tmp_name'], $file);
     //输出目录
-    echo substr($path, strlen(rtrim($math[0], '/')));
+    echo substr($path, strlen(rtrim($math[isset($math[1])], '/')));
 }

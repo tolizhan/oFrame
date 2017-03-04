@@ -3,7 +3,7 @@
  * 描述 : html模板引擎,实现UI,开发人员分离
  * 注明 :
  *      配置变量(config) : 配置变量(注释前*代表有默认值修改时要慎重, x代表不能修改) {
- *          "tagKey"  :*默认='_',注释标签标识符 <!--标识符 php代码 -->
+ *          "tagKey"  :*默认=['<?', '?>', '<\?(.*)\?>'],注释标签标识符 <!--标识符[0] php代码 标识符[1]-->
  *          "attrPre" :*默认='_',属性的前缀 _value 相当于 value
  *          "funcPre" :*默认='__',功能的前缀 __del 代表删除 当前标签
  *          "path"    :*默认=可写路径/_of/of_base_htmlTpl_engine/compile,编译文件存储的路径
@@ -15,8 +15,8 @@
 class of_base_htmlTpl_engine {
     //html模板解析引擎
     private static $config = array(
-        //注释标签标识符 <!--标识符 php代码 -->
-        'tagKey'  => '_',
+        //注释标签标识符 <!--标识符[0] php代码 标识符[1]-->
+        'tagKey'  => array('<?', '?>', '<\?(.*)\?>'),
         //属性的前缀 _value 相当于 value
         'attrPre' => '_',
         //功能的前缀 __del 代表删除 当前标签
@@ -31,6 +31,13 @@ class of_base_htmlTpl_engine {
         //引用配置文件
         $config = &self::$config;
         $config = of::config('_of.htmlTpl', array()) + $config;
+
+        //初始化注释标识符
+        $index = &$config['tagKey'];
+        //兼容旧版
+        $index = (array)$index + array(1 => '');
+        isset($index[2]) || $index[2] = preg_quote($index[0]) . '(.*?)' . preg_quote($index[1]);
+        $index[3] = '@^' . $index[2] . '$@s';
 
         //编译文件存储的路径
         $config['path'] = ROOT_DIR . (
@@ -160,8 +167,6 @@ class of_base_htmlTpl_engine {
         $headObj = $parseObj->find('head:eq(0)');
         //添加 of_view::head
         if ($headObj->size()) {
-            //注释键长度
-            $tagKeyLen = strlen($config['tagKey']);
             //打印头数据
             $printHeadArr = null;
             //body对象
@@ -184,8 +189,10 @@ class of_base_htmlTpl_engine {
 
                 //脚本移动到最先执行
                 if ($tagName === '!--') {
-                    strncmp($config['tagKey'], $nodeObj->attr(''), $tagKeyLen) ||
+                    //是注释脚本
+                    if (preg_match($config['tagKey'][3], $nodeObj->attr(''))) {
                         $beforeNode->before($nodeObj);
+                    }
                 //移动到 body 标签中
                 } else if (
                     //是 style 或 非引用js
@@ -214,7 +221,7 @@ class of_base_htmlTpl_engine {
             }
 
             //生成 head
-            $printHeadArr[''][] = "<!--{$config['tagKey']}\nof_view::head(array(\n    'title' => ";
+            $printHeadArr[''][] = "<!--{$config['tagKey'][0]}\nof_view::head(array(\n    'title' => ";
             //获取标题
             $temp = array($headObj->find('title'));
             if ($temp[1] = $temp[0]->attr($config['funcPre'] . 'html')) {
@@ -226,7 +233,7 @@ class of_base_htmlTpl_engine {
             $temp = str_repeat(' ', 8);
 
             //生成head
-            if (isset($printHeadArr['head'])) {
+            if ($printHeadArr['head']) {
                 $printHeadArr[''][] = "    'head'  => array(\n{$temp}";
                 $printHeadArr[''][] = join(",\n{$temp}", $printHeadArr['head']);
                 $printHeadArr[''][] = "\n    ),\n";
@@ -254,7 +261,7 @@ class of_base_htmlTpl_engine {
             }
 
             //完成 head
-            $printHeadArr[''][] = "));\n-->\n";
+            $printHeadArr[''][] = "));\n{$config['tagKey'][1]}-->\n";
             $beforeNode->after(join($printHeadArr['']))->remove();
             $afterNode->remove();
 
@@ -272,8 +279,6 @@ class of_base_htmlTpl_engine {
     private static function parseTplBody(&$parseObj) {
         //引用配置文件
         $config = &self::$config;
-        //注释键长度
-        $tagKeyLen = strlen($config['tagKey']);
 
         //处理 body 中的 htmlLoad
         self::htmlLoadParse($parseObj, true);
@@ -337,11 +342,11 @@ class of_base_htmlTpl_engine {
         //解析注释中的脚本
         foreach ($parseObj->contents('!--')->eq() as $nodeObj) {
             //是注释脚本
-            if (strncmp($config['tagKey'], $temp = $nodeObj->attr(''), $tagKeyLen) === 0) {
+            if (preg_match($config['tagKey'][3], $nodeObj->attr(''), $temp)) {
                 //存在脚本
-                if (ltrim($temp = substr($temp, $tagKeyLen))) {
+                if (ltrim($temp[1])) {
                     //注释行数
-                    $temp = ' /*line : ' . $nodeObj->attr('>tagLine::start') . '*/' . $temp;
+                    $temp = ' /*line : ' . $nodeObj->attr('>tagLine::start') . '*/' . $temp[1];
                     //存入语法检测列表
                     $checkSyntaxList[] = $temp;
                     //创建' '字符串
@@ -386,7 +391,7 @@ class of_base_htmlTpl_engine {
                 $checkSyntaxList = array();
                 preg_match_all(
                     //匹配<!--_ -->标签
-                    '@<!--' . preg_quote($config['tagKey']) . '(.*?)-->@s',
+                    '@<!--' . $config['tagKey'][2] . '-->@s',
                     $text, $temp, PREG_SET_ORDER | PREG_OFFSET_CAPTURE
                 );
 
@@ -496,7 +501,7 @@ class of_base_htmlTpl_engine {
 
             //转换注释标签
             if ($isBody) {
-                $nodeObj->after("<!--{$config['tagKey']} include L::getHtmlTpl('{$temp[1]}'); -->");
+                $nodeObj->after("<!--{$config['tagKey'][0]} include L::getHtmlTpl('{$temp[1]}'); {$config['tagKey'][1]}-->");
             } else {
                 $result[] = "'_' . L::getHtmlTpl('{$temp[1]}')";
             }

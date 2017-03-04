@@ -3,9 +3,9 @@
  * 描述 : 提供网络通信相关封装
  * 注明 :
  *      配置文件结构($config) : {
- *          "check" : 异步请求安全校验, ""=IP地址核对, url=内网网址, str=校验密码
- *          "mode"  : 校验模式, true=内部网址, false=IP地址核对, null=密码核对
- *          "async" : 异步请求使用的网络地址解析格式 {
+ *          "async"  : 异步请求方案, ""=当前网址, url=指定网址
+ *          "kvPool" : k-v 池, 异步请求时用于安全校验
+ *          "asUrl"  : 异步请求使用的网络地址解析格式 {
  *              "scheme" : 网络协议, http或https,
  *              "host"   : 请求域名,
  *              "port"   : 请求端口,
@@ -39,14 +39,13 @@ class of_base_com_net {
         );
 
         $temp = of::config('_of.com.net', array()) + array(
-            'check' => ''
+            'async'  => '',
+            'kvPool' => 'default'
         );
         //校验模式
-        $temp['async'] = ($temp['mode'] = !!strpos($temp['check'], '://')) ?
+        $temp['asUrl'] = strpos($temp['async'], '://') ?
             //异步请求地址
-            parse_url($temp['check']) + array('port' => 80) : self::$params;
-        //密码校验
-        $temp['mode'] || $temp['check'] && $temp['mode'] = null;
+            parse_url($temp['async']) + array('port' => 80) : self::$params;
         //配置信息
         self::$config = $temp;
     }
@@ -85,12 +84,14 @@ class of_base_com_net {
             $data = file_get_contents('php://input');
 
             if (
-                ($config['mode'] === true && $config['async']['host'] === self::$params['host']) ||
-                ($config['mode'] === false && $_SERVER['REMOTE_ADDR'] === $_SERVER['SERVER_ADDR']) ||
-                ($config['mode'] === null && isset($_GET['md5']) && md5($data . $config['check']) === $_GET['md5'])
+                isset($_GET['md5']) &&
+                ($temp = of_base_com_kv::get('of_base_com_net::' . $_GET['md5'])) &&
+                $temp === md5($data)
             ) {
                 //忽略客户端断开
                 ignore_user_abort(true);
+                //删除校验kv
+                of_base_com_kv::del('of_base_com_net::' . $_GET['md5']);
                 //默认关闭session
                 session_write_close();
                 //读取post数据
@@ -186,11 +187,13 @@ class of_base_com_net {
             );
 
             $index = &self::$config;
-            $data['url'] = $index['async'];
+            $data['url'] = $index['asUrl'];
             $data['url']['path'] = OF_URL . '/index.php';
             $data['url']['query'] = 'a=request&c=of_base_com_net';
             //数据校验
-            $index['mode'] === null && $data['url']['query'] .= '&md5=' . md5($data['data'] . $index['check']);
+            $temp = of_base_com_str::uniqid();
+            of_base_com_kv::set($asMd5 = 'of_base_com_net::' . $temp, md5($data['data']), 300);
+            $data['url']['query'] .= '&md5=' . $temp;
         }
 
         //创建连接
@@ -285,6 +288,13 @@ class of_base_com_net {
                 }
             //开始二次请求
             } else {
+                //等待异步端数据接收成功
+                for ($i = 60; --$i;) {
+                    usleep(50000);
+                    if (!of_base_com_kv::get($asMd5)) {
+                        break ;
+                    }
+                }
                 $res['state'] = true;
             }
 

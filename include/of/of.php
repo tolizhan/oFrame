@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200206);
+define('OF_VERSION', 200208);
 
 class of {
     //站点配置文件
@@ -151,7 +151,7 @@ class of {
                 $v['isCall'] && $result[$k] = &self::callFunc($v['event'], $params);
             }
         //管理事件
-        } elseif ( $event === null ) {
+        } else if ($event === null) {
             $result = &$eventList[$key];
         } else {
             //引用事件

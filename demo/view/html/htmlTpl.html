@@ -14,11 +14,11 @@
 
 <body>
 <pre>
-标签键   : 紧跟html注释标签后的字符串,用来区分脚本注释与普通注释,如:&lt;--标签键 这里写一些php代码 --&gt;
+标签键   : 紧跟html注释标签后的字符串,用来区分脚本注释与普通注释,如:&lt;--标签键 这里写一些php代码 ?&gt;--&gt;
 属性前缀 : 写在普通属性前面,用来区分脚本属性和普通属性
 功能前缀 : 用来影响解析行为的属性关键词,如:&lt;input __del &gt;这个标签标记删除(__del)
 脚本位置 : 
-    (1)写在带有标签键的注释中,如:&lt;--_ 这里写一些php代码 --&gt;与结束同一行的文本会被删掉
+    (1)写在带有标签键的注释中,如:&lt;!--&lt;? 这里写一些php代码 ?&gt;--&gt;与结束同一行的文本会被删掉
     (2)或写在脚本属性中,如:&lt;input _value="echo '输出文本';" &gt;
 脚本写法 : 脚本有三种写法,
     (1)符合URL路径结构的写法 : xx/以当前文件所在位置开始寻找, /xx以view下对应的文件夹(样式,图片,脚本)开始寻找, http://正常解析
@@ -55,29 +55,29 @@
     <td>普通注释</td>
     <td>&lt;!--  
     echo '这是普通注释';
---&gt;</td>
+?&gt;--&gt;</td>
     <td><!--
     echo '这是普通注释';
 --></td>
 </tr>
 <tr>
     <td>注释脚本</td>
-    <td>&lt;!--_
+    <td>&lt;!--&lt;?
     echo '运行php脚本';
---&gt;这一行会被删除<font color="red">在script中不会删除这一行</font>
+?&gt;--&gt;这一行会被删除<font color="red">在script中不会删除这一行</font>
 上一行会被删除</td>
-    <td><!--_  
+    <td><!--<?  
     echo '运行php脚本';
--->这一行会被删除
+?>-->这一行会被删除
 上一行会被删除</td>
 </tr>
 <tr>
     <td>js 脚本</td>
     <td>&lt;script type="php"&gt;<font color="red">可以将 type 设置成 php,这样在浏览时便不会执行</font>
-document.write("&lt;!--_ echo '输出字符串'; --&gt; : 123");
+document.write("&lt;!--&lt;? echo '输出字符串'; ?&gt;--&gt; : 123");
 &lt;/script&gt;</td>
     <td><script type="php">
-document.write("<!--_ echo '输出字符串'; --> : 123");
+document.write("<!--<? echo '输出字符串'; ?>--> : 123");
 </script></td>
 </tr>
 <tr>
@@ -107,33 +107,33 @@ document.write("<!--_ echo '输出字符串'; --> : 123");
 </tr>
 <tr>
     <td>for循环演示</td>
-    <td>&lt;!--_
+    <td>&lt;!--&lt;?
 for($i = 1; $i &lt; 6; ++$i) {
---&gt;
+?&gt;--&gt;
 &lt;input type="text" value="1" _value="$i"&gt;
-<font color="red">&lt;!--_
+<font color="red">&lt;!--&lt;?
 /* 可以用"/* ... */"方式实现批量删除标签<font color="blue">不推荐</font>
---&gt;</font>
+?&gt;--&gt;</font>
 &lt;input type="text" value="2"&gt;
 &lt;input type="text" value="3"&gt;
 &lt;input type="text" value="4"&gt;
 &lt;input type="text" value="5"&gt;
-&lt;!--_
+&lt;!--&lt;?
 <font color="red">*/</font>
 }
---&gt;</td>
+?&gt;--&gt;</td>
     <td>
-<!--_
+<!--<?
 for($i = 1; $i < 6; ++$i) {
--->
+?>-->
 <input type="text" value="1" _value="$i">
 <input type="text" value="2" __del>
 <input type="text" value="3" __del>
 <input type="text" value="4" __del>
 <input type="text" value="5" __del>
-<!--_
+<!--<?
 }
---></td>
+?>--></td>
 </tr>
 </table>
 </pre>

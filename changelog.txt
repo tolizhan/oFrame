@@ -1,3 +1,32 @@
+版本: 208
+作者: Edgar
+日期: 2017年3月5日 4:54:41
+信息:
+说明: 加强对命名空间的兼容性
+      模块引擎默认注释脚本改为 <!--<? ?--> 方式, 使得对各种编辑器高亮更友好
+      加强SESSION files 模式的安全性
+      修复SESSION gc 回收时报错问题
+      上传组件可以限制更详细的上传位置
+      完善 of_base_com_net 类的异步请求功能
+      框架配置文件 extension.format 作废
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/tool/htmlLoad/code/load.js
+已修改 : /trunk/demo/tool/htmlLoad/head.html
+已修改 : /trunk/demo/view/html/htmlTpl.html
+已修改 : /trunk/include/of/accy/com/kv/files.php
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/accy/session/mysql.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+
 版本: 206
 作者: Edgar
 日期: 2017年2月19日 13:59:14
@@ -6,7 +35,7 @@
       of::event 中"of::dispatch"事件添加触发参数 {"class" : &调度类名, "action" : &调度方法, "check" : &校验参数}
       扩展入口同步添加"of::dispatch"事件触发参数
       k-v 添加 redis 主从连接方式
-      jsLoad readme.txt 中添加一段 "本地调用框架中的js扩展" 演示代码
+      htmlLoad readme.txt 中添加一段 "本地调用框架中的js扩展" 演示代码
       错误日志对 eval 中的错误提示位置更准确
       加强 html 模版引擎对 htmlLoad 支持
       修复 sso 状态同步失败的问题

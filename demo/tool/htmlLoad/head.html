@@ -6,16 +6,14 @@
  * 作者 : Edgar.lee
  */
 +function () {
-    //当前文件到项目根目录的位置
-    var ROOT_URL = "../../..";
-    //htmlLoad 自动填充不要修改
+    //当前文件, htmlLoad 自动填充不要修改
     var src = "";
 
-    //生成系统根目录
-    window.ROOT_URL = ROOT_URL = src + ROOT_URL;
-    //生成框架根目录
+    //配置系统根目录
+    window.ROOT_URL = src + "../../..";
+    //配置框架根目录
     window.OF_URL   = ROOT_URL + "/include/of";
-    //生成视图根目录
+    //配置视图根目录
     window.VIEW_URL = ROOT_URL + "/view";
 
     document.write('<script src' + '="' + OF_URL + '/att/link/jquery.js"></' + 'script>');
