@@ -14,11 +14,11 @@ class of_base_link_extends {
         //组件对象列表,存放在
         static $_comObjs = null;
         //加载com组件
-        if( $key[0] === '_' ) {
+        if ($key[0] === '_') {
             isset($comObjs[$temp = 'of_base_com' . $key]) || $comObjs[$temp] = new $temp;
             return $comObjs[$temp];
         //加载view视图
-        } else if( $key === 'view' ) {
+        } else if ($key === 'view') {
             return of_view::inst();
         }
     }

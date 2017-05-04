@@ -1,3 +1,73 @@
+版本: 210
+作者: Edgar
+日期: 2017年5月4日 21:54:27
+信息:
+说明: SSO添加权限模版导出功能
+      框架配置debug支持测试环境 true=开发环境, null=测试环境, false=生产环境
+      html模版引擎多行注释支持跨脚本块
+      预加载 of_base_version_check 可以在非生产模式下自动检查框架版本
+      框架配置config支持动态配置加载, 数组=动态配置{动态键 : 配置路径}, 字符串=等同{"0" : 全局配置}
+      of::getArrData 第四个参数添加 2 功能符, 默认值赋值到原数据
+      升级日期插件
+      php >= 5.3 可以通过命名空间方式调用框架
+      更好的准守PSR规范
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/TopClient.php
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/include/of/accy/com/kv/files.php
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/pdoMysql.php
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/accy/session/kv.php
+已修改 : /trunk/include/of/accy/session/mysql.php
+已修改 : /trunk/include/of/addin/WDatePicker/WdatePicker.js
+已修改 : /trunk/include/of/addin/WDatePicker/calendar.js
+已修改 : /trunk/include/of/addin/WDatePicker/skin/WdatePicker.css
+已修改 : /trunk/include/of/addin/WDatePicker/skin/default/datepicker.css
+已修改 : /trunk/include/of/addin/WDatePicker/skin/whyGreen/datepicker.css
+已修改 : /trunk/include/of/att/sso/css/main.css
+已增加 : /trunk/include/of/att/sso/res
+已增加 : /trunk/include/of/att/sso/res/importTpl.csv
+已修改 : /trunk/include/of/att/sso/tpl/login.tpl.php
+已修改 : /trunk/include/of/att/sso/tpl/main.tpl.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/data.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/jsLog.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/toolBaseClass.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/extension/tool.php
+已修改 : /trunk/include/of/base/extension/toolBaseClass.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/language/packs.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/language/toolBaseClass.php
+已修改 : /trunk/include/of/base/link/extends.php
+已修改 : /trunk/include/of/base/link/response.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/base/tool/mysqlSync.php
+已修改 : /trunk/include/of/base/tool/test.php
+已增加 : /trunk/include/of/base/version
+已增加 : /trunk/include/of/base/version/check.php
+已修改 : /trunk/include/of/base/xssFilter/main.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+
 版本: 208
 作者: Edgar
 日期: 2017年3月5日 4:54:41

@@ -65,6 +65,8 @@ class of_accy_session_files extends of_base_session_base {
         fclose($lock);
     }
 
-    protected static function _open() {}
-    protected static function _close() {}
+    protected static function _open() {
+    }
+    protected static function _close() {
+    }
 }

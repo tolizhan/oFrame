@@ -64,21 +64,21 @@ class of_base_tool_test extends of_base_com_data {
         static $tag;
 
         //关闭输出缓存
-        if(ob_get_length() !== false) {
+        if (ob_get_length() !== false) {
             ob_end_flush();
             ob_implicit_flush(true);
         }
 
-        if($callsNumber > 0 && $arg2 !== false) {
-            if($argsNum === 1 || is_array($arg2)) {
+        if ($callsNumber > 0 && $arg2 !== false) {
+            if ($argsNum === 1 || is_array($arg2)) {
                 $tag = $arg1;
-                if(is_array($arg2)) {
+                if (is_array($arg2)) {
                     $nowMicrotime = $arg2['microtime'];
                     $callsNumber = $arg2['callsNumber'];
                 }
             }
-            $microtime_1 = explode(' ',$tag['microtime']);
-            $microtime_2 = explode(' ',$nowMicrotime);
+            $microtime_1 = explode(' ', $tag['microtime']);
+            $microtime_2 = explode(' ', $nowMicrotime);
             $microtime = $microtime_2[0] - $microtime_1[0];
             $microtime += $microtime_2[1] - $microtime_1[1];
 
@@ -89,7 +89,7 @@ class of_base_tool_test extends of_base_com_data {
         $tag['microtime'] = &$nowMicrotime;
         $tag['callsNumber'] = $callsNumber;
 
-        if(is_bool($arg2)) {
+        if (is_bool($arg2)) {
             $arg1 = $tag;
         }
         $callsNumber += 1;

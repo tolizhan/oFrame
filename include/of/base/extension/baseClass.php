@@ -38,13 +38,13 @@ class of_base_extension_baseClass {
     protected function _getConst($key = null) {
         $constants = &$this->constants;
         //返回所有常量
-        if( $key === null ) {
+        if ($key === null) {
             return $constants;
         //返回指定常量
-        } else if( isset($constants[$key]) ) {
+        } else if (isset($constants[$key])) {
             return $constants[$key];
         //判断是路径
-        } else if( strpbrk($key, '\\/') ) {
+        } else if (strpbrk($key, '\\/')) {
             //eval的地址返回当前__FILE__
             return strpos($key, '(') === false ? $key : $constants['__FILE__'];
         } else {
@@ -116,8 +116,8 @@ class of_base_extension_baseClass {
         //扩展url
         $extensionUrl = $this->_getConst('eUrl');
 
-        foreach($path as &$v) {
-            switch( strtolower($fileExtend === null ? pathinfo($v, PATHINFO_EXTENSION) : $fileExtend) ) {
+        foreach ($path as &$v) {
+            switch (strtolower($fileExtend === null ? pathinfo($v, PATHINFO_EXTENSION) : $fileExtend)) {
                 //include文件
                 case 'php':
                     include $extensionDir . $v;
@@ -201,10 +201,10 @@ class of_base_extension_baseClass {
         $eKey = $this->_getConst('eKey');
 
         //私有钩子
-        if( $type[0] === '_' ) {
+        if ($type[0] === '_') {
             //钩子存在
-            if( isset($hookList[$eKey][$type]) ) {
-                foreach($hookList[$eKey][$type] as &$v) {
+            if (isset($hookList[$eKey][$type])) {
+                foreach ($hookList[$eKey][$type] as &$v) {
                     of_base_extension_match::callExtension($eKey, $v['asCall'], array(&$params, &$v['params']));
                 }
             }
@@ -235,25 +235,25 @@ class of_base_extension_baseClass {
         //解析结构
         is_string($callback) && $callback = explode('::', $callback, 2);
         //获取类名(判断是类) && 类已编译 && 为默认对象
-        if( ($temp = get_class($callback[0])) && isset($classObj[$temp]) && $classObj[$temp] === $callback[0] ) {
+        if (($temp = get_class($callback[0])) && isset($classObj[$temp]) && $classObj[$temp] === $callback[0]) {
             $callback[0] = substr($temp, strlen(of_base_extension_manager::getConstant('baseClassName')) + strlen($eKey) + 1);
         }
 
-        if( isset($hookList[$eKey][$type]) ) {
+        if (isset($hookList[$eKey][$type])) {
             $hookList = &$hookList[$eKey];
-            if( $callback === null ) {
+            if ($callback === null) {
                 unset($hookList[$type]);
             } else {
                 //当前扩展类型钩子 的 单个回调
-                foreach($hookList[$type] as $k => &$v) {
-                    if( $v['asCall'] === $callback ) {
+                foreach ($hookList[$type] as $k => &$v) {
+                    if ($v['asCall'] === $callback) {
                         unset($hookList[$type][$k]);
                         break;
                     }
                 }
 
                 //当前钩子数组为空,则删除
-                if( count($hookList[$type]) === 0 ) {
+                if (count($hookList[$type]) === 0) {
                     unset($hookList[$type]);
                 }
             }
@@ -266,7 +266,7 @@ class of_base_extension_baseClass {
      *      shareData : 传递共享数据(数据中的值以引用方式传递)
      * 作者 : Edgar.lee
      */
-    public static function _initShareData( $shareData ) {
+    public static function _initShareData($shareData) {
         self::$shareData === null && self::$shareData = $shareData;
     }
 
@@ -299,19 +299,19 @@ class of_base_extension_baseClass {
         $indexFopen            = null;
 
         //全局初始化
-        if($extensionDir === null) {
+        if ($extensionDir === null) {
             $extensionDir = of_base_extension_manager::getConstant('extensionDir');
         }
 
         //局部初始化
-        if( !isset($indexExtension['fp']) ) {
+        if (!isset($indexExtension['fp'])) {
             //扩展目录
             $temp = "{$extensionDir}/{$eKey}/_info/sharedData";
             //创建共享数据目录
-            is_dir($temp) || mkdir($temp ,0777 ,true);
+            is_dir($temp) || mkdir($temp, 0777, true);
 
             //创建文件流
-            $indexExtension['fp'] = fopen($filePath = $temp . '/data.php' , is_file($filePath) ? 'r+' : 'x+');
+            $indexExtension['fp'] = fopen($filePath = $temp . '/data.php', is_file($filePath) ? 'r+' : 'x+');
             //无独享锁
             $indexExtension['lock'] = false;
             //无数据
@@ -320,17 +320,17 @@ class of_base_extension_baseClass {
         $indexFopen = &$indexExtension['fp'];
 
         //保存数据
-        if( $command === false ) {
+        if ($command === false) {
             //返回信息
             $temp = false;
             //已加锁 && 文件流有效
-            if( $indexExtension['lock'] && $indexFopen !== false ) {
-                if( is_array($indexExtension['data']) ) {
+            if ($indexExtension['lock'] && $indexFopen !== false) {
+                if (is_array($indexExtension['data'])) {
                     //独享锁
-                    flock($indexFopen , LOCK_EX);
+                    flock($indexFopen, LOCK_EX);
                     fseek($indexFopen, 0);
                     ftruncate($indexFopen, 0);
-                    fwrite($indexFopen , '<?php exit; ?> ' . serialize($indexExtension['data']));
+                    fwrite($indexFopen, '<?php exit; ?> ' . serialize($indexExtension['data']));
                     //保存成功
                     $temp = true;
                 }
@@ -347,13 +347,13 @@ class of_base_extension_baseClass {
         //保存数据 $command 为 null 或 true
         } else {
             //只读模式
-            if( $command === null ) {
+            if ($command === null) {
                 //共享锁
-                flock($indexFopen , LOCK_SH);
+                flock($indexFopen, LOCK_SH);
             //加锁模式 && 没加锁
-            } elseif( $indexExtension['lock'] === false ) {
+            } else if ($indexExtension['lock'] === false) {
                 //独享锁
-                flock($indexFopen , LOCK_EX);
+                flock($indexFopen, LOCK_EX);
                 //标记独享锁
                 $indexExtension['lock'] = true;
                 //重置数据
@@ -361,19 +361,18 @@ class of_base_extension_baseClass {
             }
 
             //不存在缓存数据
-            if( !isset($indexExtension['data']) && $indexFopen !== false ) {
-            
+            if (!isset($indexExtension['data']) && $indexFopen !== false) {
                 fseek($indexFopen, 15);
                 do {
-                    $data[] = fread($indexFopen , 1024);
-                } while( !feof($indexFopen) );
+                    $data[] = fread($indexFopen, 1024);
+                } while (!feof($indexFopen));
 
                 //反序列化
                 $indexExtension['data'] = ($data = join($data)) === '' ? array() : unserialize($data);
             }
 
             //如果 共享方式 则解锁连接
-            if( $command === null ) {
+            if ($command === null) {
                 //这样写法默认会代替 flock($indexFopen, LOCK_UN) 和 close($indexFopen)
                 $indexFopen = null;
             }

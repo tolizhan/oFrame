@@ -73,7 +73,7 @@ class of_base_htmlTpl_engine {
                 //编译文件存在
                 is_file($comFile) ?
                     //debug && 模板存在 && 模板有变动
-                    OF_DEBUG && is_file($tplFile) && filemtime($tplFile) !== filemtime($comFile) :
+                    OF_DEBUG !== false && is_file($tplFile) && filemtime($tplFile) !== filemtime($comFile) :
                     //模板存在
                     is_file($tplFile)
             ) {
@@ -346,7 +346,7 @@ class of_base_htmlTpl_engine {
                 //存在脚本
                 if (ltrim($temp[1])) {
                     //注释行数
-                    $temp = ' /*line : ' . $nodeObj->attr('>tagLine::start') . '*/' . $temp[1];
+                    $temp = ' #line : ' . $nodeObj->attr('>tagLine::start') . "\n" . $temp[1];
                     //存入语法检测列表
                     $checkSyntaxList[] = $temp;
                     //创建' '字符串
@@ -382,7 +382,7 @@ class of_base_htmlTpl_engine {
             //文本父节点键
             $parentKey = of_base_com_hParse::nodeConn($nodeKey, 'parent', 0);
             //注释行数
-            $line = ' /*line : ' . of_base_com_hParse::nodeAttr($nodeKey, '>tagLine::start') . '*/';
+            $line = ' #line : ' . of_base_com_hParse::nodeAttr($nodeKey, '>tagLine::start') . "\n";
             $text = of_base_com_hParse::nodeAttr($nodeKey, '');
 
             //是 js 脚本
@@ -395,7 +395,7 @@ class of_base_htmlTpl_engine {
                     $text, $temp, PREG_SET_ORDER | PREG_OFFSET_CAPTURE
                 );
 
-                for ($i = count($temp); --$i >= 0; ) {
+                for ($i = count($temp); --$i >= 0;) {
                     $index = &$temp[$i];
                     $checkSyntaxList[] = $line . $index[1][0];
                     $text = substr_replace($text, "<?php{$line}{$index[1][0]}?>", $index[0][1], strlen($index[0][0]));
@@ -435,7 +435,7 @@ class of_base_htmlTpl_engine {
         //以;和}结尾的脚本
         } else if (preg_match('@^.*[;}]\s*$@s', $format)) {
             if ($isPrint) {
-                $format = '<?php /*line : ' .$line. '*/ ' . $format . ' ?>';
+                $format = '<?php #line : ' .$line. "\n " . $format . ' ?>';
             } else {
                 $temp = substr(self::$config['tplFile'], strlen(ROOT_DIR));
                 //无法解析成赋值模式
@@ -443,12 +443,12 @@ class of_base_htmlTpl_engine {
             }
         //简单运算
         } else {
-            $isPrint && $format = '<?php /*line : ' .$line. '*/ echo ' . $format . '; ?>';
+            $isPrint && $format = '<?php #line : ' .$line. "\n echo " . $format . '; ?>';
         }
 
         $temp = $isPrint ? '?>' . $format : $format . ';';
         //脚本校验
-        self::checkSyntax($temp, ' /*line : ' .$line. '*/ ' . $code);
+        self::checkSyntax($temp, ' #line : ' .$line. "\n " . $code);
         return $format;
     }
 
@@ -464,7 +464,7 @@ class of_base_htmlTpl_engine {
      */
     private static function &formatUrl($line, &$url, $isPrint = true) {
         $format = htmlentities($url, ENT_QUOTES, 'UTF-8');
-        $line = "/*line : {$line}*/";
+        $line = "#line : {$line}\n";
 
         //有属性值 && 不是网络路径
         if (isset($format[0]) && !strpos($format, ':')) {

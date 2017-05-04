@@ -217,7 +217,7 @@ class of_base_sso_api {
             if (isset($_GET['callback'])) {
                 echo $_GET['callback'], '(' .of_base_com_data::json($temp). ');';
             } else if (!empty($_GET['referer'])) {
-                if( $temp['state'] === 200 && isset($_GET['check']) ) {
+                if ($temp['state'] === 200 && isset($_GET['check'])) {
                     $temp = array('data' => self::check(true));
                     $temp['md5'] = md5($temp['data'] . $_GET['check'] . $pwd);
                 } else {
@@ -372,10 +372,10 @@ class of_base_sso_api {
         self::pushState($_GET['space']);
 
         //接口对接
-        if( of::dispatch('class') === 'of_base_sso_api' ) {
+        if (of::dispatch('class') === 'of_base_sso_api') {
             echo '{"state":200,"ticket":"' .$realm['ticket']. '"}';
         //跳转对接
-        } else if( !empty($_GET['referer']) ) {
+        } else if (!empty($_GET['referer'])) {
             L::header($_GET['referer']);
         }
     }
@@ -408,10 +408,10 @@ class of_base_sso_api {
         $json = array('state' => 403, 'msg' => '无效数据');
 
         //可通过权限修改
-        if( $index['realm'][$_GET['name']]['trust'] & 2 ) {
-            switch( L::get('type') ) {
+        if ($index['realm'][$_GET['name']]['trust'] & 2) {
+            switch (L::get('type')) {
                 case 'getUser':
-                    if( !empty($_GET['user']) ) {
+                    if (!empty($_GET['user'])) {
                         $sql = "SELECT
                             SUBSTR(
                                 `find`, POSITION('_' IN `find`) + 1, SUBSTR(`find`, 1, POSITION('_' IN `find`) - 1)
@@ -421,7 +421,7 @@ class of_base_sso_api {
                         WHERE
                             `name` = '{$_GET['user']}'";
 
-                        if( $temp = L::sql($sql, self::$config['dbPool']) ) {
+                        if ($temp = L::sql($sql, self::$config['dbPool'])) {
                             $json = array('state' => 200) + $temp[0];
                         }
                     }
@@ -432,7 +432,7 @@ class of_base_sso_api {
                     empty($_GET['pwd']) || $sql[] = "`pwd` = MD5('{$_GET['pwd']}')";
                     empty($_GET['nike']) || $sql[] = "`nike` = '{$_GET['nike']}'";
                     empty($_GET['state']) || $sql[] = "`state` = '{$_GET['state']}'";
-                    if( !empty($_GET['question']) && !empty($_GET['answer']) ) {
+                    if (!empty($_GET['question']) && !empty($_GET['answer'])) {
                         $sql[] = '`find`=\'' . 
                             str_pad(strlen($_GET['question']) . '_' . $_GET['question'] . md5($_GET['answer']), 255, "\0") . 
                             '\'';
@@ -449,7 +449,7 @@ class of_base_sso_api {
                     //超级权限 && 完全控制
                     empty($where) || $index['realm'][$_GET['name']]['trust'] & 4 && $where[] = 'TRUE';
 
-                    if( $sql && $where ) {
+                    if ($sql && $where) {
                         $sql = 'UPDATE 
                             `_of_sso_user` 
                         SET ' . join(',', $sql) .
@@ -460,7 +460,7 @@ class of_base_sso_api {
 
                         L::sql($sql, self::$config['dbPool']) && $json = array('state' => 200, 'msg' => '操作成功');
                     }
-                break;
+                    break;
             }
         } else {
             $json['state'] = 503;
@@ -487,7 +487,7 @@ class of_base_sso_api {
         //插入订单日志
         L::sql($sql, self::$config['dbPool']);
 
-        if( true || rand(0, 10) === 1 ) {
+        if (true || rand(0, 10) === 1) {
             //90 天有效期
             $sql = date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME'] - 7776000);
             $sql = "DELETE FROM 
@@ -526,7 +526,7 @@ class of_base_sso_api {
         AND `pwd`   = MD5('{$pwd}')
         AND `state` <> '0'";
 
-        if( 
+        if (
             ($temp = L::sql($sql, self::$config['dbPool'])) &&
             //不限制有效时间
             $config['expiry'] > 0 &&
@@ -554,9 +554,9 @@ class of_base_sso_api {
         $index = &$_SESSION['_of']['of_base_sso'];
         is_array($type) && $index['users'][$space] = $type;
 
-        if( isset($index['realm']) ) {
-            foreach($index['realm'] as $k => &$v) {
-                if( !empty($v['notify']) && $k !== $_GET['name'] ) {
+        if (isset($index['realm'])) {
+            foreach ($index['realm'] as $k => &$v) {
+                if (!empty($v['notify']) && $k !== $_GET['name']) {
                     //异步推送
                     of_base_com_net::request(
                         self::getUrl($v['notify'], array('ticket' => $v['ticket'], 'space' => &$space), $v['pwd']), 
@@ -629,7 +629,7 @@ class of_base_sso_api {
         $temp = L::sql($sql, self::$config['dbPool']);
 
         //格式化数据
-        foreach($temp as $k => &$v) {
+        foreach ($temp as $k => &$v) {
             //功能权限
             $result['func'][$v['name']] = array('data' => &$v['data']);
             //引用结构
@@ -652,12 +652,12 @@ class of_base_sso_api {
             `_of_sso_pack`.`id`";
         $temp = L::sql($sql, self::$config['dbPool']);
 
-        foreach($temp as &$v) {
-            if( $v['name'] !== null ) {
+        foreach ($temp as &$v) {
+            if ($v['name'] !== null) {
                 $v['funcIds'] = explode(',', $v['funcIds']);
                 $v['func'] = array();
 
-                foreach($v['funcIds'] as &$vf) {
+                foreach ($v['funcIds'] as &$vf) {
                     isset($func[$vf]) && $v['func'][$func[$vf]] = &$func[$vf];
                 }
                 $result['pack'][$v['name']] = &$v;
@@ -688,7 +688,7 @@ class of_base_sso_api {
         );
 
         //解码
-        if( $code ) {
+        if ($code) {
             $list = &$dict;
             $code = substr($code, 13);
         //编码
@@ -698,7 +698,7 @@ class of_base_sso_api {
         }
 
         $code = str_split($code);
-        foreach($code as &$v) {
+        foreach ($code as &$v) {
             isset($list[$v]) && $v = $list[$v];
         }
         return join($code);
@@ -710,10 +710,10 @@ class of_base_sso_api {
      */
     private static function openSession() {
         //安全开启SESSION
-        if( function_exists('session_status') ) {
+        if (function_exists('session_status')) {
             session_status() === 2 || (function_exists('session_open') ? session_open() : session_start());
         //暴力开启SESSION
-        } else if( ini_get('session.auto_start') === '0' ) {
+        } else if (ini_get('session.auto_start') === '0') {
             @session_start();
         }
     }

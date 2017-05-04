@@ -55,12 +55,12 @@ class of_base_link_response {
             '505' => 'HTTP Version Not Supported',
         );
         //发送状态码
-        if( isset($statusTexts[$code]) ) {
+        if (isset($statusTexts[$code])) {
             $protocol = isset($_SERVER['SERVER_PROTOCOL']) ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.1';
             $text === null && $text = &self::$statusTexts[$code];
             header("{$protocol} {$code} {$text}");
         //发送指定信息
-        } elseif( is_bool($text) ) {
+        } else if (is_bool($text)) {
             header($code, $text);
         //路径跳转
         } else {
@@ -87,10 +87,10 @@ class of_base_link_response {
         &$domain = null, &$secure = false, &$httpOnly = false
     ) {
         //设定有效时间
-        if( is_numeric($expire) ) {
+        if (is_numeric($expire)) {
             $expire += $_SERVER['REQUEST_TIME'];
         //设定过期日期
-        } else if($expire !== null) {
+        } else if ($expire !== null) {
             $expire = strtotime($expire);
         }
         return setcookie(
@@ -125,9 +125,9 @@ class of_base_link_response {
         static $info = array('mode' => true, 'pool'=> '');
 
         //清除缓冲
-        if( $mode === null ) {
+        if ($mode === null) {
             //返回状态数据
-            if( $pool === false ) {
+            if ($pool === false) {
                 $text = $info;
             //字符串 || null
             } else {
@@ -139,9 +139,9 @@ class of_base_link_response {
                 unset($cache[$pool]);
             }
         //结束事件回调
-        } else if( $pool === true ) {
+        } else if ($pool === true) {
             //已使用,缓存,非系统
-            if( $cache !== null && ($info['mode'] || $info['pool']) ) {
+            if ($cache !== null && ($info['mode'] || $info['pool'])) {
                 self::buffer(true, '');
                 echo self::buffer(null, '');
             }
@@ -156,7 +156,7 @@ class of_base_link_response {
             //更新缓冲池
             $pool === null || $info['pool'] = &$pool;
             //开启缓冲
-            if( $info['mode'] ) {
+            if ($info['mode']) {
                 ob_start();
             //输出对应缓存区内容
             } else {

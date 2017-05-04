@@ -18,9 +18,9 @@ class of_base_error_jsLog extends of_base_error_writeLog {
         ignore_user_abort(true);
         ini_set('max_execution_time', 0);
 
-        if( isset($_POST['message']) && isset($_POST['file']) && isset($_POST['line']) ) {
-            if( $logPath = of::config('_of.error.jsLog', OF_DATA. '/error/jsLog') ) {
-                $logPath = ROOT_DIR . $logPath . date('/Y/m',$_SERVER['REQUEST_TIME']);
+        if (isset($_POST['message']) && isset($_POST['file']) && isset($_POST['line'])) {
+            if ($logPath = of::config('_of.error.jsLog', OF_DATA. '/error/jsLog')) {
+                $logPath = ROOT_DIR . $logPath . date('/Y/m', $_SERVER['REQUEST_TIME']);
                 preg_match('@\w+Error@', $_POST['message'], $match);
                 $data = array(
                     'logType'     => $match ? $match[0] : 'jsError',
@@ -46,7 +46,7 @@ class of_base_error_jsLog extends of_base_error_writeLog {
         header('Content-type: application/x-javascript');
 ?>
 window.L.extension.jsErrorLog || !function () {
-<?php if( OF_DEBUG ) { ?>
+<?php if (OF_DEBUG) { ?>
     var block = document.createElement('div'), count = 0, nodes, refresh;
 
     block.innerHTML = '<div class="jsDebug_1320681434"><div></div><span>&lt;</span><style type="text/css">.jsDebug_1320681434{display:none;position:fixed;right:0;top:40px;_position:absolute;_left:expression(eval(document.documentElement.scrollLeft+document.documentElement.clientWidth-this.offsetWidth)-(parseInt(this.currentStyle.marginLeft,10)||0)-(parseInt(this.currentStyle.marginRight,10)||0)-1);_top:expression(eval(document.documentElement.scrollTop) + 40);background:none repeat scroll 0 0 red;border:1px dotted #CCCCCC;font-size:9pt;margin-bottom:10px;padding:6px;cursor:pointer;text-align:center;width:12px;size:9pt; z-index:2147483647}.jsDebug_1320681434 span{display:block;}.jsDebug_1320681434 div{width:500px;overflow:auto;margin-top:-7px;display:none;padding:6px 6px 0px 6px;background-color:#EEEEEE;position:absolute;right:30px;border:1px solid #000}.jsDebug_1320681434 div span{margin-bottom:6px;text-align:left;overflow:hidden;border:1px dotted #00F;}.jsDebug_1320681434 div span span{margin:0px -3px;border:0px dotted #00F;}.jsDebug_1320681434 div span span input{background-color:transparent;border:0px;margin-left:8px;}</style></div>';
@@ -82,7 +82,7 @@ window.L.extension.jsErrorLog || !function () {
 <?php } ?>
 
     window.onerror = function (message ,file ,line) {
-<?php if( OF_DEBUG ) { ?>
+<?php if (OF_DEBUG) { ?>
         var span = document.createElement("span");
         span.innerHTML = '<span><input type="text" value="' +line+ '" style="width:30px;" readonly="readonly" />' + 
             '<input type="text" value="' +window.L.entity(file, true)+ '" style="width:435px;" readonly="readonly" /></span><span>' + 

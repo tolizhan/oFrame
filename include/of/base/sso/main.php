@@ -48,7 +48,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `_of_sso_user` 
                     WHERE
                         `id` IN ({$inStr})";
-                break;
+                    break;
                 //冻结操作
                 case 'ice':
                     $sql = "UPDATE 
@@ -57,7 +57,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `state` = IF(`state` <> '0', '0', '1')
                     WHERE 
                         `id` IN ({$inStr})";
-                break;
+                    break;
             }
             $params['tip'] = empty($sql) || L::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
         }
@@ -172,14 +172,14 @@ class of_base_sso_main extends of_base_sso_api {
         $inStr = empty($params['select']) ? '' : join(',', array_keys($params['select']));
         //操作动作
         if ($inStr && !empty($params['action'])) {
-            switch( $params['action'] ) {
+            switch ($params['action']) {
                 //删除操作
                 case 'del':
                     $sql = "DELETE FROM 
                         `_of_sso_realm` 
                     WHERE
                         `id` IN ({$inStr})";
-                break;
+                    break;
                 //冻结操作
                 case 'ice':
                     $sql = "UPDATE 
@@ -188,7 +188,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `state` = IF(`state` <> '0', '0', '1')
                     WHERE 
                         `id` IN ({$inStr})";
-                break;
+                    break;
             }
             $params['tip'] = empty($sql) || L::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
         }
@@ -272,7 +272,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `_of_sso_pack` 
                     WHERE
                         `id` IN ({$inStr})";
-                break;
+                    break;
                 //冻结操作
                 case 'ice':
                     $sql = "UPDATE 
@@ -281,7 +281,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `state` = IF(`state` <> '0', '0', '1')
                     WHERE 
                         `id` IN ({$inStr})";
-                break;
+                    break;
             }
             $params['tip'] = empty($sql) || L::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
         }
@@ -424,7 +424,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `_of_sso_func` 
                     WHERE
                         `id` IN ({$inStr})";
-                break;
+                    break;
                 //冻结操作
                 case 'ice':
                     $sql = "UPDATE 
@@ -433,7 +433,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `state` = IF(`state` <> '0', '0', '1')
                     WHERE 
                         `id` IN ({$inStr})";
-                break;
+                    break;
             }
             $params['tip'] = empty($sql) || L::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
         }
@@ -573,7 +573,7 @@ class of_base_sso_main extends of_base_sso_api {
             //解析CSV
             while ($data = &of_base_com_csv::parse($path)) {
                 $data = array_map('addslashes', $data);
-                switch( $data[0] ) {
+                switch ($data[0]) {
                     //导入系统
                     case 'site':
                         $data[1] = (int)$data[1];

@@ -30,20 +30,20 @@ class of_base_extension_toolBaseClass {
         //遍历列表
         $eachList = array($temp . '/main' => true);
 
-        while( list($path, $isDir) = each($eachList) ) {
+        while (list($path, $isDir) = each($eachList)) {
             //分析文件
-            if( $isDir === false ) {
-                if(
+            if ($isDir === false) {
+                if (
                     //扩展名为php
                     pathinfo($path, PATHINFO_EXTENSION) === 'php' &&
                     //未加密
-                    strncmp( $temp = file_get_contents($path), '<?php', 5) === 0
+                    strncmp($temp = file_get_contents($path), '<?php', 5) === 0
                 ) {
                     $temp = of_base_com_str::rc4('扩展加密密钥', $temp);
                     file_put_contents($path, $temp, LOCK_EX);
                 }
             //读取文件夹
-            } else if( is_array($temp = self::getDir( $path )) ) {
+            } else if (is_array($temp = self::getDir($path))) {
                 $eachList += $temp;
             }
             unset($eachList[$path]);
@@ -59,18 +59,18 @@ class of_base_extension_toolBaseClass {
      *      {目录名 : true为文件夹;false为文件, ...}
      * 作者 : Edgar.lee
      */
-    public static function &getDir( $path = null ) {
+    public static function &getDir($path = null) {
         //文件列表
         $fileList = array();
         //扩展根目录
         $path || $path = ROOT_DIR . of::config('_of.extension.path', OF_DATA . '/extensions');
-        if( is_dir($path) ) {
+        if (is_dir($path)) {
             $handle = opendir($path);
-            while ( ($fileName = readdir($handle)) !== false ) {
-                if ( $fileName !== '.' && $fileName !== '..' ) {
+            while (($fileName = readdir($handle)) !== false) {
+                if ($fileName !== '.' && $fileName !== '..') {
                     $temp = "{$path}/{$fileName}";
 
-                    if( is_dir($temp) ) {
+                    if (is_dir($temp)) {
                         $fileList[$temp] = true;
                     //有效日志
                     } else {
@@ -97,16 +97,16 @@ class of_base_extension_toolBaseClass {
      * 作者 : Edgar.lee
      */
     private static function copyPath($source, $dest, &$exclude = array()) {
-        if( is_file($source) ) {
+        if (is_file($source)) {
             //创建目录
             is_dir($isDir = dirname($dest)) || mkdir($isDir, 0777, true);
             return copy($source, $dest);
-        } else if( is_dir($source) ) {
+        } else if (is_dir($source)) {
             //创建目录
             is_dir($dest) || mkdir($dest, 0777, true);
-            if($dp = opendir($source)) {
-                while(($file=readdir($dp)) !== false) {
-                    if ($file !== '.' && $file !== '..' && !isset($exclude[$temp = "{$source}/{$file}"]) ) {
+            if ($dp = opendir($source)) {
+                while (($file=readdir($dp)) !== false) {
+                    if ($file !== '.' && $file !== '..' && !isset($exclude[$temp = "{$source}/{$file}"])) {
                         self::copyPath($temp, "{$dest}/{$file}", $exclude);
                     }
                 }
@@ -125,12 +125,12 @@ class of_base_extension_toolBaseClass {
      * 作者 : Edgar.lee
      */
     private static function deletePath($path) {
-        if( is_file($path) ) {
+        if (is_file($path)) {
             return unlink($path);
-        } else if( is_dir($path) ) {
-            if($dp = opendir($path)) {
-                while(($file=readdir($dp)) !== false) {
-                    if ($file !== '.' && $file !== '..' ) {
+        } else if (is_dir($path)) {
+            if ($dp = opendir($path)) {
+                while (($file=readdir($dp)) !== false) {
+                    if ($file !== '.' && $file !== '..') {
                         self::deletePath($path .'/'. $file);
                     }
                 }

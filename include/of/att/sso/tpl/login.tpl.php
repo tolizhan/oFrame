@@ -61,7 +61,7 @@ echo '<script>var ofBaseSsoLogin = ' .of_base_com_data::json($_GET). '</script>'
                     </tr>
                     <tr>
                         <td colspan="2" class="of_sso-login_func_button">
-                            <?php if( of::config('_of.sso.openReg') ) { ?>
+                            <?php if (of::config('_of.sso.openReg')) { ?>
                             <a href="" onclick="ofBaseSsoLogin.func('reg', this); return false;">注册</a>
                             <?php } ?>
                             <a href="" onclick="ofBaseSsoLogin.func('login', this); return false;">登录</a>

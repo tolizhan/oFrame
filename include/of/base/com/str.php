@@ -21,7 +21,7 @@ class of_base_com_str {
         $analyData = null;
 
         //截取字符
-        if( isset($str[$offset]) ) {
+        if (isset($str[$offset])) {
             $findStr = substr($str, $offset);
         //偏移溢出
         } else {
@@ -29,23 +29,23 @@ class of_base_com_str {
         }
 
         //匹配字串 => 是否被'\'约束
-        foreach($matches as $match => &$bind) {
+        foreach ($matches as $match => &$bind) {
             //当前偏移位置
             $nowFindOffset = 0;
             //查找到的位置
-            while( ($nowFindOffset = strpos($findStr, $match, $nowFindOffset)) !== false ) {
+            while (($nowFindOffset = strpos($findStr, $match, $nowFindOffset)) !== false) {
                 $nowStrOffset = $nowFindOffset + $offset;
 
                 //受'\'约束
-                if( $bind ) {
+                if ($bind) {
                     //斜线数量
                     $slashesNum = 0;
                     //当前位置
                     $i = $nowStrOffset;
                     //统计结尾'\'连续数量
-                    while( --$i > -1 ) {
+                    while (--$i > -1) {
                         //统计结尾'\'数量
-                        if( $str[$i] === '\\' ) {
+                        if ($str[$i] === '\\') {
                             $slashesNum += 1;
                         //结束统计
                         } else {
@@ -54,7 +54,7 @@ class of_base_com_str {
                     }
 
                     //'\'为偶数
-                    if( $slashesNum % 2 === 0 ) {
+                    if ($slashesNum % 2 === 0) {
                         $analyData[$match] = $nowStrOffset;
                         break;
                     }
@@ -65,14 +65,14 @@ class of_base_com_str {
                 }
 
                 //超出字符串长度跳出
-                if( !isset($findStr[++$nowFindOffset]) ) {
+                if (!isset($findStr[++$nowFindOffset])) {
                     break;
                 }
             }
         }
 
         //无有效到数据
-        if( $analyData === null ) {
+        if ($analyData === null) {
             return false;
         //排序有效数据
         } else {
@@ -80,8 +80,8 @@ class of_base_com_str {
             asort($analyData);
             list($m, $p) = each($analyData);
             $analyData = array_flip(array_keys($analyData, $p, true));
-            foreach($matches as $m => &$v) {
-                if( isset($analyData[$m]) ) {
+            foreach ($matches as $m => &$v) {
+                if (isset($analyData[$m])) {
                     break;
                 }
             }
@@ -113,20 +113,20 @@ class of_base_com_str {
         $tL = strlen($txt);
 
         //非线性加密
-        if( $level > 1 ) {
-            for($i = 0; $i < $level; ++$i) {
+        if ($level > 1) {
+            for ($i = 0; $i < $level; ++$i) {
                 $key[$i] = ord($pwd[$i % $kL]);
                 $box[$i] = $i;
             }
 
-            for($j = $i = 0; $i < $level; ++$i) {
+            for ($j = $i = 0; $i < $level; ++$i) {
                 $j = ($j + $box[$i] + $key[$i]) % $level;
                 $tmp = $box[$i];
                 $box[$i] = $box[$j];
                 $box[$j] = $tmp;
             }
 
-            for($a = $j = $i = 0; $i < $tL; ++$i) {
+            for ($a = $j = $i = 0; $i < $tL; ++$i) {
                 $a = ($a + 1) % $level;
                 $j = ($j + $box[$a]) % $level;
 
@@ -139,7 +139,7 @@ class of_base_com_str {
             }
         //简单线性加密
         } else {
-            for($i = 0; $i < $tL; ++$i) {
+            for ($i = 0; $i < $tL; ++$i) {
                 $result .= $txt[$i] ^ $pwd[$i % $kL];
             }
         }
@@ -185,8 +185,8 @@ class of_base_com_str {
         mcrypt_generic_init($open, $key, $mode['rand']);
 
         //加密
-        if( $type ) {
-            switch( $mode['type'] ) {
+        if ($type) {
+            switch ($mode['type']) {
                 //AES
                 case MCRYPT_RIJNDAEL_128:
                 //DES
@@ -207,7 +207,7 @@ class of_base_com_str {
             $type === false && $txt = base64_decode($txt);
             $txt = mdecrypt_generic($open, $txt);
 
-            switch( $mode['type'] ) {
+            switch ($mode['type']) {
                 //AES
                 case MCRYPT_RIJNDAEL_128:
                 //DES
@@ -254,9 +254,9 @@ class of_base_com_str {
         $temp[] = join($match[1] = array_slice($match[0], $start['start'], $start['length']));
 
         //添加溢出符
-        if( !empty($start['overflow']) && $temp[0] !== $str ) {
+        if (!empty($start['overflow']) && $temp[0] !== $str) {
             //有数据
-            if( $temp[0] ) {
+            if ($temp[0]) {
                 $temp['strlen'] = count($match[0]);
                 $temp['sublen'] = count($match[1]);
                 $temp['start']  = $start['start'] < 0 ? $temp['strlen'] + $start['start'] : $start['start'];
@@ -286,23 +286,23 @@ class of_base_com_str {
         //压制数据
         $suppress = array();
 
-        if( preg_match('@^(\w+:/{2,}[^/#?]*/|\w+:/)?([^?#]*)(.*)$@', $path, $match) ) {
+        if (preg_match('@^(\w+:/{2,}[^/#?]*/|\w+:/)?([^?#]*)(.*)$@', $path, $match)) {
             $path = $match[2];
             unset($match[0]);
         }
 
-        if( $path ) {
+        if ($path) {
             //按'/'和'\'分组
             $each = explode('/', $path = strtr($path, '\\', '/'));
 
             //压制过滤
-            foreach($each as &$v) {
+            foreach ($each as &$v) {
                 //如果为后退(../)结构
-                if($v === '..') {
+                if ($v === '..') {
                     //如果压制包里有数据
-                    if( ($temp = count($suppress)) > 0) {
+                    if (($temp = count($suppress)) > 0) {
                         //并且最后一个为后退结构
-                        if( $suppress[$temp - 1] === '..' ) {
+                        if ($suppress[$temp - 1] === '..') {
                             //压入当前后退结构
                             $suppress[] = '..';
                         //否则
@@ -316,7 +316,7 @@ class of_base_com_str {
                         $suppress[] = '..';
                     }
                 //如果不为当前结构(./或'')
-                } else if($v !== '' && $v !== '.') {
+                } else if ($v !== '' && $v !== '.') {
                     //压入常规结构
                     $suppress[] = $v;
                 }
@@ -330,7 +330,7 @@ class of_base_com_str {
                 $path[strlen($path) - 1] === '/' ? '/' : ''
             );
             //整理后不为''
-            if( $suppress = join('/', $suppress) ) {
+            if ($suppress = join('/', $suppress)) {
                 //返回 头标识+整理结果+尾标识
                 $match[2] = $temp[0] . $suppress . $temp[1];
             //整理后为''
@@ -354,7 +354,7 @@ class of_base_com_str {
         static $lable = null;
         $lable !== null || ($lable = function_exists('com_create_guid')) || $lable = json_encode($_SERVER);
 
-        if( $lable === true ) {
+        if ($lable === true) {
             return strtolower(str_replace(array('{', '}', '-'), '', com_create_guid()));
         } else {
             return md5(uniqid('', true) . $lable .  mt_rand());

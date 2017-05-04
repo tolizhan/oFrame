@@ -9,7 +9,7 @@ class of_base_extension_tool {
      * 作者 : Edgar.lee
      */
     public function setup() {
-        if( isset($_GET['eKey']) ) {
+        if (isset($_GET['eKey'])) {
             L::buffer(false);
             $temp = of_base_extension_manager::setupExtension($_GET['eKey'], array(__CLASS__, 'backMsg'));
             echo '<br>',
@@ -27,7 +27,7 @@ class of_base_extension_tool {
      * 作者 : Edgar.lee
      */
     public function remove() {
-        if( isset($_GET['eKey']) ) {
+        if (isset($_GET['eKey'])) {
             L::buffer(false);
             $temp = of_base_extension_manager::removeExtension($_GET['eKey'], array(__CLASS__, 'backMsg'));
             echo '<br>',
@@ -45,7 +45,7 @@ class of_base_extension_tool {
      * 作者 : Edgar.lee
      */
     public function pauseOrRun() {
-        if( isset($_GET['eKey']) ) {
+        if (isset($_GET['eKey'])) {
             echo (int)of_base_extension_manager::changeState($_GET['eKey'], isset($_GET['state']) && $_GET['state'] === 'true' ? true : null);
         }
     }
@@ -55,10 +55,10 @@ class of_base_extension_tool {
      * 作者 : Edgar.lee
      */
     public function options() {
-        if( isset($_GET['eKey']) ) {
+        if (isset($_GET['eKey'])) {
             $temp = of_base_extension_manager::getExtensionInfo();
             $info = &$temp[$_GET['eKey']];
-            if( isset($info['state']) && $info['state'] === '1' ) {
+            if (isset($info['state']) && $info['state'] === '1') {
                 of_base_extension_match::callExtension($_GET['eKey'], $info['config']['options']);
             }
         }
@@ -69,7 +69,7 @@ class of_base_extension_tool {
      * 作者 : Edgar.lee
      */
     public function dataManager() {
-        if( isset($_GET['eKey']) ) {
+        if (isset($_GET['eKey'])) {
             L::buffer(false);
             $temp = of_base_extension_manager::dataManager($_GET['eKey'], array(__CLASS__, 'backMsg'), $_GET['dir'] ? $_GET['dir'] : null);
             echo '<br>',
@@ -87,14 +87,14 @@ class of_base_extension_tool {
      * 作者 : Edgar.lee
      */
     public function dataList() {
-        if( isset($_GET['eKey']) ) {
-            if( is_dir($temp = of_base_extension_manager::getConstant('extensionDir') . "/{$_GET['eKey']}/_info/backupData") ) {
+        if (isset($_GET['eKey'])) {
+            if (is_dir($temp = of_base_extension_manager::getConstant('extensionDir') . "/{$_GET['eKey']}/_info/backupData")) {
                 $temp = array_flip(scandir($temp, 1));
             } else {
                 $temp = array();
             }
             unset($temp['.'], $temp['..'], $temp['installData']);
-            foreach($temp as $dir => &$v) {
+            foreach ($temp as $dir => &$v) {
                 echo '<label class="backupList"><input type="radio" name="backupList" value="', 
                     $dir, '" />', date('Y-m-d H:i:s', strtotime($dir)), '</label>';
             }
@@ -106,12 +106,12 @@ class of_base_extension_tool {
      * 作者 : Edgar.lee
      */
     public function getLanguageDir() {
-        if( isset($_GET['eKey']) ) {
-            if( is_dir($temp = of_base_extension_manager::getConstant('extensionDir') . "/{$_GET['eKey']}/_info/language") ) {
+        if (isset($_GET['eKey'])) {
+            if (is_dir($temp = of_base_extension_manager::getConstant('extensionDir') . "/{$_GET['eKey']}/_info/language")) {
                 $list = array_flip(glob($temp . '/*', GLOB_ONLYDIR));
                 unset($list[$temp . '/base']);
                 $list = array_flip($list);
-                foreach($list as $k => &$v) $v = basename($v);
+                foreach ($list as $k => &$v) $v = basename($v);
 
                 echo json_encode($list);
             } else {
@@ -125,13 +125,13 @@ class of_base_extension_tool {
      * 作者 : Edgar.lee
      */
     public function language() {
-        if( isset($_GET['eKey']) && !is_numeric($_GET['name']) ) {
+        if (isset($_GET['eKey']) && !is_numeric($_GET['name'])) {
             $temp = of_base_extension_manager::getConstant('extensionDir') . "/{$_GET['eKey']}/_info/language";
             of_base_language_toolBaseClass::pack("_{$temp}/base", of_base_language_toolBaseClass::pack("_{$temp}/base"));
 
             $temp .= '/' . $_GET['name'];
             //导入
-            if( isset($_GET['file']) ) {
+            if (isset($_GET['file'])) {
                 of_base_language_toolBaseClass::exportOrImport('_' . $temp, ROOT_DIR . OF_DATA . $_GET['file']);
                 echo '1';
             //导出
@@ -145,15 +145,15 @@ class of_base_extension_tool {
      * 描述 : 消息回调
      * 作者 : Edgar.lee
      */
-    public static function backMsg( $msg = array() ) {
-        if( is_array($msg) ) {
+    public static function backMsg($msg = array()) {
+        if (is_array($msg)) {
             $msg += array(
                 'state'   => 'tip',
                 'message' => null,
                 'info'    => null
             );
             unset($msg['type']);
-            if(!$msg['info']) unset($msg['info']);
+            if (!$msg['info']) unset($msg['info']);
         } else {
             $msg = array('state' => 'tip', 'message' => $msg);
         }
@@ -186,8 +186,8 @@ class of_base_extension_tool {
         $i = 0;
         $options = '<a class="options" onclick="managerObj.options(this); return false;">选项</a>';
 
-        foreach($temp as $k => &$v) {
-            if(
+        foreach ($temp as $k => &$v) {
+            if (
                 ++$i > $start && $i <= $end && (
                     empty($params['find']) || 
                     (strpos($k, $params['find']) !== false || strpos($v['config']['properties']['name'], $params['find']) !== false)
@@ -201,7 +201,7 @@ class of_base_extension_tool {
                     '_options'    => isset($v['config']['options']) && $v['config']['options'] && $v['state'] === '1' ? $options : '',                   //是否有选项界面
                     'state'       => $v['state'] * 10,                                                                                                   //版本状态
                 );
-                switch($v['state']) {
+                switch ($v['state']) {
                     case '3.1':
                         $data[$i]['stateStr'] = '配置文件有问题';
                         break;

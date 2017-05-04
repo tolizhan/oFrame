@@ -47,7 +47,7 @@ class of_base_extension_match {
      * 描述 : 初始化扩展
      * 作者 : Edgar.lee
      */
-    static public function init($params) {
+    public static function init($params) {
         //移除调度事件
         of::event('of::dispatch', false, 'of_base_extension_match::init');
 
@@ -73,9 +73,9 @@ class of_base_extension_match {
             'exclusive'         => &$exclusive
         ));
 
-        foreach($extensionsInfo as $eKey => &$infoV) {
+        foreach ($extensionsInfo as $eKey => &$infoV) {
             //扩展正常运行 && (不限制 || 指定扩展执行)
-            if( $infoV['state'] === '1' && ($restricExtension === null || $restricExtension === $eKey) ) {
+            if ($infoV['state'] === '1' && ($restricExtension === null || $restricExtension === $eKey)) {
                 //按照扩展顺序注册钩子顺序
                 self::$hookList[$eKey] = array();
 
@@ -84,19 +84,19 @@ class of_base_extension_match {
                 //一个扩展一个try
                 try {
                     //遍历匹配路径
-                    foreach($infoV['config']['matches'] as $fileDir => &$matches) {
-                        foreach($matches as &$matchUrl) {
+                    foreach ($infoV['config']['matches'] as $fileDir => &$matches) {
+                        foreach ($matches as &$matchUrl) {
                             $temp = false;
                             //正则匹配
-                            if( $matchUrl[0] === '@' ) {
+                            if ($matchUrl[0] === '@') {
                                 preg_match($matchUrl, $matchUri) && $temp = true;
                             //结构匹配
-                            } else if( $matchUri === $matchUrl ) {
+                            } else if ($matchUri === $matchUrl) {
                                 $temp = true;
                             }
 
                             //匹配成功
-                            if( $temp ) {
+                            if ($temp) {
                                 self::callExtension($eKey, $fileDir, array(&$params));
                                 break;
                             }
@@ -121,15 +121,15 @@ class of_base_extension_match {
      *      成功返回对象或完整类名,失败返回false
      * 作者 : Edgar.lee
      */
-    static public function loadClass($eKey, $className, $isNew = true) {
+    public static function loadClass($eKey, $className, $isNew = true) {
         $classObj = &self::$extensionClassObj;
         //合并类名
         $mergeClassName = of_base_extension_manager::getConstant('baseClassName') . $eKey . '_' . $className;
 
-        if( !isset($classObj[$mergeClassName]) ) {
+        if (!isset($classObj[$mergeClassName])) {
             $parseFile = of_base_extension_manager::getConstant('extensionDir') .'/'. $eKey .'/'. strtr($className, '_', '/') . '.php';
             //生成扩展类数据
-            if( is_file($parseFile) ) {
+            if (is_file($parseFile)) {
                 //构造参数
                 $constructParams = addslashes(serialize(array(
                     //代替 __FILE__ 常量
@@ -139,7 +139,7 @@ class of_base_extension_match {
                 )));
 
                 //扩展已加密
-                if( strncmp( $temp = file_get_contents($parseFile), '<?php', 5) !== 0 ) {
+                if (strncmp($temp = file_get_contents($parseFile), '<?php', 5) !== 0) {
                     $temp = of_base_com_str::rc4('扩展加密密钥', $temp);
                 }
                 //扩展类体
@@ -159,7 +159,7 @@ class of_base_extension_match {
             }
         }
 
-        if( $isNew ) {
+        if ($isNew) {
             $classObj[$mergeClassName] === false && $classObj[$mergeClassName] = new $mergeClassName;
             return $classObj[$mergeClassName];
         } else {
@@ -175,13 +175,13 @@ class of_base_extension_match {
      *      paramArr  : 传递的参数
      * 作者 : Edgar.lee
      */
-    static public function callExtension($eKey, $callClass, $paramArr = array()) {
+    public static function callExtension($eKey, $callClass, $paramArr = array()) {
         //解析结构
         is_string($callClass) && $callClass = explode('::', $callClass, 2);
         //创建对象
         is_string($callClass[0]) && $callClass[0] = self::loadClass($eKey, $callClass[0]);
 
-        if( is_callable($callClass) ) {
+        if (is_callable($callClass)) {
             call_user_func_array($callClass, $paramArr);
         } else {
             throw new Exception('Call to undefined method /' . strtr(get_class($callClass[0]), '_', '/') . "::{$callClass[1]}()");
@@ -196,23 +196,23 @@ class of_base_extension_match {
      *      ob     : 是否使用缓存,false=非,默认true=是
      * 作者 : Edgar.lee
      */
-    static public function fireHook($type, $params = null, $ob = true) {
-        if( $type[0] === '_' ) {
+    public static function fireHook($type, $params = null, $ob = true) {
+        if ($type[0] === '_') {
             //错误:不能触发私有钩子
             trigger_error("Not trigger private hook : {$type}");
         //触发钩子
         } else {
             //每个 扩展名 的 钩子列表
-            foreach(self::$hookList as $eKey => &$extensionHooks) {
+            foreach (self::$hookList as $eKey => &$extensionHooks) {
                 //钩子存在
-                if( isset($extensionHooks[$type]) ) {
+                if (isset($extensionHooks[$type])) {
                     //防止内存溢出
                     isset($memory) || $memory = L::buffer(null, false);
                     //开启缓存
                     $ob && L::buffer(true, __CLASS__);
                     try {
                         //当 前扩展 的 单个钩子
-                        foreach($extensionHooks[$type] as &$v) {
+                        foreach ($extensionHooks[$type] as &$v) {
                             self::callExtension($eKey, $v['asCall'], array(&$params, &$v['params']));
                         }
                     } catch (Exception $e) {
@@ -229,9 +229,9 @@ class of_base_extension_match {
      * 描述 : 关闭时触发
      * 作者 : Edgar.lee
      */
-    static public function shutdown($state) {
+    public static function shutdown($state) {
         L::buffer(true);
-        if( $state ) {
+        if ($state) {
             L::buffer(L::buffer(null, __CLASS__), '');
             //添加二级事件
             of::event('of::halt', array('asCall' => 'of_base_extension_match::shutdown', 'params' => array(false)));
@@ -252,7 +252,7 @@ class of_base_extension_match {
      * 描述 : of::loadClass扩展类加载拦截
      * 作者 : Edgar.lee
      */
-    static public function ofLoadExtensionClass($params) {
+    public static function ofLoadExtensionClass($params) {
         $params = explode('_', substr($params['className'], strlen(of_base_extension_manager::getConstant('baseClassName'))), 2);
         self::loadClass($params[0], $params[1], false);
     }
@@ -270,14 +270,14 @@ class of_base_extension_match {
 function &responseStrParseFunction($type) {
     static $data = '';
 
-    switch( $type ) {
+    switch ($type) {
         case 'str':
-            if( is_object($data) ) {
+            if (is_object($data)) {
                 $data = $data->doc('str');
             }
             break;
         case 'obj':
-            if( is_string($data) ) {
+            if (is_string($data)) {
                 $data = new of_base_com_hParse($data);
             }
             break;

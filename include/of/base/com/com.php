@@ -9,7 +9,7 @@ class of_base_com_com {
      *          'config' : 替换 原始配置 非顶级 "_attr" 属性, 默认=原始配置
      *      }
      * 返回 :
-     *      
+     *      html分页代码
      * 注明 :
      *      请求数据交互结构($_POST) : {
      *          'method' :*请求方法 类名::方法名
@@ -26,10 +26,10 @@ class of_base_com_com {
      *          空无展示 : name="pagingEmpty"
      *          请求提示 : name="pagingWait"
      *          排序按钮 : name="pagingSort" sort="以','分隔的字段名"
-     *          首页按钮 : name="pagingFirst" 
-     *          上一按钮 : name="pagingPrev" 
-     *          下一按钮 : name="pagingNext" 
-     *          尾页按钮 : name="pagingLast" 
+     *          首页按钮 : name="pagingFirst"
+     *          上一按钮 : name="pagingPrev"
+     *          下一按钮 : name="pagingNext"
+     *          尾页按钮 : name="pagingLast"
      *          当期位置 : name="pagingPage" 须拥有innerHTML属性
      *          跳转位置 : name="pagingJump" input[type=text]
      *          数据条数 : name="pagingSize" input[type=text]
@@ -53,10 +53,10 @@ class of_base_com_com {
      *              "call"   : "data" 为sql语句时每页回调一次, 默认=不回调
      *              "data"   : 获取数据, 默认=[], 字符串=sql语句{`LIMIT`}可以自定义limt的位置, 数组=单页二维数据
      *              "dbPool" : 数据库连接池, 默认=default
-     *              "items"  : 数据长度, 
-     *                  数字 = 总数据长度, 
-     *                  sql  = 以`c`字段做为长度, 
-     *                  -1   = 不计算页数, 
+     *              "items"  : 数据长度,
+     *                  数字 = 总数据长度,
+     *                  sql  = 以`c`字段做为长度,
+     *                  -1   = 不计算页数,
      *                  默认 = data是数组时为-1, sql时查询总长
      *              "params" : 终端与服务的共享数据, 默认={}
      *              "size"   : 每页数据量, 默认=_of.com.com::paging.size || 10
@@ -198,9 +198,9 @@ class of_base_com_com {
                     unset($v['_attr']);
                 }
                 //解析头关系
-                while (($k = key($env['parse'])) !== null) {
+                while (($kp = key($env['parse'])) !== null) {
                     //引用当前节点
-                    $index = &$env['parse'][$k];
+                    $index = &$env['parse'][$kp];
 
                     //属性初始化
                     $index['attr'] += array(
@@ -232,21 +232,23 @@ class of_base_com_com {
                         do {
                             //递归到父节点更新宽度
                             $index['attr']['col'] += 1;
-                        } while( $index = &$index['parent'] );
+                        } while ($index = &$index['parent']);
                     //存在子节点
                     } else {
                         //引用子节点
+                        $temp = array();
                         foreach ($index['child'] as $k => &$v) {
                             is_array($v) || $v = array('_attr' => array('body' => array('html' => $v)));
-                            $env['parse'][] = array('name' => $k, 'child' => &$v, 'parent' => &$index, 'attr' => &$v['_attr']);
+                            $temp[] = array('name' => $k, 'child' => &$v, 'parent' => &$index, 'attr' => &$v['_attr']);
                             //临时实际宽度
                             $v['_attr']['col'] = 0;
                             unset($v['_attr']);
                         }
+                        array_splice($env['parse'], 1, $kp = 0, $temp);
                     }
 
-                    //指针下移
-                    next($env['parse']);
+                    //移除分析后的节点
+                    unset($env['parse'][$kp]);
                 }
 
                 //调用文件地址
@@ -264,7 +266,7 @@ class of_base_com_com {
                         $env['thead'][] = "<th rowspan='{$v['attr']['row']}' colspan='{$v['attr']['col']}' {$v['attr']['attr']}>" .
                             "<font {$temp}>" .
                                 $v['attr']['html'][0] .
-                                L::getText($v['name'], array('key'  =>'pageTable', 'file' => &$env['flie'])) . 
+                                L::getText($v['name'], array('key'  =>'pageTable', 'file' => &$env['flie'])) .
                                 $v['attr']['html'][1] .
                             '</font>' .
                         "</th>";
@@ -348,7 +350,7 @@ class of_base_com_com {
 
                 $temp = explode('::', $config);
                 $result = call_user_func_array(
-                    array(new $temp[0], $temp[1]), 
+                    array(new $temp[0], $temp[1]),
                     isset($params['params']) ? array(&$params['params']) : array()
                 );
 
@@ -422,7 +424,9 @@ class of_base_com_com {
 
                         $temp['pos'] || $temp['pos'] = strlen($attr['data']);
                         //$temp=LIMIT左[1]右[2]分割
-                        preg_match("@^(.{{$temp['pos']}})(?:|.{9}(.*))()$@s", $attr['data'], $temp);
+                        $temp[1] = substr($attr['data'], 0, $temp['pos']);
+                        preg_match("@^(?:|.{9}(.*))()$@s", substr($attr['data'], $temp['pos']), $temp[2]);
+                        $temp[2] = &$temp[2][1];
                         //提取内置排序
                         if (preg_match('@ORDER\s+BY\s+([^()]+)$@i', $temp[1], $temp[3], PREG_OFFSET_CAPTURE)) {
                             $temp[1] = substr($temp[1], 0, $temp[3][0][1]);
@@ -442,7 +446,7 @@ class of_base_com_com {
                                     //定位成功
                                     case 'FROM':
                                         //类似 FROM_UNIXTIME
-                                        if (trim(substr($temp['uStr'], $temp['match']['position'] + 4, 1)) ) {
+                                        if (trim(substr($temp['uStr'], $temp['match']['position'] + 4, 1))) {
                                             break;
                                         //确定是 FROM 关键词
                                         } else {
@@ -581,7 +585,7 @@ class of_base_com_com {
                 //背景色
                 $bgColor = ImageColorAllocate($im, hexdec($bgColor[0]), hexdec($bgColor[1]), hexdec($bgColor[2]));
                 //填充背景色
-                imagefill($im, 0, 0 , $bgColor);
+                imagefill($im, 0, 0, $bgColor);
             } else {
                 //透明背景色
                 imagecolortransparent($im, ImageColorAllocate($im, 255, 255, 255));
@@ -600,7 +604,7 @@ class of_base_com_com {
                 $char = chr(rand(65, 90));
 
                 imagettftext(
-                    $im, $fontSize, rand(-30, 30), $fontWidth * $i + $fontLeft, $fontPos, ImageColorAllocate($im, 0, 0, 0), 
+                    $im, $fontSize, rand(-30, 30), $fontWidth * $i + $fontLeft, $fontPos, ImageColorAllocate($im, 0, 0, 0),
                     OF_DIR . '/accy/com/com/captcha/' . rand(1, 4) . '.ttf', $char
                 );
                 $result[$key] .= $char;
@@ -626,8 +630,6 @@ class of_base_com_com {
      *       excludeArr   : 在textList为数组模式下指定排除项,默认null
      *       encodeKey    : 是否编码数组Key,默认false
      *       stripslashes : 是否预先使用stripslashes去掉反斜杠,默认true
-     * 返回 :
-     *      
      * 作者 : Edgar.lee
      */
     public static function textToHtml(&$textList, $excludeArr = null, $encodeKey = false, $stripslashes = true) {
@@ -639,9 +641,9 @@ class of_base_com_com {
                 //根据$stripslashes的值得到的新键值
                 $newK = $stripslashes ? stripslashes($k) : $k;
                 if (
-                    !is_array($excludeArr) || 
+                    !is_array($excludeArr) ||
                     !isset($excludeArr[$k]) || (
-                        is_array($nextExcludeArr = &$excludeArr[$k]) && 
+                        is_array($nextExcludeArr = &$excludeArr[$k]) &&
                         count($excludeArr[$k])
                     )
                 ) {
@@ -658,8 +660,8 @@ class of_base_com_com {
             $textList = $newTextList;
         } elseif (is_string($textList)) {
             $textList = strtr(htmlspecialchars(
-                $stripslashes ? stripslashes($textList) : $textList, 
-                ENT_QUOTES, 
+                $stripslashes ? stripslashes($textList) : $textList,
+                ENT_QUOTES,
                 'UTF-8'
             ), array('\\' => '&#92;'));
         }
@@ -772,7 +774,7 @@ class of_base_com_com {
                     $escapeCharLen = strlen($arr[$i]) - strlen($trimV);
                     //转义`字符
                     $arr[$i] = $trimV . str_repeat('`', floor($escapeCharLen / 2));
-                    if($escapeCharLen % 2 === 1) {
+                    if ($escapeCharLen % 2 === 1) {
                         $arr[$i] .= '.' . $arr[$i + 1];
                         unset($arr[$i + 1]);
                     }
@@ -795,7 +797,7 @@ class of_base_com_com {
             $associateDataArr[' ' . $k] = &$v;
             //根据指定值排序
             if ($sortType === 0) {
-                foreach($sortArray as $kc => &$vc) {
+                foreach ($sortArray as $kc => &$vc) {
                     eval('$accordingSortArr[\'' .addslashes($kc). '\'][\'dataArr\'][\' \' . $k] = &$v' . $accordingSortArr[$kc]['evalKey'] . ';');
                 }
             } else {

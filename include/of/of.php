@@ -1,18 +1,22 @@
 <?php
 //版本号
-define('OF_VERSION', 200208);
+define('OF_VERSION', 200210);
 
 class of {
     //站点配置文件
     private static $config = null;
     //注册的 L 类方法
     private static $links = array();
+    //是否支持命名空间
+    private static $isSpace = false;
 
     /**
      * 描述 : 初始化框架
      * 作者 : Edgar.lee
      */
     public static function init() {
+        //支持命名空间
+        self::$isSpace = version_compare(PHP_VERSION, '5.3.0', '>=');
         //注册spl
         spl_autoload_register('of::loadClass');
         //加载系统配置文件
@@ -68,9 +72,9 @@ class of {
 
             $temp = class_exists($class, false) ? $check : self::loadClass($class);
             if (
-                ($temp !== false && class_exists($class, false)) && 
-                ($check === null || $check === $temp) && 
-                is_callable(array($temp = new $class, &$action)) 
+                ($temp !== false && class_exists($class, false)) &&
+                ($check === null || $check === $temp) &&
+                is_callable(array($temp = new $class, &$action))
             ) {
                 return $temp->$action();
             }
@@ -84,7 +88,7 @@ class of {
      *      default : 默认值(null)
      *      format  : 格式化,off(默认)=不格式化,dir=格式化成目录,url=格式化成路径
      * 返回 :
-     *      成功返回值,失败返回null
+     *      成功返回值,失败返回默认值
      * 作者 : Edgar.lee
      */
     public static function config($name = null, $default = null, $format = 'off') {
@@ -97,10 +101,20 @@ class of {
         if (isset($cacheConfig[$name][$format])) {
             $default = &$cacheConfig[$name][$format];
         } else {
+            //定位列表
+            $nPos = explode('.', $name);
+            //加载动态配置
+            if (
+                !isset($config[$index = &$nPos[0]]) &&
+                isset($config['_of']['config'][$index])
+            ) {
+                $config[$index] = include ROOT_DIR . $config['_of']['config'][$index];
+            }
+
             //引用数据
             $cacheVaule = &$cacheConfig[$name][$format];
             //数组定位
-            $cacheVaule = of::getArrData(array(&$name, &$config, &$default));
+            $cacheVaule = of::getArrData(array(&$nPos, &$config, &$default, 2));
 
             if ($cacheVaule !== null || ($cacheVaule = &$default) !== null) {
                 $format === 'off' || $cacheVaule = self::formatPath($cacheVaule, $format === 'dir' ? ROOT_DIR : ROOT_URL);
@@ -146,7 +160,7 @@ class of {
             //返回结果集
             $result = array();
             reset($eventList[$key]['list']);
-            while( list($k, $v) = each($eventList[$key]['list']) ) {
+            while (list($k, $v) = each($eventList[$key]['list'])) {
                 //是回调 && 回调
                 $v['isCall'] && $result[$k] = &self::callFunc($v['event'], $params);
             }
@@ -216,7 +230,7 @@ class of {
         define('OF_DIR', strtr(dirname(__FILE__), '\\', '/'));
 
         //加载全局配置文件
-        $of = include OF_DIR . '/config.php';
+        $of = (include OF_DIR . '/config.php') + array('debug' => false, 'config' => array());
         //站点根目录,ROOT_DIR
         define('ROOT_DIR', $of['rootDir']);
 
@@ -243,7 +257,7 @@ class of {
             $_SERVER['DOCUMENT_ROOT'] = ROOT_DIR;
             //计算一些路径
             $temp = get_included_files();
-            $_SERVER['SCRIPT_FILENAME'] = strtr($temp[0], '\\' , '/');
+            $_SERVER['SCRIPT_FILENAME'] = strtr($temp[0], '\\', '/');
             isset($_SERVER['PATH_INFO']) || $_SERVER['PATH_INFO'] = '';
             $_SERVER['QUERY_STRING'] = empty($_SERVER['QUERY_STRING']) ? '' : join('&', $_SERVER['QUERY_STRING']);
             $_SERVER['SCRIPT_NAME'] = substr($_SERVER['SCRIPT_FILENAME'], strlen(ROOT_DIR));
@@ -258,11 +272,19 @@ class of {
         get_magic_quotes_gpc() || self::slashesDeep($temp);
 
         //加载站点配置文件
-        empty($of['config']) || self::$config = include ROOT_DIR . $of['config'];
+        $of['config'] = (array)$of['config'];
+        empty($of['config'][0]) || self::$config = include ROOT_DIR . $of['config'][0];
         //引用配置
         $config = &self::$config;
         //合并系统配置
         $config['_of'] = &self::arrayReplaceRecursive($of, $config['_of']);
+
+        //格式化debug
+        if (isset($_REQUEST['__OF_DEBUG__'])) {
+            $config['_of']['debug'] = true;
+        } else if ($config['_of']['debug'] !== null) {
+            $config['_of']['debug'] = !!$config['_of']['debug'];
+        }
 
         //自动计算ROOT_URL
         if (!isset($config['_of']['rootUrl'])) {
@@ -272,7 +294,7 @@ class of {
             //web模式
             } else {
                 $temp = $_SERVER['SCRIPT_NAME'];
-                $scriptFilename = strtr($_SERVER['SCRIPT_FILENAME'], '\\' , '/');
+                $scriptFilename = strtr($_SERVER['SCRIPT_FILENAME'], '\\', '/');
                 while (true) {
                     if ($temp === substr($scriptFilename, -strlen($temp))) {
                         //除虚拟目录外执行脚本所在路径的长度
@@ -284,7 +306,7 @@ class of {
                 }
                 //非英文路径解析
                 $config['_of']['rootUrl'] = str_replace('%2F', '/', rawurlencode(
-                    substr($_SERVER['SCRIPT_NAME'], 0, -$scriptNameLen) . 
+                    substr($_SERVER['SCRIPT_NAME'], 0, -$scriptNameLen) .
                     substr(ROOT_DIR, strlen(substr($scriptFilename, 0, -$scriptNameLen)))
                 ));
             }
@@ -296,7 +318,7 @@ class of {
         //框架可写文件夹
         define('OF_DATA', $config['_of']['dataDir']);
         //是否 DEBUG 模式
-        define('OF_DEBUG', !empty($config['_of']['debug']) || isset($_REQUEST['__OF_DEBUG__']));
+        define('OF_DEBUG', $config['_of']['debug']);
         //of_类映射
         self::event('of::loadClass', array(
             'classPre' => 'of_', 'mapping' => substr(OF_DIR, strlen(ROOT_DIR) + 1) . '/'
@@ -308,7 +330,7 @@ class of {
      * 参数 :
      *      className : 需要加载的类名
      * 返回 :
-     *      成功类返回的值,默认1,失败返回null
+     *      成功类返回的值,默认1,失败返回false
      * 注明 :
      *      of::loadClass事件 : 类路径映射,指定前缀的类将按照其它前缀的类加载
      *          第二参结构 : {
@@ -337,7 +359,11 @@ class of {
             array_multisort($sortList, SORT_DESC, SORT_STRING, $event['list']);
         }
 
-        //不用判断一定有数据
+        //框架类转命名空间方式
+        $isAlias = self::$isSpace && rtrim(substr($className, 0, 3), '\_') === 'of';
+        $isAlias && $isAlias = $className = strtr($className, '\\', '_');
+
+        //加载回调, 不用判断一定有数据
         foreach ($event['list'] as &$v) {
             $k = $v['classPreLen'];
             $v = &$v['event'];
@@ -357,8 +383,13 @@ class of {
             $className[0] === '/' || $className = '/' . str_replace(array('_', '\\'), '/', $className);
             //生成绝对路径
             $className = ROOT_DIR . $className . '.php';
-
-            return is_file($className) ? include $className : null;
+            //加载文件
+            $className = is_file($className) ? include $className : false;
+            //为框架类设置空间别名
+            if ($isAlias && class_exists($isAlias, false)) {
+                class_alias($isAlias, strtr($isAlias, '_', '\\'));
+            }
+            return $className;
         }
     }
 
@@ -386,7 +417,7 @@ class of {
                     $waitList[] = &$v;
                 }
                 $wv = $result;
-            } else if( is_string($wv) ) {
+            } else if (is_string($wv)) {
                 $wv = $func($wv);
             }
         } while (!empty($waitList));
@@ -415,7 +446,7 @@ class of {
                 unset($waitList[$wk], $baseList[$wk]);
 
                 if (is_array($bv) && is_array($wv)) {
-                    foreach($wv as $k => &$v) {
+                    foreach ($wv as $k => &$v) {
                         $waitList[] = &$v;
                         $baseList[] = &$bv[$k];
                     }
@@ -467,7 +498,7 @@ class of {
     public static function formatPath($path, $prefix) {
         if (is_array($path) || !preg_match('@^(?:/|_|$)@', $path, $temp)) {
             return self::callFunc($path, array('prefix' => $prefix));
-        } elseif( $temp[0] === '_' ) {
+        } elseif ($temp[0] === '_') {
             return substr($path, 1);
         } else {
             return $prefix . $path;
@@ -477,15 +508,15 @@ class of {
     /**
      * 描述 : 通过字符串获取数组深度数据
      * 参数 :
-     *      key      : null(默认)=返回 data, 字符串=以"."作为分隔符表示数组深度, 数组=以数组的方式代替传参[key, data, default, isEscape]
-     *     &data     : 被查找的数组
-     *      default  : null, 没查找到的代替值
-     *      isEscape : 是否转义, false(默认)=不转义, true=以"`"作为key的转义字符 
+     *      key     : null(默认)=返回 data, 字符串=以"."作为分隔符表示数组深度, 数组=以数组的方式代替传参[key, data, default, extends]
+     *     &data    : 被查找的数组
+     *      default : null, 没查找到的代替值
+     *      extends : 扩展参数, 使用"|"连接多个功能, 0(默认)=不转义, 1=以"`"作为key的转义字符, 2=默认值赋值到原数据
      * 返回 :
      *      返回指定值 或 代替值
      * 作者 : Edgar.lee
      */
-    public static function &getArrData($arg_0, &$arg_1 = null, $arg_2 = null, $arg_3 = false) {
+    public static function &getArrData($arg_0, &$arg_1 = null, $arg_2 = null, $arg_3 = 0) {
         //数组转换成变量 $arg_xxx
         is_array($arg_0) && extract($arg_0, EXTR_PREFIX_ALL | EXTR_REFS, 'arg');
 
@@ -494,12 +525,17 @@ class of {
         } else {
             $index = &$arg_1;
             //转义 key 值
-            $list = $arg_3 ?
-                explode("\0", strtr($arg_0, array('``' => '`', '`.' => '.', '.' => "\0"))) : explode('.', $arg_0);
+            if (is_string($arg_0)) {
+                $list = $arg_3 & 1 ?
+                    explode("\0", strtr($arg_0, array('``' => '`', '`.' => '.', '.' => "\0"))) : explode('.', $arg_0);
+            //可遍历的定位
+            } else {
+                $list = $arg_0;
+            }
 
             foreach ($list as &$v) {
                 //指定位子存在
-                if (isset($index[$v])) {
+                if (isset($index[$v]) || $arg_3 & 2) {
                     $index = &$index[$v];
                 //指定位子不存在
                 } else {
@@ -508,7 +544,7 @@ class of {
                 }
             }
 
-            isset($index) || $index = &$arg_2;
+            isset($index) || $index = $arg_2;
             return $index;
         }
     }
@@ -559,7 +595,7 @@ class of {
                 $tips = explode("\n", $tips === true ? $code : $tips);
                 //最大值的长度
                 $line = strlen(count($tips));
-                foreach($tips as $k => &$v) {
+                foreach ($tips as $k => &$v) {
                     $v = str_pad(++$k, $line, '0', STR_PAD_LEFT) . '| ' . $v;
                 }
                 $tips = join("\n", $tips);

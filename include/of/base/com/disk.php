@@ -50,7 +50,7 @@ class of_base_com_disk {
         }
 
         //返回文件源
-        if( $data === null ) {
+        if ($data === null) {
             //追加写入
             if ($protected === null) {
                 //移动到最后
@@ -173,7 +173,7 @@ class of_base_com_disk {
                 ($tempDir = getenv('TMP')) || ($tempDir = getenv('TEMP')) || ($tempDir = getenv('TMPDIR'));
 
                 //环境变量读取失败,尝试创建临时文件
-                if (!$tempDir && $tempDir = tempnam(__FILE__,'')) {
+                if (!$tempDir && $tempDir = tempnam(__FILE__, '')) {
                     is_file($tempDir) && unlink($tempDir);
                     $tempDir = dirname($tempDir);
                 }
@@ -211,7 +211,9 @@ class of_base_com_disk {
 
         if ($clear) {
             //移除空文件夹
-            while (!glob(($path = dirname($path)) . '/*')) $result = rmdir($path);
+            while (!glob(($path = dirname($path)) . '/*')) {
+                $result = rmdir($path);
+            }
         }
 
         return $result;
@@ -236,8 +238,7 @@ class of_base_com_disk {
             if ($dp = opendir($source)) {
                 while (($file=readdir($dp)) != false) {
                     if ($file !== '.' && $file !== '..') {
-                        if( !isset($exclude[$temp = "{$source}/{$file}"]) )
-                        {
+                        if (!isset($exclude[$temp = "{$source}/{$file}"])) {
                             self::copy("{$source}/{$file}", "{$dest}/{$file}", $exclude);
                         }
                     }

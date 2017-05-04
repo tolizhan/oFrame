@@ -164,6 +164,7 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
         </tr>
         <tr class="of_sso-main_tfoot_tip">
             <td colspan="12">
+                <input class="of_sso-main_tfoot_tpl" type="button" value="模版" onclick="location.href=OF_URL + '/att/sso/res/importTpl.csv';">
                 <input id="mainTplImport" class="of_sso-main_tfoot_import" type="button" value="导入">
                 <input class="of_sso-main_tfoot_logout" type="button" value="退出" onclick="location.href=OF_URL + '/index.php?c=of_base_sso_main&a=logoutMain';">
                 <input class="of_sso-main_tfoot_save" type="button" value="保存" onclick="ofBaseSsoMain.save();">

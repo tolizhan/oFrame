@@ -12,7 +12,8 @@ class of_accy_session_kv extends of_base_session_base {
         self::$params += array('kvPool' => 'default');
     }
 
-    protected static function _open() {}
+    protected static function _open() {
+    }
 
     protected static function _read(&$sessionId, &$data) {
         $params = &self::$params;
@@ -56,8 +57,10 @@ class of_accy_session_kv extends of_base_session_base {
         }
     }
 
-    protected static function _close() {}
+    protected static function _close() {
+    }
 
-    protected static function _gc() {}
+    protected static function _gc() {
+    }
 }
 of_accy_session_kv::_init();

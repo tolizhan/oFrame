@@ -74,10 +74,10 @@ class of_base_language_toolBaseClass {
         //返回结果集
         $result = array();
 
-        if( is_dir($temp = $envVar['path'] . $path) ) {
+        if (is_dir($temp = $envVar['path'] . $path)) {
             $handle = opendir($temp);
-            while ( ($temp = readdir($handle)) !== false ) {
-                if( $temp[0] !== '.' ) {
+            while (($temp = readdir($handle)) !== false) {
+                if ($temp[0] !== '.') {
                     $temp = "{$path}/{$temp}";
                     $result[$temp] = is_dir($envVar['path'] . $temp);
                 }
@@ -105,7 +105,7 @@ class of_base_language_toolBaseClass {
         //路径格式
         $path = $envVar['path'] . $path;
 
-        if( $data === null ) {
+        if ($data === null) {
             //读取页级语言包
             $data = of_base_com_disk::file($path, true, true);
             $data || $data = array();
@@ -160,8 +160,8 @@ class of_base_language_toolBaseClass {
             unset($waitList[$k]);
 
             //如果是目录
-            if( is_dir($temp = $envVar['path'] . $path) ) {
-                foreach(self::getDir($path) as $k => $v) {
+            if (is_dir($temp = $envVar['path'] . $path)) {
+                foreach (self::getDir($path) as $k => $v) {
                     $waitList[] = $k;
                 }
             //是文件
@@ -174,7 +174,7 @@ class of_base_language_toolBaseClass {
                 $params['pack'] = &$pack;
 
                 //未分析文本
-                if( !isset($fileText[$path]) ) {
+                if (!isset($fileText[$path])) {
                     $temp = explode('/', $path, 4);
                     $temp = ROOT_DIR . '/' . substr($temp[3], 0, -4);
                     //读取文件内容
@@ -182,19 +182,19 @@ class of_base_language_toolBaseClass {
                     $fileText[$path] = array();
 
                     //开始提取文本
-                    switch( strtolower(pathinfo($path, PATHINFO_EXTENSION)) ) {
-                        case 'php' :
+                    switch (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+                        case 'php':
                             $token  = token_get_all($contents);
                             $contents = array();
 
-                            foreach($token as &$v) {
-                                switch( $v[0] ) {
+                            foreach ($token as &$v) {
+                                switch ($v[0]) {
                                     //php 字符串 (315)
                                     case T_CONSTANT_ENCAPSED_STRING :
                                         ($temp = trim(substr($v[1], 1, -1))) && $fileText[$path]['phpPack'][$temp] = true;
                                         break;
                                     //html字符串 (311)
-                                    case T_INLINE_HTML              :
+                                    case T_INLINE_HTML:
                                         $contents[] = $v[1];
                                         break;
                                 }
@@ -202,41 +202,43 @@ class of_base_language_toolBaseClass {
 
                             //过滤php后的html
                             $contents = join($contents);
+                            //不需要 break;
                         case 'html':
                             $temp = new of_base_com_hParse($contents);
                             $contents = array();
-                            foreach($temp->find('script')->eq() as $v) {
+                            foreach ($temp->find('script')->eq() as $v) {
                                 $contents[] = $v->text();
                             }
 
                             //过滤html后的js
                             $contents = join($contents);
-                        case 'js'  :
+                            //不需要 break;
+                        case 'js':
                             preg_match_all('@(?:^|[^\\\\]+?)(?:\\\\\\\\)*(\'|")(.*?[^\\\\]+?)(?:\\\\\\\\)*\1@s', $contents, $temp);
-                            foreach($temp[2] as &$v) {
+                            foreach ($temp[2] as &$v) {
                                 $fileText[$path]['jsPack'][$v] = true;
                             }
                             break;
                     }
                 }
 
-                foreach(array('jsPack', 'phpPack') as $kp) {
-                    if( isset($pack[$kp]) ) {
-                        foreach($pack[$kp] as &$va) {
-                            foreach($va as $ks => &$vs) {
+                foreach (array('jsPack', 'phpPack') as $kp) {
+                    if (isset($pack[$kp])) {
+                        foreach ($pack[$kp] as &$va) {
+                            foreach ($va as $ks => &$vs) {
                                 //源文本不存在
-                                if( empty($fileText[$path][$kp][$ks]) ) {
-                                    foreach($vs as &$v) {
+                                if (empty($fileText[$path][$kp][$ks])) {
+                                    foreach ($vs as &$v) {
                                         //(未忽略 || 关闭忽略)
-                                        if( empty($v['ignore']) || $params['ignore'] ) {
+                                        if (empty($v['ignore']) || $params['ignore']) {
                                             $v['invalid'] = $result = true;
-                                            if( $isDir ) break 5;
+                                            if ($isDir) break 5;
                                         }
                                     }
                                 //检测无效键
-                                } else if( $params['keyInv'] ) {
-                                    foreach($vs as $k => &$v) {
-                                        if( 
+                                } else if ($params['keyInv']) {
+                                    foreach ($vs as $k => &$v) {
+                                        if (
                                             $k !== '' &&
                                             //键文本不存在
                                             empty($fileText[$path][$kp][$k]) &&
@@ -244,7 +246,7 @@ class of_base_language_toolBaseClass {
                                             (empty($v['ignore']) || $params['ignore'])
                                         ) {
                                             $v['invalid'] = $result = true;
-                                            if( $isDir ) break 5;
+                                            if ($isDir) break 5;
                                         }
                                     }
                                 }
@@ -253,20 +255,20 @@ class of_base_language_toolBaseClass {
                     }
                 }
 
-                foreach(array('jsLink', 'phpLink') as $kp) {
-                    if( isset($pack[$kp]) ) {
-                        foreach($pack[$kp] as &$va) {
-                            foreach($va as $kp => &$vi) {
-                                if( $vi = !is_file(ROOT_DIR . $kp) ) {
+                foreach (array('jsLink', 'phpLink') as $kp) {
+                    if (isset($pack[$kp])) {
+                        foreach ($pack[$kp] as &$va) {
+                            foreach ($va as $kp => &$vi) {
+                                if ($vi = !is_file(ROOT_DIR . $kp)) {
                                     $result = true;
-                                    if( $isDir ) break 4;
+                                    if ($isDir) break 4;
                                 }
                             }
                         }
                     }
                 }
             }
-        } while( !empty($waitList) );
+        } while (!empty($waitList));
 
         return $result;
     }
@@ -287,10 +289,10 @@ class of_base_language_toolBaseClass {
         $data   = array('jsPack' => array(), 'phpPack' => array());
         $source = $envVar['path'] . $path;
 
-        while( of_base_com_disk::each($source, $dirList) ) {
-            foreach($dirList as $path => &$isDir) {
+        while (of_base_com_disk::each($source, $dirList)) {
+            foreach ($dirList as $path => &$isDir) {
                 //是目录
-                if( $isDir ) {
+                if ($isDir) {
                     $temp = basename($path);
                     //已'.'开始的文件夹排除过滤
                     $temp[0] === '.' && $isDir = null;
@@ -299,13 +301,13 @@ class of_base_language_toolBaseClass {
                     //读取页级语言包
                     $pack = of_base_com_disk::file($path, true, true);
 
-                    foreach(array('jsPack', 'phpPack') as $kp) {
-                        if( isset($pack[$kp]) ) {
-                            foreach($pack[$kp] as &$va) {
-                                foreach($va as $ks => &$vs) {
+                    foreach (array('jsPack', 'phpPack') as $kp) {
+                        if (isset($pack[$kp])) {
+                            foreach ($pack[$kp] as &$va) {
+                                foreach ($va as $ks => &$vs) {
                                     isset($vs['']) || $vs['']['translate'] = '';
-                                    foreach($vs as $k => &$v) {
-                                        if( empty($data[$kp][$ks][$k]) ) {
+                                    foreach ($vs as $k => &$v) {
+                                        if (empty($data[$kp][$ks][$k])) {
                                             $data[$kp][$ks][$k] = $v['translate'];
                                         }
                                     }
@@ -330,17 +332,17 @@ class of_base_language_toolBaseClass {
      * 作者 : Edgar.lee
      */
     public static function &sort($data, &$sort = null) {
-        if( $sort === null ) {
+        if ($sort === null) {
             is_string($data) && $data = &self::pack($path = $data);
             uasort($data['phpPack'], 'of_base_language_toolBaseClass::sort');
             uasort($data['jsPack'], 'of_base_language_toolBaseClass::sort');
             isset($path) && self::pack($path, $data);
         } else {
-            if( empty($data['']) ) {
+            if (empty($data[''])) {
                 $data = -1;
-            } elseif( empty($sort['']) ) {
+            } else if (empty($sort[''])) {
                 $data = 1;
-            } elseif( in_array('', $data, true) ) {
+            } else if (in_array('', $data, true)) {
                 $data = -1;
             } else {
                 $data = 1;
@@ -364,7 +366,7 @@ class of_base_language_toolBaseClass {
         //整理打开目录
         $path = $path[0] === '_' ? substr($path, 1) : $envVar['path'] . $path;
 
-        if( $data === null ) {
+        if ($data === null) {
             $data = array(
                 'phpPack' => of_base_com_disk::file($path . '/php.txt', true),
                 'jsPack'  => json_decode(of_base_com_disk::file($path . '/js.txt'), true)
@@ -377,9 +379,9 @@ class of_base_language_toolBaseClass {
             $goal = &self::pack('_' . $path);
 
             $index = $type ? array(&$data, &$goal) : array(&$goal, &$data);
-            foreach($index[0] as $kp => &$vp) {
-                foreach($vp as $ks => &$vs) {
-                    foreach($vs as $k => &$v) {
+            foreach ($index[0] as $kp => &$vp) {
+                foreach ($vp as $ks => &$vs) {
+                    foreach ($vs as $k => &$v) {
                         empty($index[1][$kp][$ks][$k]) || $v = trim($index[1][$kp][$ks][$k]);
                     }
                 }
@@ -404,9 +406,9 @@ class of_base_language_toolBaseClass {
      */
     public static function &exportOrImport($path, $csv = null) {
         //导入
-        if( $csv ) {
-            while( $index = &of_base_com_csv::parse($csv) ) {
-                if( $index[0] === 'jsPack' || $index[0] === 'phpPack' ) {
+        if ($csv) {
+            while ($index = &of_base_com_csv::parse($csv)) {
+                if ($index[0] === 'jsPack' || $index[0] === 'phpPack') {
                     $data[$index[0]][$index[1]][$index[2]] = $index[3];
                 }
             }
@@ -419,9 +421,9 @@ class of_base_language_toolBaseClass {
             of_base_com_csv::download('export');
             of_base_com_csv::download(array('归属', '源文本', '标识符', '翻译'));
 
-            foreach($data as $kp => &$vp) {
-                foreach($vp as $ks => &$vs) {
-                    foreach($vs as $k => &$v) {
+            foreach ($data as $kp => &$vp) {
+                foreach ($vp as $ks => &$vs) {
+                    foreach ($vs as $k => &$v) {
                         of_base_com_csv::download(array($kp, $ks, $k, $v));
                     }
                 }

@@ -1,18 +1,18 @@
 <?php
-if( !empty($_POST) ) {
+if (!empty($_POST)) {
     $result = null;
 
-    switch( $_POST['type'] ) {
+    switch ($_POST['type']) {
         //获取语言包目录
-        case 'getDir'            :
+        case 'getDir':
             $_POST += array('path' => '', 'status' => false);
 
             //路径格式化
             $_POST['path'] = of_base_com_str::realpath($_POST['path']);
-            if( empty($_POST['path'][1]) ) {
+            if (empty($_POST['path'][1])) {
                 $_POST['path'] = '';
             //安全校验
-            } else if( $_POST['path'][0] === '.' || $_POST['path'][1] === '.' ) {
+            } else if ($_POST['path'][0] === '.' || $_POST['path'][1] === '.') {
                 exit('路径溢出');
             }
 
@@ -21,11 +21,11 @@ if( !empty($_POST) ) {
             unset($result['/base']);
 
             //读取状态
-            if( $_POST['status'] ) {
+            if ($_POST['status']) {
                 $_POST['status']['ignore'] = $_POST['status']['ignore'] === 'true';
                 $_POST['status']['keyInv'] = $_POST['status']['keyInv'] === 'true';
 
-                foreach($result as $k => &$v) {
+                foreach ($result as $k => &$v) {
                     $v = array(
                         'isDir'  => $v,
                         'status' => of_base_language_toolBaseClass::status($k, $_POST['status'])
@@ -33,7 +33,7 @@ if( !empty($_POST) ) {
                 }
             }
             break;
-        case 'getFile'           :
+        case 'getFile':
             $_POST['status']['ignore'] = $_POST['status']['ignore'] === 'true';
             $_POST['status']['keyInv'] = $_POST['status']['keyInv'] === 'true';
 
@@ -57,20 +57,20 @@ if( !empty($_POST) ) {
         case 'languagePageUpdate':
             //路径格式化
             $_POST['path'] = of_base_com_str::realpath($_POST['path']);
-            if( empty($_POST['path'][1]) || $_POST['path'][1] === '.' ) {
+            if (empty($_POST['path'][1]) || $_POST['path'][1] === '.') {
                 exit('路径溢出');
-            } else if( isset($_POST['change']) ) {
+            } else if (isset($_POST['change'])) {
                 $_POST['path'] = '/base/source' . $_POST['path'];
 
                 //保存语言包
-                if( is_array($_POST['change']) ) {
+                if (is_array($_POST['change'])) {
                     $index = &of_base_language_toolBaseClass::getFile($_POST['path']);
 
                     //忽略语言包
-                    if( isset($_POST['change']['ignore']) ) {
-                        foreach($_POST['change']['ignore'] as $k => &$v) {
+                    if (isset($_POST['change']['ignore'])) {
+                        foreach ($_POST['change']['ignore'] as $k => &$v) {
                             $k = json_decode(stripslashes($k), true);
-                            if( $v === 'true' ) {
+                            if ($v === 'true') {
                                 $index[$k['type']][$k['action']][$k['string']][$k['key']]['ignore'] = true;
                             } else {
                                 unset($index[$k['type']][$k['action']][$k['string']][$k['key']]['ignore']);
@@ -79,19 +79,19 @@ if( !empty($_POST) ) {
                     }
 
                     //删除语言包
-                    if( isset($_POST['change']['delete']) ) {
-                        foreach($_POST['change']['delete'] as $k => &$v) {
+                    if (isset($_POST['change']['delete'])) {
+                        foreach ($_POST['change']['delete'] as $k => &$v) {
                             $k = json_decode(stripslashes($k), true);
 
                             //删除引用
-                            if( $k['type'] === 'phpLink' || $k['type'] === 'jsLink' ) {
+                            if ($k['type'] === 'phpLink' || $k['type'] === 'jsLink') {
                                 unset($index[$k['type']][$k['action']][$k['index']]);
                             //删除翻译
                             } else {
                                 unset($index[$k['type']][$k['action']][$k['string']][$k['key']]);
 
                                 //清空翻译
-                                if( empty($index[$k['type']][$k['action']][$k['string']]) ) {
+                                if (empty($index[$k['type']][$k['action']][$k['string']])) {
                                     unset($index[$k['type']][$k['action']][$k['string']]);
                                 }
                             }
@@ -107,18 +107,18 @@ if( !empty($_POST) ) {
                 }
             }
             break;
-        case 'mergerFiles'       :
+        case 'mergerFiles':
             $path = of::config('_of.language.path', OF_DATA . '/_of/of_base_language_packs', 'dir');
             $list = array_flip(glob(dirname($path) . '/*'));
             unset($list[$path]);
             $path .= '/base/source';
 
-            foreach($list as $kp => &$vd) {
+            foreach ($list as $kp => &$vd) {
                 $kp .= '/base/source';
-                while( of_base_com_disk::each($kp, $vd) ) {
-                    foreach($vd as $k => &$v) {
+                while (of_base_com_disk::each($kp, $vd)) {
+                    foreach ($vd as $k => &$v) {
                         //是文件
-                        if( $v === false ) {
+                        if ($v === false) {
                             //基类文件路径
                             $temp = $path . substr($k, strlen($kp));
                             $temp = array(
@@ -135,13 +135,13 @@ if( !empty($_POST) ) {
                 }
             }
             break;
-        case 'mergerGlobal'      :
+        case 'mergerGlobal':
             //整理基类
             $index = &of_base_language_toolBaseClass::merge('/base/source', '/base');
             $list = of_base_language_toolBaseClass::getDir();
             unset($list['/base']);
 
-            foreach($list as $k => &$v) {
+            foreach ($list as $k => &$v) {
                 of_base_language_toolBaseClass::pack($k, $index);
             }
             break;
@@ -519,8 +519,7 @@ _top:expression(eval(document.documentElement.scrollTop) + 200);
         $('#' + $(this).attr('tag')).show();
     });
 
-    //翻译界面 */
-    /******************************************************************************************************************
+    /*翻译界面*********************************************************************************************************/
     //初始化列表
     toolObj.getList();
 
@@ -586,8 +585,7 @@ _top:expression(eval(document.documentElement.scrollTop) + 200);
         }
     });
 
-    //整理界面 */
-    /******************************************************************************************************************
+    /*整理界面*********************************************************************************************************/
     //初始目录
     toolObj.getDir('.', false);
 

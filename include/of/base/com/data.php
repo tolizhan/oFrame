@@ -33,12 +33,12 @@ class of_base_com_data {
      *          "."与"*"为关键词, "`"为转义字符的分割键名 : 参数结构如下, 字符串代表数组的type {
      *              "default" : 默认值, null=必存在, 其它=默认值
      *              "keys"    : 按顺序验证键名中各"*"的类型 [
-     *                  null为不验证, 
-     *                  type字符串验证类型(正则或内置), 
+     *                  null为不验证,
+     *                  type字符串验证类型(正则或内置),
      *                  {"type" => 同值类型, "min" => 数组最小个数, "max" => 数组最大个数},
      *                  ...
      *              ],
-     *              "type"    : 值的类型 
+     *              "type"    : 值的类型
      *                  数组=子节点验证,
      *                  "@"开头字符串=正则验证,
      *                  字符串=内置类型
@@ -57,8 +57,8 @@ class of_base_com_data {
      *                          "max" : 最大长度
      *                      }
      *                      "bool"  : 布尔类型, argv参数 {
-     *                          "format" : 转换布尔, 
-     *                              默认=枚举方式["ok", "true", "success", "on", "yes", "done", 1] 转true, 
+     *                          "format" : 转换布尔,
+     *                              默认=枚举方式["ok", "true", "success", "on", "yes", "done", 1] 转true,
      *                              false=强制验证布尔类型,
      *                              true=弱类型为true的均转true
      *                      }
@@ -72,7 +72,7 @@ class of_base_com_data {
      *                          "check" :&引用的验证数据
      *                      }
      *              "argv"    : 对应类型提供的参数 {
-     *                  
+     *                  ...
      *              }
      *          }
      *      }
@@ -204,7 +204,7 @@ class of_base_com_data {
                         !preg_match($index['type'], $shift[0])
                     ) {
                         $temp = str_replace(':', '&#058;', htmlspecialchars($index['type'], ENT_QUOTES, 'UTF-8'));
-                        $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') . 
+                        $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') .
                             " illegal, should be regexp \"{$temp}\" : {$shift[0]}";
                     }
                 } else {
@@ -215,7 +215,7 @@ class of_base_com_data {
                             //转成字符串
                             is_numeric($shift[0]) && $shift[0] .= '';
                             if (
-                                !is_string($shift[0]) || 
+                                !is_string($shift[0]) ||
                                 isset($argv['min']) && $argv['min'] > 0 && !isset($shift[0][$argv['min'] - 1]) ||
                                 isset($argv['max']) && isset($shift[0][$argv['max']])
                             ) {
@@ -223,14 +223,14 @@ class of_base_com_data {
                                 isset($argv['min']) && $temp[] = ' >= ' . $argv['min'];
                                 isset($argv['max']) && $temp[] = ' <= ' . $argv['max'];
                                 ($temp = join(' and', $temp)) && $temp = ', length' . $temp;
-                                $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') . 
+                                $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') .
                                     " illegal, should be {$index['type']}{$temp} : {$shift[0]}";
                             }
                             break;
                         //整型
                         case 'int':
                             if (
-                                !(empty($argv['idem']) ? preg_match('@^(?:\-|\+)?\d+$@', $shift[0]) : is_int($shift[0])) || 
+                                !(empty($argv['idem']) ? preg_match('@^(?:\-|\+)?\d+$@', $shift[0]) : is_int($shift[0])) ||
                                 isset($argv['min']) && $shift[0] < $argv['min'] ||
                                 isset($argv['max']) && $shift[0] > $argv['max']
                             ) {

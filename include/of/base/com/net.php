@@ -103,7 +103,7 @@ class of_base_com_net {
                 $data['url'] === OF_URL . '/index.php' ? 
                     $index = null : $index = &of_base_com_net::request($data['url'], $data);
                 //字符串 或 数组
-                if( $mode !== true ) {
+                if ($mode !== true) {
                     //创建方法
                     is_string($mode) && strpos($mode, ';') && $mode = create_function('&$_', $mode);
                     //函数回调
@@ -135,12 +135,17 @@ class of_base_com_net {
 
             //解析目标网址
             $data['url'] = parse_url($url);
-            //外网地址
-            if (isset($data['url']['host']) && $data['url']['host'] !== self::$params['host']) {
-                //格式化协议
-                $data['url']['scheme'] = isset($data['url']['scheme']) ? strtolower($data['url']['scheme']) : 'http';
-                //初始化接口
-                isset($data['url']['port']) || $data['url']['port'] = $data['url']['scheme'] === 'https' ? 443 : 80;
+            //解析到域名
+            if (isset($data['url']['host'])) {
+                //初始路径
+                isset($data['url']['path']) || $data['url']['path'] = '/';
+                //外网地址
+                if ($data['url']['host'] !== self::$params['host']) {
+                    //格式化协议
+                    $data['url']['scheme'] = isset($data['url']['scheme']) ? strtolower($data['url']['scheme']) : 'http';
+                    //初始化接口
+                    isset($data['url']['port']) || $data['url']['port'] = $data['url']['scheme'] === 'https' ? 443 : 80;
+                }
             }
             //补全参数
             $data['url'] += self::$params;
@@ -412,7 +417,7 @@ class of_base_com_net {
 
                 return join('; ', $result);
             //设置 cookie
-            } else if( isset($config['value']) ) {
+            } else if (isset($config['value'])) {
                 $cookie[$domain][$path][$config['name']] = array(
                     //编码 value
                     'value'  => !isset($config['encode']) || $config['encode'] ?

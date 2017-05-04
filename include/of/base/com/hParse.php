@@ -173,7 +173,7 @@ class of_base_com_hParse {
         $parseNode = &self::$parseNode;
 
         //使用内部赋值
-        if( isset($sharedData['newInitData']) ) {
+        if (isset($sharedData['newInitData'])) {
             $this->objAttr = $sharedData['newInitData'];
             $sharedData['newInitData'] = null;
 
@@ -213,7 +213,7 @@ class of_base_com_hParse {
      */
     public function addClass($className) {
         $className = array_flip(explode(' ', preg_replace('/\s+/', ' ', $className)));
-        foreach($this->objAttr['nodeList'] as &$nodeKey) {
+        foreach ($this->objAttr['nodeList'] as &$nodeKey) {
             $temp = array_flip(explode(' ', self::nodeAttr($nodeKey, 'class')));
             $temp += array_diff_key($className, $temp);
             unset($temp['']);
@@ -232,16 +232,16 @@ class of_base_com_hParse {
      */
     public function hasClass($className) {
         $className = explode(' ', preg_replace('/\s+/', ' ', $className));
-        foreach($this->objAttr['nodeList'] as &$nodeKey) {
+        foreach ($this->objAttr['nodeList'] as &$nodeKey) {
             $temp = array_flip(explode(' ', self::nodeAttr($nodeKey, 'class')));
-            foreach($className as &$v) {
-                if( !isset($temp[$v]) ) {
+            foreach ($className as &$v) {
+                if (!isset($temp[$v])) {
                     $temp = false;
                     break;
                 }
             }
 
-            if( $temp !== false ) {
+            if ($temp !== false) {
                 return true;
             }
         }
@@ -260,7 +260,7 @@ class of_base_com_hParse {
      */
     public function html($text = false, $mode = true) {
         if (is_string($text)) {
-            foreach($this->objAttr['nodeList'] as &$nodeKey) {
+            foreach ($this->objAttr['nodeList'] as &$nodeKey) {
                 self::nodeAttr($nodeKey, 'innerHTML', $text);
             }
             return $this;
@@ -280,20 +280,20 @@ class of_base_com_hParse {
      */
     public function text($str = null) {
         //设置
-        if( is_string($str) ) {
-            foreach($this->objAttr['nodeList'] as &$nodeKey) {
+        if (is_string($str)) {
+            foreach ($this->objAttr['nodeList'] as &$nodeKey) {
                 self::nodeAttr($nodeKey, 'textContent', $str);
             }
             return $this;
         } else {
             $rData = $temp = array();
-            foreach($this->objAttr['nodeList'] as &$nodeKey) {
+            foreach ($this->objAttr['nodeList'] as &$nodeKey) {
                 self::htmlFormat($nodeKey, $temp, '!text', false);
             }
 
             //返回包含每个字符串对象的数组
-            if( $str === true ) {
-                foreach($temp as $k => &$v) {
+            if ($str === true) {
+                foreach ($temp as $k => &$v) {
                     self::$sharedData['newInitData'] = array(
                         //调用当前实体的实体
                         'callerObj'  => $this,
@@ -305,11 +305,11 @@ class of_base_com_hParse {
                     $rData[] = new self;
                 }
             //将字符串合并
-            } else if( $str === null ) {
+            } else if ($str === null) {
                 $rData = self::entities(join($temp), true);
             //false,返回包含字符串内容的数组
             } else {
-                foreach($temp as $k => &$v) {
+                foreach ($temp as $k => &$v) {
                     $rData[] = self::entities($v, true);
                 }
             }
@@ -331,15 +331,15 @@ class of_base_com_hParse {
     public function attr($attr = null, $value = null) {
         $objAttr = &$this->objAttr;
         //存在第一个节点键
-        if( isset($objAttr['nodeList'][0]) ) {
-            if( $value !== null ) {
+        if (isset($objAttr['nodeList'][0])) {
+            if ($value !== null) {
                 $attr = array($attr => $value);
             }
             //设置属性
-            if( is_array($attr) ) {
+            if (is_array($attr)) {
                 $nodeKeys = &$objAttr['nodeList'];
-                foreach($nodeKeys as &$nodeKey) {
-                    foreach($attr as $k => &$v) {
+                foreach ($nodeKeys as &$nodeKey) {
+                    foreach ($attr as $k => &$v) {
                         self::nodeAttr($nodeKey, $k, (string)$v);
                     }
                 }
@@ -347,7 +347,7 @@ class of_base_com_hParse {
             } else {
                 return self::nodeAttr($objAttr['nodeList'][0], $attr);
             }
-        } elseif($value === null && !is_array($attr)) {
+        } else if ($value === null && !is_array($attr)) {
             return null;
         }
 
@@ -363,7 +363,7 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     public function removeAttr($attr) {
-        foreach($this->objAttr['nodeList'] as &$nodeKey) {
+        foreach ($this->objAttr['nodeList'] as &$nodeKey) {
             self::nodeAttr($nodeKey, $attr, false);
         }
         return $this;
@@ -379,10 +379,10 @@ class of_base_com_hParse {
      */
     public function removeClass($className) {
         $className = explode(' ', preg_replace('/\s+/', ' ', $className));
-        foreach($this->objAttr['nodeList'] as &$nodeKey) {
+        foreach ($this->objAttr['nodeList'] as &$nodeKey) {
             $temp = array_flip(explode(' ', self::nodeAttr($nodeKey, 'class')));
             unset($temp['']);
-            foreach($className as &$v) {
+            foreach ($className as &$v) {
                 unset($temp[$v]);
             }
             self::nodeAttr($nodeKey, 'class', join(' ', array_keys($temp)));
@@ -400,9 +400,9 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     public function eq($index = null) {
-        if( $index === null ) {
+        if ($index === null) {
             $rData = array();
-            foreach($this->objAttr['nodeList'] as &$nodeKey) {
+            foreach ($this->objAttr['nodeList'] as &$nodeKey) {
                 self::$sharedData['newInitData'] = array(
                     //调用当前实体的实体
                     'callerObj'  => $this,
@@ -442,7 +442,7 @@ class of_base_com_hParse {
         $len = count($this->objAttr['nodeList']);
         $start < 0 && ($start += $len) < 0 && $start = 0;
         $end === null ? $end = $len : $end < 0 && ($end += $len) < 0 && $end = 0;
-        if( $start < $end ) {
+        if ($start < $end) {
             $nodeKeyList = array_slice($this->objAttr['nodeList'], $start, $end - $start);
         } else {
             $nodeKeyList = array();
@@ -467,7 +467,7 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     public function find($selector, $rootObj = '') {
-        if( is_string($selector) ) {
+        if (is_string($selector)) {
             self::$sharedData['newInitData'] = $this->multiFunction($selector, $rootObj === '' ? $this : $rootObj, false);
         } else {
             $temp = array_intersect(
@@ -512,17 +512,17 @@ class of_base_com_hParse {
     public function val($value = null) {
         //解析节点引用
         $parseNode = &self::$parseNode;
-        if( $value === null ) {
-            if( isset($this->objAttr['nodeList'][0]) ) {
+        if ($value === null) {
+            if (isset($this->objAttr['nodeList'][0])) {
                 $tagName = $parseNode[$nodeKey = $this->objAttr['nodeList'][0]]['tagName'];
                 //列表标签
-                if( $tagName === 'select' ) {
+                if ($tagName === 'select') {
                     $temp = $childList = array();
                     self::htmlFormat($nodeKey, $childList, null);
                     //遍历子节点
-                    foreach($childList as &$childNodeKey) {
+                    foreach ($childList as &$childNodeKey) {
                         //option标签 && value匹配
-                        if(
+                        if (
                             $parseNode[$childNodeKey]['tagName'] === 'option' &&
                             self::nodeAttr($childNodeKey, 'selected') !== null
                         ) {
@@ -531,16 +531,16 @@ class of_base_com_hParse {
                     }
 
                     //多选列表
-                    if( isset($parseNode[$nodeKey]['attr']['multiple']) ) {
+                    if (isset($parseNode[$nodeKey]['attr']['multiple'])) {
                         return $temp;
-                    } elseif( isset($temp[0]) ) {
+                    } elseif (isset($temp[0])) {
                         return $temp[count($temp) - 1];
                     }
                 //input标签
-                } elseif( $tagName === 'input' ) {
+                } elseif ($tagName === 'input') {
                     return self::nodeAttr($nodeKey, 'value');
                 //如果子节点仅为文本节点
-                } else if(self::hasChildTag($tagName) & 6) {
+                } else if (self::hasChildTag($tagName) & 6) {
                     return self::nodeAttr($nodeKey, 'textContent');
                 }
             }
@@ -548,16 +548,16 @@ class of_base_com_hParse {
         } else {
             $valueArr = (array)$value;
             $valueStr = join(',', $valueArr);
-            foreach($this->objAttr['nodeList'] as &$nodeKey) {
+            foreach ($this->objAttr['nodeList'] as &$nodeKey) {
                 $tagName = $parseNode[$nodeKey]['tagName'];
                 //列表标签
-                if( $tagName === 'select' ) {
+                if ($tagName === 'select') {
                     $childList = array();
                     self::htmlFormat($nodeKey, $childList, null);
                     //遍历子节点
-                    foreach($childList as &$childNodeKey) {
+                    foreach ($childList as &$childNodeKey) {
                         //option标签 && value匹配
-                        if(
+                        if (
                             $parseNode[$childNodeKey]['tagName'] === 'option' &&
                             array_search(self::nodeAttr($childNodeKey, 'textContent'), $valueArr) !== false
                         ) {
@@ -565,13 +565,13 @@ class of_base_com_hParse {
                         }
                     }
                 //input标签
-                } elseif( $tagName === 'input' ) {
-                    switch( self::nodeAttr($nodeKey, 'type') ) {
+                } else if ($tagName === 'input') {
+                    switch (self::nodeAttr($nodeKey, 'type')) {
                         //多选按钮
                         case 'checkbox':
                         //单选按钮
                         case 'radio'   :
-                            if(array_search(self::nodeAttr($nodeKey, 'value'), $valueArr) !== false) {
+                            if (array_search(self::nodeAttr($nodeKey, 'value'), $valueArr) !== false) {
                                 self::nodeAttr($nodeKey, 'checked', 'checked');
                             }
                             break;
@@ -579,10 +579,10 @@ class of_base_com_hParse {
                         default        :
                             self::nodeAttr($nodeKey, 'value', $valueStr);
                     }
-                } elseif( $tagName === 'option' ) {
+                } else if ($tagName === 'option') {
                     self::nodeAttr($nodeKey, 'value', $valueStr);
                 //如果子节点仅为文本节点
-                } elseif(self::hasChildTag($tagName) & 6) {
+                } else if (self::hasChildTag($tagName) & 6) {
                     self::nodeAttr($nodeKey, 'textContent', $valueStr);
                 }
             }
@@ -603,14 +603,14 @@ class of_base_com_hParse {
     public function css($name, $value = null) {
         $objAttr = &$this->objAttr;
         //存在第一个节点键
-        if( isset($objAttr['nodeList'][0]) ) {
-            if( $value !== null ) {
+        if (isset($objAttr['nodeList'][0])) {
+            if ($value !== null) {
                 $name = array($name => $value);
             }
             //设置样式
-            if( is_array($name) ) {
+            if (is_array($name)) {
                 $nodeKeys = &$objAttr['nodeList'];
-                foreach($nodeKeys as &$nodeKey) {
+                foreach ($nodeKeys as &$nodeKey) {
                     $style = array();
                     //拆分样式
                     preg_match_all(
@@ -621,12 +621,12 @@ class of_base_com_hParse {
                         PREG_SET_ORDER
                     );
                     //格式化样式
-                    foreach($temp as &$v) {
+                    foreach ($temp as &$v) {
                         //注意:样式值结尾可能带多余的空字符
                         $style[$v[1]] = $v[2];
                     }
                     $temp = $name + $style;
-                    foreach($temp as $k => &$v) {
+                    foreach ($temp as $k => &$v) {
                         $style[$k] = $k .':'. $v;
                     }
                     self::nodeAttr($nodeKey, 'style', join(';', $style));
@@ -634,7 +634,7 @@ class of_base_com_hParse {
             //读取样式
             } else {
                 //有效的样式名
-                if( preg_match('@^[\w-]+$@', $name) ) {
+                if (preg_match('@^[\w-]+$@', $name)) {
                     //匹配指定样式名
                     preg_match(
                         '@' .$name. '\s*:\s*((?:[^(;]*(?:\(.*\))*)+)@',
@@ -642,13 +642,13 @@ class of_base_com_hParse {
                         //接受拆分的数组
                         $temp
                     );
-                    if( isset($temp[1]) ) {
+                    if (isset($temp[1])) {
                         return trim($temp[1]);
                     }
                 }
                 return null;
             }
-        } elseif($value === null && is_string($name)) {
+        } else if ($value === null && is_string($name)) {
             return null;
         }
 
@@ -678,7 +678,7 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     public function insertAfter($content, $rootObj = null) {
-        if( is_string($content) ) {
+        if (is_string($content)) {
             $content = $this->multiFunction($content, $rootObj, null);
         }
         $content->after($this);
@@ -708,7 +708,7 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     public function appendTo($content, $rootObj = null) {
-        if( is_string($content) ) {
+        if (is_string($content)) {
             $content = $this->multiFunction($content, $rootObj, null);
         }
         $content->append($this);
@@ -738,7 +738,7 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     public function insertBefore($content, $rootObj = null) {
-        if( is_string($content) ) {
+        if (is_string($content)) {
             $content = $this->multiFunction($content, $rootObj, null);
         }
         $content->before($this);
@@ -768,7 +768,7 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     public function prependTo($content, $rootObj = null) {
-        if( is_string($content) ) {
+        if (is_string($content)) {
             $content = $this->multiFunction($content, $rootObj, null);
         }
         $content->prepend($this);
@@ -798,7 +798,7 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     public function replaceAll($content, $rootObj = null) {
-        if( is_string($content) ) {
+        if (is_string($content)) {
             $content = $this->multiFunction($content, $rootObj, null);
         }
         $content->replaceWith($this);
@@ -835,14 +835,14 @@ class of_base_com_hParse {
         //解析节点引用
         $parseNode = &self::$parseNode;
         //对象
-        if( is_object($context) ) {
+        if (is_object($context)) {
             $sharedData = $context->get(false);
         } else {
-            if( !is_string($context) ) {
+            if (!is_string($context)) {
                 $context = (string)$context;
             }
             //对象
-            if( is_object($rootObj) ) {
+            if (is_object($rootObj)) {
                 $objAttr = $rootObj->get(false);
             //为字符串或null
             } else {
@@ -857,7 +857,7 @@ class of_base_com_hParse {
                 'docNodeKey' => &$objAttr['docNodeKey'],
             );
             //强制解析文本节点
-            if( $rootObj === false ) {
+            if ($rootObj === false) {
                 //新文本节点键
                 $parseNode[$temp = ++self::$nodeCount] = array(
                     'attr'    => array('' => $context),
@@ -865,15 +865,15 @@ class of_base_com_hParse {
                 ) + self::$defaultNode;
                 $sharedData['nodeList'] = array($temp);
             //解析html
-            } elseif( $rootObj === true || (isset($context[0]) && $context[0] === '<') ) {
+            } else if ($rootObj === true || (isset($context[0]) && $context[0] === '<')) {
                 $sharedData['nodeList'] = self::nodeConn(self::htmlParse($context), 'child', false, true);
             //选择器
             } else {
                 //$rootObj=null时使用根节点
-                if( $rootObj === null ) {
+                if ($rootObj === null) {
                     $nodeList = array($objAttr['docNodeKey']);
                 //$rootObj=对象时使用对象列表
-                } elseif( isset($objAttr['nodeList']) ) {
+                } else if (isset($objAttr['nodeList'])) {
                     $nodeList = &$objAttr['nodeList'];
                 //$rootObj=字符串时解析字符串列表
                 } else {
@@ -885,10 +885,10 @@ class of_base_com_hParse {
 
         //调用当前实体的实体
         $sharedData['callerObj'] = $this;
-        if( $rType === null ) {
+        if ($rType === null) {
             self::$sharedData['newInitData'] = &$sharedData;
             return new self;
-        } elseif( $rType === true ) {
+        } else if ($rType === true) {
             return $sharedData['nodeList'];
         } else {
             return $sharedData;
@@ -915,25 +915,25 @@ class of_base_com_hParse {
         $oNodeKeys = $this->multiFunction($content, $rootObj);
 
         //如果不是空列表
-        if( isset($oNodeKeys[0]) ) {
+        if (isset($oNodeKeys[0])) {
             //存储克隆的节点
             $cloneNodeKeys = $oNodeKeys;
 
-            foreach($this->objAttr['nodeList'] as &$nodeKey) {
+            foreach ($this->objAttr['nodeList'] as &$nodeKey) {
                 //如果克隆节点为空,则重新克隆
-                if( $cloneNodeKeys === null ) {
+                if ($cloneNodeKeys === null) {
                     //克隆全部插入节点
-                    foreach($oNodeKeys as &$cloneNodeKey) {
+                    foreach ($oNodeKeys as &$cloneNodeKey) {
                         $cloneNodeKeys[] = self::cloneNode($cloneNodeKey);
                     }
                 }
 
-                switch($type) {
+                switch ($type) {
                     case 'after'      :
                     case 'before'     :
                         //当前节点有父节点
-                        if( ($pNodeKey = $parseNode[$nodeKey]['pKey']) !== null ) {
-                            if($type === 'after') {
+                        if (($pNodeKey = $parseNode[$nodeKey]['pKey']) !== null) {
+                            if ($type === 'after') {
                                 //插入节点位置
                                 $insPos = array_search($nodeKey, $parseNode[$pNodeKey]['cKeys']) + 1;
                                 //如插入位置无效,则插入到最后
@@ -943,7 +943,7 @@ class of_base_com_hParse {
                                 $insPos = $nodeKey;
                             }
 
-                            foreach($cloneNodeKeys as &$cloneNodeKey) {
+                            foreach ($cloneNodeKeys as &$cloneNodeKey) {
                                 //将克隆节点依次插入当前节点下一个节点的前面
                                 self::nodeSplice($cloneNodeKey, $pNodeKey, $insPos);
                             }
@@ -955,7 +955,7 @@ class of_base_com_hParse {
                     case 'prepend'    :
                         $insPos = $type === 'prepend' && isset($parseNode[$nodeKey]['cKeys'][0]) ?
                             $parseNode[$nodeKey]['cKeys'][0] : false;
-                        foreach($cloneNodeKeys as &$cloneNodeKey) {
+                        foreach ($cloneNodeKeys as &$cloneNodeKey) {
                             //将克隆节点依次插入当前节点子节点最后面
                             self::nodeSplice($cloneNodeKey, $nodeKey, $insPos);
                         }
@@ -964,8 +964,8 @@ class of_base_com_hParse {
                         break;
                     case 'replaceWith':
                         //当前节点有父节点
-                        if( ($pNodeKey = $parseNode[$nodeKey]['pKey']) !== null ) {
-                            foreach($cloneNodeKeys as &$cloneNodeKey) {
+                        if (($pNodeKey = $parseNode[$nodeKey]['pKey']) !== null) {
+                            foreach ($cloneNodeKeys as &$cloneNodeKey) {
                                 //将克隆节点依次插入当前节点下一个节点的前面
                                 self::nodeSplice($cloneNodeKey, $pNodeKey, $nodeKey);
                             }
@@ -992,7 +992,7 @@ class of_base_com_hParse {
         $sharedData = &self::$sharedData['newInitData'];
         $sharedData = $this->objAttr;
         $sharedData['nodeList'] = array();
-        foreach($this->objAttr['nodeList'] as &$nodeKey) {
+        foreach ($this->objAttr['nodeList'] as &$nodeKey) {
             $sharedData['nodeList'][] = self::cloneNode($nodeKey);
         }
         return new self;
@@ -1007,8 +1007,8 @@ class of_base_com_hParse {
     public function emptys() {
         //解析节点引用
         $parseNode = &self::$parseNode;
-        foreach($this->objAttr['nodeList'] as &$nodeKey) {
-            foreach($parseNode[$nodeKey]['cKeys'] as $chlidKey) {
+        foreach ($this->objAttr['nodeList'] as &$nodeKey) {
+            foreach ($parseNode[$nodeKey]['cKeys'] as $chlidKey) {
                 self::nodeSplice($chlidKey);
             }
         }
@@ -1028,7 +1028,7 @@ class of_base_com_hParse {
             $this->objAttr['nodeList'] :
             self::selectors($this->objAttr['nodeList'], $selector, false);
 
-        foreach($removeNodeKeys as &$nodeKey) {
+        foreach ($removeNodeKeys as &$nodeKey) {
             self::nodeSplice($nodeKey);
         }
         return $this;
@@ -1043,10 +1043,10 @@ class of_base_com_hParse {
     public function unwrap() {
         //解析节点引用
         $parseNode = &self::$parseNode;
-        foreach($this->objAttr['nodeList'] as &$nodeKey) {
-            if( isset($parseNode[$nodeKey]['pKey']) ) {
+        foreach ($this->objAttr['nodeList'] as &$nodeKey) {
+            if (isset($parseNode[$nodeKey]['pKey'])) {
                 $pNodeKey = $parseNode[$nodeKey]['pKey'];
-                foreach($parseNode[$pNodeKey]['cKeys'] as $siblingKey) {
+                foreach ($parseNode[$pNodeKey]['cKeys'] as $siblingKey) {
                     self::nodeSplice($siblingKey, $parseNode[$pNodeKey]['pKey'], $pNodeKey);
                 }
                 self::nodeSplice($pNodeKey);
@@ -1114,18 +1114,18 @@ class of_base_com_hParse {
         //克隆父节点的所有子节点
         $cloneNodekeyChild = null;
 
-        if( isset($this->objAttr['nodeList'][0]) ) {
+        if (isset($this->objAttr['nodeList'][0])) {
             $nodeKeyList = $this->multiFunction($wrap, $rootObj);
 
-            if( isset($nodeKeyList[0]) ) {
-                foreach($nodeKeyList as &$nodeKey) {
+            if (isset($nodeKeyList[0])) {
+                foreach ($nodeKeyList as &$nodeKey) {
                     $childNodeKeys = array();
                     self::htmlFormat($nodeKey, $childNodeKeys, null);
-                    if( isset($childNodeKeys[0]) ) {
+                    if (isset($childNodeKeys[0])) {
                         //寻找第一个没有非文本子节点的节点
-                        foreach($childNodeKeys as &$childNodeKey) {
+                        foreach ($childNodeKeys as &$childNodeKey) {
                             //没有非文本子节点
-                            if( self::nodeConn($childNodeKey, 'child', 0) === null ) {
+                            if (self::nodeConn($childNodeKey, 'child', 0) === null) {
                                 $insertNodeKey = $childNodeKey;
                                 break;
                             }
@@ -1139,16 +1139,16 @@ class of_base_com_hParse {
                         $insertNodeKey = $nodeKey;
                     }
 
-                    if( $insertNodeKey !== null ) {
+                    if ($insertNodeKey !== null) {
                         break;
                     }
                 }
 
                 //将匹配节点插入到当前节点最后
-                if( $insertNodeKey !== null ) {
+                if ($insertNodeKey !== null) {
                     //插入节点祖先父节点
                     $parentNodeKey = self::nodeConn($insertNodeKey, 'parent', -1);
-                    if( $parentNodeKey === null ) {
+                    if ($parentNodeKey === null) {
                         $parentNodeKey = $insertNodeKey;
                         $insertNodeKeyPos = null;
                     } else {
@@ -1158,7 +1158,7 @@ class of_base_com_hParse {
                         $insertNodeKeyPos = array_search($insertNodeKey, $temp);
                     }
 
-                    if( $type === 'wrapAll' ) {
+                    if ($type === 'wrapAll') {
                         $nodeKey = $this->objAttr['nodeList'][0];
                         $cloneNodekeyChild = array();
                         $cloneNodekey = self::cloneNode($parentNodeKey);
@@ -1167,13 +1167,13 @@ class of_base_com_hParse {
                         $cloneNodekeyChild = $insertNodeKeyPos === null ?
                             $cloneNodekey : $cloneNodekeyChild[$insertNodeKeyPos];
                         self::nodeSplice($cloneNodekey, $parseNode[$nodeKey]['pKey'], $nodeKey);
-                        foreach($this->objAttr['nodeList'] as &$nodeKey) {
+                        foreach ($this->objAttr['nodeList'] as &$nodeKey) {
                             self::nodeSplice($nodeKey, $cloneNodekeyChild, false);
                         }
                     } else {
-                        foreach($this->objAttr['nodeList'] as &$nodeKey) {
+                        foreach ($this->objAttr['nodeList'] as &$nodeKey) {
                             //克隆新节点
-                            if( $cloneNodekey === null ) {
+                            if ($cloneNodekey === null) {
                                 $cloneNodekeyChild = array();
                                 $cloneNodekey = self::cloneNode($parentNodeKey);
                                 self::htmlFormat($cloneNodekey, $cloneNodekeyChild, null);
@@ -1181,10 +1181,10 @@ class of_base_com_hParse {
                                 $cloneNodekeyChild = $insertNodeKeyPos === null ?
                                     $cloneNodekey : $cloneNodekeyChild[$insertNodeKeyPos];
                             }
-                            switch( $type ) {
+                            switch ($type) {
                                 case 'wrap'     :
                                     //克隆节点插入到匹配节点前,匹配节点插入的克隆节点中
-                                    if( isset($parseNode[$nodeKey]['pKey']) ) {
+                                    if (isset($parseNode[$nodeKey]['pKey'])) {
                                         self::nodeSplice($cloneNodekey, $parseNode[$nodeKey]['pKey'], $nodeKey);
                                         self::nodeSplice($nodeKey, $cloneNodekeyChild, false);
                                         $cloneNodekey = null;
@@ -1195,7 +1195,7 @@ class of_base_com_hParse {
                                     $cKeys = $parseNode[$nodeKey]['cKeys'];
                                     //替换插入(清空匹配节点子节点)
                                     self::nodeSplice($cloneNodekey, $nodeKey, null);
-                                    foreach($cKeys as &$childNodeKey) {
+                                    foreach ($cKeys as &$childNodeKey) {
                                         //子节点插入克隆子节点的最后
                                         self::nodeSplice($childNodeKey, $cloneNodekeyChild, false);
                                     }
@@ -1251,7 +1251,7 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     public function end() {
-        if( $this->objAttr['callerObj'] === null ) {
+        if ($this->objAttr['callerObj'] === null) {
             self::$sharedData['newInitData'] = $this->objAttr;
             self::$sharedData['nodeList'] = array();
             return new self;
@@ -1270,13 +1270,13 @@ class of_base_com_hParse {
      */
     public function children($selector = '') {
         $nodeKeyList = array();
-        foreach( $this->objAttr['nodeList'] as &$nodeKey ) {
+        foreach ($this->objAttr['nodeList'] as &$nodeKey) {
             $nodeKeyList[] = self::nodeConn($nodeKey, 'child');
         }
-        if( isset($nodeKeyList[1]) ) {
+        if (isset($nodeKeyList[1])) {
             //生成过滤列表
             $nodeKeyList = call_user_func_array('array_merge', $nodeKeyList);
-        } elseif( isset($nodeKeyList[0]) ) {
+        } elseif (isset($nodeKeyList[0])) {
             $nodeKeyList = $nodeKeyList[0];
         }
         self::$sharedData['newInitData'] = array(
@@ -1300,9 +1300,9 @@ class of_base_com_hParse {
      */
     public function closest($selector, $context = null) {
         //不为空节点
-        if( isset($this->objAttr['nodeList'][0]) ) {
+        if (isset($this->objAttr['nodeList'][0])) {
             $nodeKeyList[0] = $this->objAttr['nodeList'];
-            foreach($nodeKeyList[0] as &$nodeKey) {
+            foreach ($nodeKeyList[0] as &$nodeKey) {
                 //读取全部父节点
                 $nodeKeyList[] = self::nodeConn($nodeKey, 'parent');
             }
@@ -1310,7 +1310,7 @@ class of_base_com_hParse {
             $nodeKeyList = call_user_func_array('array_merge', $nodeKeyList);
 
             //过滤匹配数据
-            if($context === null) {
+            if ($context === null) {
                 $nodeKeyList = self::selectors($nodeKeyList, $selector, false);
             //在指定根目录中寻找节点
             } else {
@@ -1347,8 +1347,8 @@ class of_base_com_hParse {
         //深度获取指定元素
         is_string($type) && $type = strtolower($type);
 
-        foreach($this->objAttr['nodeList'] as &$nodeKey) {
-            if( $type === true ) {
+        foreach ($this->objAttr['nodeList'] as &$nodeKey) {
+            if ($type === true) {
                 //读取全部子节点
                 $nodeKeyList[] = self::nodeConn($nodeKey, 'child', false, true);
             } else {
@@ -1358,7 +1358,7 @@ class of_base_com_hParse {
         }
 
         //为查询到数据
-        if( empty($nodeKeyList) ) {
+        if (empty($nodeKeyList)) {
             $nodeKeyList = array();
         //格式化结构
         } else {
@@ -1390,7 +1390,7 @@ class of_base_com_hParse {
      */
     public function filter($selector) {
         //选择符
-        if( is_string($selector) ) {
+        if (is_string($selector)) {
             $nodeKeyList = self::selectors($this->objAttr['nodeList'], $selector, false);
         //对象
         } else {
@@ -1420,7 +1420,7 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     public function doc($type = 'obj', $mode = true) {
-        if( $type === 'obj' ) {
+        if ($type === 'obj') {
             self::$sharedData['newInitData'] = array(
                 //调用当前实体的实体
                 'callerObj'  => $this,
@@ -1466,7 +1466,7 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     public function has($selector) {
-        if( is_string($selector) ) {
+        if (is_string($selector)) {
             $nodeList = self::selectors($this->objAttr['nodeList'], ':has(' .$selector. ')', false);
         } else {
             $nodeList = array_intersect($this->objAttr['nodeList'], $selector->get());
@@ -1491,7 +1491,7 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     public function not($selector) {
-        if( is_string($selector) ) {
+        if (is_string($selector)) {
             $nodeList = self::selectors($this->objAttr['nodeList'], ':not(' .$selector. ')', false);
         } else {
             $nodeList = array_diff($this->objAttr['nodeList'], $selector->get());
@@ -1516,7 +1516,7 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     public function is($selector) {
-        if( is_string($selector) ) {
+        if (is_string($selector)) {
             $nodeList = self::selectors($this->objAttr['nodeList'], $selector, false);
         } else {
             $nodeList = array_intersect($this->objAttr['nodeList'], $selector->get());
@@ -1658,16 +1658,16 @@ class of_base_com_hParse {
      */
     private static function relationship($thisObj, $selector, $type, $filter) {
         $nodeKeyList = array();
-        foreach($thisObj->objAttr['nodeList'] as &$nodeKey) {
+        foreach ($thisObj->objAttr['nodeList'] as &$nodeKey) {
             $temp = self::nodeConn($nodeKey, $type, false, $selector === true || is_object($selector));
-            if( isset($temp[0]) ) {
+            if (isset($temp[0])) {
                 $nodeKeyList[] = $filter === 'single' ? array($temp[0]) : $temp;
             }
         }
 
-        if( $filter === 'until' && is_string($selector) ) {
+        if ($filter === 'until' && is_string($selector)) {
             $filterNodeKeyList = array(array('' => ''));
-            foreach($nodeKeyList as &$nodeKeys) {
+            foreach ($nodeKeyList as &$nodeKeys) {
                 //过滤数据
                 $temp = self::selectors($nodeKeys, $selector, false);
                 //查询到结果
@@ -1680,20 +1680,20 @@ class of_base_com_hParse {
             //去重排序
             self::nodeKeysUniqueSort($nodeKeyList, false, $thisObj->objAttr['docNodeKey']);
         } else {
-            if( isset($nodeKeyList[1]) ) {
+            if (isset($nodeKeyList[1])) {
                 //生成过滤列表
                 $nodeKeyList = call_user_func_array('array_merge', $nodeKeyList);
-            } elseif( isset($nodeKeyList[0]) ) {
+            } elseif (isset($nodeKeyList[0])) {
                 $nodeKeyList = $nodeKeyList[0];
             }
             //是字符串
-            if( is_string($selector) ) {
+            if (is_string($selector)) {
                 $nodeKeyList = self::selectors($nodeKeyList, $selector, false);
             //是对象
             } else {
                 //去重排序
                 self::nodeKeysUniqueSort($nodeKeyList, false, $thisObj->objAttr['docNodeKey']);
-                if( is_object($selector) ) {
+                if (is_object($selector)) {
                     $nodeKeyList = array_intersect($nodeKeyList, $selector->get());
                     array_splice($nodeKeyList, 0, 0);
                 }
@@ -1723,7 +1723,7 @@ class of_base_com_hParse {
     public function index($selector = null) {
         $rData = false;
         //是对象
-        if( is_object($selector) ) {
+        if (is_object($selector)) {
             //当前节点键
             $temp = $this->multiFunction($selector);
             //节点列表
@@ -1733,15 +1733,15 @@ class of_base_com_hParse {
             $temp = $this->objAttr['nodeList'];
         }
 
-        if( isset($temp[0]) ) {
+        if (isset($temp[0])) {
             //当前节点
             $nodeKey = $temp[0];
             //查询包含自己的兄节点
-            if( $selector === null ) {
+            if ($selector === null) {
                 $nodeList = self::nodeConn($nodeKey, 'prev');
                 $nodeList[] = $nodeKey;
             //是字符串
-            } elseif( !isset($nodeList) ) {
+            } elseif (!isset($nodeList)) {
                 //节点列表
                 $nodeList = $this->multiFunction($selector);
             }
@@ -1769,7 +1769,7 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     public static function selectors($nodeKeys, $selector, $isChild = true) {
-        if( !$selector = ltrim($selector) ){return array();}    //空字符串返回空数组
+        if (!$selector = ltrim($selector)) return array();      //空字符串返回空数组
         $parseNode = &self::$parseNode;                         //解析节点引用
         $const = &self::$selectorsConst;                        //引用选择器常量
         $isChild = $isChild ? ' ' : '';                           //是否从子节点开始查起 ? ' ' : ''
@@ -1800,12 +1800,11 @@ class of_base_com_hParse {
 
         //判定空字符位置
         //解析过滤字符串
-        while($env['nMatchPos'] = of_base_com_str::strArrPos($env['selector'], $const['dMatches'], $env['nowPos'])) {
-
+        while ($env['nMatchPos'] = of_base_com_str::strArrPos($env['selector'], $const['dMatches'], $env['nowPos'])) {
             //空格在第一位(匹配子元素模式)
             $emptyStrPos = strpos($env['selector'], ' ', $env['nowPos']);
             //判断空字符串分隔符
-            if(
+            if (
                 //查询有效
                 $emptyStrPos !== false &&
                 //空格在匹配位置之前
@@ -1819,7 +1818,7 @@ class of_base_com_hParse {
                 $env['temp']['prevEmptyChrPos'] = $emptyStrPos + 1;
                 $env['nMatchPos'] = array('match' => ' ', 'position' => $emptyStrPos);
             //'[:.#'前一位出现空字符,则空字符为分隔符
-            } elseif(
+            } else if (
                 //匹配值为'[:.#'
                 isset($const['emptyCharSplit']['suf'][$env['nMatchPos']['match']]) &&
                 //匹配位置不是上次匹配位置(防止死循环)
@@ -1835,7 +1834,7 @@ class of_base_com_hParse {
             }
 
             //过滤匹配节点键
-            switch( $env['nMatchPos']['match'] ) {
+            switch ($env['nMatchPos']['match']) {
                 //子孙节点
                 case ' ':
                 //子节点
@@ -1856,7 +1855,7 @@ class of_base_com_hParse {
                     self::matchKeyword($env, true);
                     $env['temp']['selectType'] = 't';
                     //selectList不空
-                    if( isset($env['temp']['selectList']['list'][0]) ) {
+                    if (isset($env['temp']['selectList']['list'][0])) {
                         //保存倒序到解析列表中
                         $env['selectParse'][] = $env['temp']['selectList'];
                         //清空选择列表
@@ -1894,7 +1893,7 @@ class of_base_com_hParse {
                     //伪类时,确定分组
                     isset($const['groupPseudo'][$newSelectList['value']]) && $env['temp']['selectGroup'] = true;
                     //生成伪类参数
-                    if(
+                    if (
                         //找到'('
                         $match['match'] === '(' &&
                         //找到对应')'
@@ -1914,13 +1913,13 @@ class of_base_com_hParse {
                     self::matchKeyword($env, false);
                     $env['temp']['selectType'] = 't';
                     //找到对应']'
-                    if( $temp = self::getNextBrackets($env['selector'], $env['nMatchPos']) ) {
+                    if ($temp = self::getNextBrackets($env['selector'], $env['nMatchPos'])) {
                         //匹配截取位置
                         $match = $env['nMatchPos']['position'] + 1;
                         //更新位置
                         $env['nMatchPos'] = array('match' => ']', 'position' => $temp);
                         //截取[]之间内容
-                        if($matchV = trim(substr($env['selector'], $match, $temp - $match))) {
+                        if ($matchV = trim(substr($env['selector'], $match, $temp - $match))) {
                             $newSelectList = array(
                                 'type'  => 'attr',
                                 'value' => null,
@@ -1928,9 +1927,9 @@ class of_base_com_hParse {
                                 'name'  => $matchV,
                             );
                             //查询到属性分隔符
-                            if( $matchV[0] !== '@' && $match = strpos($matchV, '=', $matchV[0] === '=') ) {
+                            if ($matchV[0] !== '@' && $match = strpos($matchV, '=', $matchV[0] === '=')) {
                                 //生成属性值
-                                if(
+                                if (
                                     //截取属性值,并且不为空字符串
                                     ($temp = trim(substr($matchV, $match + 1))) &&
                                     //引号包含的
@@ -1941,7 +1940,7 @@ class of_base_com_hParse {
                                 $newSelectList['value'] = $temp;
 
                                 //存在匹配参数
-                                if( isset($const['aValueType'][$matchV[$temp = $match - 1]]) ) {
+                                if (isset($const['aValueType'][$matchV[$temp = $match - 1]])) {
                                     //指定匹配参数
                                     $newSelectList['param'] = $matchV[$temp];
                                     //指定属性名
@@ -1953,7 +1952,6 @@ class of_base_com_hParse {
                                     //指定属性名
                                     $newSelectList['name'] = trim(substr($matchV, 0, $match));
                                 }
-
                             }
                             $env['temp']['selectAttr']['list'][] = $newSelectList;
                         }
@@ -1965,19 +1963,17 @@ class of_base_com_hParse {
         }
 
         //遍历分组的节点匹配列表
-        foreach($nodeKeys as $rootNodeKey => &$filterNodeKeys) {
+        foreach ($nodeKeys as $rootNodeKey => &$filterNodeKeys) {
             //清空匹配节点
             $matchAllNodeKeys = array();
             //过滤模式
-            if( $isChild === '' ) {
+            if ($isChild === '') {
                 //仅过滤列表(如果使用子查询模式,无法处理移除的节点)
                 $matchAllNodeKeys = array_combine($filterNodeKeys, $filterNodeKeys);
             //self::htmlFormat($rootNodeKey, $matchAllNodeKeys, null, false);                                       //(范围过大而低效)读取根节点的所有非文本类型的子节点
             //子查询模式
             } else {
-
-
-                foreach($filterNodeKeys as &$nodeKey) {
+                foreach ($filterNodeKeys as &$nodeKey) {
                     //读取过滤节点子节点
                     self::htmlFormat($nodeKey, $matchAllNodeKeys, null, false);
                     //读取过滤节点之下全部节点
@@ -1990,57 +1986,57 @@ class of_base_com_hParse {
             $matchFilterNodeKeys = $matchAllNodeKeys;
 
             //遍历匹配结果集
-            foreach($env['selectParse'] as $selectK => &$selectParse) {
-                switch( $selectParse['type'] ) {
+            foreach ($env['selectParse'] as $selectK => &$selectParse) {
+                switch ($selectParse['type']) {
                     //倒序方式匹配
                     case 'reverse':
-                        foreach($matchAllNodeKeys as &$matchNodeKey) {
+                        foreach ($matchAllNodeKeys as &$matchNodeKey) {
                             //当前分析节点集
                             $nowNodeKeys = array($matchNodeKey);
-                            foreach($selectParse['list'] as $index => &$match) {
+                            foreach ($selectParse['list'] as $index => &$match) {
                                 //分隔符
-                                if( $match['type'] === 'split' ) {
+                                if ($match['type'] === 'split') {
                                     $tempNodeKeys = array();
-                                    switch( $match['value'] ) {
+                                    switch ($match['value']) {
                                         //子孙分隔符
                                         case ' ':
-                                            foreach($nowNodeKeys as &$nodeKey) {
+                                            foreach ($nowNodeKeys as &$nodeKey) {
                                                 //读取所有父节点
                                                 $temp = self::nodeConn($nodeKey, 'parent', false, true, false);
                                                 //存在父节点级
-                                                if( !empty($temp) ) {
+                                                if (!empty($temp)) {
                                                     $tempNodeKeys += $temp;
                                                 }
                                             }
                                             break;
                                         //直接父节点
                                         case '>':
-                                            foreach($nowNodeKeys as &$nodeKey) {
+                                            foreach ($nowNodeKeys as &$nodeKey) {
                                                 //读取一级父节点
                                                 $temp = self::nodeConn($nodeKey, 'parent', 0, true);
                                                 //存在之间父节点
-                                                if( $temp !== null ) {
+                                                if ($temp !== null) {
                                                     $tempNodeKeys[$temp] = $temp;
                                                 }
                                             }
                                             break;
                                         //直接兄节点
                                         case '+':
-                                            foreach($nowNodeKeys as &$nodeKey) {
+                                            foreach ($nowNodeKeys as &$nodeKey) {
                                                 //读取一级父节点
                                                 $temp = self::nodeConn($nodeKey, 'prev', 0, false);
                                                 //存在之间父节点
-                                                if( $temp !== null ) {
+                                                if ($temp !== null) {
                                                     $tempNodeKeys[$temp] = $temp;
                                                 }
                                             }
                                         //直接兄节点
                                         case '~':
-                                            foreach($nowNodeKeys as &$nodeKey) {
+                                            foreach ($nowNodeKeys as &$nodeKey) {
                                                 //读取所有父节点
                                                 $temp = self::nodeConn($nodeKey, 'prev', false, false, false);
                                                 //存在父节点级
-                                                if( !empty($temp) ) {
+                                                if (!empty($temp)) {
                                                     $tempNodeKeys += $temp;
                                                 }
                                             }
@@ -2048,7 +2044,7 @@ class of_base_com_hParse {
                                     }
 
                                     $nowNodeKeys = $tempNodeKeys;
-                                    if( empty($tempNodeKeys) ) {
+                                    if (empty($tempNodeKeys)) {
                                         break;
                                     }
                                 //=filter,节点过滤
@@ -2057,7 +2053,7 @@ class of_base_com_hParse {
                                 }
                             }
 
-                            if( count(array_intersect($nowNodeKeys, $env['temp']['filterNodeKeys'])) === 0 ) {
+                            if (count(array_intersect($nowNodeKeys, $env['temp']['filterNodeKeys'])) === 0) {
                                 unset($matchFilterNodeKeys[$matchNodeKey]);
                             }
                         }
@@ -2066,9 +2062,9 @@ class of_base_com_hParse {
                     case 'filter' :
                         self::filterNodeKeys($matchFilterNodeKeys, $selectParse['list']);
                         //如果本组选择符未结束,读取其子节点
-                        if( $env['selectParse'][$selectK + 1]['type'] !== 'group' ) {
+                        if ($env['selectParse'][$selectK + 1]['type'] !== 'group') {
                             $temp = array();
-                            foreach( $matchFilterNodeKeys as &$nodeKey ) {
+                            foreach ($matchFilterNodeKeys as &$nodeKey) {
                                 //读取根节点的所有非文本类型的子节点
                                 self::htmlFormat($nodeKey, $temp, null, false);
                             }
@@ -2078,7 +2074,7 @@ class of_base_com_hParse {
                     //逗号分组
                     case 'group'  :
                         //本分组只读取第一条记录
-                        if(
+                        if (
                             //倒序模式下
                             isset($env['selectParse'][$temp = $selectK - 1]['list'][0]['list']) &&
                             //倒序模式下第一个值是ID类型
@@ -2108,11 +2104,11 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     private static function filterNodeKeys(&$nodeKeys, &$filterList) {
-        foreach($filterList as &$filter) {
+        foreach ($filterList as &$filter) {
             //没有数据之间返回
-            if( !count($nodeKeys) ){ return; }
+            if (!count($nodeKeys)) return;
             //指定伪类
-            if($filter['type'] === 'pseudo') {
+            if ($filter['type'] === 'pseudo') {
                 self::filterPseudoNodeKeys($nodeKeys, $filter);
             //包含tag,ID,attr
             } else {
@@ -2136,17 +2132,17 @@ class of_base_com_hParse {
     private static function filterAttrNodeKeys(&$nodeKeys, &$attrList) {
         //解析节点引用
         $parseNode = &self::$parseNode;
-        foreach($nodeKeys as $k => &$nodeKey) {
-            switch( $attrList['type'] ) {
+        foreach ($nodeKeys as $k => &$nodeKey) {
+            switch ($attrList['type']) {
                 //指定标签名
                 case 'tag' :
-                    if( $attrList['value'] !== '*' && $parseNode[$nodeKey]['tagName'] !== $attrList['value'] ) {
+                    if ($attrList['value'] !== '*' && $parseNode[$nodeKey]['tagName'] !== $attrList['value']) {
                         unset($nodeKeys[$k]);
                     }
                     break;
                 //指定标ID
                 case 'id'  :
-                    if(
+                    if (
                         //不存在ID属性
                         !isset($parseNode[$nodeKey]['attr']['id']) ||
                         //属性不匹配
@@ -2168,7 +2164,7 @@ class of_base_com_hParse {
                         unset($nodeKeys[$k]);
                     //存在属性
                     } else if (is_string($attrValue = self::nodeAttr($nodeKey, $attrList['name']))) {
-                        if(!(
+                        if (!(
                             //仅判断存在
                             $attrList['param'] === null || (
                                 //等于指定值
@@ -2205,7 +2201,7 @@ class of_base_com_hParse {
                         )) {
                             unset($nodeKeys[$k]);
                         }
-                    } elseif( $attrList['param'] !== '!' ) {
+                    } else if ($attrList['param'] !== '!') {
                         unset($nodeKeys[$k]);
                     }
                     break;
@@ -2259,7 +2255,7 @@ class of_base_com_hParse {
         //解析节点引用
         $parseNode = &self::$parseNode;
         //伪类重置
-        switch( $pseudoList['value'] ) {
+        switch ($pseudoList['value']) {
             case 'first'       :
                 $pseudoList['value'] = 'eq';
                 $pseudoList['param'] = 0;
@@ -2283,11 +2279,11 @@ class of_base_com_hParse {
                 break;
         }
 
-        switch( $pseudoList['value'] ) {
+        switch ($pseudoList['value']) {
             //选择input[type=button]或button标签
             case 'button'     :
-                foreach($nodeKeys as $k => &$nodeKey) {
-                    if(!(
+                foreach ($nodeKeys as $k => &$nodeKey) {
+                    if (!(
                         //input标签
                         $parseNode[$nodeKey]['tagName'] === 'input' &&
                         //type属性为button
@@ -2323,8 +2319,8 @@ class of_base_com_hParse {
                 break;
             //选择input[type=checkbox]或input[type=radio]标签有checked属性的节点
             case 'checked'    :
-                foreach($nodeKeys as $k => &$nodeKey) {
-                    if(!(
+                foreach ($nodeKeys as $k => &$nodeKey) {
+                    if (!(
                         //input标签
                         $parseNode[$nodeKey]['tagName'] === 'input' &&
                         //存在checked属性
@@ -2345,8 +2341,8 @@ class of_base_com_hParse {
             case 'contains'   :
                 //引用块级标签
                 $blockTag = &self::$blockTag;
-                foreach($nodeKeys as $k => &$nodeKey) {
-                    if(strpos(self::nodeAttr($nodeKey, 'textContent'), $pseudoList['param']) === false) {
+                foreach ($nodeKeys as $k => &$nodeKey) {
+                    if (strpos(self::nodeAttr($nodeKey, 'textContent'), $pseudoList['param']) === false) {
                         //删除节点键
                         unset($nodeKeys[$k]);
                     }
@@ -2354,16 +2350,15 @@ class of_base_com_hParse {
                 break;
             //选择button,input,optgroup,option,select,textarea标签有disabled属性节点
             case 'disabled'   :
-                foreach($nodeKeys as $k => &$nodeKey) {
-                    switch( $parseNode[$nodeKey]['tagName'] ) {
+                foreach ($nodeKeys as $k => &$nodeKey) {
+                    switch ($parseNode[$nodeKey]['tagName']) {
                         case 'button'  :
                         case 'input'   :
                         case 'optgroup':
                         case 'option'  :
                         case 'select'  :
                         case 'textarea':
-                            if( !isset($parseNode[$nodeKey]['attr']['disabled']) )
-                            {
+                            if (!isset($parseNode[$nodeKey]['attr']['disabled'])) {
                                 //删除节点键
                                 unset($nodeKeys[$k]);
                             }
@@ -2379,8 +2374,8 @@ class of_base_com_hParse {
             //选择所有其父元素下只有一个子元素的元素
             case 'only-child' :
                 $temp = intval($pseudoList['value'] === 'only-child');
-                foreach($nodeKeys as $k => &$nodeKey) {
-                    if( count(self::nodeConn($nodeKey, 'child', false, true)) !== $temp ) {
+                foreach ($nodeKeys as $k => &$nodeKey) {
+                    if (count(self::nodeConn($nodeKey, 'child', false, true)) !== $temp) {
                         //删除节点键
                         unset($nodeKeys[$k]);
                     }
@@ -2388,8 +2383,8 @@ class of_base_com_hParse {
                 break;
             //选择所有含有子元素或者文本的父级元素
             case 'parent'     :
-                foreach($nodeKeys as $k => &$nodeKey) {
-                    if( count(self::nodeConn($nodeKey, 'child', false, true)) === 0 ) {
+                foreach ($nodeKeys as $k => &$nodeKey) {
+                    if (count(self::nodeConn($nodeKey, 'child', false, true)) === 0) {
                         //删除节点键
                         unset($nodeKeys[$k]);
                     }
@@ -2397,15 +2392,15 @@ class of_base_com_hParse {
                 break;
             //选择button,input,optgroup,option,select,textarea标签有disabled属性节点
             case 'enabled'    :
-                foreach($nodeKeys as $k => &$nodeKey) {
-                    switch( $parseNode[$nodeKey]['tagName'] ) {
+                foreach ($nodeKeys as $k => &$nodeKey) {
+                    switch ($parseNode[$nodeKey]['tagName']) {
                         case 'button'  :
                         case 'input'   :
                         case 'optgroup':
                         case 'option'  :
                         case 'select'  :
                         case 'textarea':
-                            if( isset($parseNode[$nodeKey]['attr']['disabled']) ) {
+                            if (isset($parseNode[$nodeKey]['attr']['disabled'])) {
                                 //删除节点键
                                 unset($nodeKeys[$k]);
                             }
@@ -2430,8 +2425,8 @@ class of_base_com_hParse {
                 break;
             //选择input[type=image]或image的节点
             case 'image'      :
-                foreach($nodeKeys as $k => &$nodeKey) {
-                    if(
+                foreach ($nodeKeys as $k => &$nodeKey) {
+                    if (
                         //是图片类型input标签
                         ($parseNode[$nodeKey]['tagName'] === 'input' &&
                         self::nodeAttr($nodeKey, 'type') !== 'image') ||
@@ -2446,8 +2441,8 @@ class of_base_com_hParse {
                 break;
             //选择input,textarea,select,button的节点
             case 'input'      :
-                foreach($nodeKeys as $k => &$nodeKey) {
-                    switch( $parseNode[$nodeKey]['tagName'] ) {
+                foreach ($nodeKeys as $k => &$nodeKey) {
+                    switch ($parseNode[$nodeKey]['tagName']) {
                         case 'button'  :
                         case 'input'   :
                         case 'select'  :
@@ -2461,8 +2456,8 @@ class of_base_com_hParse {
                 break;
             //选择option[selected]元素
             case 'selected'   :
-                foreach($nodeKeys as $k => &$nodeKey) {
-                    if(
+                foreach ($nodeKeys as $k => &$nodeKey) {
+                    if (
                         //不为option标签
                         $parseNode[$nodeKey]['tagName'] !== 'option' ||
                         //没有selected属性
@@ -2475,8 +2470,8 @@ class of_base_com_hParse {
                 break;
             //选择input[type=submit]或button[type=submit]元素
             case 'submit'     :
-                foreach($nodeKeys as $k => &$nodeKey) {
-                    if((
+                foreach ($nodeKeys as $k => &$nodeKey) {
+                    if ((
                         ($parseNode[$nodeKey]['tagName'] === 'input' ||
                         //是提交类型input或button标签
                         $parseNode[$nodeKey]['tagName'] === 'button') &&
@@ -2493,8 +2488,8 @@ class of_base_com_hParse {
                 break;
             //选择h1-6的节点
             case 'header'     :
-                foreach($nodeKeys as $k => &$nodeKey) {
-                    switch( $parseNode[$nodeKey]['tagName'] ) {
+                foreach ($nodeKeys as $k => &$nodeKey) {
+                    switch ($parseNode[$nodeKey]['tagName']) {
                         case 'h1':
                         case 'h2':
                         case 'h3':
@@ -2515,18 +2510,18 @@ class of_base_com_hParse {
                 $cacheCount = array();
                 //匹配列表
                 $macthList = array();
-                if( $pseudoList['param'] === 'even' ) {
+                if ($pseudoList['param'] === 'even') {
                     $pseudoList['param'] = '2n';
-                } elseif( $pseudoList['param'] === 'odd' ) {
+                } elseif ($pseudoList['param'] === 'odd') {
                     $pseudoList['param'] = '2n+1';
-                } elseif( strpos($pseudoList['param'], 'n') === false ) {
+                } elseif (strpos($pseudoList['param'], 'n') === false) {
                     $pseudoList['param'] = (int)$pseudoList['param'] - 1;
                 }
 
-                foreach($nodeKeys as $k => &$nodeKey) {
+                foreach ($nodeKeys as $k => &$nodeKey) {
                     //没有父类
-                    if( ($temp = self::nodeConn($nodeKey, 'parent', 0, true)) === null ) {
-                        if(
+                    if (($temp = self::nodeConn($nodeKey, 'parent', 0, true)) === null) {
+                        if (
                             //是常规节点
                             $parseNode[$nodeKey]['nodeType'] === 'node' &&
                             //不是文本类节点
@@ -2541,21 +2536,21 @@ class of_base_com_hParse {
                     }
 
                     //读取一个节点键
-                    if( is_int($pseudoList['param']) ) {
+                    if (is_int($pseudoList['param'])) {
                         //支持负数
-                        if( $pseudoList['param'] < 0 ) {
+                        if ($pseudoList['param'] < 0) {
                             $pseudoList['param'] = count($siblings) + $pseudoList['param'] + 1;
                         }
-                        if( isset($siblings[$pseudoList['param']]) ) {
+                        if (isset($siblings[$pseudoList['param']])) {
                             $macthList[] = $siblings[$pseudoList['param']];
                         }
                     //读取多个节点键
                     } else {
                         //读取指定规则的节点
-                        for($i = 0, $iL = count($siblings); $i < $iL; ++$i) {
+                        for ($i = 0, $iL = count($siblings); $i < $iL; ++$i) {
                             $temp = @eval('return ' . strtr($pseudoList['param'], array('n' => '*' . $i)) . ';');
                             //没正确执行 || 数据无效
-                            if( $temp === false || $temp >= $iL ) {
+                            if ($temp === false || $temp >= $iL) {
                                 break;
                             //保存匹配节点
                             } else {
@@ -2569,9 +2564,9 @@ class of_base_com_hParse {
                 break;
             //选择子孙节点含有选择器所匹配的至少一个元素的元素
             case 'has'        :
-                foreach($nodeKeys as $k => &$nodeKey) {
+                foreach ($nodeKeys as $k => &$nodeKey) {
                     $temp = self::selectors(array($nodeKey), $pseudoList['param'], true);
-                    if( !isset($temp[0]) ) {
+                    if (!isset($temp[0])) {
                         //删除节点键
                         unset($nodeKeys[$k]);
                     }
@@ -2592,8 +2587,8 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     private static function matchKeyword(&$env, $runList = true) {
-        if( $substr = trim(substr($env['selector'], $env['nowPos'], $env['nMatchPos']['position'] - $env['nowPos'])) ) {
-            switch( $env['temp']['selectType'] ) {
+        if ($substr = trim(substr($env['selector'], $env['nowPos'], $env['nMatchPos']['position'] - $env['nowPos']))) {
+            switch ($env['temp']['selectType']) {
                 //分析标签
                 case 't':
                     $env['temp']['selectAttr']['list'][] = array(
@@ -2620,11 +2615,11 @@ class of_base_com_hParse {
             }
         }
 
-        if($runList) {
+        if ($runList) {
             //如果需要分组
-            if( $env['temp']['selectGroup'] ) {
+            if ($env['temp']['selectGroup']) {
                 //selectList不空
-                if( isset($env['temp']['selectList']['list'][0]) ) {
+                if (isset($env['temp']['selectList']['list'][0])) {
                     //保存倒序到解析列表中
                     $env['selectParse'][] = $env['temp']['selectList'];
                     //清空选择列表
@@ -2632,7 +2627,7 @@ class of_base_com_hParse {
                 }
                 //保存倒序到解析列表中
                 $env['selectParse'][] = $env['temp']['selectAttr'];
-            } elseif( $env['temp']['selectAttr']['list'] !== null ) {
+            } elseif ($env['temp']['selectAttr']['list'] !== null) {
                 array_unshift($env['temp']['selectList']['list'], $env['temp']['selectAttr']);
             }
             $env['temp']['selectAttr']['list'] = null;
@@ -2650,7 +2645,7 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     private static function getNextBrackets(&$str, $match) {
-        if(($brackets = $match['match']) === '[' || $brackets === '(') {
+        if (($brackets = $match['match']) === '[' || $brackets === '(') {
             //括号数量
             $bracketsNum = 0;
             //开始查询位置
@@ -2670,8 +2665,8 @@ class of_base_com_hParse {
                 //对应的反括号
                 $antiBrackets => false,
             );
-            while( $match = of_base_com_str::strArrPos($str, $nMatches === null ? $dMatches : $nMatches, $nowPos) ) {
-                switch( $match['match'] ) {
+            while ($match = of_base_com_str::strArrPos($str, $nMatches === null ? $dMatches : $nMatches, $nowPos)) {
+                switch ($match['match']) {
                     //正括号
                     case $brackets    :
                         //括号数量加1
@@ -2680,8 +2675,7 @@ class of_base_com_hParse {
                     //反括号
                     case $antiBrackets:
                         //括号数量为零,返回匹配位置
-                        if($bracketsNum === 0)
-                        {
+                        if ($bracketsNum === 0) {
                             return $match['position'];
                         //括号位置大于零,括号数量减1
                         } else {
@@ -2691,8 +2685,11 @@ class of_base_com_hParse {
                     //引号
                     case '"'          :
                     case '\''         :
-                        if(!$match = of_base_com_str::strArrPos($str, array($match['match'] => true), $match['position'] + 1))
-                        {
+                        if (!$match = of_base_com_str::strArrPos(
+                            $str,
+                            array($match['match'] => true),
+                            $match['position'] + 1
+                        )) {
                             //查询失败
                             return ;
                         }
@@ -2719,7 +2716,7 @@ class of_base_com_hParse {
         //分组排序节点键{根节点键 : [排序节点键, ...], ...}
         $groupNodeKeys = array($docKey => null);
 
-        foreach($nodeKeys as &$nodeKey) {
+        foreach ($nodeKeys as &$nodeKey) {
             //读取父节点列表
             $cacheNodeParentKeys[$nodeKey] = array_reverse(self::nodeConn($nodeKey, 'parent', false, true));
             //追加子节点
@@ -2727,26 +2724,26 @@ class of_base_com_hParse {
             //拆分成不同组
             $groupNodeKeys[$cacheNodeParentKeys[$nodeKey][0]][] = &$nodeKey;
         }
-        if( $groupNodeKeys[$docKey] === null ) {
+        if ($groupNodeKeys[$docKey] === null) {
             unset($groupNodeKeys[$docKey]);
         }
 
         //初始化自定义排序方法
         self::twoNodeKeySort($cacheNodeParentKeys, false);
         //分组排序
-        foreach($groupNodeKeys as &$group) {
+        foreach ($groupNodeKeys as &$group) {
             usort($group, array(__CLASS__, 'twoNodeKeySort'));
         }
 
-        if( $isGroup ) {
+        if ($isGroup) {
             $nodeKeys = $groupNodeKeys;
         } else {
             //至少两个数组时
-            if( ($temp = count($groupNodeKeys)) > 1 ) {
+            if (($temp = count($groupNodeKeys)) > 1) {
                 //合并分组结构
                 $nodeKeys = call_user_func_array('array_merge', $groupNodeKeys);
             //只有一个分组
-            } elseif( $temp === 1 ) {
+            } else if ($temp === 1) {
                 $nodeKeys = array_shift($groupNodeKeys);
             //没有值返回空数组
             } else {
@@ -2770,19 +2767,19 @@ class of_base_com_hParse {
         //缓存节点弟点键
         static $cacheNodeNextKeys = null;
         //清空缓存
-        if( $b === false ) {
+        if ($b === false) {
             $cacheNodeParentKeys = $a;
             $cacheNodeNextKeys = null;
         } else {
             //读取所有父节点
-            if( !isset($cacheNodeParentKeys[$a]) ) {
+            if (!isset($cacheNodeParentKeys[$a])) {
                 //读取父节点列表
                 $cacheNodeParentKeys[$a] = array_reverse(self::nodeConn($a, 'parent', false, true));
                 //追加子节点
                 $cacheNodeParentKeys[$a][] = $a;
             }
             //读取所有父节点
-            if( !isset($cacheNodeParentKeys[$b]) ) {
+            if (!isset($cacheNodeParentKeys[$b])) {
                 //读取父节点列表
                 $cacheNodeParentKeys[$b] = array_reverse(self::nodeConn($b, 'parent', false, true));
                 //追加子节点
@@ -2803,17 +2800,17 @@ class of_base_com_hParse {
             $bpIndex = null;
 
             //比对父节点
-            for($i = 0; $i < $apListLen && $i < $bpListLen; ++$i) {
+            for ($i = 0; $i < $apListLen && $i < $bpListLen; ++$i) {
                 $apIndex = &$apList[$i];
                 $bpIndex = &$bpList[$i];
                 //父节点不相同,则判断兄弟关系
-                if( $apIndex !== $bpIndex ) {
+                if ($apIndex !== $bpIndex) {
                     //读取全部弟节点,并反转
-                    if( !isset($cacheNodeNextKeys[$apIndex]) ) {
+                    if (!isset($cacheNodeNextKeys[$apIndex])) {
                         $cacheNodeNextKeys[$apIndex] = array_flip(self::nodeConn($apIndex, 'next', false, true));
                     }
                     //a在b前
-                    if( isset($cacheNodeNextKeys[$apIndex][$bpIndex]) ) {
+                    if (isset($cacheNodeNextKeys[$apIndex][$bpIndex])) {
                         return -1;
                     } else {
                         return 1;
@@ -2840,15 +2837,15 @@ class of_base_com_hParse {
     public static function nodeAttr($nodeKey, $attr = null, $value = null, $mode = true) {
         //引用节点
         $parseNode = &self::$parseNode;
-        if( isset($parseNode[$nodeKey]) ) {
+        if (isset($parseNode[$nodeKey])) {
             $node = &$parseNode[$nodeKey];
             //读取所有属性
-            if( $attr === null ) {
+            if ($attr === null) {
                 return $node['attr'];
             //读取指定属性
-            } else if( $value === null ) {
+            } else if ($value === null) {
                 $temp = array();
-                switch( $attr ) {
+                switch ($attr) {
                     case 'tagName'    :
                         return $node['tagName'];
                     case 'innerHTML'  :
@@ -2866,7 +2863,7 @@ class of_base_com_hParse {
                         self::htmlFormat($nodeKey, $temp, '!text');
                         return self::entities(join($temp), true);
                     case 'checked'    :
-                        if(
+                        if (
                             //存在checked属性
                             isset($node['attr']['checked']) &&
                             //存在name属性
@@ -2879,14 +2876,14 @@ class of_base_com_hParse {
                             $node['attr']['type'] === 'radio'
                         ) {
                             //存在父节点
-                            if(($parentNodeKey = self::nodeConn($nodeKey, 'parent', -1, true)) !== null) {
+                            if (($parentNodeKey = self::nodeConn($nodeKey, 'parent', -1, true)) !== null) {
                                 //读取所有数据
                                 self::htmlFormat($parentNodeKey, $temp, null);
                                 //保留当前节点键之后的节点键
                                 array_splice($temp, 0, array_search($nodeKey, $temp) + 1);
-                                foreach($temp as &$v) {
+                                foreach ($temp as &$v) {
                                     //当前节点之后有已选中节点返回null
-                                    if(
+                                    if (
                                         //存在checked属性
                                         isset($parseNode[$v]['attr']['checked']) &&
                                         //存在name属性
@@ -2908,7 +2905,7 @@ class of_base_com_hParse {
                         }
                         break;
                     case 'selected'   :
-                        if(
+                        if (
                             //存在selected属性
                             isset($node['attr']['selected']) &&
                             //是option标签
@@ -2917,17 +2914,17 @@ class of_base_com_hParse {
                             //全部父节点
                             $parentNodeKeys = self::nodeConn($nodeKey, 'parent', false, true);
                             //存在父节点
-                            if( isset($parentNodeKeys[0]) ) {
-                                foreach($parentNodeKeys as &$parentNodeKey) {
-                                    if( $parseNode[$parentNodeKey]['tagName'] === 'select' ) {
-                                        if( !isset($parseNode[$parentNodeKey]['attr']['multiple']) ) {
+                            if (isset($parentNodeKeys[0])) {
+                                foreach ($parentNodeKeys as &$parentNodeKey) {
+                                    if ($parseNode[$parentNodeKey]['tagName'] === 'select') {
+                                        if (!isset($parseNode[$parentNodeKey]['attr']['multiple'])) {
                                             //读取所有数据
                                             self::htmlFormat($parentNodeKey, $temp, null);
                                             //保留当前节点键之后的节点键
                                             array_splice($temp, 0, array_search($nodeKey, $temp) + 1);
-                                            foreach($temp as &$v) {
+                                            foreach ($temp as &$v) {
                                                 //当前节点之后有已选中节点返回null
-                                                if(
+                                                if (
                                                     //存在checked属性
                                                     isset($parseNode[$v]['attr']['selected']) &&
                                                     //是input标签
@@ -2947,13 +2944,13 @@ class of_base_com_hParse {
                 }
 
                 (!$attr || $attr[0] !== '>') && $attr = strtolower($attr);
-                if( isset($node['attr'][$attr]) ) {
+                if (isset($node['attr'][$attr])) {
                     return $node['attr'][$attr];
                 }
             //删除属性
-            } elseif ($value === false) {
+            } else if ($value === false) {
                 unset($node['attr'][strtolower($attr)]);
-            } elseif (
+            } else if (
                 //碎片节点仅允许修改innerHTML和textContent
                 ($node['nodeType'] === 'node' || $attr === 'innerHTML' || $attr === 'textContent') &&
                 //不能修改关闭节点
@@ -2963,7 +2960,7 @@ class of_base_com_hParse {
                 //不修内部属性
                 (!$attr || $attr[0] !== '>')
             ) {
-                switch( $attr ) {
+                switch ($attr) {
                     case 'innerHTML'  :
                         //允许有子节点
                         if (self::hasChildTag($node['tagName']) > 1) {
@@ -3014,11 +3011,11 @@ class of_base_com_hParse {
         //返回数据
         $rDate = array();
 
-        if( isset($parseNode[$nodeKey]) ) {
-            switch( $type ) {
+        if (isset($parseNode[$nodeKey])) {
+            switch ($type) {
                 //不包含自己全部兄弟节点
                 case 'sibling':
-                    if( $parseNode[$nodeKey]['pKey'] !== null ) {
+                    if ($parseNode[$nodeKey]['pKey'] !== null) {
                         //父节点的全部子节点
                         $rDate = $parseNode[$parseNode[$nodeKey]['pKey']]['cKeys'];
                         //删除指定节点并重新生成角标
@@ -3027,7 +3024,7 @@ class of_base_com_hParse {
                     break;
                 //之后的兄弟节点
                 case 'next'   :
-                    if( $parseNode[$nodeKey]['pKey'] !== null ) {
+                    if ($parseNode[$nodeKey]['pKey'] !== null) {
                         //父节点的全部子节点
                         $rDate = $parseNode[$parseNode[$nodeKey]['pKey']]['cKeys'];
                         $rDate = array_slice($rDate, array_search($nodeKey, $rDate) + 1);
@@ -3035,7 +3032,7 @@ class of_base_com_hParse {
                     break;
                 //之前的兄弟节点
                 case 'prev'   :
-                    if( $parseNode[$nodeKey]['pKey'] !== null ) {
+                    if ($parseNode[$nodeKey]['pKey'] !== null) {
                         //父节点的全部子节点
                         $rDate = $parseNode[$parseNode[$nodeKey]['pKey']]['cKeys'];
                         $rDate = array_reverse(array_slice($rDate, 0, array_search($nodeKey, $rDate)));
@@ -3045,7 +3042,7 @@ class of_base_com_hParse {
                 case 'parent' :
                     $temp = $nodeKey;
                     //父节点存在
-                    while($parseNode[$temp]['pKey'] !== null) {
+                    while ($parseNode[$temp]['pKey'] !== null) {
                         $rDate[] = $temp = $parseNode[$temp]['pKey'];
                     }
                     break;
@@ -3056,9 +3053,9 @@ class of_base_com_hParse {
             }
 
             //删除文本节点
-            if( $textNode === false ) {
-                foreach($rDate as $k => &$v) {
-                    if(
+            if ($textNode === false) {
+                foreach ($rDate as $k => &$v) {
+                    if (
                         //清除文本类节点
                         $parseNode[$v]['tagName'][0] === '!' ||
                         //清除碎片节点
@@ -3073,13 +3070,13 @@ class of_base_com_hParse {
         }
 
         //返回指定数据
-        if( $needle !== false ) {
+        if ($needle !== false) {
             //计算实际角标
             $needle = $needle >= 0 ? (int)$needle : count($rDate) + (int)$needle;
             $rDate = isset($rDate[$needle]) ? $rDate[$needle] : null;
-        } elseif( $autoKey === false ) {
+        } else if ($autoKey === false) {
             $temp = array();
-            foreach($rDate as &$v) {
+            foreach ($rDate as &$v) {
                 $temp[$v] = $v;
             }
             $rDate = &$temp;
@@ -3102,7 +3099,7 @@ class of_base_com_hParse {
 
         //移除节点
         if ($pNodeKey === null) {
-            if( isset($parseNode[$nNodeKey]) && ($temp = $parseNode[$nNodeKey]['pKey']) !== null ) {
+            if (isset($parseNode[$nNodeKey]) && ($temp = $parseNode[$nNodeKey]['pKey']) !== null) {
                 //移除父节点对子节点关系
                 array_splice(
                     $parseNode[$temp]['cKeys'],
@@ -3116,7 +3113,7 @@ class of_base_com_hParse {
                 self::nodeCollection($temp);
             }
         //插入节点
-        } elseif (
+        } else if (
             //子节点键有效
             isset($parseNode[$nNodeKey]) &&
             //目标节点键有效
@@ -3134,17 +3131,17 @@ class of_base_com_hParse {
             $temp = $pNodeKey;
             //pNodeKey不能为nNodeKey或nNodeKey的父节点
             do {
-                if( $temp === $nNodeKey ) {
+                if ($temp === $nNodeKey) {
                     return ;
                 }
-            } while( ($temp = $parseNode[$temp]['pKey']) !== null );
+            } while (($temp = $parseNode[$temp]['pKey']) !== null);
 
             //常规节点
-            if( $parseNode[$nNodeKey]['nodeType'] === 'node' ) {
+            if ($parseNode[$nNodeKey]['nodeType'] === 'node') {
                 //移动节点列表
                 $insertList = array($nNodeKey);
                 //节点未处于移除状态
-                if( ($temp = $parseNode[$nNodeKey]['pKey']) !== null ) {
+                if (($temp = $parseNode[$nNodeKey]['pKey']) !== null) {
                     //移除父节点对子节点关系
                     array_splice(
                         $parseNode[$temp]['cKeys'],
@@ -3168,7 +3165,7 @@ class of_base_com_hParse {
             if (self::hasChildTag($parseNode[$pNodeKey]['tagName']) & 6) {
                 $temp = array();
 
-                foreach($insertList as $k => &$nodeKey) {
+                foreach ($insertList as $k => &$nodeKey) {
                     //移除子与父节点映射关系
                     $parseNode[$nodeKey]['pKey'] = null;
                     //过滤出文本节点,仅将文本节点插入父节点
@@ -3182,22 +3179,22 @@ class of_base_com_hParse {
             }
 
             //替换操作
-            if( $insType === null ) {
+            if ($insType === null) {
                 $insPos = 0;
                 $temp = $parseNode[$pNodeKey]['cKeys'];
 
                 //移除目标节点全部子节点
-                foreach($parseNode[$pNodeKey]['cKeys'] as &$nodeKey) {
+                foreach ($parseNode[$pNodeKey]['cKeys'] as &$nodeKey) {
                     self::nodeSplice($nodeKey);
                 }
 
                 //回收被替换的节点
                 self::nodeCollection($temp);
             //插入头部
-            } elseif( $insType === true ) {
+            } else if ($insType === true) {
                 $insPos = 0;
             //插入尾部
-            } elseif( $insType === false ) {
+            } else if ($insType === false) {
                 $insPos = count($parseNode[$pNodeKey]['cKeys']);
             //插入指定节点位置
             } else {
@@ -3207,7 +3204,7 @@ class of_base_com_hParse {
             //更新目标节点的子节点
             array_splice($parseNode[$pNodeKey]['cKeys'], $insPos, 0, $insertList);
             //更新nNodeKey节点的父节点
-            foreach($insertList as &$nodeKey) {
+            foreach ($insertList as &$nodeKey) {
                 $parseNode[$nodeKey]['pKey'] = $pNodeKey;
             }
         }
@@ -3239,7 +3236,7 @@ class of_base_com_hParse {
      * 作者 : Edgar.lee
      */
     private static function entities($str, $type) {
-        if( $type ) {
+        if ($type) {
             return html_entity_decode($str, ENT_QUOTES, 'UTF-8');
         } else {
             return htmlentities($str, ENT_QUOTES, 'UTF-8');
@@ -3261,7 +3258,7 @@ class of_base_com_hParse {
         //解析节点引用
         $parseNode = &self::$parseNode;
 
-        foreach( $parseNode[$nodeKey]['cKeys'] as &$cNodeKey ) {
+        foreach ($parseNode[$nodeKey]['cKeys'] as &$cNodeKey) {
             //引用节点
             $index = &$parseNode[$cNodeKey];
             $temp = false;
@@ -3272,22 +3269,22 @@ class of_base_com_hParse {
                 if ($index['tagName'] === '!text') {
                     $temp = $index['attr'][''];
                 //注释标签
-                } elseif( $index['tagName'] === '!--' ) {
+                } else if ($index['tagName'] === '!--') {
                     $temp = '<!--' . $index['attr'][''];
                     ($autoKey || $index['attr']['>tagState::end']) && $temp .= '-->';
                 //非字符串节点
                 } else if ($index['tagName'][0] !== '/' || !$autoKey) {
                     $temp = '<' . $index['tagName'];
-                    if( isset($index['attr']['']) ) {
+                    if (isset($index['attr'][''])) {
                         //前缀
                         $temp .= ($index['tagName'][0] === '!' ? '' : ' ') .
                             //特殊属性值
                             $index['attr'][''];
                         unset($index['attr']['']);
                     }
-                    foreach($index['attr'] as $k => &$v) {
+                    foreach ($index['attr'] as $k => &$v) {
                         //不输出内部属性
-                        if( $k[0] !== '>' ) {
+                        if ($k[0] !== '>') {
                             $temp .= ' ' . $k . '="' . self::entities($v, false) . '"';
                         }
                     }
@@ -3309,7 +3306,7 @@ class of_base_com_hParse {
                 }
             //读取指定节点的子节点
             } else {
-                if(
+                if (
                     $type === false ||
                     ($type === null && $index['tagName'][0] !== '!') ||
                     $index['tagName'] === $type
@@ -3337,7 +3334,7 @@ class of_base_com_hParse {
         $nodeCount = &self::$nodeCount;
 
         //节点有效
-        if( isset($parseNode[$nodeKey]) ) {
+        if (isset($parseNode[$nodeKey])) {
             //返回的节点键
             $rKey = $nodeCount + 1;
             //克隆列表
@@ -3349,7 +3346,7 @@ class of_base_com_hParse {
             array_unshift($cloneList, $nodeKey);
 
             //遍历克隆节点
-            foreach($cloneList as &$nowKey) {
+            foreach ($cloneList as &$nowKey) {
                 //新节点键
                 $newNodeKey = ++$nodeCount;
                 //映射节点
@@ -3358,7 +3355,7 @@ class of_base_com_hParse {
                 //清空子节点
                 $temp['cKeys'] = array();
                 //存在父节点
-                if( ($temp['pKey'] = $cloneMapping[$temp['pKey']]) !== null ) {
+                if (($temp['pKey'] = $cloneMapping[$temp['pKey']]) !== null) {
                     //更新父节点子节点
                     $parseNode[$temp['pKey']]['cKeys'][] = $newNodeKey;
                 }
@@ -3387,7 +3384,7 @@ class of_base_com_hParse {
                 //当前父节点
                 $root = $vc;
                 //父节点存在
-                while($parseNode[$root]['pKey'] !== null) {
+                while ($parseNode[$root]['pKey'] !== null) {
                     //更新父节点
                     $root = $parseNode[$root]['pKey'];
                 }
@@ -3481,22 +3478,22 @@ class of_base_com_hParse {
             'tempNode'  => null
         );
 
-        while( isset($htmlStrL[$i]) ) {
+        while (isset($htmlStrL[$i])) {
             //更新当前行数
             $htmlStr[$i] === "\n" && $env['nowLine'] += 1;
 
-            if( isset($env['nMatches'][$chr = $htmlStrL[$i]]) ) {
+            if (isset($env['nMatches'][$chr = $htmlStrL[$i]])) {
                 $matchPos = array('match' => $chr, 'position' => $i);
 
                 //读取字符串起始位置
                 $strPos = $env['temp']['strPos'] === false ? $env['nowPos'] : $env['temp']['strPos'];
                 //关闭字符串位置标识
                 $env['temp']['strPos'] = false;
-                switch($matchPos['match']) {
+                switch ($matchPos['match']) {
                     //起始标签
                     case '<':
                         //有效标签
-                        if(
+                        if (
                             //存在下一字符
                             ($temp = isset($htmlStrL[$matchPos['position'] + 1])) &&
                             //从小写a开始
@@ -3515,23 +3512,23 @@ class of_base_com_hParse {
                             //标签闭合状态
                             $env['tempNode']['attr']['>tagState::end'] = 0;
                         //结束标签'/'
-                        } elseif($temp === 47) {
+                        } else if ($temp === 47) {
                             self::createStringNode($env);
                             $env['nMatches'] = array(
                                 //标签结束符
                                 '>' => false
                             );
                         //声明标签'!'
-                        } elseif($temp === 33) {
+                        } else if ($temp === 33) {
                             self::createStringNode($env);
                             //分析声明节点
                             $env['tempNode'] = self::$defaultNode;
                             //标签所在行
                             $env['tempNode']['attr']['>tagLine::start'] = $env['nowLine'];
                             //声明文档类型
-                            if( substr($htmlStrL, $matchPos['position'], 9) === '<!doctype' ) {
+                            if (substr($htmlStrL, $matchPos['position'], 9) === '<!doctype') {
                                 $env['tempNode']['tagName'] = '!doctype';
-                                if( ($temp = strpos($htmlStrL, $matchPos['match'] = '>', $matchPos['position'] + 9)) > 0 ) {
+                                if (($temp = strpos($htmlStrL, $matchPos['match'] = '>', $matchPos['position'] + 9)) > 0) {
                                     $env['tempNode']['attr'][''] = substr($htmlStr, $matchPos['position'] + 9, $temp - $matchPos['position'] - 9);
                                     $env['tempNode']['attr']['>tagState::end'] = 1;
                                     $matchPos['position'] = $temp;
@@ -3541,13 +3538,13 @@ class of_base_com_hParse {
                                     $matchPos['position'] = $env['htmlStrLen'] - 1;
                                 }
                             //声明注释,包括已'!'开始的无效声明
-                            } elseif(
+                            } else if (
                                 (substr($htmlStrL, $matchPos['position'] + 1, 3) === $matchPos['match'] = '!--') ||
                                 $matchPos['match'] = '!'
                             ) {
                                 $env['tempNode']['tagName'] = '!--';
                                 $temp = array($matchPos['position'] + strlen($matchPos['match']) + 1);
-                                if( ($temp[1] = strpos($htmlStrL, $matchPos['match'] === '!' ? '>' : '-->', $temp[0])) > 0 ) {
+                                if (($temp[1] = strpos($htmlStrL, $matchPos['match'] === '!' ? '>' : '-->', $temp[0])) > 0) {
                                     $env['tempNode']['attr'][''] = substr($htmlStr, $temp[0], $temp[1] - $temp[0]);
                                     $env['tempNode']['attr']['>tagState::end'] = 1;
                                     $matchPos['position'] = $temp[1];
@@ -3572,17 +3569,17 @@ class of_base_com_hParse {
                     case ' ':
                     case '/':
                         //区分大小写
-                        if( $parseStr = trim(
+                        if ($parseStr = trim(
                             substr($htmlStr, $strPos, $matchPos['position'] - $strPos),
                             //分析非属性值时'/'当' '处理
-                            is_string($env['temp']['parseAttr']) ? "\t\n\r\0\x0B " : "\t\n\r\0\x0B /")
-                        ) {
+                            is_string($env['temp']['parseAttr']) ? "\t\n\r\0\x0B " : "\t\n\r\0\x0B /"
+                        )) {
                             $env['nMatches'] = self::$defaultAttrSplit + array(
                                 //属性分隔符
                                 '=' => false,
                             );
                             //设置属性
-                            if( isset($env['tempNode']['tagName']) ) {
+                            if (isset($env['tempNode']['tagName'])) {
                                 self::setTempNodeAttr($env, $parseStr);
                             //设置标签名
                             } else {
@@ -3600,14 +3597,14 @@ class of_base_com_hParse {
                         //与上次匹配位置之间的字符串
                         $temp = substr($htmlStr, $strPos, $matchPos['position'] - $strPos);
                         //引号处于开放状态
-                        if( $env['temp']['closeQuotes'] = !$env['temp']['closeQuotes'] ) {
+                        if ($env['temp']['closeQuotes'] = !$env['temp']['closeQuotes']) {
                             $env['nMatches'] = self::$defaultAttrSplit + array(
                                 //属性分隔符
                                 '=' => false,
                             );
                             self::setTempNodeAttr($env, $temp);
                         //引号处关闭状态
-                        } elseif( trim($temp) === '' ) {
+                        } else if (trim($temp) === '') {
                             $env['nMatches'] = array(
                                 //寻找闭合引号
                                 $matchPos['match'] => false
@@ -3623,9 +3620,9 @@ class of_base_com_hParse {
                     //结束标签
                     case '>':
                         //如果开始分析属性
-                        if( isset($env['tempNode']['tagName']) ) {
+                        if (isset($env['tempNode']['tagName'])) {
                             //存在未处理字符串
-                            if($parseStr = trim(substr($htmlStr, $strPos, $matchPos['position'] - $strPos))) {
+                            if ($parseStr = trim(substr($htmlStr, $strPos, $matchPos['position'] - $strPos))) {
                                 self::setTempNodeAttr($env, $parseStr);
                             }
                             //存入正式节点
@@ -3643,7 +3640,7 @@ class of_base_com_hParse {
                         } else {
                             $parseStr = trim(substr($htmlStrL, $strPos, $matchPos['position'] - $strPos));
                             //分析结束标签
-                            if( $parseStr[0] === '/' ) {
+                            if ($parseStr[0] === '/') {
                                 $temp = explode(' ', substr($parseStr, 1), 2);
                                 //对关闭节点容错
                                 self::planNode($env, $temp[0]);
@@ -3663,7 +3660,7 @@ class of_base_com_hParse {
         }
 
         //如果没有分析标签,则创建余下字符串
-        if( $i !== $env['nowPos'] ) {
+        if ($i !== $env['nowPos']) {
             $env['strPos'] = $env['temp']['strPos'] === false ? $env['nowPos'] : $env['temp']['strPos'];
             $matchPos['position'] = $env['htmlStrLen'];
             self::createStringNode($env);
@@ -3680,9 +3677,9 @@ class of_base_com_hParse {
      */
     private static function setTempNodeAttr(&$env, $str) {
         //设置属性值
-        if( $index = &$env['temp']['parseAttr'] ) {
+        if ($index = &$env['temp']['parseAttr']) {
             //如果属性未初始化,则赋值
-            if( $env['temp']['attrAssign'] ) {
+            if ($env['temp']['attrAssign']) {
                 //编码属性
                 $env['tempNode']['attr'][$index] = self::entities($str, true);
                 //引号模式(单引 双引 或 空字符)
@@ -3693,9 +3690,9 @@ class of_base_com_hParse {
             //开启属性分析
             $index = false;
         //设置属性名(trim是为了处理从'>'调用数据)
-        } elseif( $str = trim(strtolower($str), '/') ) {
+        } else if ($str = trim(strtolower($str), '/')) {
             //属性名,如果已生成,忽略一次赋值
-            if( $env['temp']['attrAssign'] = !isset($env['tempNode']['attr'][$str]) ) {
+            if ($env['temp']['attrAssign'] = !isset($env['tempNode']['attr'][$str])) {
                 //添加属性行数属性
                 $env['tempNode']['attr']['>attrLine::' . $str] = $env['nowLine'];
                 $env['tempNode']['attr'][$str] = '';
@@ -3703,7 +3700,7 @@ class of_base_com_hParse {
             }
 
             //判断该属性键是否有属性值
-            if(
+            if (
                 ($temp = strpos($env['htmlStrL'], '=', $env['nMatchPos']['position'])) === false ||
                 rtrim(substr($env['htmlStrL'], $env['nMatchPos']['position'], $temp - $env['nMatchPos']['position']))
             //没有属性值
@@ -3746,7 +3743,7 @@ class of_base_com_hParse {
         //修改临时节点的父节点
         $env['tempNode']['pKey'] = $env['pKey'];
         //初始属性
-        if( $env['tempNode']['tagName'] === 'input' ) {
+        if ($env['tempNode']['tagName'] === 'input') {
             $env['tempNode']['attr'] += array(
                 'type' => 'text'
             );
@@ -3768,10 +3765,10 @@ class of_base_com_hParse {
             $temp['searchPos'] = $temp['subPos'] - $temp['closeTagLen'];
             $env['nMatchPos']['match'] = '';
 
-            while( true ) {
-                if( ($temp['searchPos'] = strpos($env['htmlStrL'], $temp['closeTag'], $temp['searchPos'] + $temp['closeTagLen'])) > 0 ) {
+            while (true) {
+                if (($temp['searchPos'] = strpos($env['htmlStrL'], $temp['closeTag'], $temp['searchPos'] + $temp['closeTagLen'])) > 0) {
                     //有效结束标签
-                    if(
+                    if (
                         //关闭标签后无字符
                         !isset($env['htmlStrL'][$temp['searchPos'] + $temp['closeTagLen']]) ||
                         //关闭标签名后是分隔符
@@ -3793,7 +3790,7 @@ class of_base_com_hParse {
             $nowLine = $env['nowLine'] += substr_count($env['tempNode']['attr'][''], "\n");
 
             //不包含非注释的html文本
-            if (self::hasChildTag($env['tempNode']['tagName']) === 4 ) {
+            if (self::hasChildTag($env['tempNode']['tagName']) === 4) {
                 //匹配出注释和标签
                 preg_match_all(
                     '@<!((?:--)?)(.*?)\1>|(.+?)(?:(?=<!)|$)@s', 
@@ -3801,7 +3798,7 @@ class of_base_com_hParse {
                     $temp, PREG_SET_ORDER
                 );
 
-                foreach($temp as $k => &$v) {
+                foreach ($temp as $k => &$v) {
                     //创建子节点
                     $parseNode[$k = ++$nodeCount] = array(
                         'attr'     => array(
@@ -3822,12 +3819,12 @@ class of_base_com_hParse {
                 }
             } else {
                 //文本域内容解码
-                if( $env['tempNode']['tagName'] === 'textarea' ) {
+                if ($env['tempNode']['tagName'] === 'textarea') {
                     $env['tempNode']['attr'][''] = self::entities(self::entities($env['tempNode']['attr'][''], true), false);
                 }
 
                 //将文本字符串挪入文本节点
-                if( $env['tempNode']['attr'][''] ) {
+                if ($env['tempNode']['attr']['']) {
                     //创建字符串节点
                     $parseNode[$k = ++$nodeCount] = array(
                         'attr'     => array(
@@ -3848,7 +3845,7 @@ class of_base_com_hParse {
 
             unset($env['tempNode']['attr']['']);
         //更新父节点键(单标签没有子节点)
-        } elseif (self::hasChildTag($env['tempNode']['tagName']) === 8) {
+        } else if (self::hasChildTag($env['tempNode']['tagName']) === 8) {
             $env['pKey'] = $nKey;
         }
 
@@ -3878,7 +3875,7 @@ class of_base_com_hParse {
         //解析节点引用
         $parseNode = &self::$parseNode;
         //记录字符串
-        if(($temp = $env['nMatchPos']['position'] - $env['strPos']) > 0) {
+        if (($temp = $env['nMatchPos']['position'] - $env['strPos']) > 0) {
             //父节点中添加子节点
             $parseNode[$env['pKey']]['cKeys'][] = $key = ++self::$nodeCount;
             $index = &$parseNode[$key];
@@ -3908,9 +3905,9 @@ class of_base_com_hParse {
         //解析节点引用
         $parseNode = &self::$parseNode;
         //对新节点规划
-        if( $type === true ) {
+        if ($type === true) {
             //开启内联模式 && 块级标签
-            if( $env['temp']['inlineNode'] !== false && isset(self::$blockTag[$env['tempNode']['tagName']]) ) {
+            if ($env['temp']['inlineNode'] !== false && isset(self::$blockTag[$env['tempNode']['tagName']])) {
                 //修改新节点父节点位置
                 $env['tempNode']['pKey'] = $env['temp']['inlineNode'];
                 //关闭内联标签
@@ -3918,10 +3915,10 @@ class of_base_com_hParse {
             }
 
             //开启内联分析
-            if( $env['tempNode']['tagName'] === 'p' ) {
+            if ($env['tempNode']['tagName'] === 'p') {
                 $env['temp']['inlineNode'] = $env['tempNode']['pKey'];
             //子标签中不能包含同样的标签
-            } elseif( isset(self::$noRepeatTag[$env['tempNode']['tagName']]) ) {
+            } else if (isset(self::$noRepeatTag[$env['tempNode']['tagName']])) {
                 $temp = array(
                     //结束标签
                     'endTag' => &self::$noRepeatTag[$env['tempNode']['tagName']],
@@ -3929,7 +3926,7 @@ class of_base_com_hParse {
                     'pNode'  => &$parseNode[$env['tempNode']['pKey']]
                 );
                 do {
-                    if(
+                    if (
                         //临时节点被某父节点包含
                         isset($temp['endTag'][$temp['pNode']['tagName']]) ||
                         //临时节点名与某父节点相同
@@ -3939,12 +3936,12 @@ class of_base_com_hParse {
                     ) {
                         break;
                     }
-                } while( isset($temp['pNode']['pKey']) && ($temp['pNode'] = &$parseNode[$temp['pNode']['pKey']]) !== null );
+                } while (isset($temp['pNode']['pKey']) && ($temp['pNode'] = &$parseNode[$temp['pNode']['pKey']]) !== null);
             }
         //对关闭节点容错, 不保存 </> 标签
         } else if ($type) {
             //有效结束标签
-            if( $parseNode[$env['pKey']]['tagName'] === $type ) {
+            if ($parseNode[$env['pKey']]['tagName'] === $type) {
                 //标签闭合状态
                 $parseNode[$env['pKey']]['attr']['>tagState::end'] = 1;
                 //更新父节点键
@@ -3952,7 +3949,7 @@ class of_base_com_hParse {
                 //有效p结束标签,关闭内联标签
                 $type === 'p' && $env['temp']['inlineNode'] = false;
             //无效封闭标签(如果为P标签,则追加P节点)
-            } elseif( $type === 'p' ) {
+            } else if ($type === 'p') {
                 $parseNode[$env['pKey']]['cKeys'][] = ++self::$nodeCount;
                 $parseNode[self::$nodeCount] = array(
                     'pKey'    => $env['pKey'],
@@ -3965,8 +3962,8 @@ class of_base_com_hParse {
             //按双标签处理(匹配父节点列中任意未结束节点)
             } else {
                 $temp = $env['pKey'];
-                while( ($temp = $parseNode[$temp]['pKey']) !== null ) {
-                    if( $parseNode[$temp]['tagName'] === $type ) {
+                while (($temp = $parseNode[$temp]['pKey']) !== null) {
+                    if ($parseNode[$temp]['tagName'] === $type) {
                         //标签闭合状态
                         $parseNode[$temp]['attr']['>tagState::end'] = 1;
                         //更新父节点键

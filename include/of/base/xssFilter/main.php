@@ -10,7 +10,7 @@ class of_base_xssFilter_main {
      * 作者 : Edgar.lee
      */
     public static function xssFilter($params) {
-        foreach($params['viewObj'] as $k => &$v) {
+        foreach ($params['viewObj'] as $k => &$v) {
             //非"_"开始的属性名
             $k[0] === '_' || self::toHtml($v);
         }
@@ -31,18 +31,18 @@ class of_base_xssFilter_main {
             $wv = &$waits[$wk];
             unset($waits[$wk]);
 
-            if( is_array($wv) ) {
+            if (is_array($wv)) {
                 //结果列表
                 $result = array();
-                foreach($wv as $k => &$v) {
+                foreach ($wv as $k => &$v) {
                     $result[str_replace($replace[0], $replace[1], htmlspecialchars($k, ENT_QUOTES, 'UTF-8'))] = &$v;
                     $waits[] = &$v;
                 }
                 $wv = $result;
-            } else if( is_string($wv) && !is_numeric($wv) ) {
+            } else if (is_string($wv) && !is_numeric($wv)) {
                 $wv = str_replace($replace[0], $replace[1], htmlspecialchars($wv, ENT_QUOTES, 'UTF-8'));
             }
-        } while( !empty($waits) );
+        } while (!empty($waits));
     }
 }
 

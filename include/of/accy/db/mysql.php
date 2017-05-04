@@ -48,9 +48,9 @@ class of_accy_db_mysql extends of_db {
         $error = mysql_error();
 
         //INNODB可能死锁
-        if( $errno === 1205 || $errno === 1213 ) {
+        if ($errno === 1205 || $errno === 1213) {
             //判断进程权限
-            if( $process === null ) {
+            if ($process === null) {
                 $process = 'SELECT
                     1 c
                 FROM
@@ -71,7 +71,7 @@ class of_accy_db_mysql extends of_db {
                 $process = $this->_fetch();
             }
 
-            if( $process ) {
+            if ($process) {
                 $temp = 'SHOW ENGINE INNODB STATUS';
                 $this->_query($temp);
                 $temp = &$this->_fetch();
@@ -140,7 +140,7 @@ class of_accy_db_mysql extends of_db {
      */
     protected function &_fetchAll() {
         $result = array();
-        while($row = mysql_fetch_assoc($this->query)) {
+        while ($row = mysql_fetch_assoc($this->query)) {
             $result[] = $row;
         }
         mysql_free_result($this->query);
@@ -165,7 +165,7 @@ class of_accy_db_mysql extends of_db {
      */
     protected function _query(&$sql) {
         $this->query = false;
-        if( $this->_linkIdentifier() && $this->query = mysql_query($sql, $this->connection) ) {
+        if ($this->_linkIdentifier() && $this->query = mysql_query($sql, $this->connection)) {
             return true;
         } else {
             return false;
@@ -179,7 +179,7 @@ class of_accy_db_mysql extends of_db {
      * 作者 : Edgar.lee
      */
     private function _linkIdentifier($restLink = true) {
-        if(
+        if (
             (is_resource($this->connection) && mysql_ping($this->connection)) ||
             ($restLink && $this->_connect())
         ) {

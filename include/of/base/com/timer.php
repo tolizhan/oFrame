@@ -151,7 +151,7 @@ class of_base_com_timer {
             //不可重试
             if (($try = array_shift($call['try'])) === null) {
                 //达到最大尝试次数
-                trigger_error('Reached the maximum number of attempts.' );
+                trigger_error('Reached the maximum number of attempts.');
             //可重试
             } else {
                 //重设时间

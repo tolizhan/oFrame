@@ -79,8 +79,8 @@ abstract class of_db {
 
                     //单库连接配置
                     if (
-                        isset($dbConfig['adapter']) || 
-                        isset($dbConfig[0]) || 
+                        isset($dbConfig['adapter']) ||
+                        isset($dbConfig[0]) ||
                         isset($dbConfig['write'])
                     ) {
                         //配置文件格式化
@@ -133,30 +133,30 @@ abstract class of_db {
         self::pool($pool);
 
         //SQL 操作
-        if( is_string($sql) ) {
+        if (is_string($sql)) {
             //读取SQL类型, 可以使用"/*强制类型*/SQL"指定类型
             preg_match('@[\w]+@i', $sql, $tags);
             $tags = strtoupper($tags[0]);
 
             //获取读写分离连接
             if ($dbObj = &self::getConnect(isset($rAw[$tags]) ? 'read' : 'write')) {
-                if( $result = $dbObj->_query($sql) ) {
-                    switch ( $tags ) {
-                        case 'SHOW'     :
-                        case 'SELECT'   :
-                        case 'DESCRIBE' :
-                        case 'EXPLAIN'  :
+                if ($result = $dbObj->_query($sql)) {
+                    switch ($tags) {
+                        case 'SHOW':
+                        case 'SELECT':
+                        case 'DESCRIBE':
+                        case 'EXPLAIN':
                             $result = &$dbObj->_fetchAll();
                             break;
-                        case 'INSERT'   :
-                        case 'REPLACE'  :
+                        case 'INSERT':
+                        case 'REPLACE':
                             $result = $dbObj->_lastInsertId();
                             break;
-                        case 'UPDATE'   :
-                        case 'DELETE'   :
+                        case 'UPDATE':
+                        case 'DELETE':
                             $result = $dbObj->_affectedRows();
                             break;
-                        case 'CALL'     :
+                        case 'CALL':
                             $result = &$dbObj->_moreResults();
                             break;
                     }
@@ -166,19 +166,19 @@ abstract class of_db {
                 }
             }
         //事务处理
-        } else if( $dbObj = &self::getConnect('write') ) {
+        } else if ($dbObj = &self::getConnect('write')) {
             //引用连接池
             $index = &self::$instList[$pool]['inst'];
             //执行事务
             $result = $dbObj->{$fun[$sql]}();
 
             //启动事务
-            if( $sql === null ) {
+            if ($sql === null) {
                 //读取连接备份
                 isset($index['back']) || $index['back'] = &$index['read'];
                 //读取切换主
                 $index['read'] = &$dbObj;
-            } else if( isset($index['back']) ) {
+            } else if (isset($index['back'])) {
                 //切回原始配置
                 $index['read'] = &$index['back'];
                 //注销备份
@@ -206,7 +206,7 @@ abstract class of_db {
         $dbLink = &$config['inst'][$type];
 
         //未初始化
-        if( $dbLink === null ) {
+        if ($dbLink === null) {
             //引用连接池
             $index = &$config['pool'];
             //分离模式 || 可能是单个或混合
@@ -226,9 +226,9 @@ abstract class of_db {
                 $dbLink = new $config['allowInst'](self::$nowDbKey, $link['params']);
 
                 //连接数据库成功 || 没有备用连接
-                if( ($temp = $dbLink->_connect()) || empty($index[1]) ) {
+                if (($temp = $dbLink->_connect()) || empty($index[1])) {
                     //读取失败
-                    if( $temp === false ) {
+                    if ($temp === false) {
                         //分离模式 && 读取模式
                         $dbLink = $isMix && $type === 'read' ? self::getConnect('write') : false;
                     }
@@ -243,7 +243,7 @@ abstract class of_db {
 
                 //删除连接失败的配置
                 array_splice($index, $rand, 1);
-            } while( isset($index[0]) );
+            } while (isset($index[0]));
         }
 
         return $dbLink;

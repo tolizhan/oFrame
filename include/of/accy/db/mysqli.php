@@ -20,7 +20,7 @@ class of_accy_db_mysqli extends of_db {
             $params['port']
         );
 
-        if( mysqli_ping($connection) ) {
+        if (mysqli_ping($connection)) {
             $this->connection = $connection;
             mysqli_query($this->connection, "SET NAMES '{$params['charset']}'");
             return true;
@@ -48,9 +48,9 @@ class of_accy_db_mysqli extends of_db {
         $error = mysqli_error($this->connection);
 
         //INNODB可能死锁
-        if( $errno === 1205 || $errno === 1213 ) {
+        if ($errno === 1205 || $errno === 1213) {
             //判断进程权限
-            if( $process === null ) {
+            if ($process === null) {
                 $process = 'SELECT
                     1 c
                 FROM
@@ -71,7 +71,7 @@ class of_accy_db_mysqli extends of_db {
                 $process = $this->_fetch();
             }
 
-            if( $process ) {
+            if ($process) {
                 $temp = 'SHOW ENGINE INNODB STATUS';
                 $this->_query($temp);
                 $temp = &$this->_fetch();
@@ -143,7 +143,7 @@ class of_accy_db_mysqli extends of_db {
         $result = array();
 
         if ($query = mysqli_store_result($this->connection)) {
-            while($row = mysqli_fetch_assoc($query)) {
+            while ($row = mysqli_fetch_assoc($query)) {
                 $result[] = $row;
             }
             mysqli_free_result($query);
@@ -177,7 +177,7 @@ class of_accy_db_mysqli extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _query(&$sql) {
-        if( $this->_linkIdentifier() && mysqli_multi_query($this->connection, $sql) ) {
+        if ($this->_linkIdentifier() && mysqli_multi_query($this->connection, $sql)) {
             return true;
         } else {
             return false;
@@ -191,7 +191,7 @@ class of_accy_db_mysqli extends of_db {
      * 作者 : Edgar.lee
      */
     private function _linkIdentifier($restLink = true) {
-        if(
+        if (
             mysqli_ping($this->connection) ||
             ($restLink && $this->_connect())
         ) {

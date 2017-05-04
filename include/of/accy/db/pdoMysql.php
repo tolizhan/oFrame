@@ -21,7 +21,7 @@ class of_accy_db_pdoMysql extends of_db {
                 array(PDO::ATTR_PERSISTENT => !!$params['persistent'])
             );
 
-            if( !$connection || $connection->getAttribute(PDO::ATTR_SERVER_INFO) === 'MySQL server has gone away' ) {
+            if (!$connection || $connection->getAttribute(PDO::ATTR_SERVER_INFO) === 'MySQL server has gone away') {
                 return false;
             } else {
                 $this->connection = $connection;
@@ -52,9 +52,9 @@ class of_accy_db_pdoMysql extends of_db {
         $error = $this->connection->errorInfo() + array(2 => '');
 
         //INNODB可能死锁
-        if( $error[1] === 1205 || $error[1] === 1213 ) {
+        if ($error[1] === 1205 || $error[1] === 1213) {
             //判断进程权限
-            if( $process === null ) {
+            if ($process === null) {
                 $process = 'SELECT
                     1 c
                 FROM
@@ -75,7 +75,7 @@ class of_accy_db_pdoMysql extends of_db {
                 $process = $this->_fetch();
             }
 
-            if( $process ) {
+            if ($process) {
                 $temp = 'SHOW ENGINE INNODB STATUS';
                 $this->_query($temp);
                 $temp = &$this->_fetch();
@@ -152,7 +152,7 @@ class of_accy_db_pdoMysql extends of_db {
     protected function &_moreResults() {
         $result = array();
 
-        do{
+        do {
             $result[] = &$this->_fetchAll();
         } while ($this->query->nextRowset());
 
@@ -165,7 +165,7 @@ class of_accy_db_pdoMysql extends of_db {
      */
     protected function _query(&$sql) {
         $this->query = false;
-        if( $this->_linkIdentifier() && $this->query = $this->connection->query($sql, PDO::FETCH_ASSOC) ) {
+        if ($this->_linkIdentifier() && $this->query = $this->connection->query($sql, PDO::FETCH_ASSOC)) {
             return true;
         } else {
             return false;
@@ -179,7 +179,7 @@ class of_accy_db_pdoMysql extends of_db {
      * 作者 : Edgar.lee
      */
     private function _linkIdentifier($restLink = true) {
-        if(
+        if (
             $this->connection->getAttribute(PDO::ATTR_SERVER_INFO) !== 'MySQL server has gone away' ||
             ($restLink && $this->_connect())
         ) {

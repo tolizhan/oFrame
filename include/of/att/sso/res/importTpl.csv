@@ -1,0 +1,24 @@
+"类型 (site=系统, pack=角色, func=功能, user=用户, bind=角色绑定功能, role=用户绑定角色)",横纵向顺序保持不变,前8行的说明可以删也可以拆开放任意行里,,,,,
+类型 site,"状态 (0=冻结, 1=启用)",账号,密码,简称,"对接 (1=跳转对接, 3=接口对接)",备注,
+类型 pack,"状态 (0=冻结, 1=启用)",系统,键值,名称,数据 (不同系统不同结构),,
+类型 func,"状态 (0=冻结, 1=启用)",系统,键值,名称,数据 (不同系统不同结构),,
+类型 user,"状态 (0=冻结, 1=启用)",帐号,密码,昵称,问题,回答,备注
+类型 bind,系统,角色,功能,,,,
+类型 role,系统,角色,用户,,,,
+,,,,,,,
+site,1,siteSys,123456,测试域名,3,"域名
+http://www.baidu.com/",
+pack,1,siteSys,package1,测试角色1,"角色1
+http://www.baidu.com/",,
+pack,1,siteSys,package2,测试角色2,"角色2
+http://www.baidu.com/",,
+func,1,siteSys,function1,测试功能1,"功能1
+http://www.baidu.com/",,
+func,1,siteSys,function2,测试功能2,"功能2
+http://www.baidu.com/",,
+user,1,userTest1,111111,测试用户1,找回密码的问题1,找回密码的答案1,"用户1
+http://www.baidu.com/"
+user,1,userTest2,222222,测试用户2,找回密码的问题2,找回密码的答案2,"用户2
+http://www.baidu.com/"
+bind,siteSys,package1,function1,,,,
+role,siteSys,package2,userTest1,,,,

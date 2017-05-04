@@ -10,7 +10,7 @@ class of_base_error_toolBaseClass {
      *      
      * 作者 : Edgar.lee
      */
-    public static function init( $config = array() ) {
+    public static function init($config = array()) {
         self::$config = &$config;
         if (class_exists('of')) {
             $config += array(
@@ -68,13 +68,14 @@ class of_base_error_toolBaseClass {
 
         if (is_dir($temp = $lRootDir . $path)) {
             $handle = opendir($temp);
-            while ( ($fileName = readdir($handle)) !== false ) {
-                if ( $fileName !== '.' && $fileName !== '..' ) {
+            while (($fileName = readdir($handle)) !== false) {
+                if ($fileName !== '.' && $fileName !== '..') {
                     $temp = "{$path}/{$fileName}";
 
                     if (is_dir($lRootDir . $temp)) {
                         $fileList[$temp] = true;
-                    } else if( substr($temp, -strlen($type)) === $type ) {    //有效日志
+                    //有效日志
+                    } else if (substr($temp, -strlen($type)) === $type) {
                         $fileList[$temp] = false;
                     }
                 }
@@ -103,8 +104,10 @@ class of_base_error_toolBaseClass {
         $data = array();
 
         if (is_file($filePath)) {
-            $line = 0;                       //当前行
-            $fp = fopen($filePath , 'r');    //打开读写流
+            //当前行
+            $line = 0;
+            //打开读写流
+            $fp = fopen($filePath, 'r');
 
             if ($curPage === null) {
                 $data = &$line;
@@ -113,9 +116,9 @@ class of_base_error_toolBaseClass {
                 $curSize = $curPage + $pageSize;
             }
 
-            while ( $curPage === null || $curSize > $line) {
-                if( $temp = fgets($fp) ) {
-                    if($curPage !== null && $curPage <= $line && $curSize > $line ) {
+            while ($curPage === null || $curSize > $line) {
+                if ($temp = fgets($fp)) {
+                    if ($curPage !== null && $curPage <= $line && $curSize > $line) {
                         $data[$line] = unserialize($temp);
                     }
                     $line += 1;

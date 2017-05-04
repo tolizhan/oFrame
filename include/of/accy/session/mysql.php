@@ -29,7 +29,7 @@ class of_accy_session_mysql extends of_base_session_base {
         FOR UPDATE";
         $temp = &of_db::sql($sql, 'of_accy_session_mysql');
 
-        if( empty($temp) ) {
+        if (empty($temp)) {
             $sql = "INSERT INTO `_of_base_session` (
                 `hash`, `data`, `time`
             ) VALUES 
@@ -71,7 +71,9 @@ class of_accy_session_mysql extends of_base_session_base {
         of_db::sql($sql, 'of_accy_session_mysql');
     }
 
-    protected static function _open() {}
+    protected static function _open() {
+    }
+
     protected static function _close() {
         of_db::sql(true, 'of_accy_session_mysql');
     }

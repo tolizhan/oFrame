@@ -81,7 +81,7 @@ class TopClient
 				{
 					$postMultipart = true;
 					if(class_exists('\CURLFile')){
-						$postFields[$k] = new \CURLFile(substr($v, 1));
+						$postFields[$k] = new CURLFile(substr($v, 1));
 					}
 				}
 			}

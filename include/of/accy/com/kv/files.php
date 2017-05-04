@@ -24,7 +24,7 @@ class of_accy_com_kv_files extends of_base_com_kv {
         $fp = of_base_com_disk::file($path, null, null);
 
         //不存在 || 失效
-        if( $result = !ftell($fp) || fileatime($path) < time() ) {
+        if ($result = !ftell($fp) || fileatime($path) < time()) {
             of_base_com_disk::file($fp, $value, true);
             //修改访问时间
             touch($path, $time);
@@ -90,7 +90,7 @@ class of_accy_com_kv_files extends of_base_com_kv {
         $fp = of_base_com_disk::file($path, null, null);
 
         //存在 && 有效(兼容win php < 5.3.0)
-        if( $result = ftell($fp) && (filemtime($path) > $time || fileatime($path) >= $time) ) {
+        if ($result = ftell($fp) && (filemtime($path) > $time || fileatime($path) >= $time)) {
             $result = of_base_com_disk::file($fp, false, true);
         }
 
@@ -114,7 +114,8 @@ class of_accy_com_kv_files extends of_base_com_kv {
      * 描述 : 关闭连接
      * 作者 : Edgar.lee
      */
-    protected function _close() {}
+    protected function _close() {
+    }
 
     /**
      * 描述 : 过期回收
@@ -130,11 +131,11 @@ class of_accy_com_kv_files extends of_base_com_kv {
         //修改访问时间
         touch($path, PHP_INT_MAX);
         //加锁成功
-        if( flock($lock, LOCK_EX | LOCK_NB) ) {
-            while( of_base_com_disk::each($dir, $list) ) {
-                foreach($list as $path => &$isDir) {
+        if (flock($lock, LOCK_EX | LOCK_NB)) {
+            while (of_base_com_disk::each($dir, $list)) {
+                foreach ($list as $path => &$isDir) {
                     //清除过期会话
-                    if( !$isDir && is_int($temp = fileatime($path)) && $temp < $timestamp ) {
+                    if (!$isDir && is_int($temp = fileatime($path)) && $temp < $timestamp) {
                         unlink($path);
                         //移除空文件夹
                         /*while( !glob(($path = dirname($path)) . '/*') ) {

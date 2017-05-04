@@ -121,7 +121,7 @@ class of_view {
             //开始注入html[before]
             empty($_['before']) || self::eachPrintJsOrCss($_['before']);
         //输出尾信息
-        } else if($params === false && isset($_['init'])) {
+        } else if ($params === false && isset($_['init'])) {
             //开始注入html[head]
             empty($_['head']) || $_['init']->objInclude($_['head']);
             //开始注入html[after]

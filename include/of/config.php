@@ -4,9 +4,9 @@ return array(
     'rootDir'     => strtr(substr(__FILE__, 0, -22), '\\', '/'),
     //域名到产品根目录地址,根路径为空字符串,null=自动计算
     'rootUrl'     => null,
-    //站点配置文件路径及文件名
+    //配置文件路径, 数组=动态配置{动态键 : 配置路径}, 字符串=等同{"0" : 全局配置}
     'config'      => '/demo/config.php',
-    //统一调试模式, true=是, false=否
+    //统一调试模式, true=开发环境, null=测试环境, false=生产环境
     'debug'       => true,
     //可写目录,上传,缓存等路径都将写入该文件夹
     'dataDir'     => '/data',
@@ -87,6 +87,8 @@ return array(
         //'of_base_extension_match',
         //html模板引擎,实现UI,开发人员分离
         'of_base_htmlTpl_engine',
+        //检查最新版本
+        'of_base_version_check'
     ),
 
     'error'       => array(

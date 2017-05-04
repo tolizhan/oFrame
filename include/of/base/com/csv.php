@@ -36,7 +36,7 @@ class of_base_com_csv {
             //初始化列
             $col === null && $col = $td['col'];
             //初始数据
-            for ($i = $col - count($val); $i > 0; $i-- ) $val[] = '';
+            for ($i = $col - count($val); $i > 0; $i--) $val[] = '';
 
             reset($fileArr);
             foreach ($val as &$v) {
@@ -155,7 +155,7 @@ class of_base_com_csv {
         );
 
         if ($index['fp'] && $result = fgetcsv($index['fp'])) {
-            foreach($result as &$v) {
+            foreach ($result as &$v) {
                 //初始非ASCII字符集
                 if ($index['cs'] === null && preg_match('@[^\x00\x09\x10\x13\x20-\x7F]@', $v)) {
                     //是 UTF-8 编码
@@ -192,7 +192,7 @@ class of_base_com_csv {
      */
     private static function &arrFill(&$arr, $row = 0, $col = 0) {
         //最大行
-        for($i = $row - count($arr); $i > 0; $i-- ) $arr[] = array();
+        for ($i = $row - count($arr); $i > 0; $i--) $arr[] = array();
         //最大值
         $result = array('row' => count($arr), 'col' => 0);
 
@@ -200,7 +200,7 @@ class of_base_com_csv {
             //最大列
             $col > ($result['col'] = max(array_map('count', $arr))) && $result['col'] = $col;
             //填充列
-            foreach($arr as &$v) for($i = $result['col'] - count($v); $i > 0; $i-- ) $v[] = '';
+            foreach ($arr as &$v) for ($i = $result['col'] - count($v); $i > 0; $i--) $v[] = '';
         }
 
         return $result;

@@ -288,9 +288,9 @@ function syncUsers() {
     //过期描述
     $temp = $_SERVER['REQUEST_TIME'] - $dExp * 86400;
     //过期时间
-    $exp = date('Y-m-d H:i:s', $temp);
+    $exp = date('Y-m-d', $temp);
     //提醒时间
-    $tip = date('Y-m-d H:i:s', $temp + 3 * 86400);
+    $tip = date('Y-m-d', $temp + 3 * 86400);
     $smstip = $this->_getConst('eDbPre') . 'smstip';
 
     $sqle = "SELECT

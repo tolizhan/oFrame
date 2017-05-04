@@ -20,7 +20,7 @@ class of_base_sso_tool extends of_base_sso_api {
         //引用配置文件
         $config = &self::$config;
 
-        if(
+        if (
             !$type && 
             isset($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], '=of_base_sso_main') &&
             isset($_POST['data'])
@@ -217,7 +217,7 @@ class of_base_sso_tool extends of_base_sso_api {
     public static function &user($key = null, $space = 'default') {
         if (isset($_SESSION['_of']['of_base_sso']['tool']['online'][$space])) {
             $result = &$_SESSION['_of']['of_base_sso']['tool']['online'][$space];
-            if( is_string($key) ) {
+            if (is_string($key)) {
                 isset($result[$key]) ?
                     $result = &$result[$key] : $result = &$index;
             }

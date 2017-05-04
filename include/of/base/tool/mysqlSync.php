@@ -80,7 +80,7 @@ class of_base_tool_mysqlSync {
             'procedure' => false,
             'function'  => false,
         );
-        if( $config['matches']['table'] === null || is_array($config['matches']['table']) ) {
+        if ($config['matches']['table'] === null || is_array($config['matches']['table'])) {
             //排除内部使用的表
             $config['matches']['table']['exclude'][] = "@^{$config['prefix']}@";
         }
@@ -103,7 +103,7 @@ class of_base_tool_mysqlSync {
         //是否使用内置连接
         $temp = isset($config['callDb']['server']);
         //sql检查
-        if(
+        if (
             !isset($config['callDb']) ||
             //内置sql
             ($temp && !self::sql($config['callDb'])) ||
@@ -114,14 +114,14 @@ class of_base_tool_mysqlSync {
             self::message('error', 'config[callDb]不可用', __FUNCTION__);
             return false;
         //提取sql回调
-        } elseif( isset($config['callAdjustSql']) && !is_callable($config['callAdjustSql']) ) {
+        } else if (isset($config['callAdjustSql']) && !is_callable($config['callAdjustSql'])) {
             self::message('error', 'config[callAdjustSql]不可用', __FUNCTION__);
             return false;
         //默认数据库检查
-        } elseif( !isset($config['database']) ) {
+        } else if (!isset($config['database'])) {
             //查询当前数据库
             $temp = self::sql('SELECT DATABASE() `database`');
-            if( isset($temp[0]['database']) ) {
+            if (isset($temp[0]['database'])) {
                 $config['database'] = $temp[0]['database'];
             } else {
                 self::message('error', 'config[database]不可用', __FUNCTION__);
@@ -144,7 +144,7 @@ class of_base_tool_mysqlSync {
         WHERE
             `SCHEMA_NAME` = '{$config['databaseSlashes']}'");
         //数据库不存在
-        if( !isset($temp[0]['SCHEMA_NAME']) ) {
+        if (!isset($temp[0]['SCHEMA_NAME'])) {
             $sql = "CREATE DATABASE IF NOT EXISTS 
                 `{$config['databaseBacktick']}` 
             CHARACTER SET 
@@ -156,7 +156,7 @@ class of_base_tool_mysqlSync {
         }
 
         //切换数据库
-        if(self::sql("USE `{$config['databaseBacktick']}`") === false) {
+        if (self::sql("USE `{$config['databaseBacktick']}`") === false) {
             self::message('error', 'config[database]不可用', __FUNCTION__, $config['database']);
             //指定数据库不可用
             return false;
@@ -185,23 +185,23 @@ class of_base_tool_mysqlSync {
             "{$config['database']}:LOCK TABLES" => 0,
         );
         //比对表
-        if( $config['matches']['table'] !== false ) {
+        if ($config['matches']['table'] !== false) {
             //修改表视图
             $needGrants["{$config['database']}:ALTER"] = 0;
-            if( $config['dbVersion'] > 50105 ) {
+            if ($config['dbVersion'] > 50105) {
                 //触发器 5.1.6
                 $needGrants["{$config['database']}:TRIGGER"] = 0;
             }
         }
         //比对视图
-        if( $config['matches']['view'] !== false ) {
+        if ($config['matches']['view'] !== false) {
             //创建视图
             $needGrants["{$config['database']}:CREATE VIEW"] = 0;
             //备份视图
             $needGrants["{$config['database']}:SHOW VIEW"] = 0;
         }
         //比对存储程序
-        if( $config['matches']['procedure'] !== false || $config['matches']['function'] !== false ) {
+        if ($config['matches']['procedure'] !== false || $config['matches']['function'] !== false) {
             //创建存储程序
             $needGrants["{$config['database']}:ALTER ROUTINE"] = 0;
             //备份存储程序
@@ -245,8 +245,8 @@ class of_base_tool_mysqlSync {
                 ''''
             )");
 
-        foreach($temp as &$v) {
-            if( $v['SCHEMA_PRIVILEGES'] === null ) {
+        foreach ($temp as &$v) {
+            if ($v['SCHEMA_PRIVILEGES'] === null) {
                 $userGrants["{$config['database']}:{$v['GLOBA_PRIVILEGES']}"] = 0;
                 $userGrants["mysql:{$v['GLOBA_PRIVILEGES']}"] = 0;
             } else {
@@ -254,7 +254,7 @@ class of_base_tool_mysqlSync {
             }
         }
 
-        if( !isset($userGrants['ALL PRIVILEGES']) && count($temp = array_diff_key($needGrants, $userGrants)) ) {
+        if (!isset($userGrants['ALL PRIVILEGES']) && count($temp = array_diff_key($needGrants, $userGrants))) {
             self::message('error', '数据库缺少以下权限(数据库名:权限)', __FUNCTION__, join(', ', array_keys($temp)));
             return false;
         }
@@ -270,7 +270,7 @@ class of_base_tool_mysqlSync {
      * 作者 : Edgar.lee
      */
     private static function adjustSql(&$sql, $type) {
-        if( isset(self::$config['callAdjustSql']) ) {
+        if (isset(self::$config['callAdjustSql'])) {
             call_user_func_array(self::$config['callAdjustSql'], array(&$sql, &$type, &self::$config['adjustSqlParam']));
         }
     }
@@ -292,17 +292,17 @@ class of_base_tool_mysqlSync {
         $defaultBool = true;
 
         //不支持当前类型,返回false
-        if( $matches[$type] === false ) {
+        if ($matches[$type] === false) {
             return false;
         }
-        foreach($matchBool as $matchType => &$boolV) {
+        foreach ($matchBool as $matchType => &$boolV) {
             //排除或包含匹配项存在
-            if( isset($matches[$type][$matchType]) && is_array($matches[$type][$matchType]) ) {
+            if (isset($matches[$type][$matchType]) && is_array($matches[$type][$matchType])) {
                 //默认返回值
                 $defaultBool = !$boolV;
-                foreach($matches[$type][$matchType] as &$v) {
+                foreach ($matches[$type][$matchType] as &$v) {
                     //匹配成功
-                    if( preg_match($v, $name) ) {
+                    if (preg_match($v, $name)) {
                         //返回对应布尔值
                         return $boolV;
                     }
@@ -326,11 +326,11 @@ class of_base_tool_mysqlSync {
         //返回数据
         $data = array();
 
-        switch($type) {
+        switch ($type) {
             //表
-            case 'table'    :
+            case 'table':
             //视图
-            case 'view'     :
+            case 'view':
                 $temp = $type === 'view' ? 'VIEW' : 'BASE TABLE';
                 $sql = "SELECT    /*SHOW FULL TABLES WHERE Table_type = ['BASE TABLE' | 'VIEW']*/
                     TABLE_NAME `name`    /*表名*/
@@ -343,7 +343,7 @@ class of_base_tool_mysqlSync {
             //函数
             case 'procedure':
             //过程
-            case 'function' :
+            case 'function':
                 $temp = strtoupper($type);
                 $sql = "SELECT    /*SHOW PROCEDURE STATUS, SHOW FUNCTION STATUS*/
                     ROUTINE_NAME `name`    /*函数名*/
@@ -356,7 +356,7 @@ class of_base_tool_mysqlSync {
         }
 
         $temp = self::sql($sql);
-        foreach($temp as &$v) {
+        foreach ($temp as &$v) {
             self::isMatch($v['name'], $type) && $data[] = $v['name'];
         }
 
@@ -376,24 +376,24 @@ class of_base_tool_mysqlSync {
         //记忆文件流
         static $fp = false;
 
-        if($file !== null) {
+        if ($file !== null) {
             //已打开文件流
-            if( $fp !== false ) {
+            if ($fp !== false) {
                 //关闭文件流
                 fclose($fp);
                 //重置记忆
                 $fp = false;
             }
 
-            if( is_string($file) ) {
+            if (is_string($file)) {
                 //读方式
-                if($mode === 'r') {
+                if ($mode === 'r') {
                     //文件存在
-                    if( is_file($file) ) {
+                    if (is_file($file)) {
                         //打开只读流
-                        $fp = fopen($file , 'r');
+                        $fp = fopen($file, 'r');
                         //加共享锁
-                        flock($fp , LOCK_SH);
+                        flock($fp, LOCK_SH);
                     //文件不存在
                     } else {
                         self::message('error', '指定文件不存在', __FUNCTION__, $file);
@@ -401,10 +401,11 @@ class of_base_tool_mysqlSync {
                 //写方式
                 } else {
                     is_dir($temp = dirname($file)) || mkdir($temp, 0777, true);
-                    $fp = @fopen($file , is_file($file) ? 'r+' : 'x+');    //打开只写流
-                    if( $fp ) {
+                    //打开只写流
+                    $fp = @fopen($file, is_file($file) ? 'r+' : 'x+');
+                    if ($fp) {
                         //加独享锁
-                        flock($fp , LOCK_EX);
+                        flock($fp, LOCK_EX);
                         //清空
                         ftruncate($fp, 0);
                     } else {
@@ -461,20 +462,20 @@ class of_base_tool_mysqlSync {
             );
         }
 
-        if( is_array($sql) ) {
+        if (is_array($sql)) {
             //关闭连接
             $db === false || $func['close']($db);
             //使用内部连接
             self::$config['callDb'] = null;
             //连接数据库
-            if( $return = $db = @$func['connect']($sql['server'], $sql['username'], $sql['password']) ) {
+            if ($return = $db = @$func['connect']($sql['server'], $sql['username'], $sql['password'])) {
                 //连接字符集
                 $temp = isset($sql['charset']) ?
                     $sql['charset'] : 
                     isset(self::$config['charset']) ? self::$config['charset'][0] : 'utf8';
 
                 //兼容php < 5.2.6
-                if( function_exists($func['set_charset']) ) {
+                if (function_exists($func['set_charset'])) {
                     $func['set_charset']($temp, $db);
                 } else {
                     $func['query']("SET NAMES '{$temp}'", $db);
@@ -482,33 +483,33 @@ class of_base_tool_mysqlSync {
 
                 //使用数据库
                 $temp = isset($sql['database']) ?
-                    $sql['database'] : 
+                    $sql['database'] :
                     isset(self::$config['database']) ? self::$config['database'] : false;
                 $temp && $func['query']('USE `' .strtr($temp, array('`' => '``')). '`', $db);
             } else {
-                self::message('error', 'SQL执行出错', __FUNCTION__,  $func['error']());
+                self::message('error', 'SQL执行出错', __FUNCTION__, $func['error']());
             }
         } else {
-            if(self::$config['callDb'] === null) {
+            if (self::$config['callDb'] === null) {
                 //过滤掉无用的字符串,已正确提取'SELECT', 'INSERT', 'UPDATE', 'DELETE'关键字
                 preg_match('/^[\(\s]*(\w+)\s/i', $sql, $sqlTyep);
                 $sqlTyep = strtoupper($sqlTyep[1]);
                 $re = $func['query']($sql, $db);
 
                 //插入 更新 删除
-                if( $re === true ) {
+                if ($re === true) {
                     //插入数据
-                    if( $sqlTyep === 'INSERT' || $sqlTyep === 'REPLACE' ) {
+                    if ($sqlTyep === 'INSERT' || $sqlTyep === 'REPLACE') {
                         $return = $func['insert_id']($db);
                     //更新删除
                     } else {
                         $return = $func['affected_rows']($db);
                     }
                 //执行失败
-                } else if( $re === false ) {
+                } else if ($re === false) {
                     $return = false;
                 //查询数据
-                } else if( isset($gArr[$sqlTyep]) ) {
+                } else if (isset($gArr[$sqlTyep])) {
                     $data = array();
                     while ($temp = $func['fetch_assoc']($re)) {
                         $data[] = $temp;
@@ -522,7 +523,7 @@ class of_base_tool_mysqlSync {
             }
 
             //获取错误日志
-            if($return === false && $sql !== 'SHOW ERRORS') {
+            if ($return === false && $sql !== 'SHOW ERRORS') {
                 $error = self::sql('SHOW ERRORS');
                 $error = (isset($error[0]['Message']) ? $error[0]['Message'] . ' : ' : '') . $sql;
                 self::message('error', 'SQL执行出错', __FUNCTION__, $error);
@@ -549,10 +550,10 @@ class of_base_tool_mysqlSync {
             'info'    => &$info,
             'type'    => &$type
         );
-        if( is_callable(self::$config['callMsg']) ) {
+        if (is_callable(self::$config['callMsg'])) {
             call_user_func(self::$config['callMsg'], $msg);
-        } else if( $state === 'error' ) {
-            trigger_error("of_base_tool_mysqlSync error : " . print_r($msg, true));                                   //错误
+        } else if ($state === 'error') {
+            trigger_error("of_base_tool_mysqlSync error : " . print_r($msg, true));
         }
     }
 
@@ -578,11 +579,11 @@ class of_base_tool_mysqlSync {
         );
 
         //删除触发器
-        if($config['disableTriggers']) {
+        if ($config['disableTriggers']) {
             self::message('tip', '正在关闭触发器', __FUNCTION__);
             $triggers = self::getDatabaseStructure('TRIGGERS');
 
-            foreach($triggers as &$v) {
+            foreach ($triggers as &$v) {
                 //替换反引号
                 $v['TRIGGER_NAME'] = strtr($v['TRIGGER_NAME'], array('`' => '``'));
                 //替换反引号
@@ -591,22 +592,23 @@ class of_base_tool_mysqlSync {
             }
         }
 
-        self::message('tip', '正在导入数据', __FUNCTION__);                                                             //批量运行sql
+        //批量运行sql
+        self::message('tip', '正在导入数据', __FUNCTION__);
         //文件存在
-        if( self::fetchFileSql($file) === true ) {
-            if( $config['showProgress'] ) {
+        if (self::fetchFileSql($file) === true) {
+            if ($config['showProgress']) {
                 //[当前sql长度, 进度]
                 $nowSqlProgress = array(0,0);
                 $config['showProgress'] = filesize($file);
             }
 
-            while( ($sql = self::fetchFileSql()) !== null ) {
-                if($sql !== '') {
+            while (($sql = self::fetchFileSql()) !== null) {
+                if ($sql !== '') {
                     //显示进度
-                    if( $config['showProgress'] ) {
+                    if ($config['showProgress']) {
                         $nowSqlProgress[0] += strlen($sql);
                         $temp = ceil($nowSqlProgress[0] * 100 / $config['showProgress']);
-                        if( $nowSqlProgress[1] + 10 < $temp ) {
+                        if ($nowSqlProgress[1] + 10 < $temp) {
                             $nowSqlProgress[1] = $temp;
                             self::message('tip', '已导入百分比', 'revertDataProgress', $temp);
                         }
@@ -614,7 +616,7 @@ class of_base_tool_mysqlSync {
                     //调整sql:更新
                     self::adjustSql($sql, 'recover');
                     //执行出错
-                    if( self::sql($sql) === false ) {
+                    if (self::sql($sql) === false) {
                         $returnBool = false;
                     }
                 }
@@ -625,9 +627,9 @@ class of_base_tool_mysqlSync {
         }
 
         //创建触发器
-        if($config['disableTriggers']) {
+        if ($config['disableTriggers']) {
             self::message('tip', '正在开启触发器', __FUNCTION__);
-            foreach($triggers as &$v) {
+            foreach ($triggers as &$v) {
                 self::sql("CREATE TRIGGER `{$v['TRIGGER_NAME']}`
                 {$v['ACTION_TIMING']} {$v['EVENT_MANIPULATION']} ON `{$v['EVENT_OBJECT_TABLE']}`
                 FOR EACH ROW {$v['ACTION_STATEMENT']}");
@@ -666,7 +668,7 @@ class of_base_tool_mysqlSync {
         $charset = 'DEFAULT CHARACTER SET=' .self::$config['charset'][0]. ' COLLATE=' .self::$config['charset'][1];
 
         //支持MyISAM引擎
-        if( self::isSupportEngines('MyISAM') ) {
+        if (self::isSupportEngines('MyISAM')) {
             self::message('tip', '开始更新结构', __FUNCTION__);
 
             //删除需求表
@@ -761,7 +763,7 @@ class of_base_tool_mysqlSync {
         }
 
         //导入数据并比对
-        if(
+        if (
             $returnBool && 
             self::revertData($file, array('showProgress' => false)) && 
             self::isSupportEngines(true) 
@@ -772,19 +774,20 @@ class of_base_tool_mysqlSync {
 
             //删除匹配外键
             $foreignKey = self::getDatabaseStructure('FOREIGNKEY', $tableWhere);
-            if( $temp = count($foreignKey) ) {
+            if ($temp = count($foreignKey)) {
                 self::message('tip', '正在删除外键', __FUNCTION__, $temp);
-                foreach($foreignKey as &$v) {
+                foreach ($foreignKey as &$v) {
                     $v['TABLE_NAME'] = strtr($v['TABLE_NAME'], array('`' => '``'));
                     $v['CONSTRAINT_NAME'] = strtr($v['CONSTRAINT_NAME'], array('`' => '``'));
                     self::sql("ALTER TABLE `{$v['TABLE_NAME']}` DROP FOREIGN KEY `{$v['CONSTRAINT_NAME']}`");
                 }
             }
             unset($foreignKey);
-            self::message('tip', '已更新百分比', 'revertBaseProgress', 10.7);                                           //对比匹配表信息
+            //对比匹配表信息
+            self::message('tip', '已更新百分比', 'revertBaseProgress', 10.7);
 
             //版本 > 5.1.7
-            if( $dbVersion > 50107 ) {
+            if ($dbVersion > 50107) {
                 //批量sql语句
                 $bulkSql = array();
                 //预处理分区
@@ -793,15 +796,15 @@ class of_base_tool_mysqlSync {
                 $partitions = self::sql("SELECT * FROM `{$prefix}PARTITIONS`");
 
                 //当前分区信息格式化
-                foreach($temp as &$v) {
+                foreach ($temp as &$v) {
                     $bulkSql[$v['TABLE_NAME'] .' '. $v['COLUMNS_COMPARE']] = &$v;
                 }
-                foreach($partitions as $k => &$v) {
+                foreach ($partitions as $k => &$v) {
                     $temp = $v['TABLE_NAME'] .' '. $v['COLUMNS_COMPARE'];
                     //表分区字段未改变
-                    if( isset($bulkSql[$temp]) ) {
+                    if (isset($bulkSql[$temp])) {
                         //表分区语句未改变
-                        if( $bulkSql[$temp]['PARTITION_SQL'] === $v['PARTITION_SQL'] ) {
+                        if ($bulkSql[$temp]['PARTITION_SQL'] === $v['PARTITION_SQL']) {
                             //没有必要更新分区
                             unset($partitions[$k]);
                         }
@@ -812,7 +815,7 @@ class of_base_tool_mysqlSync {
 
                 empty($bulkSql) || self::message('tip', '正在移除无效分区', __FUNCTION__, count($bulkSql));
                 //移除无效分区
-                foreach($bulkSql as &$v) {
+                foreach ($bulkSql as &$v) {
                     //反引号表名
                     $v['TABLE_NAME'] = strtr($v['TABLE_NAME'], array('`' => '``'));
                     //预先移除
@@ -829,12 +832,12 @@ class of_base_tool_mysqlSync {
             $tablesActual = self::sql("SELECT * FROM `{$prefix}TABLES`");
             //初始化原始表信息
             $temp = self::getDatabaseStructure('TABLES', $tableWhere);
-            foreach($temp as &$v) {
+            foreach ($temp as &$v) {
                 $tablesOriginal[$v['TABLE_NAME']] = &$v;
             }
             //比对表信息(创建,修改)
-            foreach($tablesActual as &$v) {
-                if( self::isMatch($v['TABLE_NAME'], 'table') ) {
+            foreach ($tablesActual as &$v) {
+                if (self::isMatch($v['TABLE_NAME'], 'table')) {
                     $tablesNew[addslashes($v['TABLE_NAME'])] = &$v;
                     //加斜线描述
                     $v['TABLE_COMMENT'] = addslashes($v['TABLE_COMMENT']);
@@ -847,7 +850,7 @@ class of_base_tool_mysqlSync {
                     $charset = $charset[0];
 
                     //表存在
-                    if( isset($tablesOriginal[$v['TABLE_NAME']]) ) {
+                    if (isset($tablesOriginal[$v['TABLE_NAME']])) {
                         $vO = &$tablesOriginal[$v['TABLE_NAME']];
                         //加斜线描述
                         $vO['TABLE_COMMENT'] = addslashes(
@@ -862,7 +865,7 @@ class of_base_tool_mysqlSync {
                             $vO['CREATE_OPTIONS']
                         ));
                         //表信息不同(修改表信息)
-                        if( $v !== $vO ) {
+                        if ($v !== $vO) {
                             self::message('tip', '正在更新表', __FUNCTION__, $v['TABLE_NAME']);
                             $v['CREATE_OPTIONS'] && $v['CREATE_OPTIONS'] = ',' . strtr($v['CREATE_OPTIONS'], array(' ' => ','));
 
@@ -889,7 +892,7 @@ class of_base_tool_mysqlSync {
                 }
             }
             //删除废弃表
-            foreach($tablesOriginal as &$v) {
+            foreach ($tablesOriginal as &$v) {
                 self::message('tip', '正在删除表', __FUNCTION__, $v['TABLE_NAME']);
                 //反引号表名
                 $v['TABLE_NAME'] = strtr($v['TABLE_NAME'], array('`' => '``'));
@@ -907,11 +910,11 @@ class of_base_tool_mysqlSync {
             $columnsActual = self::sql("SELECT * FROM `{$prefix}COLUMNS` WHERE TABLE_NAME IN ('{$tableWhere}') ORDER BY TABLE_NAME, ORDINAL_POSITION");    //最新字段信息
             //初始化原始字段信息
             $temp = self::getDatabaseStructure('COLUMNS', $tableWhere);
-            foreach($temp as &$v) {
+            foreach ($temp as &$v) {
                 $columnsOriginal[$v['TABLE_NAME']][$v['COLUMN_NAME']] = &$v;
             }
             //比对字段(添加,修改)
-            foreach($columnsActual as $k => &$v) {
+            foreach ($columnsActual as $k => &$v) {
                 //字段名
                 $columnName = strtr($v['COLUMN_NAME'], array('`' => '``'));
                 //字符集
@@ -928,22 +931,22 @@ class of_base_tool_mysqlSync {
                 //增加额外索引,保证auto_increment顺利插入
                 $addIndex = $v['EXTRA'] === 'auto_increment' ? " ,ADD INDEX (`{$columnName}`)" : '';
 
-                if( 
+                if (
                     ($v['IS_NULLABLE'] === 'NO' && $v['COLUMN_DEFAULT'] === null) || 
                     preg_match('@blob|text|point|point|polygon|geometry@', $v['COLUMN_TYPE']) 
                 //默认值
                 ) {
                     //没有默认值
                     $columnDefault = '';
-                } elseif( $v['COLUMN_DEFAULT'] === null ) {
+                } else if ($v['COLUMN_DEFAULT'] === null) {
                     $columnDefault = 'DEFAULT NULL';
-                } elseif( $v['COLUMN_TYPE'] === 'timestamp' && $v['COLUMN_DEFAULT'] === 'CURRENT_TIMESTAMP' ) {
+                } else if ($v['COLUMN_TYPE'] === 'timestamp' && $v['COLUMN_DEFAULT'] === 'CURRENT_TIMESTAMP') {
                     $columnDefault = 'DEFAULT CURRENT_TIMESTAMP';
                 } else {
                     $columnDefault = 'DEFAULT \'' .addslashes($v['COLUMN_DEFAULT']). '\'';
                 }
 
-                if( 
+                if (
                     !isset($columnsOriginal[$v['TABLE_NAME']][$v['COLUMN_NAME']]) || 
                     $temp = $columnsOriginal[$v['TABLE_NAME']][$v['COLUMN_NAME']] !== $v 
                 ) {
@@ -954,8 +957,8 @@ class of_base_tool_mysqlSync {
                 unset($columnsOriginal[$v['TABLE_NAME']][$v['COLUMN_NAME']]);
             }
             //删除废弃字段
-            foreach($columnsOriginal as $kO => &$vO) {
-                foreach($vO as $k => &$v) {
+            foreach ($columnsOriginal as $kO => &$vO) {
+                foreach ($vO as $k => &$v) {
                     //字段名
                     $columnName = strtr($k, array('`' => '``'));
                     $bulkSql[$kO][] = "DROP COLUMN `{$columnName}`";
@@ -963,7 +966,7 @@ class of_base_tool_mysqlSync {
             }
             unset($columnsOriginal, $columnsActual);
             //批量执行sql
-            foreach($bulkSql as $k => &$v) {
+            foreach ($bulkSql as $k => &$v) {
                 self::message('tip', '正在更新字段', __FUNCTION__, $k);
                 //表名
                 $tableName = strtr($k, array('`' => '``'));
@@ -971,14 +974,15 @@ class of_base_tool_mysqlSync {
             }
 
             //设置自增值
-            if( !empty($config['setInc']) ) {
-                foreach($tablesNew as $k => &$v) {
+            if (!empty($config['setInc'])) {
+                foreach ($tablesNew as $k => &$v) {
                     $temp = strtr($v['TABLE_NAME'], array('`' => '``'));
                     self::sql("ALTER TABLE `{$temp}` AUTO_INCREMENT = {$v['AUTO_INCREMENT']}");
                 }
             }
 
-            self::message('tip', '已更新百分比', 'revertBaseProgress', 33.3);                                           //开始对比匹配索引
+            //开始对比匹配索引
+            self::message('tip', '已更新百分比', 'revertBaseProgress', 33.3);
             //批量sql语句
             $bulkSql = array();
             //原始字段信息
@@ -987,11 +991,11 @@ class of_base_tool_mysqlSync {
             $statisticsActual = self::sql("SELECT * FROM `{$prefix}STATISTICS` WHERE TABLE_NAME IN ('{$tableWhere}')");
             //初始化原始字段信息
             $temp = self::getDatabaseStructure('STATISTICS', $tableWhere);
-            foreach($temp as &$v) {
+            foreach ($temp as &$v) {
                 $statisticsOriginal[$v['TABLE_NAME']][$v['INDEX_NAME']] = &$v;
             }
             //对比索引(添加,修改)
-            foreach($statisticsActual as &$v) {
+            foreach ($statisticsActual as &$v) {
                 //字段名
                 $indexName = $v['INDEX_NAME'] === 'PRIMARY' ?
                     '' : '`' .strtr($v['INDEX_NAME'], array('`' => '``')). '`';
@@ -999,13 +1003,13 @@ class of_base_tool_mysqlSync {
                 $indexType = $v['INDEX_TYPE'] === 'FULLTEXT' || $v['INDEX_NAME'] === 'PRIMARY' ?
                     '' : "USING {$v['INDEX_TYPE']}";
                 //索引关键词
-                if( $v['INDEX_NAME'] === 'PRIMARY' ) {
+                if ($v['INDEX_NAME'] === 'PRIMARY') {
                     //主键
                     $indexKey = 'PRIMARY KEY';
-                } elseif( $v['INDEX_TYPE'] === 'FULLTEXT' ) {
+                } else if ($v['INDEX_TYPE'] === 'FULLTEXT') {
                     //文本索引
                     $indexKey = 'FULLTEXT INDEX';
-                } elseif( $v['NON_UNIQUE'] === '0' ) {
+                } else if ($v['NON_UNIQUE'] === '0') {
                     //唯一索引
                     $indexKey = 'UNIQUE INDEX';
                 } else {
@@ -1013,7 +1017,7 @@ class of_base_tool_mysqlSync {
                     $indexKey = 'INDEX';
                 }
 
-                if( 
+                if (
                     !isset($statisticsOriginal[$v['TABLE_NAME']][$v['INDEX_NAME']]) || 
                     $temp = $statisticsOriginal[$v['TABLE_NAME']][$v['INDEX_NAME']] !== $v 
                 ) {
@@ -1024,10 +1028,10 @@ class of_base_tool_mysqlSync {
                 unset($statisticsOriginal[$v['TABLE_NAME']][$v['INDEX_NAME']]);
             }
             //删除废弃索引
-            foreach($statisticsOriginal as $kO => &$vO) {
+            foreach ($statisticsOriginal as $kO => &$vO) {
                 //表名
                 $tableName = strtr($kO, array('`' => '``'));
-                foreach($vO as $k => &$v) {
+                foreach ($vO as $k => &$v) {
                     $temp = $v['INDEX_NAME'] === 'PRIMARY' ? array(
                         'indexName' => '',
                         'dropKey'   => 'PRIMARY KEY'
@@ -1040,8 +1044,7 @@ class of_base_tool_mysqlSync {
             }
             unset($statisticsOriginal, $statisticsActual);
             //批量执行sql
-            foreach($bulkSql as $k => &$v)
-            {
+            foreach ($bulkSql as $k => &$v) {
                 self::message('tip', '正在更新索引', __FUNCTION__, $k);
                 //表名
                 $tableName = strtr($k, array('`' => '``'));
@@ -1051,9 +1054,9 @@ class of_base_tool_mysqlSync {
 
             //删除匹配触发器
             $triggers = self::getDatabaseStructure('TRIGGERS', $tableWhere);
-            if( $temp = count($triggers) ) {
+            if ($temp = count($triggers)) {
                 self::message('tip', '正在删除触发器', __FUNCTION__, $temp);
-                foreach($triggers as &$v) {
+                foreach ($triggers as &$v) {
                     self::sql('DROP TRIGGER `' .strtr($v['TRIGGER_NAME'], array('`' => '``')). '`');
                 }
                 self::message('tip', '已更新百分比', 'revertBaseProgress', 50);
@@ -1062,21 +1065,21 @@ class of_base_tool_mysqlSync {
             //最新字段信息
             $triggers = self::sql("SELECT * FROM `{$prefix}TRIGGERS` WHERE EVENT_OBJECT_TABLE IN ('{$tableWhere}')");
             //创建匹配触发器
-            if( $temp = count($triggers) ) {
+            if ($temp = count($triggers)) {
                 self::message('tip', '正在创建触发器', __FUNCTION__, $temp);
-                foreach($triggers as &$v) {
+                foreach ($triggers as &$v) {
                     $triggerNameSlashes = addslashes($v['TRIGGER_NAME']);
                     //验证重复触发器名
                     do {
                         $temp = self::sql("SELECT COUNT(*) c FROM information_schema.`TRIGGERS` WHERE `TRIGGERS`.TRIGGER_NAME = '{$triggerNameSlashes}'");
                         //false=防止执行错误死循环
-                        if($temp === false || $temp[0]['c'] === '0') {
+                        if ($temp === false || $temp[0]['c'] === '0') {
                             $v['TRIGGER_NAME'] = stripslashes($triggerNameSlashes);
                             break;
                         } else {
                             $triggerNameSlashes = uniqid();
                         }
-                    } while(true);
+                    } while (true);
                     $v['TRIGGER_NAME'] = strtr($v['TRIGGER_NAME'], array('`' => '``'));
                     $v['EVENT_OBJECT_TABLE'] = strtr($v['EVENT_OBJECT_TABLE'], array('`' => '``'));
                     self::sql("CREATE TRIGGER `{$v['TRIGGER_NAME']}` {$v['ACTION_TIMING']} {$v['EVENT_MANIPULATION']} ON `{$v['EVENT_OBJECT_TABLE']}` FOR EACH ROW {$v['ACTION_STATEMENT']}");
@@ -1086,10 +1089,10 @@ class of_base_tool_mysqlSync {
             unset($triggers);
 
             //版本 > 5.1.7
-            if( $dbVersion > 50107 && !empty($partitions) ) {
+            if ($dbVersion > 50107 && !empty($partitions)) {
                 self::message('tip', '正在变更分区', __FUNCTION__, count($partitions));
                 //修改变动的分区
-                foreach($partitions as &$v) {
+                foreach ($partitions as &$v) {
                     $temp = strtr($v['TABLE_NAME'], array('`' => '``'));
                     //执行分区语句
                     self::sql("ALTER TABLE `{$temp}` {$v['PARTITION_SQL']}");
@@ -1100,9 +1103,9 @@ class of_base_tool_mysqlSync {
 
             //删除匹配视图
             $views = self::getDatabaseStructure('VIEWS');
-            if( $temp = count($views) ) {
+            if ($temp = count($views)) {
                 self::message('tip', '正在删除视图', __FUNCTION__, $temp);
-                foreach($views as &$v) {
+                foreach ($views as &$v) {
                     $v['TABLE_NAME'] = strtr($v['TABLE_NAME'], array('`' => '``'));
                     self::sql("DROP VIEW `{$v['TABLE_NAME']}`");
                 }
@@ -1111,10 +1114,10 @@ class of_base_tool_mysqlSync {
 
             //创建匹配视图
             $views = self::sql("SELECT * FROM `{$prefix}VIEWS`");
-            if( $temp = count($views) ) {
+            if ($temp = count($views)) {
                 self::message('tip', '正在创建视图', __FUNCTION__, $temp);
-                foreach($views as &$v) {
-                    if( self::isMatch($v['TABLE_NAME'], 'view') ) {
+                foreach ($views as &$v) {
+                    if (self::isMatch($v['TABLE_NAME'], 'view')) {
                         $v['TABLE_NAME'] = strtr($v['TABLE_NAME'], array('`' => '``'));
                         $v['IS_UPDATABLE'] = $v['IS_UPDATABLE'] === 'YES' ? 'MERGE' : 'TEMPTABLE';
                         //检查项
@@ -1130,9 +1133,9 @@ class of_base_tool_mysqlSync {
 
             //删除匹配存储程序
             $routines = self::getDatabaseStructure('ROUTINES');
-            if( $temp = count($routines) ) {
+            if ($temp = count($routines)) {
                 self::message('tip', '正在删除存储程序', __FUNCTION__, $temp);
-                foreach($routines as &$v) {
+                foreach ($routines as &$v) {
                     $v['ROUTINE_NAME'] = strtr($v['ROUTINE_NAME'], array('`' => '``'));
                     self::sql("DROP {$v['ROUTINE_TYPE']} `{$v['ROUTINE_NAME']}`");
                 }
@@ -1141,10 +1144,10 @@ class of_base_tool_mysqlSync {
 
             //创建匹配存储程序
             $routines = self::sql("SELECT * FROM `{$prefix}ROUTINES`");
-            if( $temp = count($routines) ) {
+            if ($temp = count($routines)) {
                 self::message('tip', '正在创建存储程序', __FUNCTION__, $temp);
-                foreach($routines as &$v) {
-                    if( self::isMatch($v['ROUTINE_NAME'], strtolower($v['ROUTINE_TYPE'])) ) {
+                foreach ($routines as &$v) {
+                    if (self::isMatch($v['ROUTINE_NAME'], strtolower($v['ROUTINE_TYPE']))) {
                         $v['ROUTINE_NAME'] = strtr($v['ROUTINE_NAME'], array('`' => '``'));
                         //决定性
                         $v['IS_DETERMINISTIC'] = $v['IS_DETERMINISTIC'] === 'NO' ? '' : 'DETERMINISTIC';
@@ -1163,10 +1166,10 @@ class of_base_tool_mysqlSync {
 
             //创建匹配外键
             $foreignKey = self::sql("SELECT * FROM `{$prefix}FOREIGNKEY`");
-            if( $temp = count($foreignKey) ) {
+            if ($temp = count($foreignKey)) {
                 self::message('tip', '正在创建外键', __FUNCTION__, $temp);
-                foreach($foreignKey as &$v) {
-                    if( self::isMatch($v['TABLE_NAME'], 'table') ) {
+                foreach ($foreignKey as &$v) {
+                    if (self::isMatch($v['TABLE_NAME'], 'table')) {
                         $v['TABLE_NAME'] = strtr($v['TABLE_NAME'], array('`' => '``'));
                         $v['CONSTRAINT_NAME'] = strtr($v['CONSTRAINT_NAME'], array('`' => '``'));
                         $v['REFERENCED_TABLE_NAME'] = strtr($v['REFERENCED_TABLE_NAME'], array('`' => '``'));
@@ -1218,30 +1221,30 @@ class of_base_tool_mysqlSync {
         );
 
         self::message('tip', '开始备份数据', __FUNCTION__, $tableMatchesNum = count($tableMatches));
-        if( $fp === false ) {
+        if ($fp === false) {
             $returnBool = false;
-        } else if( $tableMatchesNum ) {
+        } else if ($tableMatchesNum) {
             //批量替换反引号
-            foreach($tableMatches as &$v){ $tableBacktick[$v] = strtr($v, array('`' => '``')); }
+            foreach ($tableMatches as &$v) $tableBacktick[$v] = strtr($v, array('`' => '``'));
             //关闭外键限制
-            fwrite($fp , "SET FOREIGN_KEY_CHECKS=0{$sqlSplit}\n");
+            fwrite($fp, "SET FOREIGN_KEY_CHECKS=0{$sqlSplit}\n");
             //全表读锁
             self::sql('LOCK TABLES `' .join('` READ, `', $tableBacktick). '` READ');
             //[当前位置, 进度]
             $nowProgress = array(0,0);
             //字符串,插入或替换模式
-            if( is_string($config['type']) ) {
+            if (is_string($config['type'])) {
                 $insType = $config['type'] = strtoupper($config['type']);
                 $insKey = 'VALUES';
-                fwrite($fp , "LOCK TABLES {$sqlTableMark}`" .join("`{$sqlTableMark} WRITE, {$sqlTableMark}`", $tableBacktick). "`{$sqlTableMark} WRITE{$sqlSplit}\n");    //锁全写表
+                fwrite($fp, "LOCK TABLES {$sqlTableMark}`" . join("`{$sqlTableMark} WRITE, {$sqlTableMark}`", $tableBacktick). "`{$sqlTableMark} WRITE{$sqlSplit}\n");    //锁全写表
             //数组,修复模式(无匹配指定字段时添加)
             } else {
                 $insType = 'REPLACE';
                 $insKey = 'SELECT';
             }
 
-            foreach($tableMatches as $nowProgress[0] => &$tableName) {
-                if( ($temp = round($nowProgress[0] * 100 / $tableMatchesNum, 1)) > $nowProgress[1] + 10 ) {
+            foreach ($tableMatches as $nowProgress[0] => &$tableName) {
+                if (($temp = round($nowProgress[0] * 100 / $tableMatchesNum, 1)) > $nowProgress[1] + 10) {
                     self::message('tip', '已备份百分比', 'backupDataProgress', $nowProgress[1] = $temp);
                 }
                 self::message('tip', '正在备份', __FUNCTION__, $tableName);                                             //提取备份头
@@ -1264,8 +1267,8 @@ class of_base_tool_mysqlSync {
                 //提取备份数据
                 $i = 0;
                 //修复模式
-                if( $insKey === 'SELECT' ) {
-                    if(
+                if ($insKey === 'SELECT') {
+                    if (
                         //非空存在
                         !empty($config['type'][$tableName]) &&
                         //是数组
@@ -1273,32 +1276,32 @@ class of_base_tool_mysqlSync {
                     ) {
                         $config['type'][$tableName] = array_flip($config['type'][$tableName]);
                         //转变成{原字段名:加引号的字段名}
-                        foreach($config['type'][$tableName] as $k => &$v) {
+                        foreach ($config['type'][$tableName] as $k => &$v) {
                             $v = strtr($k, array('`' => '``'));
                         }
                     } else {
                         $config['type'][$tableName] = null;
                     }
                 //INSERT时,加入清空表
-                } elseif( $config['type'] === 'INSERT' ) {
-                    fwrite($fp , "DELETE FROM {$sqlTableMark}`{$tableBacktick[$tableName]}`{$sqlTableMark}{$sqlSplit}\n");
+                } else if ($config['type'] === 'INSERT') {
+                    fwrite($fp, "DELETE FROM {$sqlTableMark}`{$tableBacktick[$tableName]}`{$sqlTableMark}{$sqlSplit}\n");
                 }
 
-                while(true) {
+                while (true) {
                     $dataList = self::sql("SELECT * FROM `{$tableBacktick[$tableName]}` LIMIT {$i}, {$config['count']}");
                     //非空数组
-                    if( is_array($dataList) && isset($dataList[0]) ) {
+                    if (is_array($dataList) && isset($dataList[0])) {
                         $nowData = array();
-                        foreach($dataList as &$data) {
-                            foreach($data as &$v) {
+                        foreach ($dataList as &$data) {
+                            foreach ($data as &$v) {
                                 $v = $v === null ? 'NULL' : '\'' .addslashes($v). '\'';
                             }
                             //修复模式
-                            if( $insKey === 'SELECT' ) {
+                            if ($insKey === 'SELECT') {
                                 $repairWhere = null;
                                 //对应表名有限制
-                                if( isset($config['type'][$tableName]) ) {
-                                    foreach( $config['type'][$tableName] as $stintName => &$stintBacktickName ) {
+                                if (isset($config['type'][$tableName])) {
+                                    foreach ($config['type'][$tableName] as $stintName => &$stintBacktickName) {
                                         $repairWhere[] = "`{$stintBacktickName}` = {$data[$stintName]}";
                                     }
                                     $repairWhere = " FROM (SELECT TRUE) `data` WHERE NOT EXISTS(SELECT TRUE FROM {$sqlTableMark}`{$tableBacktick[$tableName]}`{$sqlTableMark} WHERE " . join(' AND ', $repairWhere) . ' LIMIT 1)';
@@ -1311,11 +1314,11 @@ class of_base_tool_mysqlSync {
                         }
 
                         //修复模式
-                        if( $insKey === 'SELECT' ) {
-                            fwrite($fp , join("{$sqlSplit}\n", $nowData) . "{$sqlSplit}\n");
+                        if ($insKey === 'SELECT') {
+                            fwrite($fp, join("{$sqlSplit}\n", $nowData) . "{$sqlSplit}\n");
                         //插入或替换模式时匹配操作
                         } else {
-                            fwrite($fp , $nowSqlHead . join(",\n", $nowData) . "{$sqlSplit}\n");
+                            fwrite($fp, $nowSqlHead . join(",\n", $nowData) . "{$sqlSplit}\n");
                         }
 
                         $i += $config['count'];
@@ -1328,9 +1331,9 @@ class of_base_tool_mysqlSync {
 
             self::sql('UNLOCK TABLES');
             //非修复模式时解锁
-            $insKey === 'SELECT' || fwrite($fp , "UNLOCK TABLES{$sqlSplit}\n");
+            $insKey === 'SELECT' || fwrite($fp, "UNLOCK TABLES{$sqlSplit}\n");
             //开启外键限制
-            fwrite($fp , "SET FOREIGN_KEY_CHECKS=1{$sqlSplit}\n");
+            fwrite($fp, "SET FOREIGN_KEY_CHECKS=1{$sqlSplit}\n");
         }
 
         self::openFile(false);
@@ -1366,14 +1369,14 @@ class of_base_tool_mysqlSync {
             'count' => 200
         );
 
-        if( $fp === false ) {
+        if ($fp === false) {
             $returnBool = false;
         //备份表相关
         } else {
             //获取过滤列表
             $tableMatches = &self::getMatches('table');
             self::message('tip', '开始备份表', __FUNCTION__, $temp = count($tableMatches));
-            if( $temp ) {
+            if ($temp) {
                 //sql标记
                 $sqlTableMark = self::$config['sqlMark']['table'];
                 //表名限制条件,格式:"表名','表名','表名..."
@@ -1385,17 +1388,17 @@ class of_base_tool_mysqlSync {
                 $foreignKeyRule = array();
                 //备份外键
                 $foreignKey = self::getDatabaseStructure('FOREIGNKEY', $tableWhere);
-                if(count($foreignKey)) {
+                if (count($foreignKey)) {
                     self::message('tip', '正在备份外键', __FUNCTION__);
-                    foreach($foreignKey as &$v) {
+                    foreach ($foreignKey as &$v) {
                         //外键关联表有效
-                        if( isset($tableFlip[$v['REFERENCED_TABLE_NAME']]) ) {
+                        if (isset($tableFlip[$v['REFERENCED_TABLE_NAME']])) {
                             //提取外键更新及时删除规则
-                            if( !isset($foreignKeyRule[$v['TABLE_NAME']][$v['CONSTRAINT_NAME']]) ) {
+                            if (!isset($foreignKeyRule[$v['TABLE_NAME']][$v['CONSTRAINT_NAME']])) {
                                 $rule = &$foreignKeyRule[$v['TABLE_NAME']];
                                 $temp = self::sql('SHOW CREATE TABLE `' .strtr($v['TABLE_NAME'], array('`' => '``')). '`');
                                 preg_match_all('@CONSTRAINT `(.*)` FOREIGN KEY .*\) *([\w ]*)@', $temp[0]['Create Table'], $temp, PREG_SET_ORDER);
-                                foreach($temp as &$match) {
+                                foreach ($temp as &$match) {
                                     $match[2] = explode('ON UPDATE ', trim(strtr($match[2], array('ON DELETE ' => ''))));
                                     $rule[$match[1]] = array(
                                         //删除规则
@@ -1427,9 +1430,9 @@ class of_base_tool_mysqlSync {
 
                 //备份触发器
                 $triggers = self::getDatabaseStructure('TRIGGERS', $tableWhere);
-                if(count($triggers)) {
+                if (count($triggers)) {
                     self::message('tip', '正在备份触发器', __FUNCTION__);
-                    foreach($triggers as &$v) {
+                    foreach ($triggers as &$v) {
                         $v = array_map('addslashes', $v);
                         $v = "('{$v['TRIGGER_NAME']}','{$v['EVENT_MANIPULATION']}',{$sqlTableMark}'{$v['EVENT_OBJECT_TABLE']}'{$sqlTableMark},'{$v['ACTION_STATEMENT']}','{$v['ACTION_TIMING']}')";
                     }
@@ -1446,11 +1449,11 @@ class of_base_tool_mysqlSync {
 
                 //备份表信息
                 $tables = self::getDatabaseStructure('TABLES', $tableWhere);
-                if(count($tables)) {
+                if (count($tables)) {
                     self::message('tip', '正在备份表信息', __FUNCTION__);
-                    foreach($tables as &$v) {
+                    foreach ($tables as &$v) {
                         //替换 mysql 5.1.21 之前多余的描述
-                        if( $dbVersion < 50121 ) {
+                        if ($dbVersion < 50121) {
                             $v['TABLE_COMMENT'] = preg_replace('@^(.*)(?:(?:; |\1)InnoDB free: \d+ .*)$@', '\1', $v['TABLE_COMMENT']);
                         }
                         $v = array_map('addslashes', $v);
@@ -1469,10 +1472,10 @@ class of_base_tool_mysqlSync {
 
                 //备份字段
                 $columns = self::getDatabaseStructure('COLUMNS', $tableWhere);
-                if( count($columns) ) {
+                if (count($columns)) {
                     self::message('tip', '正在备份字段', __FUNCTION__);
-                    foreach($columns as &$v) {
-                        foreach($v as &$value) {
+                    foreach ($columns as &$v) {
+                        foreach ($v as &$value) {
                             $value = $value === null ? 'NULL' : '\'' .addslashes($value). '\'';
                         }
                         $v = "({$sqlTableMark}{$v['TABLE_NAME']}{$sqlTableMark},{$v['COLUMN_NAME']},{$v['ORDINAL_POSITION']},{$v['COLUMN_DEFAULT']},{$v['IS_NULLABLE']},{$v['CHARACTER_SET_NAME']},{$v['COLLATION_NAME']},{$v['COLUMN_TYPE']},{$v['EXTRA']},{$v['COLUMN_COMMENT']})";
@@ -1490,9 +1493,9 @@ class of_base_tool_mysqlSync {
 
                 //备份索引
                 $statistics = self::getDatabaseStructure('STATISTICS', $tableWhere);
-                if(count($statistics)) {
+                if (count($statistics)) {
                     self::message('tip', '正在备份索引', __FUNCTION__);
-                    foreach($statistics as &$v) {
+                    foreach ($statistics as &$v) {
                         $v = array_map('addslashes', $v);
                         $v = "({$sqlTableMark}'{$v['TABLE_NAME']}'{$sqlTableMark},'{$v['NON_UNIQUE']}','{$v['INDEX_NAME']}','{$v['COLUMNS_NAME']}','{$v['INDEX_TYPE']}')";
                     }
@@ -1508,12 +1511,12 @@ class of_base_tool_mysqlSync {
                 }
 
                 //版本 > 5.1.7
-                if( $dbVersion > 50107 ) {
+                if ($dbVersion > 50107) {
                     //备份分区
                     $partitions = self::getDatabaseStructure('PARTITIONS', $tableWhere);
-                    if(count($partitions)) {
+                    if (count($partitions)) {
                         self::message('tip', '正在备份分区', __FUNCTION__);
-                        foreach($partitions as &$v) {
+                        foreach ($partitions as &$v) {
                             $v = array_map('addslashes', $v);
                             $v = "({$sqlTableMark}'{$v['TABLE_NAME']}'{$sqlTableMark},'{$v['PARTITION_SQL']}','{$v['COLUMNS_COMPARE']}')";
                         }
@@ -1532,12 +1535,12 @@ class of_base_tool_mysqlSync {
 
             //备份视图相关
             $views = self::getDatabaseStructure('VIEWS');
-            if( $temp = count($views) ) {
+            if ($temp = count($views)) {
                 self::message('tip', '开始备份视图', __FUNCTION__, $temp);
                 //sql标记
                 $sqlViewMark = self::$config['sqlMark']['view'];
                 //分析视图体
-                foreach($views as &$v) {
+                foreach ($views as &$v) {
                     $v['VIEW_DEFINITION'] = strtr($v['TABLE_NAME'], array('`' => '``'));
                     $temp = self::sql("SHOW CREATE VIEW `{$v['VIEW_DEFINITION']}`");
                     preg_match('@^.*? SQL SECURITY \w+ VIEW `.{' .strlen($v['VIEW_DEFINITION']). '}` AS (.*)@', $temp[0]['Create View'], $temp);
@@ -1559,14 +1562,14 @@ class of_base_tool_mysqlSync {
 
             //备份存储程序相关
             $routines = self::getDatabaseStructure('ROUTINES');
-            if( $temp = count($routines) ) {
+            if ($temp = count($routines)) {
                 self::message('tip', '开始备份存储程序', __FUNCTION__, $temp);
                 //sql标记
                 $sqlProcedureMark = self::$config['sqlMark']['procedure'];
                 //sql标记
                 $sqlFunctionMark = self::$config['sqlMark']['function'];
-                foreach($routines as &$v) {
-                    if($v['ROUTINE_TYPE'] === 'FUNCTION') {
+                foreach ($routines as &$v) {
+                    if ($v['ROUTINE_TYPE'] === 'FUNCTION') {
                         $createSql = 'Create Function';
                         $sqlMark = $sqlFunctionMark;
                         $matchParams = '(?=\s+RETURNS)';
@@ -1616,9 +1619,9 @@ class of_base_tool_mysqlSync {
         $fp = &self::openFile($file, 'r');
 
         //依次提取sql
-        if( $file === null ) {
+        if ($file === null) {
             //未打开文件流
-            if( $fp === false ) {
+            if ($fp === false) {
                 self::message('error', '未指定提取文件', __FUNCTION__);
                 return null;
             //文件流已打开
@@ -1655,24 +1658,23 @@ class of_base_tool_mysqlSync {
                     $sqlSplit => false
                 );
 
-                while(true) {
-                    if( !isset($str[$nowOffset]) ) {
+                while (true) {
+                    if (!isset($str[$nowOffset])) {
                         //最后读取数据
-                        $lastStr = fread($fp , 1024);
+                        $lastStr = fread($fp, 1024);
                         $str .= $lastStr;
                     }
 
                     //读取到数据
-                    if( $lastStr ) {
+                    if ($lastStr) {
                         $matchData = of_base_com_str::strArrPos($str, $tempMatches === null ? $defaultMatches : $tempMatches, $nowOffset);
 
                         //没查找到数据
-                        if( $matchData === false )
-                        {
+                        if ($matchData === false) {
                             //移动偏移量到"最后+1"的字符
                             $nowOffset = strlen($str);
                         //分隔符
-                        } elseif($matchData['match'] === $sqlSplit) {
+                        } else if ($matchData['match'] === $sqlSplit) {
                             //记录文件偏移量
                             $fileOffset += $matchData['position'] + strlen($sqlSplit);
                             //截取完整sql
@@ -1681,36 +1683,36 @@ class of_base_tool_mysqlSync {
                         } else {
                             //偏移量+1
                             $nowOffset = $matchData['position'] + 1;
-                            switch( $matchData['match'][0] ) {
+                            switch ($matchData['match'][0]) {
                                 //关键反引号,当 $tempMatches === null 时,开始寻找下一个结束点,否则正常寻找分隔符
-                                case '`'       :
+                                case '`':
                                     //匹配下一个字符串
                                     $tempMatches = $tempMatches === null ? array( '`' => false ) : null;
                                     break;
                                 //字符串,当 $tempMatches === null 时,开始寻找下一个结束点,否则正常寻找分隔符
-                                case '\''      :
-                                case '"'       :
+                                case '\'':
+                                case '"':
                                     //匹配下一个字符串
                                     $tempMatches = $tempMatches === null ?
                                         array( $matchData['match'][0] => true ) : null;
                                     break;
                                 //单行注释,当 $tempMatches === null 时,开始寻找下一个换行符,否则正常寻找分隔符
-                                case '#'       :
-                                case '-'       :
-                                case "\n"      :
+                                case '#':
+                                case '-':
+                                case "\n":
                                     //匹配下一个字符串
                                     $tempMatches = $tempMatches === null ? array( "\n" => false ) : null;
                                     break;
                                 //多行注释,当 $tempMatches === null 时,开始寻找下一个"*/",否则正常寻找分隔符
-                                case '/'       :
-                                case '*'       :
+                                case '/':
+                                case '*':
                                     //匹配下一个字符串
                                     $tempMatches = $tempMatches === null ? array( '*/' => false ) : null;
                                     break;
                             }
                         }
                     //无数据或出错,读取到了最后
-                    } else if( ($temp = strlen($str)) === 0 ) {
+                    } else if (($temp = strlen($str)) === 0) {
                         self::openFile(false);
                         return null;
                     //无数据或出错,未读到了最后
@@ -1741,17 +1743,17 @@ class of_base_tool_mysqlSync {
         static $engines = null;
 
         //初始化支持的引擎列表
-        if( $engines === null ) {
+        if ($engines === null) {
             $temp = self::sql('SHOW ENGINES');
-            foreach( $temp as &$v ) {
+            foreach ($temp as &$v) {
                 //DEFAULT,YES已启用的扩展
-                if( $v['Support'] !== 'NO' ) {
+                if ($v['Support'] !== 'NO') {
                     $engines[$v['Engine']] = $v['Engine'];
                 }
             }
         }
 
-        if( $type === true ) {
+        if ($type === true) {
             //内部前缀
             $prefix = self::$config['prefix'];
             $temp = join('\',\'', $engines);
@@ -1783,8 +1785,7 @@ class of_base_tool_mysqlSync {
     private static function sqlChunkMerger($head, &$data, $chunk = 0) {
         $sqlSplit = self::$config['sqlSplit'] . "\n";    //分隔符
         $data = $chunk > 0 ? array_chunk($data, $chunk) : array($data);
-        foreach($data as &$v)
-        {
+        foreach ($data as &$v) {
             $v = $head . join(",\n", $v);
         }
         return join($sqlSplit, $data) . $sqlSplit;
@@ -1802,7 +1803,7 @@ class of_base_tool_mysqlSync {
     private static function getDatabaseStructure($type, &$where = null) {
         //数据库
         $database = &self::$config['databaseSlashes'];
-        switch($type) {
+        switch ($type) {
             //外键
             case 'FOREIGNKEY':
                 $where === null && $where = join('\',\'', array_map('addslashes', self::getMatches('table')));
@@ -1835,7 +1836,7 @@ class of_base_tool_mysqlSync {
                     `KEY_COLUMN_USAGE`.CONSTRAINT_NAME";
                 break;
             //表信息
-            case 'TABLES'    :
+            case 'TABLES':
                 $where === null && $where = join('\',\'', array_map('addslashes', self::getMatches('table')));
                 $sql = "SELECT
                     `TABLES`.TABLE_NAME,                                    /*表名*/
@@ -1853,7 +1854,7 @@ class of_base_tool_mysqlSync {
                 AND `TABLES`.TABLE_TYPE = 'BASE TABLE'                      /*表类型*/";
                 break;
             //字段
-            case 'COLUMNS'   :
+            case 'COLUMNS':
                 $where === null && $where = join('\',\'', array_map('addslashes', self::getMatches('table')));
                 $sql = "SELECT
                     `COLUMNS`.TABLE_NAME,            /*表名*/
@@ -1903,7 +1904,7 @@ class of_base_tool_mysqlSync {
                     `STATISTICS`.INDEX_NAME";
                 break;
             //水平分区
-            case 'PARTITIONS'  :
+            case 'PARTITIONS':
                 $where === null && $where = join('\',\'', array_map('addslashes', self::getMatches('table')));
                 $sql = "(SELECT
                     IF(
@@ -2003,7 +2004,7 @@ class of_base_tool_mysqlSync {
                     `data`.TABLE_NAME";
                 break;
             //触发器
-            case 'TRIGGERS'  :
+            case 'TRIGGERS':
                 $where === null && $where = join('\',\'', array_map('addslashes', self::getMatches('table')));
                 $sql = "SELECT
                     `TRIGGERS`.TRIGGER_NAME,          /*触发器名*/
@@ -2018,7 +2019,7 @@ class of_base_tool_mysqlSync {
                 AND `TRIGGERS`.EVENT_OBJECT_TABLE IN ('{$where}')";
                 break;
             //视图
-            case 'VIEWS'     :
+            case 'VIEWS':
                 $where === null && $where = join('\',\'', array_map('addslashes', self::getMatches('view')));
                 $sql = "SELECT
                     `VIEWS`.TABLE_NAME,         /*视图名*/
@@ -2033,7 +2034,7 @@ class of_base_tool_mysqlSync {
                 AND `VIEWS`.TABLE_NAME IN ('{$where}')";
                 break;
             //存储程序
-            case 'ROUTINES'  :
+            case 'ROUTINES':
                 $where === null && $where = array(
                     'function'  => join('\',\'', array_map('addslashes', self::getMatches('function'))),
                     'procedure' => join('\',\'', array_map('addslashes', self::getMatches('procedure')))

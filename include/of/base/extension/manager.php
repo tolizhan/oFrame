@@ -10,10 +10,10 @@ class of_base_extension_manager {
      *      key : 指定常量
      * 作者 : Edgar.lee
      */
-    static public function getConstant($key) {
+    public static function getConstant($key) {
         static $constants = null;
 
-        if( $constants === null ) {
+        if ($constants === null) {
             $extensionDir = of::config('_of.extension.path', OF_DATA . '/extensions');
             $constants = array(
                 //扩展基类名
@@ -23,7 +23,7 @@ class of_base_extension_manager {
             );
 
             //创建扩展根目录
-            is_dir($constants['extensionDir']) || mkdir($constants['extensionDir'] ,0777 ,true);
+            is_dir($constants['extensionDir']) || mkdir($constants['extensionDir'], 0777, true);
         }
 
         return isset($constants[$key]) ? $constants[$key] : false;
@@ -43,30 +43,30 @@ class of_base_extension_manager {
      *      }
      * 作者 : Edgar.lee
      */
-    static public function getExtensionInfo($extensions = null) {
+    public static function getExtensionInfo($extensions = null) {
         //扩展路径
         $extensionDir = self::getConstant('extensionDir');
         //扩展列表
         $extensions === null && $extensions = self::loadConfig(null);
 
         $handle = opendir($extensionDir);
-        while ( ($fileName = readdir($handle)) !== false ) {
-            if ( $fileName[0] !== '.' && is_dir("{$extensionDir}/{$fileName}") ) {
+        while (($fileName = readdir($handle)) !== false) {
+            if ($fileName[0] !== '.' && is_dir("{$extensionDir}/{$fileName}")) {
                 $temp = $extensions[$fileName]['config'] = self::loadConfig($fileName);
-                if( !(
+                if (!(
                     //配置是数组
                     is_array($temp) &&
                     //存在版本号
                     isset($temp['properties']['version']) &&
                     //匹配是数组
                     isset($temp['matches']) && is_array($temp['matches'])
-                ) ) {
+                )) {
                     //配置文件有问题
                     $extensions[$fileName]['state'] = '3.1';
-                } else if( !isset($extensions[$fileName]['state']) ) {
+                } else if (!isset($extensions[$fileName]['state'])) {
                     //扩展没有安装
                     $extensions[$fileName]['state'] = '0';
-                } else if( 
+                } else if (
                     $extensions[$fileName]['state'] === '3' || 
                     $extensions[$fileName]['state'] === '2' 
                 ) {
@@ -89,8 +89,8 @@ class of_base_extension_manager {
         closedir($handle);
 
         //删除不存在的扩增
-        foreach($extensions as $k => &$v) {
-            if( empty($v['config']) ) unset($extensions[$k]);
+        foreach ($extensions as $k => &$v) {
+            if (empty($v['config'])) unset($extensions[$k]);
         }
         return $extensions;
     }
@@ -104,7 +104,7 @@ class of_base_extension_manager {
      *      成功返回ture,失败返回false
      * 作者 : Edgar.lee
      */
-    static public function setupExtension($name, $callMsg = null) {
+    public static function setupExtension($name, $callMsg = null) {
         //返回值
         $returnBool = true;
         //加锁读取扩展列表
@@ -113,7 +113,7 @@ class of_base_extension_manager {
         //扩展引用
         $extensionConfig = &$extensionConfig[$name];
 
-        if(
+        if (
             //存在扩展
             isset($extensionConfig['state']) &&
             //(没安装扩展 或 需要升级)
@@ -124,7 +124,7 @@ class of_base_extension_manager {
             self::loadConfig($extensions);
 
             //更新前调用
-            if( self::updateCallback('before', $name, $callMsg, $extensionConfig) === true ) {
+            if (self::updateCallback('before', $name, $callMsg, $extensionConfig) === true) {
                 //安装语言包
                 self::updateLanguage($name, true);
 
@@ -136,7 +136,7 @@ class of_base_extension_manager {
 
                 //更新后调用
                 $returnBool = self::updateCallback('after', $name, $callMsg, $extensionConfig);
-            } elseif( is_callable($callMsg) ) {
+            } else if (is_callable($callMsg)) {
                 call_user_func($callMsg, array(
                     'state'   => 'error',
                     'message' => L::getText('无效更新', array('key'=>'of_base_extension_manager::setupExtension')),
@@ -175,7 +175,7 @@ class of_base_extension_manager {
      *      成功返回ture,失败返回false
      * 作者 : Edgar.lee
      */
-    static public function removeExtension($name, $callMsg = null) {
+    public static function removeExtension($name, $callMsg = null) {
         //加锁读取扩展列表
         $extensions = self::loadConfig(true);
         $extensionConfig = self::getExtensionInfo($extensions);
@@ -183,7 +183,7 @@ class of_base_extension_manager {
         $extensionConfig = &$extensionConfig[$name];
 
         //移除失败
-        if(
+        if (
             //扩展无效
             !isset($extensionConfig['state']) ||
             //锁定状态
@@ -226,14 +226,14 @@ class of_base_extension_manager {
      *      成功返回ture,失败返回false
      * 作者 : Edgar.lee
      */
-    static public function dataManager($name, $callMsg = null, $dirname = null) {
+    public static function dataManager($name, $callMsg = null, $dirname = null) {
         //加锁读取扩展列表
         $extensions = self::loadConfig(true);
         $extensionConfig = self::getExtensionInfo($extensions);
         //扩展引用
         $extensionConfig = &$extensionConfig[$name];
 
-        if( 
+        if (
             //扩展存在
             isset($extensionConfig['state']) &&
             //(没错误没锁定 && 已安装)
@@ -272,11 +272,11 @@ class of_base_extension_manager {
      *      update : false=删除语言包,默认true=更新语言包,null=打包语言包
      * 作者 : Edgar.lee
      */
-    static public function updateLanguage($name = null, $update = true) {
+    public static function updateLanguage($name = null, $update = true) {
         $extensionConfig = self::getExtensionInfo();
         $name === null || $extensionConfig = array($name => &$extensionConfig[$name]);
 
-        if( class_exists('of_base_language_packs', false) ) {
+        if (class_exists('of_base_language_packs', false)) {
             //语言包磁盘路径
             $lRootPath = of::config('_of.language.path', null, 'dir');
             //扩展磁盘路径
@@ -284,9 +284,9 @@ class of_base_extension_manager {
             //扩展相对路径
             $eRelaPath = of::config('_of.extension.path', OF_DATA . '/extensions');
 
-            foreach($extensionConfig as $name => &$v) {
+            foreach ($extensionConfig as $name => &$v) {
                 //已安装 && 配置文件没问题
-                if( isset($v['state']) && $v['state'] > 0 && $v['state'] < 3.1 ) {
+                if (isset($v['state']) && $v['state'] > 0 && $v['state'] < 3.1) {
                     //扩展语言包路径
                     $eLanguagePath = "{$eRootPath}/{$name}/_info/language";
                     //有效语言包目录
@@ -294,25 +294,27 @@ class of_base_extension_manager {
                     unset($eLanguageDir[array_search($eLanguagePath . '/base', $eLanguageDir)]);
 
                     //打包语言包
-                    if( $update === null ) {
+                    if ($update === null) {
                         //存在语言包
-                        if( is_dir($temp = "{$lRootPath}/base/source{$eRelaPath}/{$name}") ) {
+                        if (is_dir($temp = "{$lRootPath}/base/source{$eRelaPath}/{$name}")) {
                             self::deletePath("{$eLanguagePath}/base");
                             self::copyPath($temp, "{$eLanguagePath}/base/source");
 
                             $index = &of_base_language_toolBaseClass::merge("/base/source{$eRelaPath}/{$name}", "_{$eLanguagePath}/base");
                             //合并基包到其它语言
-                            foreach($eLanguageDir as &$v) of_base_language_toolBaseClass::pack('_' . $v, $index);
+                            foreach ($eLanguageDir as &$v) {
+                                of_base_language_toolBaseClass::pack('_' . $v, $index);
+                            }
                         }
                     //卸载或更新安装的语言包
                     } else {
-                        foreach($eLanguageDir as &$v) {
+                        foreach ($eLanguageDir as &$v) {
                             //文件夹名称
                             $folderName = basename($v);
                             //系统语言包存在
-                            if( is_dir($temp = "{$lRootPath}/{$folderName}") ) {
+                            if (is_dir($temp = "{$lRootPath}/{$folderName}")) {
                                 //保存原始语言包
-                                if( !is_dir("{$temp}/merge") ) {
+                                if (!is_dir("{$temp}/merge")) {
                                     self::copyPath("{$temp}/php.txt", "{$temp}/merge/base/php.txt");
                                     self::copyPath("{$temp}/js.txt", "{$temp}/merge/base/js.txt");
                                 }
@@ -322,7 +324,7 @@ class of_base_extension_manager {
                                 //安装语言包
                                 $update && self::copyPath($v, "{$temp}/merge/{$name}");
 
-                                foreach(glob("{$temp}/merge/*", GLOB_ONLYDIR) as $path) {
+                                foreach (glob("{$temp}/merge/*", GLOB_ONLYDIR) as $path) {
                                     of::arrayReplaceRecursive($index, of_base_language_toolBaseClass::pack('_' . $path));
                                 }
                                 of_base_language_toolBaseClass::pack('_' . $temp, $index);
@@ -345,7 +347,7 @@ class of_base_extension_manager {
      *      成功返回true,失败返回false
      * 作者 : Edgar.lee
      */
-    static public function changeState($name, $state = null) {
+    public static function changeState($name, $state = null) {
         //返回布尔
         $returnBool = true;
         //加锁读取扩展列表
@@ -354,17 +356,15 @@ class of_base_extension_manager {
         //扩展引用
         $extensionConfig = &$extensionConfig[$name];
 
-        if( isset($extensionConfig['state']) )
-        {
+        if (isset($extensionConfig['state'])) {
             //运行
-            if( $extensionConfig['state'] === '1' )
-            {
+            if ($extensionConfig['state'] === '1') {
                 $extensions[$name]['state'] = $state === null ? '2' : '1';
             //暂停
-            } else if( $extensionConfig['state'] === '2' ) {
+            } else if ($extensionConfig['state'] === '2') {
                 $extensions[$name]['state'] = $state === null ? '1' : '2';
             //锁定
-            } else if( $extensionConfig['state'] === '3' && $state === true ) {
+            } else if ($extensionConfig['state'] === '3' && $state === true) {
                 $extensions[$name]['state'] = '2';
             } else {
                 $returnBool = false;
@@ -382,7 +382,7 @@ class of_base_extension_manager {
      * 描述 : 调整sql语句
      * 作者 : Edgar.lee
      */
-    static public function callAdjustSql(&$sql, $type, $param) {
+    public static function callAdjustSql(&$sql, $type, $param) {
         $sql = preg_replace('@(/\*`N:\w\'\*/)(\'|`)e_[0-9a-z]+_(.*?)\2\1@i', '\2e_' .$param['name']. '_\3\2', $sql);
     }
 
@@ -394,36 +394,36 @@ class of_base_extension_manager {
      *      成功返回文件内容,失败返回false
      * 作者 : Edgar.lee
      */
-    static private function loadConfig($dir = null) {
+    private static function loadConfig($dir = null) {
         //引用扩展文件列表流
         static $fopenIndex = null;
         //扩展路径
         $extensionDir = self::getConstant('extensionDir');
 
         //读取配置文件
-        if( is_string($dir) ) {
+        if (is_string($dir)) {
             //配置文件存在 && 是数组
-            return is_file( $temp = "{$extensionDir}/{$dir}/config.php" ) && is_array($config = include $temp) ?
+            return is_file($temp = "{$extensionDir}/{$dir}/config.php") && is_array($config = include $temp) ?
                 $config : false;
         //读取扩展列表
         } else {
-            if( $fopenIndex === null ){
+            if ($fopenIndex === null) {
                 //兼容 php<5.2.6 代码
-                $fopenIndex = fopen($filePath = "{$extensionDir}/extensions.php" , is_file($filePath) ? 'r+' : 'x+');
+                $fopenIndex = fopen($filePath = "{$extensionDir}/extensions.php", is_file($filePath) ? 'r+' : 'x+');
             }
             //无权限
-            if( $fopenIndex === false ) {
+            if ($fopenIndex === false) {
                 trigger_error("'{$extensionDir}/extensions.php' Permission denied"); return array();
             }
 
             //已加锁或不加锁方式读取扩展列表
-            if( $dir === null || $dir === true ) {
+            if ($dir === null || $dir === true) {
                 //$dir === true ? 独享锁 : 共享锁
-                flock($fopenIndex , $dir ? LOCK_EX : LOCK_SH);
+                flock($fopenIndex, $dir ? LOCK_EX : LOCK_SH);
                 fseek($fopenIndex, 15);
                 do {
-                    $temp[] = fread($fopenIndex , 1024);
-                } while( !feof($fopenIndex) );
+                    $temp[] = fread($fopenIndex, 1024);
+                } while (!feof($fopenIndex));
                 //$dir !== true则关闭连接
                 !$dir && fclose($fopenIndex) && $fopenIndex = null;
 
@@ -431,12 +431,12 @@ class of_base_extension_manager {
             // $dir 是数组或false
             } else {
                 //写入数据
-                if( is_array($dir) ) {
+                if (is_array($dir)) {
                     //独享锁
-                    flock($fopenIndex , LOCK_EX);
+                    flock($fopenIndex, LOCK_EX);
                     fseek($fopenIndex, 0);
                     ftruncate($fopenIndex, 0);
-                    fwrite($fopenIndex , '<?php exit; ?> ' . serialize($dir));
+                    fwrite($fopenIndex, '<?php exit; ?> ' . serialize($dir));
                 }
                 //解锁关闭文件流
                 fclose($fopenIndex) && $fopenIndex = null;
@@ -455,7 +455,7 @@ class of_base_extension_manager {
      *      成功返回true,失败返回false
      * 作者 : Edgar.lee
      */
-    static private function updateCallback($type, $name, &$call, &$config) {
+    private static function updateCallback($type, $name, &$call, &$config) {
         //更新调用参数
         $callParam = array(
             //回调消息
@@ -489,13 +489,13 @@ class of_base_extension_manager {
      *      成功返回true,失败返回false
      * 作者 : Edgar.lee
      */
-    static private function deletePath($path) {
-        if( is_file($path) ) {
+    private static function deletePath($path) {
+        if (is_file($path)) {
             return unlink($path);
-        } else if( is_dir($path) ) {
-            if($dp = opendir($path)) {
-                while(($file=readdir($dp)) !== false) {
-                    if ($file !== '.' && $file !== '..' ) {
+        } else if (is_dir($path)) {
+            if ($dp = opendir($path)) {
+                while (($file=readdir($dp)) !== false) {
+                    if ($file !== '.' && $file !== '..') {
                         self::deletePath($path .'/'. $file);
                     }
                 }
@@ -514,17 +514,17 @@ class of_base_extension_manager {
      *      成功返回true,失败返回false
      * 作者 : Edgar.lee
      */
-    static private function copyPath($source, $dest) {
-        if( is_file($source) ) {
+    private static function copyPath($source, $dest) {
+        if (is_file($source)) {
             //创建目录
             is_dir($isDir = dirname($dest)) || mkdir($isDir, 0777, true);
             return copy($source, $dest);
-        } else if( is_dir($source) ) {
+        } else if (is_dir($source)) {
             //创建目录
             is_dir($dest) || mkdir($dest, 0777, true);
-            if($dp = opendir($source)) {
-                while(($file=readdir($dp)) != false) {
-                    if ($file !== '.' && $file !== '..' ) {
+            if ($dp = opendir($source)) {
+                while (($file=readdir($dp)) != false) {
+                    if ($file !== '.' && $file !== '..') {
                         self::copyPath("{$source}/{$file}", "{$dest}/{$file}");
                     }
                 }
@@ -546,11 +546,11 @@ class of_base_extension_manager {
      *      成功返回true, 失败返回false
      * 作者 : Edgar.lee
      */
-    static private function databaseUpdate($name, $type = null, $dirname = null, $callMsg = null, $extra = array()) {
+    private static function databaseUpdate($name, $type = null, $dirname = null, $callMsg = null, $extra = array()) {
         //扩展_info根目录
         $infoPath = self::getConstant('extensionDir') . "/{$name}/_info";
 
-        if( $returnBool = of_base_tool_mysqlSync::init(array(
+        if ($returnBool = of_base_tool_mysqlSync::init(array(
             'adjustSqlParam' => array('name' => strtolower($name)),
             'callAdjustSql'  => 'of_base_extension_manager::callAdjustSql',
             'callDb'         => 'of_db::sql',
@@ -565,16 +565,21 @@ class of_base_extension_manager {
                 'procedure'  => false,
                 'function'   => false,
             )
-        )) ) {
+        ))) {
             //备份
-            if( $type === true ) {
+            if ($type === true) {
                 $backupPath = "{$infoPath}/backupData/" . ($dirname === null ? date('YmdHis', $_SERVER['REQUEST_TIME']) : $dirname);    //初始文件夹名
                 //删除路径
                 self::deletePath($backupPath);
-                if( $returnBool = of_base_tool_mysqlSync::backupBase($backupPath . '/structure.sql') )                //备份结构
-                {
-                    if( $returnBool = of_base_tool_mysqlSync::backupData($backupPath . '/backupData.sql', array('type' => $dirname === null ? 'INSERT' : 'REPLACE')) )    //备份数据
-                    {
+                //备份结构
+                if ($returnBool = of_base_tool_mysqlSync::backupBase($backupPath . '/structure.sql')) {
+                    $returnBool = of_base_tool_mysqlSync::backupData(
+                        $backupPath . '/backupData.sql',
+                        array('type' => $dirname === null ? 'INSERT' : 'REPLACE')
+                    );
+
+                    //备份数据
+                    if ($returnBool) {
                         self::copyPath("{$infoPath}/sharedData/data.php", "{$backupPath}/sharedData.php");
                     }
                 }
@@ -582,26 +587,28 @@ class of_base_extension_manager {
                 //备份失败删除路径
                 $returnBool || self::deletePath($backupPath);
             //恢复
-            } elseif( $type === false ) {
+            } else if ($type === false) {
                 //默认恢复数据
                 $extra += array('revertData' => true);
-                if( is_dir($dirname = "{$infoPath}/backupData/{$dirname}") ) {
+                if (is_dir($dirname = "{$infoPath}/backupData/{$dirname}")) {
                     //恢复结构
-                    if(
-                        ($returnBool = of_base_tool_mysqlSync::revertBase($dirname . '/structure.sql')) && 
-                        $extra['revertData'] 
+                    if (
+                        ($returnBool = of_base_tool_mysqlSync::revertBase($dirname . '/structure.sql')) &&
+                        $extra['revertData']
                     ) {
-                        $returnBool = of_base_tool_mysqlSync::revertData($dirname . '/backupData.sql');               //恢复数据
+                        //恢复数据
+                        $returnBool = of_base_tool_mysqlSync::revertData($dirname . '/backupData.sql');
                     }
                 }
 
                 //恢复共享数据
-                if( $extra['revertData'] ) {
+                if ($extra['revertData']) {
                     self::copyPath("{$dirname}/sharedData.php", "{$infoPath}/sharedData/data.php");
                 }
             //卸载(创建临时文件)
-            } elseif( $returnBool = tempnam(sys_get_temp_dir(), '') ) {
-                $returnBool = of_base_tool_mysqlSync::revertBase($temp = $returnBool);                                //删除匹配数据
+            } else if ($returnBool = tempnam(sys_get_temp_dir(), '')) {
+                //删除匹配数据
+                $returnBool = of_base_tool_mysqlSync::revertBase($temp = $returnBool);
                 //删除共享数据
                 self::deletePath($infoPath . '/sharedData');
                 //删除临时文件

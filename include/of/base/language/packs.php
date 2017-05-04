@@ -55,7 +55,7 @@ class of_base_language_packs {
         $envVar['path'] = of::config('_of.language.path', OF_DATA . '/_of/of_base_language_packs');
         $envVar['name'] = isset($_COOKIE['of_base_language']['name']) ?
             $_COOKIE['of_base_language']['name'] : $temp;
-        self::$debug = OF_DEBUG || $temp === 'base';
+        self::$debug = OF_DEBUG !== false || $temp === 'base';
 
         //语言包根路径
         $temp = $envVar['path'] .'/'. $envVar['name'];
@@ -106,7 +106,7 @@ class of_base_language_packs {
         isset($params['type']) || $params['type'] = 'php';
 
         //去空白字符串
-        if( $string = trim($string) ) {
+        if ($string = trim($string)) {
             //debug时,给源语言定位
             self::$debug && self::source($string, $params);
 
@@ -115,8 +115,7 @@ class of_base_language_packs {
             //引用语言块
             $index = &$envVar['pack'][$params['type']][$string];
 
-            if( empty($index[$params['key']]) )
-            {
+            if (empty($index[$params['key']])) {
                 $index[$params['key']] = '';
                 empty($index['']) || $string = $index[''];
             } else {
@@ -136,16 +135,16 @@ class of_base_language_packs {
         $envVar = &self::$envVar;
 
         //整合基础包
-        foreach( array('php', 'js') as $type ) {
+        foreach (array('php', 'js') as $type) {
             //引用当前语言包
             $nowPack = &$envVar['pack'][$type];
 
-            if( is_array($nowPack) ) {
+            if (is_array($nowPack)) {
                 //基础包路径
                 $basePath = "{$envVar['path']}/base/{$type}.txt";
 
                 //基础语言包
-                if( $basePack = of_base_com_disk::file($basePath) ) {
+                if ($basePack = of_base_com_disk::file($basePath)) {
                     //js=>json; php=>serialize
                     $basePack = $type === 'js' ? json_decode($basePack, true) : unserialize($basePack);
                 }
@@ -153,8 +152,8 @@ class of_base_language_packs {
                 //初始化语言包
                 is_array($basePack) || $basePack = array();
                 //增量整合
-                foreach($nowPack as $str => &$sv) {
-                    foreach($sv as $key => &$v) $basePack[$str][$key] = '';
+                foreach ($nowPack as $str => &$sv) {
+                    foreach ($sv as $key => &$v) $basePack[$str][$key] = '';
                 }
 
                 $basePack = $type === 'js' ? json_encode($basePack) : serialize($basePack);
@@ -164,8 +163,8 @@ class of_base_language_packs {
         }
 
         //保存块翻译
-        if( isset($envVar['block']) ) {
-            foreach($envVar['block'] as $path => &$v) {
+        if (isset($envVar['block'])) {
+            foreach ($envVar['block'] as $path => &$v) {
                 of_base_com_disk::file($envVar['path'] . '/base/source' . $path, $v, true);
             }
         }
@@ -176,7 +175,7 @@ class of_base_language_packs {
      * 作者 : Edgar.lee
      */
     public static function update() {
-        if( self::$debug ) {
+        if (self::$debug) {
             //js 语言包
             $_POST['params']['type'] = 'js';
             self::getText($_POST['string'], $_POST['params']);
@@ -196,13 +195,13 @@ class of_base_language_packs {
         $envVar = &self::$envVar;
 
         //指定块文件
-        if( $type[0] === '/' ) {
+        if ($type[0] === '/') {
             $index = &$envVar['block'][$type .= '.php'];
             //读取文件包
             $index || $index = of_base_com_disk::file("{$envVar['path']}/base/source{$type}", true, true);
         } else {
             $index = &$envVar['pack'][$type];
-            if( 
+            if (
                 //内容未初始化
                 empty($index) &&
                 //文件存在
@@ -235,14 +234,13 @@ class of_base_language_packs {
         isset($params['class']) || $params += $dispatch;
 
         //php 模式下调取回溯得file
-        if( empty($params['file']) && $params['type'] === 'php' ) {
+        if (empty($params['file']) && $params['type'] === 'php') {
             //追踪层次
             isset($params['trace']) || $params['trace'] = 0;
             $backtrace = debug_backtrace();
 
-            foreach($backtrace as $k => &$v) {
-                if( $v['function'] === 'getText' && $v['class'] === 'L' )
-                {
+            foreach ($backtrace as $k => &$v) {
+                if ($v['function'] === 'getText' && $v['class'] === 'L') {
                     $k += $params['trace'];
                     $params['file'] = $backtrace[$k]['file'];
                 }
@@ -250,7 +248,7 @@ class of_base_language_packs {
         }
 
         //检查flie有效性
-        if( empty($params['file']) || strpos($params['file'], '(')) {
+        if (empty($params['file']) || strpos($params['file'], '(')) {
             //检查失败
             trigger_error('No such file');
         } else {
@@ -261,11 +259,11 @@ class of_base_language_packs {
             );
 
             //存在类
-            if( $params['class'] ) {
+            if ($params['class']) {
                 $temp = strtr($params['class'], '_', '/');
                 strncmp($temp, 'of/', 3) === 0 && $temp = substr(OF_DIR, strlen(ROOT_DIR) + 1) . '/' . substr($temp, 3);
 
-                if( ($temp = '/' . $temp . '.php') !== $filePath ) {
+                if (($temp = '/' . $temp . '.php') !== $filePath) {
                     $index = &self::load($temp);
                     //更新引用
                     $index[$params['type'] . 'Link'][$params['action']][$filePath] = true;

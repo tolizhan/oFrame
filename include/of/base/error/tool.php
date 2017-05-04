@@ -11,11 +11,11 @@ class of_base_error_tool {
      * 作者 : Edgar.lee
      */
     public function getLogTablePaging($params = array()) {
-        if( isset($params['path']) ) {
+        if (isset($params['path'])) {
             $totalItems = empty($_POST['items']) ? of_base_error_toolBaseClass::fileS($params['path']) : $_POST['items'];
             $temp = of_base_error_toolBaseClass::fileS($params['path'], isset($_POST['page']) ? $_POST['page'] : 1, isset($_POST['size']) ? $_POST['size'] : 10);
 
-            foreach($temp as $k => &$v) {
+            foreach ($temp as $k => &$v) {
                 $data[$k]['_time'] = date('/Y/m/d H:i:m', $v['time']);
                 $data[$k]['_code'] = isset($v['environment']['type']) ? $v['environment']['type'] : $v['logType'];
                 $data[$k]['_file'] = $v['environment']['file'];
@@ -64,8 +64,8 @@ class of_base_error_tool {
      * 作者 : Edgar.lee
      */
     private function response() {
-        if( isset($_POST['type']) ) {
-            switch( $_POST['type'] ) {
+        if (isset($_POST['type'])) {
+            switch ($_POST['type']) {
                 case 'getDir':                //获取目录(带状态)
                     $dirList = of_base_error_toolBaseClass::getDir($_POST['path'], $_POST['logType']);
 
@@ -153,12 +153,12 @@ a:hover{ text-decoration:underline; cursor:pointer;}
             <select onChange="toolObj.getDir(this.value)">
                 <option value="">请选择</option>
                 <?php
-                    if (is_array($years = of_base_error_toolBaseClass::getDir('', 'php'))) {
-                        foreach($years as $k => &$v) {
-                            $temp = substr($k, 1);
-                            echo "<option value='{$k}'>{$temp}</option>";
-                        }
+                if (is_array($years = of_base_error_toolBaseClass::getDir('', 'php'))) {
+                    foreach ($years as $k => &$v) {
+                        $temp = substr($k, 1);
+                        echo "<option value='{$k}'>{$temp}</option>";
                     }
+                }
                 ?>
             </select>
             <b onClick="toolObj.getDir('..')">..</b>
@@ -193,14 +193,12 @@ a:hover{ text-decoration:underline; cursor:pointer;}
             <select onChange="toolObj.getDir(this.value)">
                 <option value="">请选择</option>
                 <?php
-                    if( is_array($years = of_base_error_toolBaseClass::getDir('', 'sql')) )
-                    {
-                        foreach($years as $k => &$v)
-                        {
-                            $temp = substr($k, 1);
-                            echo "<option value='{$k}'>{$temp}</option>";
-                        }
+                if (is_array($years = of_base_error_toolBaseClass::getDir('', 'sql'))) {
+                    foreach ($years as $k => &$v) {
+                        $temp = substr($k, 1);
+                        echo "<option value='{$k}'>{$temp}</option>";
                     }
+                }
                 ?>
             </select>
             <b onClick="toolObj.getDir('..')">..</b>
@@ -235,14 +233,12 @@ a:hover{ text-decoration:underline; cursor:pointer;}
             <select onChange="toolObj.getDir(this.value)">
                 <option value="">请选择</option>
                 <?php
-                    if( is_array($years = of_base_error_toolBaseClass::getDir('', 'js')) )
-                    {
-                        foreach($years as $k => &$v)
-                        {
-                            $temp = substr($k, 1);
-                            echo "<option value='{$k}'>{$temp}</option>";
-                        }
+                if (is_array($years = of_base_error_toolBaseClass::getDir('', 'js'))) {
+                    foreach ($years as $k => &$v) {
+                        $temp = substr($k, 1);
+                        echo "<option value='{$k}'>{$temp}</option>";
                     }
+                }
                 ?>
             </select>
             <b onClick="toolObj.getDir('..')">..</b>
@@ -280,15 +276,19 @@ var toolObj = {
     //获取目录结构
     'getDir' : function(path, thisObj){
         var logType = $('.nav input:checked').val();
-        var showPageObj = $('#' + logType);    //当前操作界面
-        var urlBarObj = showPageObj.find('.urlBar');                 //地址栏
-        var diskObj = showPageObj.find('.disk');                     //目录显示区
-        var responseFun = function(response){                        //响应方法
-            if(response.state === true)    //创建成功
-            {
-                var dirName = '';    //目录名
-                for(var i in response.data)
-                {
+        //当前操作界面
+        var showPageObj = $('#' + logType);
+        //地址栏
+        var urlBarObj = showPageObj.find('.urlBar');
+        //目录显示区
+        var diskObj = showPageObj.find('.disk');
+        //响应方法
+        var responseFun = function(response) {
+            //创建成功
+            if (response.state === true) {
+                //目录名
+                var dirName = '';
+                for (var i in response.data) {
                     dirName = i.substr(path.length + 1);
                     diskObj.children('.clear').before('<div title="' + dirName + '" class="dir' + (response.data[i] ? ' folder' : ' file') + '" onclick="toolObj.dirClick(this)">' +
                         '<font class="folder">D</font>' +
@@ -306,11 +306,10 @@ var toolObj = {
         diskObj.children('.dir').remove();                //清空目录
 
         //请求数据
-        if( $.trim(path) === '' )                 //空目录
-        {
+        if ($.trim(path) === '') {                 //空目录
+        
             urlBarObj.html('');
-        } else if( path.substr(0, 1) === '/' )    //切换语言包
-        {
+        } else if( path.substr(0, 1) === '/' ) {   //切换语言包
             urlBarObj.html(path);
             window.L.open('tip')('正在加载', false);
             $.post(OF_URL + '/index.php?c=of_base_error_tool', {'type' : 'getDir', 'path' : path, 'logType' : logType}, responseFun, 'json');

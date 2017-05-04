@@ -17,7 +17,7 @@ html, body{ height: 100%; margin: 0px; overflow: hidden;}
 .of_sso-main_tfoot_func_jump{float:right; margin-top:4px; height:21px; padding:4px 0px; border:0px; padding:0px; color:#969696; background-color:#fff; width:40px; display: inline-block;}
 .of_sso-main_tfoot_func_next{line-height:29px; width:10px; float:right; color:#FFF; margin-left:5px; margin-right:5px; display: inline-block;}
 .of_sso-main_tfoot_tip{text-align: center;}
-.of_sso-main_tfoot_import{float:left; margin-left:5px; padding: 1px 6px;}
+.of_sso-main_tfoot_import, .of_sso-main_tfoot_tpl{float:left; margin-left:5px; padding: 1px 6px;}
 .of_sso-main_tfoot_logout{float:right; margin-right:5px; padding: 1px 6px;}
 .of_sso-main_tfoot_save{float:right; margin-right:5px; padding: 1px 6px;}
 .of_sso-main_tfoot_data{height: 150px; text-align: center;}

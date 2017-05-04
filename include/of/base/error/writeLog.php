@@ -51,7 +51,7 @@ class of_base_error_writeLog {
      * 描述 : 记录php错误及异常
      * 作者 : Edgar.lee
      */
-    public static function phpLog($errno = null, $errstr = null, $errfile = null, $errline= null) {
+    public static function phpLog($errno = null, $errstr = null, $errfile = null, $errline = null) {
         //输出日志信息
         static $errorLevel = array(
             0     => 'EXCEPTION',                   //异常
@@ -74,15 +74,15 @@ class of_base_error_writeLog {
         );
 
         //致命错误
-        if( $errno === null ) {
-            if( OF_DEBUG ) {
+        if ($errno === null) {
+            if (OF_DEBUG) {
                 //显示原生错误
                 ini_set('display_errors', true);
                 //防止禁用错误
                 error_reporting(E_ALL);
             }
             //非 trigger_error('')
-            if( ($backtrace = error_get_last()) && $backtrace['message'] ) {
+            if (($backtrace = error_get_last()) && $backtrace['message']) {
                 $backtrace['message'] = ini_get('error_prepend_string') . 
                     $backtrace['message'] . 
                     ini_get('error_append_string');
@@ -95,7 +95,7 @@ class of_base_error_writeLog {
                 return ;
             }
         //系统异常
-        } else if( $errstr === null ) {
+        } else if ($errstr === null) {
             $backtrace = array(
                 'logType'       => 'exception',
                 'environment'   => array(
@@ -112,7 +112,7 @@ class of_base_error_writeLog {
                 )
             );
         //常规错误
-        } else if( error_reporting() ) {
+        } else if (error_reporting()) {
             $backtrace = array(
                 'logType'       =>'error',
                 'environment'   => array(
@@ -186,7 +186,7 @@ class of_base_error_writeLog {
         $logData['time'] = time();
 
         //debug模式
-        if( OF_DEBUG && $printStr ) {
+        if (OF_DEBUG && $printStr) {
             //打印日志
             echo '<pre style="color:#F00; font-weight:bold; margin: 0px;">',
                 $printStr, 
@@ -194,7 +194,7 @@ class of_base_error_writeLog {
         }
 
         //写入日志
-        if( $index = &$config[$logType . 'Log'] ) {
+        if ($index = &$config[$logType . 'Log']) {
             $logPath = ROOT_DIR . $index . date('/Y/m/d', $logData['time']) . $logType;
             is_dir($temp = dirname($logPath)) || mkdir($temp, 0777, true);
             file_put_contents(
@@ -215,7 +215,7 @@ class of_base_error_writeLog {
                     $temp = ROOT_DIR . $config[$temp];
                     //文件遍历成功
                     if (of_base_com_disk::each($temp, $data, false)) {
-                        foreach($data as $k => &$v) {
+                        foreach ($data as $k => &$v) {
                             //是文件 && 文件已过期
                             if ($v === false && filectime($k) <= $gcTime) {
                                 //删除文件及父空文件夹
@@ -261,7 +261,7 @@ class of_base_error_writeLog {
 
         //debug运行追踪
         if (strpos($logData['environment']['file'], '(') !== false) {
-            foreach($backtrace as $k => &$v) {
+            foreach ($backtrace as $k => &$v) {
                 //大部分正常方式
                 if (isset($v['file'])) {
                     $temp = array(strtr($v['file'], '\\', '/'));
@@ -314,7 +314,7 @@ class of_base_error_writeLog {
 
         //定位->路径 转化 相对路径
         $logData['environment']['file'] = strtr(
-            substr( $logData['environment']['file'], strlen(ROOT_DIR) ), '\\', '/'
+            substr($logData['environment']['file'], strlen(ROOT_DIR)), '\\', '/'
         );
 
         //添加预定义数据
@@ -329,23 +329,23 @@ class of_base_error_writeLog {
         );
 
         //格式化回溯
-        if( isset($logData['environment']['backtrace']) ) {
-            foreach($logData['environment']['backtrace'] as &$v) {
-                if(isset($v['object'])) {
+        if (isset($logData['environment']['backtrace'])) {
+            foreach ($logData['environment']['backtrace'] as &$v) {
+                if (isset($v['object'])) {
                     unset($v['object']);
                 }
-                if(isset($v['args'])) {
+                if (isset($v['args'])) {
                     //临时参数拷贝数组
                     $temp = array();
-                    foreach($v['args'] as &$arg) {
+                    foreach ($v['args'] as &$arg) {
                         //是一个标量,资源,null
-                        if(is_scalar($arg) || is_resource($arg) || $arg === null) {
+                        if (is_scalar($arg) || is_resource($arg) || $arg === null) {
                             $temp[] = gettype($arg) . ' (' . var_export($arg, true) . ')';
                         //对象
-                        } else if(is_object($arg)) {
+                        } else if (is_object($arg)) {
                             $temp[] = 'object (' . get_class($arg) . ')';
                         //数组
-                        } else if(is_array($arg)) {
+                        } else if (is_array($arg)) {
                             $temp[] = var_export($arg, true);
                         }
                     }
