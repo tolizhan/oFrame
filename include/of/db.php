@@ -69,6 +69,7 @@ abstract class of_db {
         $instList = &self::$instList;
 
         if (empty($instList[$key])) {
+            //初始配置
             if ($pool === null) {
                 //引用数据库配置
                 $dbConfig = &self::$dbConfig;
@@ -96,6 +97,12 @@ abstract class of_db {
                 }
             }
 
+            //设置时区
+            if (($index = &$pool['params']['timezone']) === null || $index === true) {
+                $index = of::config('_of.timezone');
+            }
+
+            //引用连接
             $instList[$key] = array('pool' => &$pool);
         }
 

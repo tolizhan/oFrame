@@ -1,3 +1,52 @@
+版本: 212
+作者: Edgar
+日期: 2017年7月5日 17:19:10
+信息:
+说明: 升级 tcpdf 到 6.2.13
+      当发生错误时触发 of_base_error_writeLog::error 回调钩子, 接收 {"type" : 错误来源, "data" : 错误信息}
+      html模版引擎当识别到分页模版时自动引用分页脚本
+      分页模版支持 name="pageCount" 数据总长度
+      固定 $_REQUEST 变量, 不再受 php.ini 中 request_order 影响
+      框架配置可以设置时区, 支持夏令时 _of.timezone 和 _of.db.params.timezone
+      手动触发计划任务显示当前状态 OF_URL/?c=of_base_com_timer
+      分页兼容 mysql >= 5.7 语法
+      csv 默认改为 UTF-16LE 编码, 兼容性更强
+      修复SSO不能删除系统帐号的外键问题
+      解决sso服务器session过期后客户端通知退出报错问题
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/pdoMysql.php
+已修改 : /trunk/include/of/addin/tcpdf/CHANGELOG.TXT
+已删除 : /trunk/include/of/addin/tcpdf/README.TXT
+已增加 : /trunk/include/of/addin/tcpdf/README.md
+已修改 : /trunk/include/of/addin/tcpdf/composer.json
+已修改 : /trunk/include/of/addin/tcpdf/config/tcpdf_config.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/helvetica.php
+已修改 : /trunk/include/of/addin/tcpdf/include/tcpdf_static.php
+已修改 : /trunk/include/of/addin/tcpdf/tcpdf.php
+已修改 : /trunk/include/of/att/com/com/paging/main.css
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/att/sso/res/importTpl.csv
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/jsLog.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/link/response.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/db/table.sql
+已修改 : /trunk/include/of/base/version/check.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+已增加 : /trunk/license.txt
+
 版本: 210
 作者: Edgar
 日期: 2017年5月4日 21:54:27

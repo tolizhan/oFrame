@@ -89,15 +89,15 @@ class of_base_sso_api {
      * 作者 : Edgar.lee
      */
     public function __construct() {
-        $temp = of::dispatch();
+        $dp = of::dispatch();
 
-        if ($temp['class'] === 'of_base_sso_api') {
+        if ($dp['class'] === 'of_base_sso_api') {
             if (
                 isset($_GET['name']) && (
-                    $temp['action'] === 'ticket' || isset($_GET['md5']) && isset($_GET['ticket'])
+                    $dp['action'] === 'ticket' || isset($_GET['md5']) && isset($_GET['ticket'])
                 ) 
             ) {
-                if ($temp['action'] === 'ticket') {
+                if ($dp['action'] === 'ticket') {
                     //开启SESSION
                     self::openSession();
                 //验证参数
@@ -113,8 +113,13 @@ class of_base_sso_api {
                         function_exists('session_open') ? session_open() : session_start();
                     }
 
-                    //票据存在
-                    if ($index = &of::getArrData("_of.of_base_sso.realm.{$_GET['name']}", $_SESSION)) {
+                    //读取登录数据
+                    $index = &of::getArrData(
+                        "_of.of_base_sso.realm.{$_GET['name']}", $_SESSION, null, 2
+                    );
+
+                    //存在则校验票据正确性
+                    if ($index) {
                         if (
                             //票据相同
                             $index['ticket'] === $_GET['ticket'] &&
@@ -126,6 +131,9 @@ class of_base_sso_api {
                         } else {
                             exit('{"state":501,"msg":"安全校验失败"}');
                         }
+                    //不存在且为退出时给新票据(可能是sso系统session过期)
+                    } else if ($dp['action'] === 'logout') {
+                        self::ticket();
                     } else {
                         exit('{"state":504,"msg":"票据失效"}');
                     }

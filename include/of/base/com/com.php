@@ -30,6 +30,7 @@ class of_base_com_com {
      *          上一按钮 : name="pagingPrev"
      *          下一按钮 : name="pagingNext"
      *          尾页按钮 : name="pagingLast"
+     *          数据总数 : name="pagingCount" 须拥有innerHTML属性
      *          当期位置 : name="pagingPage" 须拥有innerHTML属性
      *          跳转位置 : name="pagingJump" input[type=text]
      *          数据条数 : name="pagingSize" input[type=text]
@@ -184,6 +185,7 @@ class of_base_com_com {
                     '<a name="' .$attr['space']. 'pagingPrev" class="of-paging_prev" href="#">&nbsp;</a>' .
                     '<a name="' .$attr['space']. 'pagingNext" class="of-paging_next" href="#">&nbsp;</a>' .
                     '<a name="' .$attr['space']. 'pagingLast" class="of-paging_last" href="#">&nbsp;</a>' .
+                    '<span name="' .$attr['space']. 'pagingCount" class="of-paging_count"></span>' .
                     '<span name="' .$attr['space']. 'pagingPage" class="of-paging_page"></span>' .
                     '<input name="' .$attr['space']. 'pagingJump" class="of-paging_jump" type="text" />' .
                     '<input name="' .$attr['space']. 'pagingSize" class="of-paging_size" type="text" />' .
@@ -450,10 +452,11 @@ class of_base_com_com {
                                             break;
                                         //确定是 FROM 关键词
                                         } else {
-                                            $post['items'] = substr($temp[1], 0, $temp['sLen']) .
+                                            $post['items'] = '/*SELECT*//*!50700 ( */ ' .
+                                                substr($temp[1], 0, $temp['sLen']) .
                                                 ' SQL_CALC_FOUND_ROWS 1 c ' .
                                                 substr($temp[1]. $temp[2], $temp['match']['position']) .
-                                                ' LIMIT 0 UNION ALL SELECT FOUND_ROWS()';
+                                                ' LIMIT 0 /*!50700 ) */ UNION ALL SELECT FOUND_ROWS()';
                                             break 2;
                                         }
                                     //寻找 ")"

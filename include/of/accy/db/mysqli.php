@@ -22,7 +22,9 @@ class of_accy_db_mysqli extends of_db {
 
         if (mysqli_ping($connection)) {
             $this->connection = $connection;
-            mysqli_query($this->connection, "SET NAMES '{$params['charset']}'");
+            $temp = "SET NAMES '{$params['charset']}'";
+            $params['timezone'] && $temp .= ", TIME_ZONE = '{$params['timezone']}'";
+            mysqli_query($this->connection, $temp);
             return true;
         } else {
             return false;

@@ -1,6 +1,7 @@
 <?php
 /**
- *
+ * 描述 : 处理客户响应类
+ * 作者 : Edgar.lee
  */
 class of_base_link_response {
     /**
@@ -57,7 +58,7 @@ class of_base_link_response {
         //发送状态码
         if (isset($statusTexts[$code])) {
             $protocol = isset($_SERVER['SERVER_PROTOCOL']) ? $_SERVER['SERVER_PROTOCOL'] : 'HTTP/1.1';
-            $text === null && $text = &self::$statusTexts[$code];
+            $text === null && $text = &$statusTexts[$code];
             header("{$protocol} {$code} {$text}");
         //发送指定信息
         } else if (is_bool($text)) {

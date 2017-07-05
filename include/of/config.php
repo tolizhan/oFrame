@@ -6,6 +6,8 @@ return array(
     'rootUrl'     => null,
     //配置文件路径, 数组=动态配置{动态键 : 配置路径}, 字符串=等同{"0" : 全局配置}
     'config'      => '/demo/config.php',
+    //系统时区, 设置php支持的时区(如: Europe/London 支持夏令时), 读取格式为 ±00:00
+    'timezone'    => 'PRC',
     //统一调试模式, true=开发环境, null=测试环境, false=生产环境
     'debug'       => true,
     //可写目录,上传,缓存等路径都将写入该文件夹
@@ -19,7 +21,7 @@ return array(
         //默认视图模板模板路径
         'tplPath' => '/view',
         //全局标题
-        'title'   => 'oFrame 框架',
+        'title'   => ' oFrame 框架 http://phpof.net/',
     ),
     //数据库连接池
     'db'          => array(
@@ -35,6 +37,8 @@ return array(
             'password'   => 'admin',
             'database'   => 'test',
             'charset'    => 'utf8',
+            //数据库时区, 默认true=框架时区, false=数据库时区, "±00:00"=指定时区
+            'timezone'   => true,
             //是否长连接
             'persistent' => false
         )
@@ -91,6 +95,7 @@ return array(
         'of_base_version_check'
     ),
 
+    //错误日志
     'error'       => array(
         //日志有效时间(天),0=不清理
         'gcTime' => 30,
@@ -101,6 +106,7 @@ return array(
         //js日志路径,false=关闭
         'jsLog'  => '/data/error/jsLog'
     ),
+    //会话封装
     'session'     => array(
         //存储方式
         'adapter'     => 'files',
@@ -129,12 +135,14 @@ return array(
             // */
         )
     ),
+    //多语言包
     'language'    => array(
         //语言包路径
         'path'    => '/data/language/Edgar',
         //默认语言
         'default' => 'base'
     ),
+    //扩展管理
     'extension'   => array(
         //可写的扩展路径
         'path'      => '/data/extensions',
@@ -167,6 +175,7 @@ return array(
         //对接密码,工具包使用
         'key'     => '123456'
     ),
+    //系统组件
     'com'         => array(
         //组件分页设置
         'com::paging' => array(
@@ -239,6 +248,7 @@ return array(
             )
         )
     ),
+    //系统插件
     'addin'       => array(
         'oUpload' => array(
             //禁止上传的扩展文件

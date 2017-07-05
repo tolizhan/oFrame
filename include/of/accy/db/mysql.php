@@ -22,7 +22,9 @@ class of_accy_db_mysql extends of_db {
 
         if (mysql_ping($connection) && mysql_select_db($params['database'], $connection)) {
             $this->connection = $connection;
-            mysql_query("SET NAMES '{$params['charset']}'", $this->connection);
+            $temp = "SET NAMES '{$params['charset']}'";
+            $params['timezone'] && $temp .= ", TIME_ZONE = '{$params['timezone']}'";
+            mysql_query($temp, $this->connection);
             return true;
         } else {
             return false;

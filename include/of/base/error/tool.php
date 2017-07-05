@@ -17,7 +17,7 @@ class of_base_error_tool {
 
             foreach ($temp as $k => &$v) {
                 $data[$k]['_time'] = date('/Y/m/d H:i:m', $v['time']);
-                $data[$k]['_code'] = isset($v['environment']['type']) ? $v['environment']['type'] : $v['logType'];
+                $data[$k]['_code'] = isset($v['environment']['type']) ? $v['environment']['type'] : $v['errorType'];
                 $data[$k]['_file'] = $v['environment']['file'];
                 $data[$k]['_line'] = $v['environment']['line'];
                 $data[$k]['_message'] = '<pre>' . strtr(htmlentities($v['environment']['message'], ENT_QUOTES, 'UTF-8'), array("\0" => "\n", "\n" => '<br>', ' ' => '&nbsp;')) . '</pre>';
@@ -39,7 +39,7 @@ class of_base_error_tool {
                 '_attr' => array(
                     'attr' => 'class="center"',
                     'body' => '<input name="radio" type="radio" /><div style="display:none;">{`_detaile`}</div>',
-                    'html' =>  '<div class="of-paging_action"><a name="pagingFirst" class="of-paging_first" href="#">&nbsp;</a><a name="pagingPrev" class="of-paging_prev" href="#">&nbsp;</a><a name="pagingNext" class="of-paging_next" href="#">&nbsp;</a><a name="pagingLast" class="of-paging_last" href="#">&nbsp;</a><span name="pagingPage" class="of-paging_page">1/1</span><input name="pagingJump" class="of-paging_jump" type="text"><input name="pagingSize" class="of-paging_size" type="text"></div>'
+                    'html' =>  '<div class="of-paging_action"><a name="pagingFirst" class="of-paging_first" href="#">&nbsp;</a><a name="pagingPrev" class="of-paging_prev" href="#">&nbsp;</a><a name="pagingNext" class="of-paging_next" href="#">&nbsp;</a><a name="pagingLast" class="of-paging_last" href="#">&nbsp;</a><span name="pagingCount" class="of-paging_count">0</span><span name="pagingPage" class="of-paging_page">1/1</span><input name="pagingJump" class="of-paging_jump" type="text"><input name="pagingSize" class="of-paging_size" type="text"></div>'
                 )
             ),
             '时间' => '{`_time`}',

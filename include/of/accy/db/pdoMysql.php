@@ -25,7 +25,9 @@ class of_accy_db_pdoMysql extends of_db {
                 return false;
             } else {
                 $this->connection = $connection;
-                $connection->query("SET NAMES '{$params['charset']}'");
+                $temp = "SET NAMES '{$params['charset']}'";
+                $params['timezone'] && $temp .= ", TIME_ZONE = '{$params['timezone']}'";
+                $connection->query($temp);
                 return true;
             }
         } catch (PDOException $e) {

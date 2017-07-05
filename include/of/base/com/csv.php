@@ -50,39 +50,40 @@ class of_base_com_csv {
      * 描述 : 整理csv数组成字符串
      * 参数 :
      *      path    : 字符串=保存到磁盘路径,默认=null
-     *      charset : 转化的字符集, 默认 "UTF-8"
+     *      charset : 转化的字符集, 默认 "UTF-16LE"
      * 返回 :
      *      返回 生成的字符串
      * 作者 : Edgar.lee
      */
-    public static function &toString($path = null, $charset = 'UTF-8') {
+    public static function &toString($path = null, $charset = 'UTF-16LE') {
         //字符串列
         $result = array();
         //引用数组
         $fileArr = &self::$fileArr;
+        //行分隔符
+        $delimiter = $charset === 'UTF-16LE' ? "\t" : ',';
 
         self::arrFill($fileArr);
         foreach ($fileArr as $vs) {
             foreach ($vs as &$v) {
+                //支持字符串和数字两种类型
                 if (is_string($v)) {
-                    //数字类型
-                    if (is_numeric($v)) {
-                        //防止科学记数法
-                        $v .= "\t";
-                    } else {
-                        //字符串替换
-                        $v = str_replace('"', '""', $v);
-                        //编码转换
-                        $charset === 'UTF-8' || $v = iconv('UTF-8', $charset . '//IGNORE', $v);
-                    }
+                    //数字类型 ? 防止科学记数法 : 字符串替换
+                    $v = is_numeric($v) ? $v . "\t" : str_replace('"', '""', $v);
                 }
             }
-            $result[] = '"' . join('","', $vs) . '"';
+            //保存到结果集
+            $result[] = '"' . join('"' . $delimiter . '"', $vs) . "\"\r\n";
         }
 
-        $result = join("\r\n", $result);
+        $result = join($result);
+        //编码转换
+        $charset === 'UTF-8' || $result = iconv('UTF-8', $charset . '//IGNORE', $result);
         //保存到文件
-        $path && of_base_com_disk::file($path, $result);
+        if ($path) {
+            $temp = $charset = 'UTF-16LE' ? chr(255) . chr(254) : '';
+            of_base_com_disk::file($path, $temp . $result);
+        }
 
         return $result;
     }
@@ -91,14 +92,14 @@ class of_base_com_csv {
      * 描述:以指定的文件名下载csv
      * 参数:
      *      filename : 字符串=文件名
-     *      charset  : 转化的字符集, 默认 "UTF-8"
+     *      charset  : 转化的字符集, 默认 "UTF-16LE"
      * 示例:
      *      $ExcelExportObj=new self;
      *      $ExcelExportObj->download('测试.csv');
      *      将弹出'测试.csv'下载框
      * 作者:Edgar.Lee
      */
-    public static function download($filename = 'download', $charset = 'UTF-8') {
+    public static function download($filename = 'download', $charset = 'UTF-16LE') {
         //需要发送头信息
         static $sendHead = true;
         //引用数组
@@ -114,13 +115,6 @@ class of_base_com_csv {
             strpos($_SERVER["HTTP_USER_AGENT"], 'Firefox') || $filename = rawurlencode($filename);
             //字符集
             $sendHead = $charset;
-
-            /*header('Pragma: public');
-            header('Expires: 0');
-            header('Cache-Control: must-revalidate, post-check=0, pre-check=0');
-            header('Content-Type: application/force-download');
-            header('Content-Type: application/octet-stream');
-            header('Content-type: application/vnd.ms-excel');*/
             //下载头
             header('Content-Type: application/download');
             //二进制
@@ -129,10 +123,12 @@ class of_base_com_csv {
             header('Content-Disposition: attachment; filename="' . $filename . '.csv"');
             //不缓存
             header('Pragma:no-cache');
+            //输出 UTF-16LE BOM 标识
+            if ($charset === 'UTF-16LE') echo chr(255) . chr(254);
         }
 
         if (!empty($fileArr)) {
-            echo self::toString(null, $sendHead), "\r\n";
+            echo self::toString(null, $sendHead);
             $fileArr = array();
         }
     }
@@ -141,7 +137,7 @@ class of_base_com_csv {
      * 描述 : 解析csv
      * 参数 :
      *      path    : 指定路径
-     *      charset : 指定解析编码, null=自动识别 UTF-8 和 配置_of.charset 字符集
+     *      charset : 指定解析编码, null=自动识别 UTF-8 UTF-16LE 和 配置_of.charset 字符集
      * 作者 : Edgar.lee
      */
     public static function &parse(&$path, $charset = null) {
@@ -151,32 +147,125 @@ class of_base_com_csv {
             //csv 句柄
             'fp' => fopen($path, 'rb'),
             //csv 字符集
-            'cs' => $charset
+            'cs' => $charset,
+            //单行分隔符
+            'de' => null
         );
 
-        if ($index['fp'] && $result = fgetcsv($index['fp'])) {
-            foreach ($result as &$v) {
-                //初始非ASCII字符集
-                if ($index['cs'] === null && preg_match('@[^\x00\x09\x10\x13\x20-\x7F]@', $v)) {
-                    //是 UTF-8 编码
-                    if (@iconv('UTF-8', 'UTF-8', $v) === $v) {
+        //打开资源
+        if ($index['fp']) {
+            if (!$index['de']) {
+                //尝试识别编码
+                if ($index['cs'] === null) {
+                    //读取 BOM
+                    $temp = array(
+                        ord(fgetc($index['fp'])),
+                        ord(fgetc($index['fp'])),
+                        ord(fgetc($index['fp']))
+                    );
+
+                    //识别 UTF-16LE 编码
+                    if ($temp[0] === 255 && $temp[1] === 254) {
+                        $index['cs'] = 'UTF-16LE';
+                        fseek($index['fp'], 2);
+                    //识别 UTF-8+BOM 编码
+                    } else if ($temp[0] === 239 && $temp[1] === 187 && $temp[2] === 191) {
                         $index['cs'] = 'UTF-8';
-                    //是用户群体编码
-                    } else if (@iconv($temp = of::config('_of.charset', 'GB18030'), $temp, $v) === $v) {
-                        $index['cs'] = $temp;
-                    //未知编码
                     } else {
-                        $index['cs'] = false;
+                        fseek($index['fp'], 0);
                     }
                 }
-                //转码
-                $index['cs'] && $index['cs'] !== 'UTF-8' && $v = iconv($index['cs'], 'UTF-8//IGNORE', $v);
-                $v = rtrim($v, "\t");
+
+                //设置分隔符
+                $index['de'] = $index['cs'] === 'UTF-16LE' ? "\t" : ',';
             }
-        } else {
-            unset($list[$path]);
+
+            //单行读取成功 && 过滤UTF-16LE低位
+            if ($rd = &self::getCsvRow($index)) {
+                //定位字符
+                $findChar = $rd[0] === '"' ? '"' : $index['de'];
+                //最后截取位置
+                $lastPos = 0;
+
+                //解析数据
+                for ($i = (int)($findChar === '"'), $iL = strlen($rd); $i < $iL; ++$i) {
+                    //找到定位符
+                    if ($rd[$i] === $findChar) {
+                        //双引号
+                        if ($findChar === '"') {
+                            //下一个字符是'"' ? 移一位继续找'"' : 找分隔符
+                            $rd[$i + 1] === '"' ? $i += 1 : $findChar = $index['de'];
+                        //分隔符','或'\t'
+                        } else {
+                            //截取当前字段内容
+                            $temp = rtrim(substr($rd, $lastPos, $i - $lastPos), "\r\n");
+                            if (isset($temp[0]) && $temp[0] === '"') {
+                                $temp = str_replace('""', '"', substr($temp, 1, -1));
+                            }
+                            //去掉数字字符尾部"\t"
+                            $result[] = rtrim($temp, "\t");
+
+                            //下一个字段起始位置
+                            $lastPos = $i + 1;
+                            //下一个字符是'"' && 找'"' && 移到下一位
+                            if (isset($rd[$lastPos]) && $rd[$lastPos] === '"') {
+                                $findChar = '"';
+                                $i = $lastPos + 1;
+                            }
+                        }
+                    }
+
+                    //需要换行分析
+                    if ($findChar === '"' && !isset($rd[$i + 2])) {
+                        $rd = substr($rd, 0, -1);
+                        $rd .= ($cRow = &self::getCsvRow($index)) ? $cRow : '"' . $index['de'];
+                        $iL = strlen($rd);
+                    }
+                }
+
+                return $result;
+            }
         }
 
+        unset($list[$path]);
+        return $result;
+    }
+
+    /**
+     * 描述 : 读取csv一行数据
+     * 参数 :
+     *     &params  : csv 环境参数
+     * 返回 :
+     *      成功返回追加分隔符的字符串, 失败返回false
+     * 作者 : Edgar.lee
+     */
+    private static function &getCsvRow(&$params) {
+        //读取一行数据
+        if ($result = fgets($params['fp'])) {
+            //移动过高位"\0"
+            $params['cs'] === 'UTF-16LE' && fseek($params['fp'], 1, SEEK_CUR);
+            //去掉结尾"\n"
+            $result = rtrim($result, "\n");
+
+            //初始非ASCII字符集
+            if ($params['cs'] === null && preg_match('@[^\x00\x09\x10\x13\x20-\x7F]@', $result)) {
+                //是 UTF-8 编码
+                if (@iconv('UTF-8', 'UTF-8', $result) === $result) {
+                    $params['cs'] = 'UTF-8';
+                //是用户群体编码
+                } else if (@iconv($temp = of::config('_of.charset', 'GB18030'), $temp, $result) === $result) {
+                    $params['cs'] = $temp;
+                //未知编码
+                } else {
+                    $params['cs'] = false;
+                }
+            }
+
+            //转码为 UTF-8
+            $params['cs'] && $params['cs'] !== 'UTF-8' && $result = iconv($params['cs'], 'UTF-8//IGNORE', $result);
+            //字符串补全, 换行统一 "\r\n","\r" => "\n"
+            $result = str_replace(array("\r\n", "\r"), "\n", $result) . "\n" . $params['de'];
+        }
         return $result;
     }
 

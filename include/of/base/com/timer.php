@@ -29,13 +29,25 @@ class of_base_com_timer {
 
         //嵌套创建文件夹
         is_dir($config['path']) || @mkdir($config['path'], 0777, true);
+
+        //web访问开启计划任务
+        if (of::dispatch('class') === 'of_base_com_timer') {
+            echo self::timer() ? 'runing' : 'starting';
+            echo "<br>\n<pre>cron : "; 
+            if (is_file(self::$config['cron']['path'])) {
+                print_r(include self::$config['cron']['path']);
+            }
+            echo '</pre>';
+        }
     }
 
     /**
      * 描述 : 定时器
+     * 返回 :
+     *      true=正在执行, false=开始执行, null=执行完成
      * 作者 : Edgar.lee
      */
-    public static function timer($name = 'taskLock', $type = null) {
+    public static function &timer($name = 'taskLock', $type = null) {
         //定时器路径
         $path = self::$config['path'];
         //打开加锁文件
@@ -43,7 +55,7 @@ class of_base_com_timer {
 
         //加锁失败
         if (!flock($lock, LOCK_EX | LOCK_NB)) {
-            return ;
+            $result = true;
         //主动触发(非异步)
         } else if ($type === null) {
             //连接解锁
@@ -53,6 +65,7 @@ class of_base_com_timer {
                 'asCall' => 'of_base_com_timer::timer',
                 'params' => array($name, true)
             ));
+            $result = false;
         //任务列表遍历检查
         } else if ($name === 'taskLock') {
             while (true) {
@@ -103,6 +116,8 @@ class of_base_com_timer {
         flock($lock, LOCK_UN);
         //关闭连接
         fclose($lock);
+        //返回结果
+        return $result;
     }
 
     /**
@@ -465,4 +480,3 @@ class of_base_com_timer {
 }
 
 of_base_com_timer::init();
-return join('::', of::dispatch()) === 'of_base_com_timer::timer';

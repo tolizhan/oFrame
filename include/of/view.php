@@ -1,4 +1,8 @@
 <?php
+/**
+ * 描述 : 视图层核心
+ * 作者 : Edgar.lee
+ */
 class of_view {
     //实例化对象
     private static $instanceObj = null;

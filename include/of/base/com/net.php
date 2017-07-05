@@ -261,7 +261,7 @@ class of_base_com_net {
                 }
 
                 //chunk传输
-                if (strpos($res['header'], 'Transfer-Encoding: chunked') !== false) {
+                if (preg_match('@Transfer-Encoding:\s*chunked@', $res['header'])) {
                     //chunk还原
                     $res['response'] = &self::dechunk($res['response']);
                 }
