@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200212);
+define('OF_VERSION', 200214);
 
 /**
  * 描述 : 控制层核心
@@ -243,15 +243,21 @@ class of {
             foreach ($_SERVER['argv'] as &$v) {
                 //"get:a=test&c=demo_index" 模式解析
                 $temp = explode(':', $v, 2);
-                $temp[0] = '_' . strtoupper($temp[0]);
 
-                //"xx:yy"模式的参数 && 存在 $GLOBALS 变量中
-                if (!empty($temp[1]) && isset($GLOBALS[$temp[0]])) {
-                    //解析到对应超全局变量中
-                    parse_str($temp[1], $temp[2]);
-                    $GLOBALS[$temp[0]] = $temp[2] + $GLOBALS[$temp[0]];
-                    //设置原始请求
-                    $temp[0] === '_GET' && $_SERVER['QUERY_STRING'][] = &$temp[1];
+                //"xx:yy"模式的参数
+                if (isset($temp[1])) {
+                    //保存到全局中
+                    $temp[0] = '_' . strtoupper($temp[0]);
+                    $GLOBALS['_ARGV'][$temp[0]] = &$temp[1];
+
+                    //存在 $GLOBALS 变量中
+                    if (isset($GLOBALS[$temp[0]])) {
+                        //解析到对应超全局变量中
+                        parse_str($temp[1], $temp[2]);
+                        $GLOBALS[$temp[0]] = $temp[2] + $GLOBALS[$temp[0]];
+                        //设置原始请求
+                        $temp[0] === '_GET' && $_SERVER['QUERY_STRING'][] = &$temp[1];
+                    }
                 }
             }
             //设置项目跟目录

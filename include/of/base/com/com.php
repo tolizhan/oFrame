@@ -512,7 +512,9 @@ class of_base_com_com {
                     }
 
                     //数据回调
-                    $attr['call'] && of::callFunc($attr['call'], array('data' => &$attr['data']));
+                    $attr['call'] && of::callFunc($attr['call'], array(
+                        'data' => &$attr['data'], 'attr' => &$post
+                    ));
                     //响应数据
                     $post['data'] = &$attr['data'];
                     echo of_base_com_data::json($post);

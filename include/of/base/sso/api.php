@@ -7,7 +7,7 @@
  *          401 : 系统账号可能已停用
  *          402 : 帐号密码错误
  *          403 : 功能操作无效
- *          404 : 需先修改帐号信息
+ *          404 : 需先修改密码
  *          501 : 安全校验失败
  *          502 : 通信结构错误
  *          503 : 系统帐号操作权限不够
@@ -304,7 +304,7 @@ class of_base_sso_api {
                         $index = &$_SESSION['_of']['of_base_sso']['users'][$_GET['space']];
                     } else {
                         $json['state'] = 404;
-                        $json['msg'] = '需先修改帐号信息';
+                        $json['msg'] = '需先修改密码';
                     }
                 } else {
                     $json['state'] = 402;
@@ -437,13 +437,17 @@ class of_base_sso_api {
                 case 'setUser':
                     $sql = $where = array();
 
-                    empty($_GET['pwd']) || $sql[] = "`pwd` = MD5('{$_GET['pwd']}')";
                     empty($_GET['nike']) || $sql[] = "`nike` = '{$_GET['nike']}'";
                     empty($_GET['state']) || $sql[] = "`state` = '{$_GET['state']}'";
                     if (!empty($_GET['question']) && !empty($_GET['answer'])) {
                         $sql[] = '`find`=\'' . 
                             str_pad(strlen($_GET['question']) . '_' . $_GET['question'] . md5($_GET['answer']), 255, "\0") . 
                             '\'';
+                    }
+                    if (!empty($_GET['pwd'])) {
+                        $temp = md5($_GET['pwd']);
+                        $sql[] = "`time` = IF(`pwd` = '{$temp}', `time`, NOW())";
+                        $sql[] = "`pwd` = '{$temp}'";
                     }
 
                     empty($_GET['space']) || $where[] = 
@@ -460,8 +464,7 @@ class of_base_sso_api {
                     if ($sql && $where) {
                         $sql = 'UPDATE 
                             `_of_sso_user` 
-                        SET ' . join(',', $sql) .
-                            ", `time` = NOW()
+                        SET ' . join(',', $sql) . "
                         WHERE 
                             `name` = '{$_GET['user']}'
                         AND (" .join(' OR ', $where). ")";
@@ -587,7 +590,9 @@ class of_base_sso_api {
      * 作者 : Edgar.lee
      */
     protected static function getUrl($url, $get = array(), $key = '') {
-        $url = $url ? parse_url(stripslashes($url)) : array();
+        $url = $url ? 
+            parse_url(stripslashes($url)) : 
+            array('query' => $get ? '' : $_SERVER['QUERY_STRING']);
         isset($url['host']) && empty($url['port']) && $url['port'] = '';
         $url += of_base_com_net::$params;
         $url['port'] && $url['port'] = ':' . $url['port'];

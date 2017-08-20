@@ -22,6 +22,8 @@
  *                  "write' : 写入连接源,
  *                  "read"  : 读取连接源,
  *                  "back"  : 当启动事务时, read的备份
+ *                  "level" : 当启动事务时, 嵌套的层次
+ *                  "state" : 当启动事务时, 嵌套未回滚
  *              }
  *          }
  *      }
@@ -80,9 +82,11 @@ abstract class of_db {
 
                     //单库连接配置
                     if (
-                        isset($dbConfig['adapter']) ||
-                        isset($dbConfig[0]) ||
-                        isset($dbConfig['write'])
+                        isset($dbConfig['adapter']) && is_string($dbConfig['adapter']) ||
+                        ($key === 'default' && !isset($dbConfig[$key]) && (
+                            isset($dbConfig[0]) ||
+                            isset($dbConfig['write']) && isset($dbConfig['read'])
+                        ))
                     ) {
                         //配置文件格式化
                         $dbConfig = array('default' => $dbConfig);
@@ -95,11 +99,6 @@ abstract class of_db {
                     trigger_error('Did not find the specified database connection : ' . $key);
                     exit;
                 }
-            }
-
-            //设置时区
-            if (($index = &$pool['params']['timezone']) === null || $index === true) {
-                $index = of::config('_of.timezone');
             }
 
             //引用连接
@@ -176,20 +175,44 @@ abstract class of_db {
         } else if ($dbObj = &self::getConnect('write')) {
             //引用连接池
             $index = &self::$instList[$pool]['inst'];
-            //执行事务
-            $result = $dbObj->{$fun[$sql]}();
 
             //启动事务
             if ($sql === null) {
-                //读取连接备份
-                isset($index['back']) || $index['back'] = &$index['read'];
-                //读取切换主
-                $index['read'] = &$dbObj;
-            } else if (isset($index['back'])) {
-                //切回原始配置
-                $index['read'] = &$index['back'];
-                //注销备份
-                unset($index['back']);
+                //根级事务
+                if (empty($index['level'])) {
+                    //开启事务
+                    $index['level'] = 1;
+                    //最终状态
+                    $index['state'] = true;
+                    //备份读取连接
+                    $index['back'] = &$index['read'];
+                    //读取切换主
+                    $index['read'] = &$dbObj;
+                    //开启事务
+                    $result = $dbObj->_begin();
+                //嵌套事务
+                } else {
+                    $index['level'] += 1;
+                    $result = true;
+                }
+            //结束事务
+            } else if (isset($index['level'])) {
+                //嵌套事务
+                if (--$index['level']) {
+                    //嵌套回滚 && 最终回滚
+                    $sql || $index['state'] = false;
+                    $result = true;
+                } else {
+                    //执行事务,若子事务回滚->父事务也回滚
+                    $result = $dbObj->{$fun[$sql && $index['state']]}();
+                    //切回原始配置
+                    $index['read'] = &$index['back'];
+                    //注销事务信息
+                    unset($index['back'], $index['level']);
+                }
+
+                //返回结果 执行成功 && 逻辑目的与执行方法相同
+                $result = $result && ($index['state'] || $sql === false);
             }
         }
 
@@ -215,25 +238,30 @@ abstract class of_db {
         //未初始化
         if ($dbLink === null) {
             //引用连接池
-            $index = &$config['pool'];
+            $pool = &$config['pool'];
             //分离模式 || 可能是单个或混合
-            ($isMix = isset($index[$type])) || $index = array('write' => $index, 'read' => $index);
+            ($isMix = isset($pool[$type])) || $pool = array('write' => $pool, 'read' => $pool);
 
             //引用读写分离
-            $index = &$index[$type];
+            $pool = &$pool[$type];
             //是单个的
-            isset($index['adapter']) && $index = array($index);
+            isset($pool['adapter']) && $pool = array($pool);
 
             do {
                 //随机读取一连接
-                $link = &$index[$rand = rand(0, count($index) - 1)];
+                $link = &$pool[$rand = rand(0, count($pool) - 1)];
+                //设置时区
+                if (($index = &$link['params']['timezone']) === null || $index === true) {
+                    $index = of::config('_of.timezone');
+                }
+
                 //标识允许实例化
                 $config['allowInst'] = 'of_accy_db_' . $link['adapter'];
                 //实例化连接对象
                 $dbLink = new $config['allowInst'](self::$nowDbKey, $link['params']);
 
                 //连接数据库成功 || 没有备用连接
-                if (($temp = $dbLink->_connect()) || empty($index[1])) {
+                if (($temp = $dbLink->_connect()) || empty($pool[1])) {
                     //读取失败
                     if ($temp === false) {
                         //分离模式 && 读取模式
@@ -249,8 +277,8 @@ abstract class of_db {
                 }
 
                 //删除连接失败的配置
-                array_splice($index, $rand, 1);
-            } while (isset($index[0]));
+                array_splice($pool, $rand, 1);
+            } while (isset($pool[0]));
         }
 
         return $dbLink;

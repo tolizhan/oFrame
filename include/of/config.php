@@ -108,7 +108,7 @@ return array(
     ),
     //会话封装
     'session'     => array(
-        //存储方式
+        //存储方式, files=文件存储, kv=_of.com.kv方式, mysql=数据库方式
         'adapter'     => 'files',
         //正则匹配"调度类名::方法名"判断是否自动开启
         'autoStart'   => '@^(?!of_base_com_net:|of_base_sso_api:)@',
@@ -164,7 +164,7 @@ return array(
     'sso'         => array(
         //单点登录所使用的数据库
         'dbPool'  => 'default',
-        //帐号信息有效期(天), 0=不限制, 期满必须修改
+        //用户密码有效期(天), 0=不限制, 期满必须修改
         'expiry'  => 90,
         //开放注册,单点登录系统使用
         'openReg' => true,

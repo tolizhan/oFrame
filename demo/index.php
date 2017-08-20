@@ -27,7 +27,7 @@ class demo_index extends L {
      * 作者 : Edgar.lee
      */
     public function asyn($r = null) {
-        if( $r ) {
+        if ($r) {
             sleep(5);
             file_put_contents(ROOT_DIR . OF_DATA . '/asynTest.txt', print_r($r, true));
         } else {

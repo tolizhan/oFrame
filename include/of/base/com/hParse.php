@@ -3184,9 +3184,7 @@ class of_base_com_hParse {
                 $temp = $parseNode[$pNodeKey]['cKeys'];
 
                 //移除目标节点全部子节点
-                foreach ($parseNode[$pNodeKey]['cKeys'] as &$nodeKey) {
-                    self::nodeSplice($nodeKey);
-                }
+                foreach ($temp as &$nodeKey) self::nodeSplice($nodeKey);
 
                 //回收被替换的节点
                 self::nodeCollection($temp);

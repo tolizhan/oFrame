@@ -210,7 +210,7 @@ class of_base_com_csv {
                             //下一个字符是'"' && 找'"' && 移到下一位
                             if (isset($rd[$lastPos]) && $rd[$lastPos] === '"') {
                                 $findChar = '"';
-                                $i = $lastPos + 1;
+                                $i = $lastPos;
                             }
                         }
                     }
@@ -242,10 +242,24 @@ class of_base_com_csv {
     private static function &getCsvRow(&$params) {
         //读取一行数据
         if ($result = fgets($params['fp'])) {
-            //移动过高位"\0"
-            $params['cs'] === 'UTF-16LE' && fseek($params['fp'], 1, SEEK_CUR);
-            //去掉结尾"\n"
-            $result = rtrim($result, "\n");
+            //补全换行符
+            if ($params['cs'] === 'UTF-16LE') {
+                while (
+                    ($char = fgetc($params['fp'])) !== false &&
+                    ($char !== "\0" || strlen($result) % 2 === 0)
+                ) {
+                    $result .= $char . fgets($params['fp']);
+                }
+
+                //去掉结尾"\n"
+                if (strlen($result) % 2 && substr($result, -1) === "\n") {
+                    $result = substr($result, 0, -1);
+                }
+                $result .= "\n\0";
+            } else {
+                //去掉结尾"\n"
+                $result = rtrim($result, "\n") . "\n";
+            }
 
             //初始非ASCII字符集
             if ($params['cs'] === null && preg_match('@[^\x00\x09\x10\x13\x20-\x7F]@', $result)) {
@@ -264,7 +278,7 @@ class of_base_com_csv {
             //转码为 UTF-8
             $params['cs'] && $params['cs'] !== 'UTF-8' && $result = iconv($params['cs'], 'UTF-8//IGNORE', $result);
             //字符串补全, 换行统一 "\r\n","\r" => "\n"
-            $result = str_replace(array("\r\n", "\r"), "\n", $result) . "\n" . $params['de'];
+            $result = str_replace(array("\r\n", "\r"), "\n", $result) . $params['de'];
         }
         return $result;
     }

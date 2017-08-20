@@ -18,7 +18,7 @@ if ($index = &$_SERVER['HTTP_ACCESS_CONTROL_REQUEST_HEADERS']) {
     header('Access-Control-Allow-Headers: ' . $index);
 }
 //基本参数校验
-if( empty($_FILES['fileData']) || !isset($_POST['folder']) ) exit;
+if (empty($_FILES['fileData']) || !isset($_POST['folder'])) exit;
 //加载核心
 include dirname(dirname(dirname(__FILE__))) . '/of.php';
 //关闭SESSION
@@ -31,7 +31,7 @@ $config = of::config('_of.addin.oUpload', array()) + array(
 //保证有字符输出
 echo ' ';
 
-if( empty($_POST['file']) ) {
+if (empty($_POST['file'])) {
     //文件扩展名
     $fExt = strtolower(pathinfo($_FILES['fileData']['name'], PATHINFO_EXTENSION));
     //存储目录
@@ -45,7 +45,7 @@ if( empty($_POST['file']) ) {
     $path = $_POST['file'];
 }
 
-if(
+if (
     //真实路径
     ($path = of_base_com_str::realpath(OF_DATA . $_POST['folder'] . $path)) &&
     //路径有效

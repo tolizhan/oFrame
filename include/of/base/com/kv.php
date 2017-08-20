@@ -90,7 +90,7 @@ class of_base_com_kv {
      *      value : ('')添加的数据
      *      time  : (0) 过期时间
      *      pool  : ('default') 连接池
-     *      retry : 尝试重试到成功, 0=不尝试, 正整数=尝试不超过秒数
+     *      retry : 尝试重试到成功, 0=不尝试, 正数=尝试不超过秒数(可以是小数)
      * 返回 :
      *      false=指定键名已存在, true=成功创建
      * 作者 : Edgar.lee
@@ -103,7 +103,7 @@ class of_base_com_kv {
 
         do {
             $result = $index->_add($name, $value, self::formatTime($time));
-            if ($result || !$retry) {
+            if ($result || $retry <= 0) {
                 break ;
             } else {
                 $retry -= 1;

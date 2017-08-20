@@ -1,3 +1,44 @@
+版本: 214
+作者: Edgar
+日期: 2017年8月20日 12:12:15
+信息:
+说明: CLI 模式下支持异步操作
+      CLI 模式下类似 xx:yy 的参数,将被以 $GLOBALS['_ARGV'][xx]=yy 存储
+      CLI 访问 /index.php 时, 不在进行返回值验证
+      of_base_com_net 使用更高效的异步操作
+      非生产环境时, mysql 使用严格模式
+      支持嵌套事务,若子事务回滚->父事务也回滚,非Savepoint方式
+      分页回调参数添加 attr 分页属性 {"data" : &当页二维数据, "attr" : &当前分页属性}
+      完善 sso, 配置 _of.sso.expiry 仅作为密码过期时间
+      优化 _of.db 配置方式识别率
+      解决hParse替换插入子节点不能全部移除的问题
+      加强csv对UTF-16LE编码解析准确性
+      of_base_com_kv::add 中尝试重试参数(retry)现在可以是小数
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/demo/index.php
+已增加 : /trunk/include/of/accy/com/net
+已增加 : /trunk/include/of/accy/com/net/asyncProc.bin
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/pdoMysql.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/att/sso/js/login.js
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/index.php
+已修改 : /trunk/license.txt
+
 版本: 212
 作者: Edgar
 日期: 2017年7月5日 17:19:10

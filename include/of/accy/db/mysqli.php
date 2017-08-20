@@ -22,7 +22,11 @@ class of_accy_db_mysqli extends of_db {
 
         if (mysqli_ping($connection)) {
             $this->connection = $connection;
+            //设置字体
             $temp = "SET NAMES '{$params['charset']}'";
+            //设置严格模式
+            OF_DEBUG === false || $temp .= ', SQL_MODE = "STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ZERO_DATE,NO_ZERO_IN_DATE,NO_ENGINE_SUBSTITUTION"';
+            //设置时区
             $params['timezone'] && $temp .= ", TIME_ZONE = '{$params['timezone']}'";
             mysqli_query($this->connection, $temp);
             return true;
