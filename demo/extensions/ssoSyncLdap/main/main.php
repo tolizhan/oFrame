@@ -38,7 +38,7 @@ function login($params = null) {
                 $this->_removeHook('::sqlBefore', array($this, 'login'));
 
                 //连接成功
-                if( $conn = ldap_connect('youkeshu.com', 389) ) {
+                if( $conn = ldap_connect('LDAP 地址', 389) ) {
                     //登录成功
                     if( @ldap_bind($conn, stripslashes($temp[1]), stripslashes($temp[2])) ) {
                         //根DN
@@ -199,9 +199,9 @@ function syncUsers() {
     $dnList = array('OU=youkeshu,DC=youkeshu,DC=com');
 
     //连接成功
-    if ($conn = ldap_connect('youkeshu.com', 389)) {
+    if ($conn = ldap_connect('LDAP 地址', 389)) {
         //登录成功
-        if (ldap_bind($conn, 'dcadmin', 'rG8dDTta12UL')) {
+        if (ldap_bind($conn, 'LDAP 帐号', 'LDAP 密码')) {
             $sql = "UPDATE 
                 `_of_sso_user` 
             SET 
