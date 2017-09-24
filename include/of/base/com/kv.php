@@ -61,6 +61,13 @@ class of_base_com_kv {
                     $config = of::config('_of.com.kv', array('adapter' => 'files'));
                     //配置文件格式化
                     isset($config['adapter']) && $config = array('default' => $config);
+                    //默认连接初始化
+                    isset($config['default']) || $config['default'] = array(
+                        'adapter' => 'files',
+                        'params'  => array(
+                            'path' => OF_DATA . '/_of/of_accy_com_kv_files'
+                        )
+                    );
                 }
 
                 //引用连接池
@@ -174,7 +181,7 @@ class of_base_com_kv {
     }
 
     private static function &formatTime(&$time) {
-        $time || $time = PHP_INT_MAX;
+        $time || $time = 2147483647;
         $time < 63072000 && $time += time();
         return $time;
     }

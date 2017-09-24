@@ -461,7 +461,7 @@ class of_base_com_com {
                                         }
                                     //寻找 ")"
                                     case '('   :
-                                        $temp['keys'][] = array('"' => true, '\'' => true, ')' => false);
+                                        $temp['keys'][] = array('"' => true, '\'' => true, '(' => false, ')' => false);
                                         break;
                                     //结束 ")"
                                     case ')'   :

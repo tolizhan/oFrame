@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200214);
+define('OF_VERSION', 200216);
 
 /**
  * 描述 : 控制层核心
@@ -294,13 +294,6 @@ class of {
         }
         $index = date('P', $_SERVER['REQUEST_TIME']);
 
-        //格式化debug
-        if (isset($_REQUEST['__OF_DEBUG__'])) {
-            $config['_of']['debug'] = true;
-        } else if ($config['_of']['debug'] !== null) {
-            $config['_of']['debug'] = !!$config['_of']['debug'];
-        }
-
         //自动计算ROOT_URL
         if (!isset($config['_of']['rootUrl'])) {
             //cli模式
@@ -333,8 +326,30 @@ class of {
         define('OF_URL', ROOT_URL . substr(OF_DIR, strlen(ROOT_DIR)));
         //框架可写文件夹
         define('OF_DATA', $config['_of']['dataDir']);
-        //是否 DEBUG 模式
-        define('OF_DEBUG', $config['_of']['debug']);
+
+        //从 HTTP_REFERER 识别 __OF_DEBUG__
+        if (
+            !isset($_REQUEST['__OF_DEBUG__']) &&
+            isset($_SERVER['HTTP_REFERER']) &&
+            strpos($_SERVER['HTTP_REFERER'], '__OF_DEBUG__', 10)
+        ) {
+            parse_str(strtr($_SERVER['HTTP_REFERER'], '?', '&'), $temp);
+            isset($temp['__OF_DEBUG__']) && $_REQUEST['__OF_DEBUG__'] = &$temp['__OF_DEBUG__'];
+        }
+
+        //格式化debug
+        if ($config['_of']['debug'] === true || $config['_of']['debug'] === null) {
+            //调试或生产模式
+            define('OF_DEBUG', isset($_REQUEST['__OF_DEBUG__']) ?
+                true : $config['_of']['debug']
+            );
+        } else {
+            //生产模式切换, 密码校验
+            define('OF_DEBUG', isset($_REQUEST['__OF_DEBUG__']) ?
+                $config['_of']['debug'] == $_REQUEST['__OF_DEBUG__'] : false
+            );
+        }
+
         //of_类映射
         self::event('of::loadClass', array(
             'classPre' => 'of_', 'mapping' => substr(OF_DIR, strlen(ROOT_DIR) + 1) . '/'

@@ -518,4 +518,9 @@ L.data('paging.after[]', function () {
         of_view::head(false);
     }
 }
-return true;
+
+if (OF_DEBUG === false) {
+    exit('Access denied: production mode.');
+} else {
+    return true;
+}

@@ -32,12 +32,17 @@ class of_base_com_timer {
 
         //web访问开启计划任务
         if (of::dispatch('class') === 'of_base_com_timer') {
-            echo self::timer() ? 'runing' : 'starting';
-            echo "<br>\n<pre>cron : "; 
-            if (is_file(self::$config['cron']['path'])) {
-                print_r(include self::$config['cron']['path']);
+            echo self::timer() ? 'runing' : 'starting', "<br>\n";
+
+            if (OF_DEBUG === false) {
+                exit('Access denied: production mode.');
+            } else {
+                echo "<pre>cron : "; 
+                if (is_file(self::$config['cron']['path'])) {
+                    print_r(include self::$config['cron']['path']);
+                }
+                echo '</pre>';
             }
-            echo '</pre>';
         }
     }
 
@@ -382,20 +387,8 @@ class of_base_com_timer {
 
             if (!empty($cron) && is_array($cron)) {
                 foreach ($cron as &$vt) {
-                    preg_match('@(?:^|\s+)(?:(?:\d+(?:-\d+)?(?:/\d+)?|\*/\d+)(?:,|))+(?:\s+|$)@', $vt['time'], $temp, PREG_OFFSET_CAPTURE);
-
-                    if ($index = &$temp[0]) {
-                        //每星期计划 || 不是
-                        $index += strlen($vt['time']) === strlen($index[0]) + $index[1] ?
-                            //替换计划
-                            array('p' => '@^(\s*[^\s]+){2}@', 'r' => '1 1') : array('p' => '@[^\s]+@', 'r' => '1');
-
-                        //修正计划
-                        $vt['time'] = preg_replace($index['p'], $index['r'], substr($vt['time'], 0, $index[1])) .
-                            substr($vt['time'], $index[1]);
-                    }
                     //每项时间分割
-                    $item = preg_split('@\s+@', $vt['time']);
+                    $item = preg_split('@\s+@', trim($vt['time']));
 
                     foreach ($timeList as &$timeBox) {
                         foreach ($item as $ki => &$vi) {
@@ -415,8 +408,14 @@ class of_base_com_timer {
                                     $temp = $index >= $vl[1] && $index <= $vl[2];
                                 }
 
-                                //范围通过 && 频率通过
-                                if ($temp && (!$vl[3] || $index % $vl[3] === 0)) {
+                                //范围通过 && 频率通过(不需要 || 在范围内 && 可整除)
+                                if (
+                                    $temp && (
+                                        !$vl[3] || 
+                                        $index >= $vl[1] && 
+                                        ($index - $vl[1]) % $vl[3] === 0
+                                    )
+                                ) {
                                     //进入下一项校验
                                     continue 2;
                                 }

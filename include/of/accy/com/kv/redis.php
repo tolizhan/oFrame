@@ -27,7 +27,7 @@ class of_accy_com_kv_redis extends of_base_com_kv {
         $redis = $this->_link('master');
 
         if ($redis->setnx($name, $value)) {
-            $redis->expire($name, $time);
+            $redis->expireAt($name, $time);
             return true;
         } else {
             return false;
@@ -47,7 +47,7 @@ class of_accy_com_kv_redis extends of_base_com_kv {
      * 作者 : Edgar.lee
      */
     protected function _set(&$name, &$value, &$time) {
-        return $this->_link('master')->set($name, $value, $time);
+        return $this->_link('master')->setEx($name, $time - time(), $value);
     }
 
     /**

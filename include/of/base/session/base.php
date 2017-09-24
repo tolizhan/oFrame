@@ -116,17 +116,19 @@ class of_base_session_base {
     }
 
     /* '/of/com/session/xx.php' 文件继承并实现以下方法
-protected static function _open();                                                  //开启session,仅写加锁部分
-
-protected static function _close();                                                 //关闭连接源
-
-protected static function _read(&$sessionId, &$data);                               //读取session,返回字符串
-
-protected static function _write(&$sessionId, &$data, $maxLifeTime);                //写入session, $maxLifeTime 最大生命周期
-
-protected static function _destroy(&$sessionId);                                    //清除session
-
-protected static function _gc($maxlifetime);                                        //清理过期session */
+    //开启session,仅写加锁部分
+    protected static function _open();
+    //关闭连接源
+    protected static function _close();
+    //读取session,返回字符串
+    protected static function _read(&$sessionId, &$data);
+    //写入session, $maxLifeTime 最大生命周期
+    protected static function _write(&$sessionId, &$data, $maxLifeTime);
+    //清除session
+    protected static function _destroy(&$sessionId);
+    //清理过期session
+    protected static function _gc($maxlifetime);
+    // */
 }
 
 of_base_session_base::init(true);

@@ -18894,7 +18894,8 @@ Putting 1 is equivalent to putting 0 and calling Ln() just after. Default value:
 					} elseif ($type == 'svg') {
 						$this->ImageSVG($tag['attribute']['src'], $xpos, $this->y, $iw, $ih, $imglink, $align, '', $border, true);
 					} else {
-						$this->Image($tag['attribute']['src'], $xpos, $this->y, $iw, $ih, '', $imglink, $align, false, 300, '', false, false, $border, false, false, true);
+						$temp = htmlspecialchars_decode($tag['attribute']['src'], ENT_QUOTES);
+						$this->Image($temp, $xpos, $this->y, $iw, $ih, '', $imglink, $align, false, 300, '', false, false, $border, false, false, true);
 					}
 					switch($align) {
 						case 'T': {

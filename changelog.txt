@@ -1,3 +1,38 @@
+版本: 216
+作者: Edgar
+日期: 2017年9月24日 10:58:35
+信息:
+说明: 兼容 64 位系统下 key-value 一处有效期问题
+      k-v redis 兼容低版本 php_redis 扩展
+      k-v 未配置 default 连接池时, 会以 files 方式初始化
+      静态计划任务, * * x * * 不再是 1 1 X */1 */1 而是 */1 */1 X */1 */1
+      静态计划任务, [x-y]/n 写法不再从 0 算起 是 x 算起
+      当框架配置 _of.debug 为字符串时, $_REQUEST["__OF_DEBUG__"] 需要与其相同才能强制切换调试模式
+      现在可以从 $_SERVER['HTTP_REFERER'] 头信息中识别 __OF_DEBUG__
+      错误日志, 语言包, 扩展, 计划任务等管理界面, 生产模式禁止访问, 可以通过 __OF_DEBUG__ 切换
+      of_base_com_disk::file 解决网络文件系统掉包问题
+      解决异步操作一些环境下不执行的问题
+      hParse css 方法值设置为""时, 可以删除对应样式
+      加强tcpdf解析html 图片中 src 的准确性
+      完善分页
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/addin/tcpdf/tcpdf.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/extension/tool.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/accy/com/kv/redis.php
+
 版本: 214
 作者: Edgar
 日期: 2017年8月20日 12:12:15

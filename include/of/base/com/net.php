@@ -258,7 +258,7 @@ class of_base_com_net {
                     //linux 异步数据结构
                     $exec[] = 'data:' . addslashes(serialize($data));
                     //exec("ls -l /proc/{$pid}/exe", $output, $state);
-                    $exec = '"' . join('" "', $exec) . '" &';
+                    $exec = 'nohup "' . join('" "', $exec) . '" >/dev/null 2>&1 &';
                 }
 
                 is_string($exec) && pclose(popen($exec, 'r'));
