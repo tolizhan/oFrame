@@ -1,5 +1,7 @@
 <?php
-if (!empty($_POST)) {
+if (OF_DEBUG === false) {
+    exit('Access denied: production mode.');
+} else if (!empty($_POST)) {
     $result = null;
 
     switch ($_POST['type']) {

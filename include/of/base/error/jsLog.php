@@ -23,7 +23,7 @@ class of_base_error_jsLog extends of_base_error_writeLog {
                 $logPath = ROOT_DIR . $logPath . date('/Y/m', $_SERVER['REQUEST_TIME']);
                 preg_match('@\w+Error@', $_POST['message'], $match);
                 $data = array(
-                    'logType'     => $match ? $match[0] : 'jsError',
+                    'errorType'   => $match ? $match[0] : 'jsError',
                     'environment' => &$_POST,
                     'time'        => &$_SERVER['REQUEST_TIME']
                 );

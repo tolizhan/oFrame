@@ -1,6 +1,6 @@
 INSERT INTO `__FOREIGNKEY` (`CONSTRAINT_NAME`,`TABLE_NAME`,`REFERENCED_TABLE_NAME`,`COLUMNS_NAME`,`REFERENCED_COLUMNS_NAME`,`UPDATE_RULE`,`DELETE_RULE`) VALUES ('同步_of_sso_realm表功能操作','_of_sso_func','_of_sso_realm','`realmId`','`id`','CASCADE','CASCADE '),
-('同步_of_sso_realm表日志操作','_of_sso_log','_of_sso_realm','`site`','`name`','CASCADE','NO ACTION '),
-('同步_of_sso_user表日志操作','_of_sso_log','_of_sso_user','`name`','`name`','CASCADE','NO ACTION '),
+('同步_of_sso_realm表日志操作','_of_sso_log','_of_sso_realm','`site`','`name`','CASCADE','CASCADE '),
+('同步_of_sso_user表日志操作','_of_sso_log','_of_sso_user','`name`','`name`','CASCADE','CASCADE '),
 ('同步_of_sso_realm表角色操作','_of_sso_pack','_of_sso_realm','`realmId`','`id`','CASCADE','CASCADE '),
 ('同步_of_sso_pack表许可操作','_of_sso_permit','_of_sso_pack','`packId`','`id`','CASCADE','CASCADE '),
 ('同步_of_sso_realm表许可操作','_of_sso_permit','_of_sso_realm','`realmId`','`id`','CASCADE','CASCADE '),

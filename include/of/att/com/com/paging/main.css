@@ -39,7 +39,7 @@
 .of-paging_action{ float: right; color: #888;}
 .of-paging_action a{ width:20px; height: 24px; text-decoration:none; display:inline-block; padding-top: 2px; margin:0 5px;}
 .of-paging_action a:hover{ text-decoration:none;}
-.of-paging_action input{ border: 0px; height: 24px; width: 32px; padding:1px 0px 1px 25px; margin:0 5px; line-height:24px;}
+.of-paging_action input{ border: 0px; height: 24px; width: 32px; padding:1px 0px 1px 25px; margin:0 5px; line-height:24px; box-sizing: content-box;}
 
 /**
  * 描述 : 具体动作
@@ -57,4 +57,5 @@
 .of-paging_jump:hover{ background-position:-58px -26px;}
 .of-paging_size{ background:url(images/page_pageSize_input.jpg) no-repeat 0 0; box-sizing: initial;}
 .of-paging_size:hover{ background-position:-58px 0px;}
+.of-paging_count{ display:inline-block; height: 23px; margin-right: 10px;}
 .of-paging_page{ display:inline-block; height: 23px;}

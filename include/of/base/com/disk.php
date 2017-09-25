@@ -88,6 +88,8 @@ class of_base_com_disk {
             }
             //写入数据
             $result = is_int(fwrite($fp, is_string($data) ? $data : serialize($data)));
+            //防止网络磁盘掉包
+            fseek($fp, -1, SEEK_CUR) || fread($fp, 1);
             is_string($filePath) && fclose($fp);
             return $result;
         }

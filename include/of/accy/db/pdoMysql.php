@@ -25,7 +25,13 @@ class of_accy_db_pdoMysql extends of_db {
                 return false;
             } else {
                 $this->connection = $connection;
-                $connection->query("SET NAMES '{$params['charset']}'");
+                //设置字体
+                $temp = "SET NAMES '{$params['charset']}'";
+                //设置严格模式
+                OF_DEBUG === false || $temp .= ', SQL_MODE = "STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ZERO_DATE,NO_ZERO_IN_DATE,NO_ENGINE_SUBSTITUTION"';
+                //设置时区
+                $params['timezone'] && $temp .= ", TIME_ZONE = '{$params['timezone']}'";
+                $connection->query($temp);
                 return true;
             }
         } catch (PDOException $e) {

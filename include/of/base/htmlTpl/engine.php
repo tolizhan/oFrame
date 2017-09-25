@@ -221,8 +221,15 @@ class of_base_htmlTpl_engine {
             }
 
             //生成 head
-            $printHeadArr[''][] = "<!--{$config['tagKey'][0]}\nof_view::head(array(\n    'title' => ";
+            $printHeadArr[''][] = "<!--{$config['tagKey'][0]}\n";
+
+            //分页模版
+            if ($bodyObj->find('[method][name$=pagingBlock]')->size()) {
+                $printHeadArr[''][] = "of_view::head('head', '<script src=\"' .OF_URL. '/att/com/com/paging/main.js\"></script>');\n";
+            }
+
             //获取标题
+            $printHeadArr[''][] = "of_view::head(array(\n    'title' => ";
             $temp = array($headObj->find('title'));
             if ($temp[1] = $temp[0]->attr($config['funcPre'] . 'html')) {
                 $printHeadArr[''][] = self::formatAttr($temp[0]->attr('>tagLine::start'), $temp[1], false);

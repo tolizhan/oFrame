@@ -63,6 +63,7 @@ class of_base_sso_main extends of_base_sso_api {
         }
         //保存变动
         if (!empty($params['save'])) {
+            $sets = array();
             $id = &$params['save']['id'];
             empty($params['save']['answer']) || $params['save']['find'] = strlen($params['save']['question']) . 
                 '_' . $params['save']['question'] . md5($params['save']['answer']);
@@ -71,25 +72,26 @@ class of_base_sso_main extends of_base_sso_api {
                 unset($params['save']['pwd']);
             } else {
                 $params['save']['pwd'] = md5($params['save']['pwd']);
+                $sets[] = "`time` = IF(`pwd` = '{$params['save']['pwd']}', `time`, NOW())";
             }
 
             foreach ($params['save'] as $k => &$v) {
-                $v = "`{$k}` = '{$v}'";
+                $sets[] = "`{$k}` = '{$v}'";
             }
-            $temp = join(',', $params['save']);
+            $sets = join(',', $sets);
 
             if ($id) {
                 $sql = "UPDATE
                     `_of_sso_user`
                 SET
-                    {$temp}
+                    {$sets}
                 WHERE
                     `id` = '{$id}'";
             } else {
                 $sql = "INSERT IGNORE INTO
                     `_of_sso_user`
                 SET
-                    {$temp}";
+                    {$sets}";
             }
 
             if (($temp = L::sql($sql, self::$config['dbPool'])) === false) {
@@ -739,7 +741,7 @@ class of_base_sso_main extends of_base_sso_api {
                             self::getMgmt($temp) : of_base_sso_api::pushState($_GET['space'], $temp);
                         $result = array('state' => 'done', 'msg' => of_base_sso_api::ticket());
                     } else {
-                        $result = array('state' => 'error', 'msg' => '需先修改帐号信息');
+                        $result = array('state' => 'error', 'msg' => '需先修改帐号密码');
                     }
                 } else {
                     $result = array('state' => 'error', 'msg' => '账号密码错误');
@@ -750,13 +752,14 @@ class of_base_sso_main extends of_base_sso_api {
 
                 //找回操作
                 if ($_POST['type'] === 'find') {
+                    $md5 = md5($_POST['pwd']);
                     $sql = "UPDATE 
                         `_of_sso_user` 
                     SET 
-                        `pwd`  = MD5('{$_POST['pwd']}'),
+                        `time` = IF(`pwd` = '{$md5}', `time`, NOW()),
+                        `pwd`  = '{$md5}',
                         `find` = '{$temp}',
-                        `nike` = '{$_POST['nike']}',
-                        `time` = NOW()
+                        `nike` = '{$_POST['nike']}'
                     WHERE 
                         `name` = '{$_POST['name']}'
                     AND (

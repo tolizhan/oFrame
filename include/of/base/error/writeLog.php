@@ -88,7 +88,7 @@ class of_base_error_writeLog {
                     ini_get('error_append_string');
                 $backtrace['backtrace'] = array();
                 $backtrace = array(
-                    'logType'     => 'error',
+                    'errorType'   => 'error',
                     'environment' => $backtrace
                 );
             } else {
@@ -97,7 +97,7 @@ class of_base_error_writeLog {
         //系统异常
         } else if ($errstr === null) {
             $backtrace = array(
-                'logType'       => 'exception',
+                'errorType'     => 'exception',
                 'environment'   => array(
                     //异常代码
                     'type'      => $errno->getCode(),
@@ -114,7 +114,7 @@ class of_base_error_writeLog {
         //常规错误
         } else if (error_reporting()) {
             $backtrace = array(
-                'logType'       =>'error',
+                'errorType'     =>'error',
                 'environment'   => array(
                     'type'      => $errno,
                     'message'   => $errstr,
@@ -152,7 +152,7 @@ class of_base_error_writeLog {
 
         //生成错误列表
         $backtrace = array(
-            'logType'       => 'sqlError',
+            'errorType'     => 'sqlError',
             'environment'   => array(
                 'type'      => $params['pool'] . ':' . $params['type'],
                 'message'   => &$params['sql'],
@@ -204,6 +204,11 @@ class of_base_error_writeLog {
             );
         }
 
+        //错误回调
+        of::event('of_base_error_writeLog::error', true, array(
+            'type' => &$logType, 'data' => &$logData
+        ));
+
         //日志有时限 && 1%的机会清理
         if (($index = &$config['gcTime']) > 0 && rand(0, 99) === 1) {
             //日志生命期
@@ -233,7 +238,7 @@ class of_base_error_writeLog {
      * 参数 :
      *     &logData : 日志数据
      * 结构 : {
-     *      'logType'     : 错误类型(sqlError, exception, error)
+     *      'errorType'   : 错误类型(sqlError, exception, error)
      *      'environment' : 错误体,包括环境,错误细节,回溯 {
      *          'type'    : php=错误级别, sql=错误码及说明
      *          'message' : php=错误描述, sql=错误sql
@@ -257,7 +262,7 @@ class of_base_error_writeLog {
     private static function formatLog(&$logData) {
         //引用回溯
         $backtrace = &$logData['environment']['backtrace'];
-        $logData['logType'] === 'exception' || array_splice($backtrace, 0, 1);
+        $logData['errorType'] === 'exception' || array_splice($backtrace, 0, 1);
 
         //debug运行追踪
         if (strpos($logData['environment']['file'], '(') !== false) {
@@ -271,7 +276,7 @@ class of_base_error_writeLog {
                         if (
                             //通过类名变相定位 && sql类型下有效类名
                             isset($v['class']) && (
-                                $logData['logType'] !== 'sqlError' || 
+                                $logData['errorType'] !== 'sqlError' || 
                                 strncmp($v['class'], 'of_', 3) && $v['class'] !== 'L'
                             )
                         ) {
@@ -291,7 +296,7 @@ class of_base_error_writeLog {
                 }
 
                 if (
-                    $logData['logType'] !== 'sqlError' || 
+                    $logData['errorType'] !== 'sqlError' || 
                     strncmp(OF_DIR, $temp[0], strlen(OF_DIR))
                 ) {
                     //在eval中
@@ -302,7 +307,7 @@ class of_base_error_writeLog {
                     } else {
                         $logData['environment']['file'] = $temp[0];
                         //通过 eval 编译的类 无 line
-                        if ($logData['logType'] === 'sqlError' && isset($v['line'])) {
+                        if ($logData['errorType'] === 'sqlError' && isset($v['line'])) {
                             $logData['environment']['line'] = $v['line'];
                         }
                     }

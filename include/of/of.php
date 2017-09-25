@@ -1,7 +1,11 @@
 <?php
 //版本号
-define('OF_VERSION', 200210);
+define('OF_VERSION', 200216);
 
+/**
+ * 描述 : 控制层核心
+ * 作者 : Edgar.lee
+ */
 class of {
     //站点配置文件
     private static $config = null;
@@ -167,6 +171,7 @@ class of {
         //管理事件
         } else if ($event === null) {
             $result = &$eventList[$key];
+        //增删改事件
         } else {
             //引用事件
             $event === false ? $index = &$params : $index = &$event;
@@ -224,8 +229,6 @@ class of {
     private static function loadSystemEnv() {
         //默认编码
         ini_set('default_charset', 'UTF-8');
-        //默认时区
-        ini_get('date.timezone') || date_default_timezone_set('PRC');
         //of磁盘路径
         define('OF_DIR', strtr(dirname(__FILE__), '\\', '/'));
 
@@ -240,19 +243,23 @@ class of {
             foreach ($_SERVER['argv'] as &$v) {
                 //"get:a=test&c=demo_index" 模式解析
                 $temp = explode(':', $v, 2);
-                $temp[0] = '_' . strtoupper($temp[0]);
 
-                //"xx:yy"模式的参数 && 存在 $GLOBALS 变量中
-                if (!empty($temp[1]) && isset($GLOBALS[$temp[0]])) {
-                    //解析到对应超全局变量中
-                    parse_str($temp[1], $temp[2]);
-                    $GLOBALS[$temp[0]] = $temp[2] + $GLOBALS[$temp[0]];
-                    //设置原始请求
-                    $temp[0] === '_GET' && $_SERVER['QUERY_STRING'][] = &$temp[1];
+                //"xx:yy"模式的参数
+                if (isset($temp[1])) {
+                    //保存到全局中
+                    $temp[0] = '_' . strtoupper($temp[0]);
+                    $GLOBALS['_ARGV'][$temp[0]] = &$temp[1];
+
+                    //存在 $GLOBALS 变量中
+                    if (isset($GLOBALS[$temp[0]])) {
+                        //解析到对应超全局变量中
+                        parse_str($temp[1], $temp[2]);
+                        $GLOBALS[$temp[0]] = $temp[2] + $GLOBALS[$temp[0]];
+                        //设置原始请求
+                        $temp[0] === '_GET' && $_SERVER['QUERY_STRING'][] = &$temp[1];
+                    }
                 }
             }
-            //整合到 request 中
-            $_REQUEST = $_GET + $_POST + $_COOKIE;
             //设置项目跟目录
             $_SERVER['DOCUMENT_ROOT'] = ROOT_DIR;
             //计算一些路径
@@ -267,9 +274,11 @@ class of {
         }
 
         //防注入处理的超全局变量
-        $temp = array(&$_GET, &$_POST, &$_COOKIE, &$_REQUEST);
+        $temp = array(&$_GET, &$_POST, &$_COOKIE);
         //防注入脚本
         get_magic_quotes_gpc() || self::slashesDeep($temp);
+        //固定顺序整合到 request 中, 防止被 php.ini 中 request_order 影响
+        $_REQUEST = $_GET + $_POST + $_COOKIE;
 
         //加载站点配置文件
         $of['config'] = (array)$of['config'];
@@ -279,12 +288,11 @@ class of {
         //合并系统配置
         $config['_of'] = &self::arrayReplaceRecursive($of, $config['_of']);
 
-        //格式化debug
-        if (isset($_REQUEST['__OF_DEBUG__'])) {
-            $config['_of']['debug'] = true;
-        } else if ($config['_of']['debug'] !== null) {
-            $config['_of']['debug'] = !!$config['_of']['debug'];
+        //默认时区 框架时区>系统时区>PRC时区
+        if (($index = &$of['timezone']) || (!ini_get('date.timezone') && $index = 'PRC')) {
+            date_default_timezone_set($index);
         }
+        $index = date('P', $_SERVER['REQUEST_TIME']);
 
         //自动计算ROOT_URL
         if (!isset($config['_of']['rootUrl'])) {
@@ -311,14 +319,37 @@ class of {
                 ));
             }
         }
+
         //站点根路径,ROOT_URL
         define('ROOT_URL', $config['_of']['rootUrl']);
         //框架根路径,OF_URL
         define('OF_URL', ROOT_URL . substr(OF_DIR, strlen(ROOT_DIR)));
         //框架可写文件夹
         define('OF_DATA', $config['_of']['dataDir']);
-        //是否 DEBUG 模式
-        define('OF_DEBUG', $config['_of']['debug']);
+
+        //从 HTTP_REFERER 识别 __OF_DEBUG__
+        if (
+            !isset($_REQUEST['__OF_DEBUG__']) &&
+            isset($_SERVER['HTTP_REFERER']) &&
+            strpos($_SERVER['HTTP_REFERER'], '__OF_DEBUG__', 10)
+        ) {
+            parse_str(strtr($_SERVER['HTTP_REFERER'], '?', '&'), $temp);
+            isset($temp['__OF_DEBUG__']) && $_REQUEST['__OF_DEBUG__'] = &$temp['__OF_DEBUG__'];
+        }
+
+        //格式化debug
+        if ($config['_of']['debug'] === true || $config['_of']['debug'] === null) {
+            //调试或生产模式
+            define('OF_DEBUG', isset($_REQUEST['__OF_DEBUG__']) ?
+                true : $config['_of']['debug']
+            );
+        } else {
+            //生产模式切换, 密码校验
+            define('OF_DEBUG', isset($_REQUEST['__OF_DEBUG__']) ?
+                $config['_of']['debug'] == $_REQUEST['__OF_DEBUG__'] : false
+            );
+        }
+
         //of_类映射
         self::event('of::loadClass', array(
             'classPre' => 'of_', 'mapping' => substr(OF_DIR, strlen(ROOT_DIR) + 1) . '/'
@@ -370,7 +401,8 @@ class of {
             if (strncmp($v['classPre'], $className, $k) === 0) {
                 if (isset($v['asCall'])) {
                     $v['params']['_']['className'] = $className;
-                    return call_user_func_array($v['asCall'], $v['params']);
+                    $temp = call_user_func_array($v['asCall'], $v['params']);
+                    if ($temp !== false) return $temp;
                 } else {
                     $className = substr_replace($className, $v['mapping'], 0, $k);
                     break;

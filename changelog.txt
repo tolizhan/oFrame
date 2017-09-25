@@ -1,3 +1,128 @@
+版本: 216
+作者: Edgar
+日期: 2017年9月24日 10:58:35
+信息:
+说明: 兼容 64 位系统下 key-value 一处有效期问题
+      k-v redis 兼容低版本 php_redis 扩展
+      k-v 未配置 default 连接池时, 会以 files 方式初始化
+      静态计划任务, * * x * * 不再是 1 1 X */1 */1 而是 */1 */1 X */1 */1
+      静态计划任务, [x-y]/n 写法不再从 0 算起 是 x 算起
+      当框架配置 _of.debug 为字符串时, $_REQUEST["__OF_DEBUG__"] 需要与其相同才能强制切换调试模式
+      现在可以从 $_SERVER['HTTP_REFERER'] 头信息中识别 __OF_DEBUG__
+      错误日志, 语言包, 扩展, 计划任务等管理界面, 生产模式禁止访问, 可以通过 __OF_DEBUG__ 切换
+      of_base_com_disk::file 解决网络文件系统掉包问题
+      解决异步操作一些环境下不执行的问题
+      hParse css 方法值设置为""时, 可以删除对应样式
+      加强tcpdf解析html 图片中 src 的准确性
+      完善分页
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/addin/tcpdf/tcpdf.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/extension/tool.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/accy/com/kv/redis.php
+
+版本: 214
+作者: Edgar
+日期: 2017年8月20日 12:12:15
+信息:
+说明: CLI 模式下支持异步操作
+      CLI 模式下类似 xx:yy 的参数,将被以 $GLOBALS['_ARGV'][xx]=yy 存储
+      CLI 访问 /index.php 时, 不在进行返回值验证
+      of_base_com_net 使用更高效的异步操作
+      非生产环境时, mysql 使用严格模式
+      支持嵌套事务,若子事务回滚->父事务也回滚,非Savepoint方式
+      分页回调参数添加 attr 分页属性 {"data" : &当页二维数据, "attr" : &当前分页属性}
+      完善 sso, 配置 _of.sso.expiry 仅作为密码过期时间
+      优化 _of.db 配置方式识别率
+      解决hParse替换插入子节点不能全部移除的问题
+      加强csv对UTF-16LE编码解析准确性
+      of_base_com_kv::add 中尝试重试参数(retry)现在可以是小数
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/demo/index.php
+已增加 : /trunk/include/of/accy/com/net
+已增加 : /trunk/include/of/accy/com/net/asyncProc.bin
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/pdoMysql.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/att/sso/js/login.js
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/index.php
+已修改 : /trunk/license.txt
+
+版本: 212
+作者: Edgar
+日期: 2017年7月5日 17:19:10
+信息:
+说明: 升级 tcpdf 到 6.2.13
+      当发生错误时触发 of_base_error_writeLog::error 回调钩子, 接收 {"type" : 错误来源, "data" : 错误信息}
+      html模版引擎当识别到分页模版时自动引用分页脚本
+      分页模版支持 name="pageCount" 数据总长度
+      固定 $_REQUEST 变量, 不再受 php.ini 中 request_order 影响
+      框架配置可以设置时区, 支持夏令时 _of.timezone 和 _of.db.params.timezone
+      手动触发计划任务显示当前状态 OF_URL/?c=of_base_com_timer
+      分页兼容 mysql >= 5.7 语法
+      csv 默认改为 UTF-16LE 编码, 兼容性更强
+      修复SSO不能删除系统帐号的外键问题
+      解决sso服务器session过期后客户端通知退出报错问题
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/pdoMysql.php
+已修改 : /trunk/include/of/addin/tcpdf/CHANGELOG.TXT
+已删除 : /trunk/include/of/addin/tcpdf/README.TXT
+已增加 : /trunk/include/of/addin/tcpdf/README.md
+已修改 : /trunk/include/of/addin/tcpdf/composer.json
+已修改 : /trunk/include/of/addin/tcpdf/config/tcpdf_config.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/helvetica.php
+已修改 : /trunk/include/of/addin/tcpdf/include/tcpdf_static.php
+已修改 : /trunk/include/of/addin/tcpdf/tcpdf.php
+已修改 : /trunk/include/of/att/com/com/paging/main.css
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/att/sso/res/importTpl.csv
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/jsLog.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/link/response.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/db/table.sql
+已修改 : /trunk/include/of/base/version/check.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+已增加 : /trunk/license.txt
+
 版本: 210
 作者: Edgar
 日期: 2017年5月4日 21:54:27

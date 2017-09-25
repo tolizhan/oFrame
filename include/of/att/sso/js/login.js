@@ -56,11 +56,13 @@ var ofBaseSsoLogin = {
                     ofBaseSsoLogin.tipBar('操作成功');
 
                     //post 跳转页面
-                    if( data.msg ) {
+                    if (L.type(data.msg) === 'object') {
                         ofBaseSsoLogin.form(data.msg);
                     } else {
                         //跳转 管理界面
-                        window.location.href = OF_URL + '/index.php?c=of_base_sso_main&a=index';
+                        window.location.href = OF_URL + 
+                            '/index.php?c=of_base_sso_main&a=index' +
+                            (data.msg ? '&tip=' + data.msg : '');
                     }
                 } else {
                     ofBaseSsoLogin.tipBar('操作失败 : ' + data.msg);

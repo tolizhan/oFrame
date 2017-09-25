@@ -76,43 +76,58 @@ class of_base_com_net {
     public static function &request($url = null, $data = array(), $mode = false) {
         //永不超时
         ini_set('max_execution_time', 0);
+        //配置引用
+        $config = &self::$config;
+
         //二次请求
         if ($url === null) {
-            //配置引用
-            $config = &self::$config;
-            //请求数据流
-            $data = file_get_contents('php://input');
-
-            if (
-                isset($_GET['md5']) &&
-                ($temp = of_base_com_kv::get('of_base_com_net::' . $_GET['md5'])) &&
-                $temp === md5($data)
-            ) {
-                //忽略客户端断开
-                ignore_user_abort(true);
-                //删除校验kv
-                of_base_com_kv::del('of_base_com_net::' . $_GET['md5']);
-                //默认关闭session
-                session_write_close();
-                //读取post数据
-                $data = unserialize($data);
-                $mode = &$data['mode'];
-                self::$cookie = &$data['staticCookie'];
-                unset($data['staticCookie'], $data['mode']);
-
-                $data['url'] === OF_URL . '/index.php' ? 
-                    $index = null : $index = &of_base_com_net::request($data['url'], $data);
-                //字符串 或 数组
-                if ($mode !== true) {
-                    //创建方法
-                    is_string($mode) && strpos($mode, ';') && $mode = create_function('&$_', $mode);
-                    //函数回调
-                    of::callFunc($mode, $index);
-                }
+            if (PHP_SAPI === 'cli') {
+                $data = $GLOBALS['_ARGV']['_DATA'];
             } else {
-                //怀疑恶意请求
-                trigger_error('Suspected malicious requests');
+                //请求数据流
+                $data = file_get_contents('php://input');
+
+                if (
+                    isset($_GET['md5']) &&
+                    ($temp = of_base_com_kv::get(
+                        'of_base_com_net::' . $_GET['md5'], false, $config['kvPool']
+                    )) &&
+                    $temp === md5($data)
+                ) {
+                    //忽略客户端断开
+                    ignore_user_abort(true);
+                    //删除校验kv
+                    of_base_com_kv::del('of_base_com_net::' . $_GET['md5'], $config['kvPool']);
+                    //默认关闭session
+                    session_write_close();
+                } else {
+                    //怀疑恶意请求
+                    trigger_error('Suspected malicious requests');
+                    return $url;
+                }
             }
+
+            //读取post数据
+            $data = unserialize($data);
+            $mode = &$data['mode'];
+            self::$cookie = &$data['staticCookie'];
+            unset($data['staticCookie'], $data['mode']);
+
+            //OF_URL 的无参数地址无需请求
+            if (strncmp($data['url'], OF_URL, strlen(OF_URL)) || strpos($data['url'], '=')) {
+                $index = &of_base_com_net::request($data['url'], $data);
+            } else {
+                $index = array('state' => true);
+            }
+
+            //字符串 或 数组
+            if ($mode !== true) {
+                //创建方法
+                is_string($mode) && strpos($mode, ';') && $mode = create_function('&$_', $mode);
+                //函数回调
+                of::callFunc($mode, $index);
+            }
+
             return $url;
         }
 
@@ -181,24 +196,93 @@ class of_base_com_net {
             $data['url'] = $url;
             //静态cookie
             $data['staticCookie'] = &self::$cookie;
+            //操作系统类型
+            $osType = strtolower(substr(PHP_OS, 0, 3));
 
-            $mode = true;
-            $data = array(
-                'type'    => 'POST',
-                'data'    => serialize($data), 
-                'header'  => '',
-                'cookie'  => '', //session_name() .'='. session_id() . (isset($_SERVER['HTTP_COOKIE']) ? '; ' . $_SERVER['HTTP_COOKIE'] : ''), 
-                'timeout' => 30
-            );
+            //web是否支持命令操作
+            if (!isset($config['isExec'])) {
+                //类linux系统 && 非安全模式 && 函数启用
+                $config['isExec'] = PHP_SAPI === 'cli' || (
+                    $osType !== 'win' &&
+                    !ini_get('safe_mode') &&
+                    !preg_match('@\bpopen\b@', ini_get('disable_functions'))
+                );
+            }
 
-            $index = &self::$config;
-            $data['url'] = $index['asUrl'];
-            $data['url']['path'] = OF_URL . '/index.php';
-            $data['url']['query'] = 'a=request&c=of_base_com_net';
-            //数据校验
-            $temp = of_base_com_str::uniqid();
-            of_base_com_kv::set($asMd5 = 'of_base_com_net::' . $temp, md5($data['data']), 300);
-            $data['url']['query'] .= '&md5=' . $temp;
+            //命令行操作
+            if ($config['isExec']) {
+                //响应结果
+                $res = array('state' => true);
+                //执行参数
+                $exec = array(
+                    'php',
+                    OF_DIR . '/index.php',
+                    'get:a=request&c=of_base_com_net'
+                );
+
+                //Windows
+                if ($osType === 'win') {
+                    //win 异步数据结构
+                    $exec[] = 'data:' . str_replace('"', '""', serialize($data));
+
+                    if (empty($config['exeDir'])) {
+                        $temp = 'wmic process where processid=' . getmypid() . ' get ExecutablePath';
+
+                        //通道打开
+                        if ($pp = popen($temp, 'r')) {
+                            $temp = explode("\n", fread($pp, 2048));
+                            $config['exeDir'] = trim($temp[1]);
+                            pclose($pp);
+                        //执行错误
+                        } else {
+                            trigger_error($temp = "Command error: {$temp}");
+                            //状态,内容
+                            $res = array('state' => false, 'errno' => 1, 'errstr' => &$temp);
+                        }
+                    }
+
+                    if (isset($config['exeDir'])) {
+                        //真实php执行文件路径
+                        $exec[0] = &$config['exeDir'];
+                        //真实执行命令
+                        $exec = str_replace('"', '""', '"' . join('" "', $exec) . '"');
+                        //异步执行命令
+                        $exec = "SET data=\"{$exec}\" && cscript //E:vbscript \"" .
+                            strtr(OF_DIR, '/', '\\') . '\accy\com\net\asyncProc.bin"';
+
+                        //兼容win php < 5.3
+                        version_compare(PHP_VERSION, '5.3.0', '<') && $exec = '"' . $exec . '"';
+                    }
+                //类 linux
+                } else {
+                    //linux 异步数据结构
+                    $exec[] = 'data:' . addslashes(serialize($data));
+                    //exec("ls -l /proc/{$pid}/exe", $output, $state);
+                    $exec = 'nohup "' . join('" "', $exec) . '" >/dev/null 2>&1 &';
+                }
+
+                is_string($exec) && pclose(popen($exec, 'r'));
+                return $res;
+            } else {
+                $mode = true;
+                $data = array(
+                    'type'    => 'POST',
+                    'data'    => serialize($data), 
+                    'header'  => '',
+                    'cookie'  => '', //session_name() .'='. session_id() . (isset($_SERVER['HTTP_COOKIE']) ? '; ' . $_SERVER['HTTP_COOKIE'] : ''), 
+                    'timeout' => 30
+                );
+
+                $data['url'] = $config['asUrl'];
+                $data['url']['path'] = OF_URL . '/index.php';
+                $data['url']['query'] = 'a=request&c=of_base_com_net';
+                //数据校验
+                $temp = of_base_com_str::uniqid();
+                of_base_com_kv::set(
+                    $asMd5 = 'of_base_com_net::' . $temp, md5($data['data']), 300, $config['kvPool']
+                );
+                $data['url']['query'] .= '&md5=' . $temp;
+            }
         }
 
         //创建连接
@@ -261,7 +345,7 @@ class of_base_com_net {
                 }
 
                 //chunk传输
-                if (strpos($res['header'], 'Transfer-Encoding: chunked') !== false) {
+                if (preg_match('@Transfer-Encoding:\s*chunked@', $res['header'])) {
                     //chunk还原
                     $res['response'] = &self::dechunk($res['response']);
                 }
@@ -296,7 +380,7 @@ class of_base_com_net {
                 //等待异步端数据接收成功
                 for ($i = 60; --$i;) {
                     usleep(50000);
-                    if (!of_base_com_kv::get($asMd5)) {
+                    if (!of_base_com_kv::get($asMd5, false, $config['kvPool'])) {
                         break ;
                     }
                 }

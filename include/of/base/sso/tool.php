@@ -40,8 +40,10 @@ class of_base_sso_tool extends of_base_sso_api {
                 unset($tool['check'], $data['state'], $data['ticket']);
                 //报错登录信息
                 $tool['online'][$space] = &$data;
+            //校验失败
             } else {
-                echo '校验失败: ', $_POST['data'];
+                //跳转登录
+                header('Location: ' . of_base_sso_tool::login());
                 exit;
             }
         } else if ($type && empty($tool['ticket'])) {

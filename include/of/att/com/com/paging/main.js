@@ -156,7 +156,8 @@ L.paging || (function () {
 
             //准备移除单行
             tObj.removes = getAttrObj(tObj.b, 'name', tObj.n + 'pagingItem');
-            tObj.maxPage = data.items > -1 ? Math.ceil(data.items / data.size) : '∞';                                   //最大页面
+            //最大页面
+            tObj.maxPage = data.items > -1 ? Math.ceil(data.items / data.size) : '∞';
             //当前位置
             tObj.w = data.page + '/' + tObj.maxPage;
             //显示位置
@@ -167,6 +168,13 @@ L.paging || (function () {
             getAttrObj(tObj.b, 'name', tObj.n + 'pagingJump', 'value',
                 data.page + 1 > tObj.maxPage ? 1 : data.page + 1
             );
+
+            //隐藏显示总页数
+            tObj.w = getAttrObj(tObj.b, 'name', tObj.n + 'pagingCount');
+            for(var i in tObj.w) {
+                tObj.w[i].innerHTML = data.items;
+                tObj.w[i].style.display = data.items > -1 ? '' : 'none';
+            }
 
             //隐藏等待
             tObj.w = getAttrObj(tObj.b, 'name', tObj.n + 'pagingWait');
@@ -265,7 +273,8 @@ L.paging || (function () {
                             if( 
                                 //数值 && > 0
                                 typeof key === 'number' && key > 0 &&
-                                (tObj.maxPage === '∞' || key <= tObj.maxPage)                                           //小于等于最大页
+                                //小于等于最大页
+                                (tObj.maxPage === '∞' || key <= tObj.maxPage)
                             //key值有效
                             ) {
                                 //显示元素

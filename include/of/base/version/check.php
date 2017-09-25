@@ -26,7 +26,7 @@ class of_base_version_check {
             } else if ($version > OF_VERSION) {
                 $temp = '<a ' .
                     'href="https://github.com/tolizhan/oFrame"' .
-                    'style="position: absolute; background-color: red;" ' .
+                    'style="position: absolute; background-color: red; z-index: 100000;" ' .
                     'target="_blank"' .
                 '>' .
                     'Frame update : ' . OF_VERSION . ' -> ' .$version .
@@ -44,7 +44,7 @@ class of_base_version_check {
      */
     public static function version($params) {
         preg_match('@\bOF_VERSION[^\d]+(\d+)@', $params['response'], $temp);
-        $temp = $temp ? (int)$temp[1] : 0;
+        $temp = $temp ? (int)$temp[1] : 1;
         of_base_com_kv::set('of_base_version_check::version', $temp, 86400);
     }
 }

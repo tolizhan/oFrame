@@ -594,7 +594,7 @@ class of_base_com_hParse {
      * 描述 : 为匹配的元素集合中获取第一个元素的样式属性值(仅实现解析赋值,没实现继承关系)
      * 参数 :
      *      name  : 字符串=一个css属性名,数组=同时修改多个属性{属性名:属性值}
-     *      value : 一个CSS属性名的值
+     *      value : 一个CSS属性名的值, ""=删除属性
      * 返回 :
      *      设置时返回当前对象
      *      读取时返回样式值
@@ -627,7 +627,11 @@ class of_base_com_hParse {
                     }
                     $temp = $name + $style;
                     foreach ($temp as $k => &$v) {
-                        $style[$k] = $k .':'. $v;
+                        if ($v) {
+                            $style[$k] = $k .':'. $v;
+                        } else {
+                            unset($style[$k]);
+                        }
                     }
                     self::nodeAttr($nodeKey, 'style', join(';', $style));
                 }
@@ -3184,9 +3188,7 @@ class of_base_com_hParse {
                 $temp = $parseNode[$pNodeKey]['cKeys'];
 
                 //移除目标节点全部子节点
-                foreach ($parseNode[$pNodeKey]['cKeys'] as &$nodeKey) {
-                    self::nodeSplice($nodeKey);
-                }
+                foreach ($temp as &$nodeKey) self::nodeSplice($nodeKey);
 
                 //回收被替换的节点
                 self::nodeCollection($temp);

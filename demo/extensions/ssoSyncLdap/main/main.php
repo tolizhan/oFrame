@@ -38,7 +38,7 @@ function login($params = null) {
                 $this->_removeHook('::sqlBefore', array($this, 'login'));
 
                 //连接成功
-                if( $conn = ldap_connect('192.168.5.117', 389) ) {
+                if( $conn = ldap_connect('LDAP 地址', 389) ) {
                     //登录成功
                     if( @ldap_bind($conn, stripslashes($temp[1]), stripslashes($temp[2])) ) {
                         //根DN
@@ -49,13 +49,12 @@ function login($params = null) {
                         ));
                         //读取数据
                         $result = ldap_get_entries($conn, $result);
-                        //读取成功
-                        if( isset($result[0]) ) {
-                            //保存密码
-                            $result[0]['pwd'] = $temp[2];
-                            //修改用户数据
-                            $this->setUser($result[0]);
-                        }
+                        //保存帐号
+                        $result[0]['cn'][0] = iconv('UTF-8', 'GB18030//IGNORE', $temp[1]);
+                        //保存密码
+                        $result[0]['pwd'] = $temp[2];
+                        //修改用户数据
+                        $this->setUser($result[0]);
 
                         //登录成功的SQL
                         $params['sql'] = "SELECT
@@ -123,7 +122,7 @@ function modifyPage($sysArgs, $params) {
         $pObj->find('.of_sso-login_func_button')
             ->prepend(
                 '<a href="http://userinfo.youkeshu.com/Auser/forgot/password/" target="_blank">忘记密码</a>
-                <a href="https://userinfo.youkeshu.com/Auser/change/password/" target="_blank">修改信息</a>'
+                <a href="https://userinfo.youkeshu.com/Auser/change/password/" target="_blank">修改密码</a>'
             );
     //管理界面拦截
     } else if( $params['type'] === 'mgmt' ) {
@@ -200,9 +199,9 @@ function syncUsers() {
     $dnList = array('OU=youkeshu,DC=youkeshu,DC=com');
 
     //连接成功
-    if ($conn = ldap_connect('192.168.5.117', 389)) {
+    if ($conn = ldap_connect('LDAP 地址', 389)) {
         //登录成功
-        if (ldap_bind($conn, 'dcadmin', 'rG8dDTta12UL')) {
+        if (ldap_bind($conn, 'LDAP 帐号', 'LDAP 密码')) {
             $sql = "UPDATE 
                 `_of_sso_user` 
             SET 
@@ -290,7 +289,7 @@ function syncUsers() {
     //过期时间
     $exp = date('Y-m-d', $temp);
     //提醒时间
-    $tip = date('Y-m-d', $temp + 3 * 86400);
+    $tip = date('Y-m-d', $temp + 7 * 86400);
     $smstip = $this->_getConst('eDbPre') . 'smstip';
 
     $sqle = "SELECT
@@ -377,7 +376,7 @@ function syncUsers() {
  * 作者 : Edgar.lee
  */
 function setUser(&$params) {
-    preg_match('@,OU=([^,]+),@', $params['dn'], $temp);
+    isset($params['dn']) && preg_match('@,OU=([^,]+),@', $params['dn'], $temp);
     $temp = array_map('addslashes', array(
         'user' => iconv('GB18030', 'UTF-8//IGNORE', $params['cn'][0]),
         'name' => isset($params['description'][0]) ? iconv('GB18030', 'UTF-8//IGNORE', $params['description'][0]) : '',
@@ -396,8 +395,8 @@ function setUser(&$params) {
     ) VALUES (
         '{$temp['user']}', '{$temp['pwd']}', '{$temp['name']}', '{$temp['dept']}::{$temp['post']}', '1', '', '{$temp['time']}'
     ) ON DUPLICATE KEY UPDATE 
-        `nike` = VALUES(`nike`),
-        `notes` = VALUES(`notes`),
+        `nike` = IF(VALUES(`nike`), VALUES(`nike`), `nike`),
+        `notes` = IF(VALUES(`notes`) = '::', `notes`, VALUES(`notes`)),
         `state` = '1'";
 
     //明确密码
