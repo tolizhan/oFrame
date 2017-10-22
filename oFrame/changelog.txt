@@ -1,0 +1,2762 @@
+版本: 216
+作者: Edgar
+日期: 2017年9月24日 10:58:35
+信息:
+说明: 兼容 64 位系统下 key-value 一处有效期问题
+      k-v redis 兼容低版本 php_redis 扩展
+      k-v 未配置 default 连接池时, 会以 files 方式初始化
+      静态计划任务, * * x * * 不再是 1 1 X */1 */1 而是 */1 */1 X */1 */1
+      静态计划任务, [x-y]/n 写法不再从 0 算起 是 x 算起
+      当框架配置 _of.debug 为字符串时, $_REQUEST["__OF_DEBUG__"] 需要与其相同才能强制切换调试模式
+      现在可以从 $_SERVER['HTTP_REFERER'] 头信息中识别 __OF_DEBUG__
+      错误日志, 语言包, 扩展, 计划任务等管理界面, 生产模式禁止访问, 可以通过 __OF_DEBUG__ 切换
+      of_base_com_disk::file 解决网络文件系统掉包问题
+      解决异步操作一些环境下不执行的问题
+      hParse css 方法值设置为""时, 可以删除对应样式
+      加强tcpdf解析html 图片中 src 的准确性
+      完善分页
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/addin/tcpdf/tcpdf.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/extension/tool.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/accy/com/kv/redis.php
+
+版本: 214
+作者: Edgar
+日期: 2017年8月20日 12:12:15
+信息:
+说明: CLI 模式下支持异步操作
+      CLI 模式下类似 xx:yy 的参数,将被以 $GLOBALS['_ARGV'][xx]=yy 存储
+      CLI 访问 /index.php 时, 不在进行返回值验证
+      of_base_com_net 使用更高效的异步操作
+      非生产环境时, mysql 使用严格模式
+      支持嵌套事务,若子事务回滚->父事务也回滚,非Savepoint方式
+      分页回调参数添加 attr 分页属性 {"data" : &当页二维数据, "attr" : &当前分页属性}
+      完善 sso, 配置 _of.sso.expiry 仅作为密码过期时间
+      优化 _of.db 配置方式识别率
+      解决hParse替换插入子节点不能全部移除的问题
+      加强csv对UTF-16LE编码解析准确性
+      of_base_com_kv::add 中尝试重试参数(retry)现在可以是小数
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/demo/index.php
+已增加 : /trunk/include/of/accy/com/net
+已增加 : /trunk/include/of/accy/com/net/asyncProc.bin
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/pdoMysql.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/att/sso/js/login.js
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/index.php
+已修改 : /trunk/license.txt
+
+版本: 212
+作者: Edgar
+日期: 2017年7月5日 17:19:10
+信息:
+说明: 升级 tcpdf 到 6.2.13
+      当发生错误时触发 of_base_error_writeLog::error 回调钩子, 接收 {"type" : 错误来源, "data" : 错误信息}
+      html模版引擎当识别到分页模版时自动引用分页脚本
+      分页模版支持 name="pageCount" 数据总长度
+      固定 $_REQUEST 变量, 不再受 php.ini 中 request_order 影响
+      框架配置可以设置时区, 支持夏令时 _of.timezone 和 _of.db.params.timezone
+      手动触发计划任务显示当前状态 OF_URL/?c=of_base_com_timer
+      分页兼容 mysql >= 5.7 语法
+      csv 默认改为 UTF-16LE 编码, 兼容性更强
+      修复SSO不能删除系统帐号的外键问题
+      解决sso服务器session过期后客户端通知退出报错问题
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/pdoMysql.php
+已修改 : /trunk/include/of/addin/tcpdf/CHANGELOG.TXT
+已删除 : /trunk/include/of/addin/tcpdf/README.TXT
+已增加 : /trunk/include/of/addin/tcpdf/README.md
+已修改 : /trunk/include/of/addin/tcpdf/composer.json
+已修改 : /trunk/include/of/addin/tcpdf/config/tcpdf_config.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/helvetica.php
+已修改 : /trunk/include/of/addin/tcpdf/include/tcpdf_static.php
+已修改 : /trunk/include/of/addin/tcpdf/tcpdf.php
+已修改 : /trunk/include/of/att/com/com/paging/main.css
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/att/sso/res/importTpl.csv
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/jsLog.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/link/response.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/db/table.sql
+已修改 : /trunk/include/of/base/version/check.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+已增加 : /trunk/license.txt
+
+版本: 210
+作者: Edgar
+日期: 2017年5月4日 21:54:27
+信息:
+说明: SSO添加权限模版导出功能
+      框架配置debug支持测试环境 true=开发环境, null=测试环境, false=生产环境
+      html模版引擎多行注释支持跨脚本块
+      预加载 of_base_version_check 可以在非生产模式下自动检查框架版本
+      框架配置config支持动态配置加载, 数组=动态配置{动态键 : 配置路径}, 字符串=等同{"0" : 全局配置}
+      of::getArrData 第四个参数添加 2 功能符, 默认值赋值到原数据
+      升级日期插件
+      php >= 5.3 可以通过命名空间方式调用框架
+      更好的准守PSR规范
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/TopClient.php
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/include/of/accy/com/kv/files.php
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/pdoMysql.php
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/accy/session/kv.php
+已修改 : /trunk/include/of/accy/session/mysql.php
+已修改 : /trunk/include/of/addin/WDatePicker/WdatePicker.js
+已修改 : /trunk/include/of/addin/WDatePicker/calendar.js
+已修改 : /trunk/include/of/addin/WDatePicker/skin/WdatePicker.css
+已修改 : /trunk/include/of/addin/WDatePicker/skin/default/datepicker.css
+已修改 : /trunk/include/of/addin/WDatePicker/skin/whyGreen/datepicker.css
+已修改 : /trunk/include/of/att/sso/css/main.css
+已增加 : /trunk/include/of/att/sso/res
+已增加 : /trunk/include/of/att/sso/res/importTpl.csv
+已修改 : /trunk/include/of/att/sso/tpl/login.tpl.php
+已修改 : /trunk/include/of/att/sso/tpl/main.tpl.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/data.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/jsLog.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/toolBaseClass.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/extension/tool.php
+已修改 : /trunk/include/of/base/extension/toolBaseClass.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/language/packs.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/language/toolBaseClass.php
+已修改 : /trunk/include/of/base/link/extends.php
+已修改 : /trunk/include/of/base/link/response.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/base/tool/mysqlSync.php
+已修改 : /trunk/include/of/base/tool/test.php
+已增加 : /trunk/include/of/base/version
+已增加 : /trunk/include/of/base/version/check.php
+已修改 : /trunk/include/of/base/xssFilter/main.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+
+版本: 208
+作者: Edgar
+日期: 2017年3月5日 4:54:41
+信息:
+说明: 加强对命名空间的兼容性
+      模块引擎默认注释脚本改为 <!--<? ?--> 方式, 使得对各种编辑器高亮更友好
+      加强SESSION files 模式的安全性
+      修复SESSION gc 回收时报错问题
+      上传组件可以限制更详细的上传位置
+      完善 of_base_com_net 类的异步请求功能
+      框架配置文件 extension.format 作废
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/tool/htmlLoad/code/load.js
+已修改 : /trunk/demo/tool/htmlLoad/head.html
+已修改 : /trunk/demo/view/html/htmlTpl.html
+已修改 : /trunk/include/of/accy/com/kv/files.php
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/accy/session/mysql.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+
+版本: 206
+作者: Edgar
+日期: 2017年2月19日 13:59:14
+信息:
+说明: of::dispatch 第三个校验参数 false改为"永不通过", null改为"永远通过"
+      of::event 中"of::dispatch"事件添加触发参数 {"class" : &调度类名, "action" : &调度方法, "check" : &校验参数}
+      扩展入口同步添加"of::dispatch"事件触发参数
+      k-v 添加 redis 主从连接方式
+      htmlLoad readme.txt 中添加一段 "本地调用框架中的js扩展" 演示代码
+      错误日志对 eval 中的错误提示位置更准确
+      加强 html 模版引擎对 htmlLoad 支持
+      修复 sso 状态同步失败的问题
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/extensions/sqlProfiling/main/main.php
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/demo/extensions/test/main/demo.php
+已增加 : /trunk/demo/tool/htmlLoad (从路径复制: /trunk/demo/tool/jsLoad, 版本, 205)
+已修改 : /trunk/demo/tool/htmlLoad/foot.html
+已修改 : /trunk/demo/tool/htmlLoad/head.html
+已修改 : /trunk/demo/tool/htmlLoad/index.html
+已修改 : /trunk/demo/tool/htmlLoad/readme.txt
+已删除 : /trunk/demo/tool/jsLoad
+已增加 : /trunk/include/of/accy/com/kv/redis.php
+已修改 : /trunk/include/of/addin/config.php
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/att/link/L.js
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/base/tool/test.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+已修改 : /trunk/index.php
+
+版本: 204
+作者: Edgar
+日期: 2017年1月25日 17:29:12
+信息:
+说明: 计划任务支持分布式
+      修复sso LDAP密码不过期问题
+      sessinon memcache 方式改为 kv
+      添加 oFill js数据填充工具
+      修复 of_base_com_data::rule 规则校验 bug
+      of_base_com_kv::add 增加第五个参数 添加失败重试
+      html 模版引擎 动态title属性 由_改为__html
+      添加 L::rule 接口请求参数规则校验
+      添加 of_base_tool_test::check 支持接口单元测试
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/config.php
+已修改 : /trunk/demo/extensions/ssoSyncLdap/config.php
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已增加 : /trunk/include/of/accy/session/kv.php
+已删除 : /trunk/include/of/accy/session/memcache.php
+已修改 : /trunk/include/of/addin/config.js
+已增加 : /trunk/include/of/addin/oFill
+已增加 : /trunk/include/of/addin/oFill/oFill.js
+已修改 : /trunk/include/of/att/sso/js/main.js
+已修改 : /trunk/include/of/att/sso/tpl/main.tpl.php
+已修改 : /trunk/include/of/base/com/data.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/link/request.php
+已修改 : /trunk/include/of/base/link/setup.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/db/data.sql
+已修改 : /trunk/include/of/base/sso/db/table.sql
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/tool/test.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+
+版本: 201
+作者: Edgar
+日期: 2017年1月12日 15:04:52
+信息:
+说明: cli 模式下可以传 get post 等参数
+      支持更好的面向接口的开发方式
+      hParse 可以面向 节点键 操作, 效率更高
+      of_view::head 支持向 body 加入属性
+      of_view::head 支持向 head 中 include 文件
+      添加 of_base_com_data::json 更安全的 json
+      添加 of_base_com_data::rule 校验数据格式
+      模版引擎支持 /demo/tool/jsLoad 的 include 功能
+      模版引擎编译后使用的js script[type=php] 改为 script[type=tpl]
+      模版引擎title动态标题由 _ 属性改为 __html 属性
+      大幅度优化 模版引擎 编译速度
+      修正 of_base_com_net::request 通信掉线卡死问题
+      ssoSyncLdap 扩展支持 淘宝短信接口
+      单点登录管理界面排序搜索优化
+      加强 php 5.2 兼容性
+----
+已修改 : /trunk
+已修改 : /trunk/changelog.txt
+已增加 : /trunk/demo/extensions/ssoSyncLdap/_info
+已增加 : /trunk/demo/extensions/ssoSyncLdap/_info/backupData
+已增加 : /trunk/demo/extensions/ssoSyncLdap/_info/backupData/installData
+已增加 : /trunk/demo/extensions/ssoSyncLdap/_info/backupData/installData/backupData.sql
+已增加 : /trunk/demo/extensions/ssoSyncLdap/_info/backupData/installData/structure.sql
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/Autoloader.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/TopSdk.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/aliyun
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/aliyun/AliyunClient.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/ApplicationVar.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/ClusterTopClient.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/HttpdnsGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/RequestCheckUtil.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/ResultSet.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/SpiUtils.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/TopClient.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/TopLogger.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain/Area.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain/BizResult.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain/FcPartnerSmsDetailDto.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain/KfcSearchResult.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain/Result.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain/Subtask.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/domain/Task.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/httpdns.conf
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcFlowChargeProvinceRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcFlowChargeRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcFlowGradeRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcFlowQueryRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcSmsNumQueryRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcSmsNumSendRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcTtsNumSinglecallRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcVoiceNumDoublecallRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcVoiceNumSinglecallRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AppipGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/AreasGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/HttpdnsGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/KfcKeywordSearchRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/TimeGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/TopAuthTokenCreateRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/TopAuthTokenRefreshRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/TopIpoutGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/TopSecretGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/TopatsResultGetRequest.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/request/TopatsTaskDeleteRequest.php
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/demo/index.php
+已增加 : /trunk/demo/tool/jsLoad
+已增加 : /trunk/demo/tool/jsLoad/code
+已增加 : /trunk/demo/tool/jsLoad/code/load.js
+已增加 : /trunk/demo/tool/jsLoad/foot.html
+已增加 : /trunk/demo/tool/jsLoad/head.html
+已增加 : /trunk/demo/tool/jsLoad/index.html
+已增加 : /trunk/demo/tool/jsLoad/readme.txt
+已增加 : /trunk/demo/tool/proxy
+已增加 : /trunk/demo/tool/proxy/proxy.php
+已删除 : /trunk/demo/tool/proxy.php
+已修改 : /trunk/demo/view/tpl/demo/index/viewTest.tpl.php
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/att/link/L.js
+已修改 : /trunk/include/of/att/sso/tpl/login.tpl.php
+已修改 : /trunk/include/of/att/sso/tpl/main.tpl.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/csv.php
+已增加 : /trunk/include/of/base/com/data.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/language/packs.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+已修改 : /trunk/index.php
+
+版本: 199
+作者: Edgar
+日期: 2016年12月1日 12:42:49
+信息:
+说明: oUpload 优化跨站上传, 加强对扩展名的限制, 更准确的上传限制, 优化样式
+      添加 OF_VERSION 框架版本号常量, 一位大版本号+若干位发布版本号
+      修正错误日志一处定位问题
+----
+已增加 : /trunk/demo/tool
+已增加 : /trunk/demo/tool/proxy.php
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadCancel.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadClose.gif
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadCount.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadE.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadEN.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadES.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadN.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadOpen.gif
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadS.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadStart.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadW.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadWN.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadWS.png
+已修改 : /trunk/include/of/addin/oUpload/maxSize.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.css
+已修改 : /trunk/include/of/addin/oUpload/oUpload.js
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.swf
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已修改 : /trunk/include/of/base/tool/mysqlSync.php
+已修改 : /trunk/include/of/of.php
+
+版本: 198
+作者: Edgar
+日期: 2016年11月25日 17:55:49
+信息:
+说明: hParse 可通过 >attrQuote::属性名 查询属性值在源文件的引号类型(双引,单引,空字符)
+      hParse >tagline::start 更名 >tagLine::start, >attrline::属性名 更名 >attrLine::属性名
+      更详细的js错误日志, 更完善的错误查询
+      扩展基类方法 _sharedData 改为 _shareData
+      扩展基类方法 _getConst('__FILE__') 改为 _getConst('file')
+      添加简单扩展 sqlProfiling MYSQL 性能监控
+      更新上传组件 oUpload 样式
+      网络请求及数据库核心bug修正
+----
+已增加 : /trunk/demo/extensions/sqlProfiling
+已增加 : /trunk/demo/extensions/sqlProfiling/_info
+已增加 : /trunk/demo/extensions/sqlProfiling/config.php
+已增加 : /trunk/demo/extensions/sqlProfiling/main
+已增加 : /trunk/demo/extensions/sqlProfiling/main/main.php
+已修改 : /trunk/demo/extensions/test/main/demo.php
+已修改 : /trunk/demo/list.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadCancel.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadClose.gif
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadCount.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadE.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadEN.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadES.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadN.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadOpen.gif
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadS.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadStart.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadW.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadWN.png
+已修改 : /trunk/include/of/addin/oUpload/images/oUploadWS.png
+已修改 : /trunk/include/of/addin/oUpload/oUpload.css
+已修改 : /trunk/include/of/addin/oUpload/oUpload.js
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/error/jsLog.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/toolBaseClass.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/link/setup.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/tool/mysqlSync.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+
+版本: 197
+作者: Edgar
+日期: 2016年11月18日 16:05:00
+信息:
+说明: oUpload html5 版的 扩展名 优化
+      csv 解析优化
+      修复 net 模块 ssl 默认端口 bug
+      修复 计划任务 监听多开的bug
+----
+已修改 : /trunk/include/of/addin/oUpload/oUpload.js
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+
+版本: 196
+作者: Edgar
+日期: 2016年11月11日 22:32:08
+信息:
+说明: of_base_com_com::eachSql 默认结果集从 100 增至 1000
+      of_base_com_hParse 增加节点回收, 释放无用节点内存
+      细节优化
+----
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/disk.php
+
+版本: 195
+作者: Edgar
+日期: 2016年11月7日 1:02:41
+信息:
+说明: of_base_com_str:syntax 移动到 of::syntax
+      完善错误日志
+      L 类成为 框架默认类, 预加载时可以通过 of::link 方法注册 L 类方法
+      框架配置 preLoaded 更名为 preloaded
+      of_base_link_L 类更名为 of_base_link_setup
+      注释优化
+----
+已增加 : /trunk/demo/list.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.js
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已增加 : /trunk/include/of/base/link/setup.php (从路径复制: /trunk/include/of/base/link/L.php, 版本, 194)
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/demo/config.php
+已修改 : /trunk/demo/extensions/extensions.php
+已修改 : /trunk/demo/index.php
+已修改 : /trunk/include/of/addin/config.js
+已修改 : /trunk/include/of/addin/config.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/include/of/base/language/packs.php
+已删除 : /trunk/include/of/base/link/L.php
+已增加 : /trunk/include/of/base/link/extends.php
+已修改 : /trunk/include/of/base/link/response.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/index.php
+
+版本: 194
+作者: Edgar
+日期: 2016年11月1日 0:27:12
+信息:
+说明: 切换注释方式
+----
+已修改 : /trunk/demo/extensions/test/main/demo.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/error/jsLog.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/toolBaseClass.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/tool/mysqlSync.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/demo/index.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/include/of/base/language/packs.php
+已修改 : /trunk/include/of/base/link/L.php
+已修改 : /trunk/include/of/base/link/response.php
+已修改 : /trunk/index.php
+已修改 : /trunk/demo/PageExtension.php
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/demo/view/tpl/demo/index/viewTest.tpl.php
+已修改 : /trunk/include/of/accy/com/kv/files.php
+已修改 : /trunk/include/of/accy/com/kv/memcache.php
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/pdoMysql.php
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/accy/session/memcache.php
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已删除 : /trunk/include/of/att/htmlTpl
+已修改 : /trunk/include/of/att/language/language.js
+已修改 : /trunk/include/of/att/link/L.js
+已修改 : /trunk/include/of/att/sso/js/login.js
+已修改 : /trunk/include/of/att/sso/js/main.js
+已修改 : /trunk/include/of/att/sso/tpl/login.tpl.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已修改 : /trunk/include/of/base/extension/tool.php
+已修改 : /trunk/include/of/base/extension/toolBaseClass.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/language/toolBaseClass.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/base/tool/test.php
+已修改 : /trunk/include/of/base/xssFilter/main.php
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/view.php
+
+版本: 193
+作者: Edgar
+日期: 2016年10月29日 14:30:03
+信息:
+说明: 框架向 php7 兼容
+      csv下载自动加扩展名
+      添加 of_base_com_str::syntax 校验php语法
+      积累性代码优化
+----
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/error/jsLog.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/extensions/ssoSyncLdap/config.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Worksheet/AutoFilter/Column.php
+
+版本: 191
+作者: Edgar
+日期: 2016年10月12日 17:17:55
+信息:
+说明: 演示部署优化
+      分页初始优化
+      csv 导入自动识别 UTF8, _of.charset 或 指定 编码, 导出可以指定编码(默认 UTF8)
+      计划任务支持静态任务, 符合 lunux crontab 语法
+      系统配置文件 sysEncode 替换为 charset
+----
+已删除 : /trunk/config.php
+已增加 : /trunk/demo/config.php
+已修改 : /trunk/demo/index.php
+已增加 : /trunk/demo/timer
+已增加 : /trunk/demo/timer/crontab.php
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/att/sso/js/login.js
+已修改 : /trunk/include/of/att/sso/tpl/login.tpl.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/index.php
+
+版本: 190
+作者: Edgar
+日期: 2016年10月9日 15:36:02
+信息:
+说明: 完善JS错误日志
+      单点登录添加票据失效状态
+      代码优化
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/include/of/base/error/jsLog.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/tool.php
+
+版本: 188
+作者: Edgar
+日期: 2016年9月23日 12:53:08
+信息:
+说明: 日志现在可以捕捉致命错误
+----
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/db.php
+
+版本: 187
+作者: Edgar
+日期: 2016年9月20日 11:53:43
+信息:
+说明: 导出的CSV中,非字符串的数字可以使用office的统计功能
+      添加 of_base_com_str::uniqid 获取更具唯一性的ID
+      优化 JS 版的错误日志 和 上传文件的唯一文件名
+----
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/include/of/base/error/jsLog.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+
+版本: 186
+作者: Edgar
+日期: 2016年9月7日 9:51:37
+信息:
+说明: 更快的 phprpc 加载速度
+----
+已修改 : /trunk/include/of/addin/config.php
+已增加 : /trunk/include/of/addin/phprpc/PHPRPC_Client.php (从路径复制: /trunk/include/of/addin/phprpc/phprpc_client.php, 版本, 185)
+已删除 : /trunk/include/of/addin/phprpc/phprpc_client.php
+已增加 : /trunk/include/of/addin/phprpc/PHPRPC_Date.php (从路径复制: /trunk/include/of/addin/phprpc/phprpc_date.php, 版本, 185)
+已删除 : /trunk/include/of/addin/phprpc/phprpc_date.php
+已增加 : /trunk/include/of/addin/phprpc/PHPRPC_Server.php (从路径复制: /trunk/include/of/addin/phprpc/phprpc_server.php, 版本, 185)
+已删除 : /trunk/include/of/addin/phprpc/phprpc_server.php
+已修改 : /trunk/include/of/addin/phprpc/compat.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/config.php
+
+版本: 185
+作者: Edgar
+日期: 2016年8月30日 11:46:47
+信息:
+说明: 修改phprpc自身若干bug
+----
+已修改 : /trunk/include/of/addin/config.php
+已修改 : /trunk/include/of/addin/phprpc/phprpc_client.php
+已修改 : /trunk/include/of/addin/phprpc/phprpc_server.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/of.php
+
+版本: 184
+作者: Edgar
+日期: 2016年8月26日 1:39:05
+信息:
+说明: hParse支持outerHTML读写
+      集成 phprpc 插件
+      单点登录支持密码过期
+      of::loadClass 支持自定义路径
+      k-v 缓存 files 代码优化
+----
+已修改 : /trunk/demo/extensions/ssoSyncLdap/config.php
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/include/of/accy/com/kv/files.php
+已修改 : /trunk/include/of/addin/config.php
+已增加 : /trunk/include/of/addin/phprpc
+已增加 : /trunk/include/of/addin/phprpc/bigint.php
+已增加 : /trunk/include/of/addin/phprpc/compat.php
+已增加 : /trunk/include/of/addin/phprpc/dhparams
+已增加 : /trunk/include/of/addin/phprpc/dhparams/1024.dhp
+已增加 : /trunk/include/of/addin/phprpc/dhparams/128.dhp
+已增加 : /trunk/include/of/addin/phprpc/dhparams/1536.dhp
+已增加 : /trunk/include/of/addin/phprpc/dhparams/160.dhp
+已增加 : /trunk/include/of/addin/phprpc/dhparams/192.dhp
+已增加 : /trunk/include/of/addin/phprpc/dhparams/2048.dhp
+已增加 : /trunk/include/of/addin/phprpc/dhparams/256.dhp
+已增加 : /trunk/include/of/addin/phprpc/dhparams/3072.dhp
+已增加 : /trunk/include/of/addin/phprpc/dhparams/4096.dhp
+已增加 : /trunk/include/of/addin/phprpc/dhparams/512.dhp
+已增加 : /trunk/include/of/addin/phprpc/dhparams/768.dhp
+已增加 : /trunk/include/of/addin/phprpc/dhparams/96.dhp
+已增加 : /trunk/include/of/addin/phprpc/dhparams.php
+已增加 : /trunk/include/of/addin/phprpc/phprpc_client.php
+已增加 : /trunk/include/of/addin/phprpc/phprpc_date.php
+已增加 : /trunk/include/of/addin/phprpc/phprpc_server.php
+已增加 : /trunk/include/of/addin/phprpc/xxtea.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/of.php
+
+版本: 182
+作者: Edgar
+日期: 2016年8月23日 4:39:20
+信息:
+说明: 单点登录添加登录日志`_of_sso_log`
+      单点登录支持帐号有效期 _of.sso.expiry
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/db/data.sql
+已修改 : /trunk/include/of/base/sso/db/table.sql
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/config.php
+
+版本: 181
+作者: Edgar
+日期: 2016年8月21日 23:19:09
+信息:
+说明: of_base_com_net 支持内网地址 或 设置传输密码, 来支持分布式下异步请求
+----
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/config.php
+
+版本: 180
+作者: Edgar
+日期: 2016年8月13日 16:39:30
+信息:
+说明: 单点登录扩展升级
+      错误日志使用实时时间
+----
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/include/of/att/sso/css/login.css
+已修改 : /trunk/include/of/att/sso/tpl/login.tpl.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+
+版本: 179
+作者: Edgar
+日期: 2016年8月6日 22:10:58
+信息:
+说明: 单点登录支持导入(暂时无权限限制)
+      验证码支持自定义长宽高
+----
+已修改 : /trunk/include/of/att/sso/css/main.css
+已修改 : /trunk/include/of/att/sso/js/main.js
+已修改 : /trunk/include/of/att/sso/tpl/main.tpl.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/db/data.sql
+已修改 : /trunk/include/of/base/sso/db/table.sql
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+
+版本: 178
+作者: Edgar
+日期: 2016年7月29日 8:52:03
+信息:
+说明: mysql 死锁时尝试读取死锁日志(需要 mysql PROCESS 权限)
+      分页组件优化, js paging() 获取参数时自动转换为对象
+      单点登录体验性优化
+      xssFilter 模块 不在对 数字型字符串进行编码
+----
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/pdoMysql.php
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/att/sso/js/main.js
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/xssFilter/main.php
+
+版本: 177
+作者: Edgar
+日期: 2016年7月21日 17:11:59
+信息:
+说明: 完善单点登录
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/include/of/base/sso/api.php
+
+版本: 175
+作者: Edgar
+日期: 2016年7月21日 13:15:08
+信息:
+说明: 完善单点登录
+----
+已删除 : /trunk/include/of/att/sso/js/tool.js
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/link/response.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+
+版本: 174
+作者: Edgar
+日期: 2016年7月11日 2:57:58
+信息:
+说明: 完善单点登录 URL 登录方式
+----
+已修改 : /trunk/include/of/att/sso/js/login.js
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+
+版本: 173
+作者: Edgar
+日期: 2016年7月10日 18:01:41
+信息:
+说明: 代码优化
+      添加一个单点登录连接LDAP的扩展示例
+----
+已增加 : /trunk/demo/extensions/ssoSyncLdap
+已增加 : /trunk/demo/extensions/ssoSyncLdap/config.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/main
+已增加 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已增加 : /trunk/demo/extensions/ssoSyncLdap/style
+已增加 : /trunk/demo/extensions/ssoSyncLdap/style/imgBg.png
+已增加 : /trunk/demo/extensions/ssoSyncLdap/style/login.css
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/pdoMysql.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/of.php
+
+版本: 172
+作者: Edgar
+日期: 2016年7月4日 3:16:34
+信息:
+说明: 单点登录代码优化, 跳转登录方式返回 data 快捷状态展示
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/include/of/base/extension/tool.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/index.php
+
+版本: 170
+作者: Edgar
+日期: 2016年6月25日 12:55:45
+信息:
+说明: K-V 组件优化
+----
+已修改 : /trunk/include/of/accy/com/kv/files.php
+已修改 : /trunk/include/of/accy/com/kv/memcache.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/of.php
+
+版本: 169
+作者: Edgar
+日期: 2016年6月24日 14:46:45
+信息:
+说明: 单点登录升级
+----
+已修改 : /trunk/include/of/att/sso/js/tool.js
+已修改 : /trunk/include/of/base/sso/tool.php
+
+版本: 168
+作者: Edgar
+日期: 2016年6月23日 23:55:36
+信息:
+说明: 数据库封装优化
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/db.php
+
+版本: 167
+作者: Edgar
+日期: 2016年6月23日 2:48:44
+信息:
+说明: 支持调用存储过程, 并返回三维数组
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/pdoMysql.php
+已修改 : /trunk/include/of/db.php
+
+版本: 164
+作者: Edgar
+日期: 2016年6月18日 5:39:32
+信息:
+说明: 优化L::buffer 输出控制函数
+      jquery 升级到 1.12.4
+      修复分页一处 bug
+----
+已修改 : /trunk/include/of/att/link/jquery.js
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/link/L.php
+
+版本: 162
+作者: Edgar
+日期: 2016年6月6日 18:01:39
+信息:
+说明: 加强 xss 防御
+      优化分页SQL分析
+      代码优化
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/view/tpl/demo/index/viewTest.tpl.php
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/att/link/L.js
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/xssFilter/main.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/view.php
+
+版本: 160
+作者: Edgar
+日期: 2016年5月29日 18:30:52
+信息:
+说明: 分页.paging(null) 可以获取 {"method":分页方法,"items":总条目数,"size":每页条数,"page":当前页数,"sort":排序状态{字段名:ASC / DESC, ...}}
+      升级 echarts 图表到 2.2.7
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/include/of/addin/echarts/echarts.js
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+
+版本: 158
+作者: Edgar
+日期: 2016年5月20日 12:15:35
+信息:
+说明: of_base_com_kv::get(key, default, pool) 添加了默认值 default
+----
+已修改 : /trunk/include/of/accy/com/kv/files.php
+已修改 : /trunk/include/of/base/com/kv.php
+
+版本: 157
+作者: Edgar
+日期: 2016年5月19日 2:10:24
+信息:
+说明: csv 组件优化, 加强 of_base_com_csv::download 用法
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/include/of/att/com/com/paging/main.css
+已修改 : /trunk/include/of/att/link/L.js
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/language/toolBaseClass.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/base/xssFilter/main.php
+
+版本: 156
+作者: Edgar
+日期: 2016年5月8日 0:42:26
+信息:
+说明: 代码优化
+----
+已修改 : /trunk/include/of/att/sso/js/main.js
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+
+版本: 154
+作者: Edgar
+日期: 2016年4月28日 1:19:07
+信息:
+说明: 单点登录支持对添加与修改数据的权限控制
+----
+已修改 : /trunk/include/of/att/sso/js/main.js
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/include/of/att/sso/css/main.css
+已修改 : /trunk/include/of/att/sso/tpl/main.tpl.php
+已修改 : /trunk/include/of/base/sso/db/table.sql
+已修改 : /trunk/include/of/base/sso/tool.php
+
+版本: 153
+作者: Edgar
+日期: 2016年4月26日 15:08:59
+信息:
+说明: 单点登录支持跳转式对接
+----
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+
+版本: 152
+作者: Edgar
+日期: 2016年4月26日 2:21:59
+信息:
+说明: 单点登录整体功能加强
+      提高SESSION一处兼容性
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/include/of/att/sso/js/tool.js
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+
+版本: 150
+作者: Edgar
+日期: 2016年4月14日 16:38:14
+信息:
+说明: 语言包相关功能优化
+----
+已修改 : /trunk/include/of/base/language/packs.php
+已修改 : /trunk/include/of/base/language/tool.php
+
+版本: 149
+作者: Edgar
+日期: 2016年4月14日 10:20:46
+信息:
+说明: 语言包除OF_DEBUG模式外, 默认语言为 base 时也会启用语言收集
+----
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/language/packs.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/language/toolBaseClass.php
+
+版本: 147
+作者: Edgar
+日期: 2016年4月1日 14:42:47
+信息:
+说明: html 模版解析回调事件添加 tplDir 模版路径
+----
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+
+版本: 146
+作者: Edgar
+日期: 2016年3月21日 17:48:57
+信息:
+说明: 解决 net::request 部分服务器无响应时 feof 失效问题
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/config.php
+
+版本: 145
+作者: Edgar
+日期: 2016年3月9日 17:00:53
+信息:
+说明: session 可以正则匹配自动开始
+----
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+
+版本: 143
+作者: Edgar
+日期: 2016年3月3日 1:33:43
+信息:
+说明: tcpdf 优化,删除无用字体
+----
+已增加 : /trunk/changelog.txt
+已修改 : /trunk/include/of/addin/tcpdf/config/tcpdf_config.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/ae_fonts_2.0
+已删除 : /trunk/include/of/addin/tcpdf/fonts/aealarabiya.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/aealarabiya.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/aealarabiya.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/aefurat.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/aefurat.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/aefurat.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/cid0cs.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/cid0ct.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/cid0jp.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/cid0kr.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/courier.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/courierb.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/courierbi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/courieri.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavu-fonts-ttf-2.34
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusans.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusans.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusans.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansb.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansb.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansb.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansbi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansbi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansbi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensed.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensed.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensed.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedb.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedb.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedb.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedbi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedbi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedbi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansextralight.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansextralight.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansextralight.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmono.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmono.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmono.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonob.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonob.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonob.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonobi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonobi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonobi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonoi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonoi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonoi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserif.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserif.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserif.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifb.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifb.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifb.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifbi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifbi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifbi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensed.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensed.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensed.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedb.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedb.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedb.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedbi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedbi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedbi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freefont-20120503
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freemono.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freemono.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freemono.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freemonob.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freemonob.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freemonob.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freemonobi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freemonobi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freemonobi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freemonoi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freemonoi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freemonoi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freesans.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freesans.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freesans.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freesansb.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freesansb.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freesansb.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freesansbi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freesansbi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freesansbi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freesansi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freesansi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freesansi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freeserif.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freeserif.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freeserif.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freeserifb.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freeserifb.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freeserifb.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freeserifbi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freeserifbi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freeserifbi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freeserifi.ctg.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freeserifi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/freeserifi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/helvetica.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/helveticab.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/helveticabi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/helveticai.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/hysmyeongjostdmedium.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/kozgopromedium.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/kozminproregular.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/msungstdlight.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfacourier.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfacourier.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfacourierb.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfacourierb.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfacourierbi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfacourierbi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfacourieri.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfacourieri.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfahelvetica.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfahelvetica.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfahelveticab.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfahelveticab.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfahelveticabi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfahelveticabi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfahelveticai.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfahelveticai.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfasymbol.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfasymbol.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfatimes.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfatimes.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfatimesb.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfatimesb.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfatimesbi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfatimesbi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfatimesi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfatimesi.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfazapfdingbats.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/pdfazapfdingbats.z
+已删除 : /trunk/include/of/addin/tcpdf/fonts/symbol.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/times.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/timesb.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/timesbi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/timesi.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/uni2cid_ac15.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/uni2cid_ag15.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/uni2cid_aj16.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/uni2cid_ak12.php
+已删除 : /trunk/include/of/addin/tcpdf/fonts/zapfdingbats.php
+已修改 : /trunk/include/of/base/error/tool.php
+
+版本: 142
+作者: Edgar
+日期: 2016年2月17日 14:54:37
+信息:
+说明: 集成pdf生成工具 L::open('pdf');
+----
+已修改 : /trunk/include/of/addin/config.php
+已增加 : /trunk/include/of/addin/tcpdf
+已增加 : /trunk/include/of/addin/tcpdf/CHANGELOG.TXT
+已增加 : /trunk/include/of/addin/tcpdf/LICENSE.TXT
+已增加 : /trunk/include/of/addin/tcpdf/README.TXT
+已增加 : /trunk/include/of/addin/tcpdf/composer.json
+已增加 : /trunk/include/of/addin/tcpdf/config
+已增加 : /trunk/include/of/addin/tcpdf/config/tcpdf_config.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts
+已增加 : /trunk/include/of/addin/tcpdf/fonts/ae_fonts_2.0
+已增加 : /trunk/include/of/addin/tcpdf/fonts/ae_fonts_2.0/COPYING
+已增加 : /trunk/include/of/addin/tcpdf/fonts/ae_fonts_2.0/ChangeLog
+已增加 : /trunk/include/of/addin/tcpdf/fonts/ae_fonts_2.0/README
+已增加 : /trunk/include/of/addin/tcpdf/fonts/aealarabiya.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/aealarabiya.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/aealarabiya.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/aefurat.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/aefurat.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/aefurat.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/cid0cs.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/cid0ct.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/cid0jp.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/cid0kr.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/courier.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/courierb.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/courierbi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/courieri.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavu-fonts-ttf-2.34
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavu-fonts-ttf-2.34/AUTHORS
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavu-fonts-ttf-2.34/BUGS
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavu-fonts-ttf-2.34/LICENSE
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavu-fonts-ttf-2.34/NEWS
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavu-fonts-ttf-2.34/README
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavu-fonts-ttf-2.34/langcover.txt
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavu-fonts-ttf-2.34/status.txt
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavu-fonts-ttf-2.34/unicover.txt
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusans.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusans.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusans.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansb.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansb.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansb.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansbi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansbi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansbi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensed.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensed.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensed.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedb.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedb.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedb.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedbi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedbi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedbi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusanscondensedi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansextralight.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansextralight.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansextralight.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmono.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmono.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmono.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonob.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonob.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonob.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonobi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonobi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonobi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonoi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonoi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavusansmonoi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserif.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserif.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserif.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifb.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifb.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifb.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifbi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifbi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifbi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensed.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensed.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensed.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedb.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedb.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedb.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedbi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedbi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedbi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifcondensedi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/dejavuserifi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freefont-20120503
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freefont-20120503/AUTHORS
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freefont-20120503/COPYING
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freefont-20120503/CREDITS
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freefont-20120503/ChangeLog
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freefont-20120503/INSTALL
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freefont-20120503/README
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freefont-20120503/TROUBLESHOOTING
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freefont-20120503/USAGE
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freemono.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freemono.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freemono.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freemonob.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freemonob.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freemonob.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freemonobi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freemonobi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freemonobi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freemonoi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freemonoi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freemonoi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freesans.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freesans.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freesans.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freesansb.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freesansb.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freesansb.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freesansbi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freesansbi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freesansbi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freesansi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freesansi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freesansi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freeserif.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freeserif.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freeserif.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freeserifb.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freeserifb.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freeserifb.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freeserifbi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freeserifbi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freeserifbi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freeserifi.ctg.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freeserifi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/freeserifi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/helvetica.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/helveticab.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/helveticabi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/helveticai.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/hysmyeongjostdmedium.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/kozgopromedium.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/kozminproregular.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/msungstdlight.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfacourier.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfacourier.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfacourierb.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfacourierb.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfacourierbi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfacourierbi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfacourieri.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfacourieri.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfahelvetica.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfahelvetica.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfahelveticab.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfahelveticab.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfahelveticabi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfahelveticabi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfahelveticai.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfahelveticai.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfasymbol.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfasymbol.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfatimes.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfatimes.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfatimesb.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfatimesb.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfatimesbi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfatimesbi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfatimesi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfatimesi.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfazapfdingbats.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/pdfazapfdingbats.z
+已增加 : /trunk/include/of/addin/tcpdf/fonts/stsongstdlight.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/symbol.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/times.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/timesb.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/timesbi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/timesi.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/uni2cid_ac15.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/uni2cid_ag15.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/uni2cid_aj16.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/uni2cid_ak12.php
+已增加 : /trunk/include/of/addin/tcpdf/fonts/zapfdingbats.php
+已增加 : /trunk/include/of/addin/tcpdf/include
+已增加 : /trunk/include/of/addin/tcpdf/include/barcodes
+已增加 : /trunk/include/of/addin/tcpdf/include/barcodes/datamatrix.php
+已增加 : /trunk/include/of/addin/tcpdf/include/barcodes/pdf417.php
+已增加 : /trunk/include/of/addin/tcpdf/include/barcodes/qrcode.php
+已增加 : /trunk/include/of/addin/tcpdf/include/sRGB.icc
+已增加 : /trunk/include/of/addin/tcpdf/include/tcpdf_colors.php
+已增加 : /trunk/include/of/addin/tcpdf/include/tcpdf_filters.php
+已增加 : /trunk/include/of/addin/tcpdf/include/tcpdf_font_data.php
+已增加 : /trunk/include/of/addin/tcpdf/include/tcpdf_fonts.php
+已增加 : /trunk/include/of/addin/tcpdf/include/tcpdf_images.php
+已增加 : /trunk/include/of/addin/tcpdf/include/tcpdf_static.php
+已增加 : /trunk/include/of/addin/tcpdf/tcpdf.php
+已增加 : /trunk/include/of/addin/tcpdf/tcpdf_autoconfig.php
+已增加 : /trunk/include/of/addin/tcpdf/tcpdf_barcodes_1d.php
+已增加 : /trunk/include/of/addin/tcpdf/tcpdf_barcodes_2d.php
+已增加 : /trunk/include/of/addin/tcpdf/tcpdf_import.php
+已增加 : /trunk/include/of/addin/tcpdf/tcpdf_parser.php
+已增加 : /trunk/include/of/addin/tcpdf/tools
+已增加 : /trunk/include/of/addin/tcpdf/tools/.htaccess
+已增加 : /trunk/include/of/addin/tcpdf/tools/convert_fonts_examples.txt
+已增加 : /trunk/include/of/addin/tcpdf/tools/tcpdf_addfont.php
+已修改 : /trunk/include/of/base/com/kv.php
+
+版本: 140
+作者: Edgar
+日期: 2016年2月15日 14:18:19
+信息:
+说明: 数据库回调中 key 变更为 &pool
+    增加 key-value 存储结构 of_base_com_kv
+----
+已增加 : /trunk/include/of/accy/com/kv
+已增加 : /trunk/include/of/accy/com/kv/files.php
+已增加 : /trunk/include/of/accy/com/kv/memcache.php
+已增加 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+
+版本: 135
+作者: Edgar
+日期: 2016年2月9日 23:48:41
+信息:
+说明: 变更回调结构 callback 为 asCall
+----
+已修改 : /trunk/include/of/base/tool/mysqlSync.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+已修改 : /trunk/demo/index.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/sso/main.php
+
+版本: 134
+作者: Edgar
+日期: 2016年2月9日 23:26:18
+信息:
+说明: of::event 符合标准回调结构
+----
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/sso/api.php
+
+版本: 133
+作者: Edgar
+日期: 2016年1月25日 19:51:38
+信息:
+说明: 正式应用OF_DATA
+----
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+已修改 : /trunk/demo/index.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/addin/oFileManager/include.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+
+版本: 131
+作者: Edgar
+日期: 2016年1月25日 10:37:57
+信息:
+说明: of::callFunc 支持更多的调用规则
+       view模版文件夹变更 {'/img' : 图片, '/js' : 脚本, '/css' : 样式, '/tpl' : 模板}
+----
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/config.php
+
+版本: 130
+作者: Edgar
+日期: 2016年1月23日 16:23:53
+信息:
+说明: htmlTpl 引擎支持源html的解析行数
+----
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/com/hParse.php
+
+版本: 129
+作者: Edgar
+日期: 2016年1月23日 14:46:13
+信息:
+说明: 分页连接池 dbkey->dbPool
+       hParse 添加 >tagline::start(标签行数) 和 >attrline::属性名(属性行数)
+----
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/hParse.php
+
+版本: 128
+作者: Edgar
+日期: 2016年1月23日 1:01:32
+信息:
+说明: 增加单点登录管理界面增加翻页等待界面
+----
+已修改 : /trunk/include/of/att/sso/css/main.css
+已增加 : /trunk/include/of/att/sso/img/main/loadLock.gif
+已修改 : /trunk/include/of/att/sso/tpl/main.tpl.php
+
+版本: 127
+作者: Edgar
+日期: 2016年1月21日 19:23:17
+信息:
+说明: 增加单点登录管理界面用户体验
+       修改单点登录小bug
+----
+已修改 : /trunk/include/of/att/sso/js/main.js
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/config.php
+
+版本: 125
+作者: Edgar
+日期: 2016年1月19日 18:56:41
+信息:
+说明: 计划任务可修改下次回调方式
+----
+已修改 : /trunk/include/of/base/com/timer.php
+
+版本: 124
+作者: Edgar
+日期: 2016年1月19日 11:36:36
+信息:
+说明: mysqlSync callDb 可指定参数
+----
+已修改 : /trunk/include/of/base/tool/mysqlSync.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/config.php
+
+版本: 123
+作者: Edgar
+日期: 2016年1月18日 11:39:54
+信息:
+说明: 数据库层优化
+----
+已修改 : /trunk/include/of/db.php
+
+版本: 122
+作者: Edgar
+日期: 2016年1月15日 16:53:48
+信息:
+说明: 代码优化
+----
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/att/htmlTpl/sysErrUi.js
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/sso/tool.php
+
+版本: 121
+作者: Edgar
+日期: 2016年1月14日 0:09:55
+信息:
+说明: session mysql 连接数据库固定结构
+----
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/accy/session/mysql.php
+已修改 : /trunk/include/of/base/session/base.php
+
+版本: 120
+作者: Edgar
+日期: 2016年1月13日 20:28:24
+信息:
+说明: 各模块不依赖配置文件
+----
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/error/jsLog.php
+已修改 : /trunk/include/of/base/error/toolBaseClass.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已修改 : /trunk/include/of/base/extension/toolBaseClass.php
+已修改 : /trunk/include/of/base/language/packs.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/language/toolBaseClass.php
+
+版本: 119
+作者: Edgar
+日期: 2016年1月12日 16:27:08
+信息:
+说明: SSO 系统工具包(权限验证)
+----
+已增加 : /trunk/include/of/base/tool/mysqlSync.php (从路径复制: /trunk/include/of/base/tool/mysqlUpdate.php, 版本, 118)
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/att/sso/tpl/main.tpl.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已删除 : /trunk/include/of/base/tool/mysqlUpdate.php
+
+版本: 118
+作者: Edgar
+日期: 2016年1月10日 22:40:56
+信息:
+说明: SSO 系统工具包(登入完成)
+----
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/att/sso/tpl/main.tpl.php
+已增加 : /trunk/include/of/base/sso/tool.php
+已增加 : /trunk/include/of/att/sso/js/tool.js
+已修改 : /trunk/include/of/base/sso/db/data.sql
+已修改 : /trunk/include/of/base/sso/db/table.sql
+
+版本: 117
+作者: Edgar
+日期: 2016年1月6日 18:03:14
+信息:
+说明: 优化 计划任务
+----
+已修改 : /trunk/include/of/base/com/timer.php
+
+版本: 115
+作者: Edgar
+日期: 2016年1月6日 10:14:20
+信息:
+说明: 计划任务支持 mysql 存储
+       计划任务支持失败重试
+----
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/pdoMysql.php
+已增加 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/config.php
+已删除 : /trunk/include/of/base/tool/timer.php
+
+版本: 114
+作者: Edgar
+日期: 2016年1月4日 1:40:33
+信息:
+说明: sql 错误添加 mysql 死锁日志
+----
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/pdoMysql.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/tool/mysqlUpdate.php
+
+版本: 113
+作者: Edgar
+日期: 2016年1月3日 13:39:57
+信息:
+说明: 优化 session files 模式
+----
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/accy/session/memcache.php
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/demo/index.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/accy/session/mysql.php
+已增加 : /trunk/include/of/base/session/base.php (从路径复制: /trunk/include/of/base/session/abstract.php, 版本, 112)
+已删除 : /trunk/include/of/base/session/abstract.php
+
+版本: 111
+作者: Edgar
+日期: 2015年12月17日 4:08:15
+信息:
+说明: 数据库升级对外接口名调整
+----
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已修改 : /trunk/include/of/base/tool/mysqlUpdate.php
+
+版本: 110
+作者: Edgar
+日期: 2015年12月17日 3:52:56
+信息:
+说明: lang 文件夹更名 language
+----
+已增加 : /trunk/include/of/att/language
+已增加 : /trunk/include/of/att/language/language.js
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已增加 : /trunk/include/of/base/language
+已增加 : /trunk/include/of/base/language/packs.php
+已增加 : /trunk/include/of/base/language/tool.php
+已增加 : /trunk/include/of/base/language/toolBaseClass.php
+已修改 : /trunk/demo/PageExtension.php
+已删除 : /trunk/demo/extensions/test/_info/lang
+已增加 : /trunk/demo/extensions/test/_info/language
+已修改 : /trunk/demo/说明.txt
+已删除 : /trunk/include/of/att/lang
+已修改 : /trunk/include/of/base/extension/tool.php
+已删除 : /trunk/include/of/base/lang
+已修改 : /trunk/include/of/base/link/L.php
+
+版本: 109
+作者: Edgar
+日期: 2015年12月17日 3:39:42
+信息:
+说明: language 文件夹更名 lang
+----
+已删除 : /trunk/include/of/att/language
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已删除 : /trunk/include/of/base/language
+已修改 : /trunk/demo/PageExtension.php
+已增加 : /trunk/demo/extensions/test/_info/lang (从路径复制: /trunk/demo/extensions/test/_info/language, 版本, 106)
+已删除 : /trunk/demo/extensions/test/_info/language
+已修改 : /trunk/demo/说明.txt
+已增加 : /trunk/include/of/att/lang (从路径复制: /trunk/include/of/att/language, 版本, 106)
+已修改 : /trunk/include/of/base/extension/tool.php
+已增加 : /trunk/include/of/base/lang (从路径复制: /trunk/include/of/base/language, 版本, 106)
+已修改 : /trunk/include/of/base/link/L.php
+已增加 : /trunk/include/of/att/lang/lang.js (从路径复制: /trunk/include/of/att/language/language.js, 版本, 106)
+已删除 : /trunk/include/of/att/lang/language.js
+已修改 : /trunk/include/of/base/lang/packs.php
+已修改 : /trunk/include/of/base/lang/tool.php
+已修改 : /trunk/include/of/base/lang/toolBaseClass.php
+
+版本: 108
+作者: Edgar
+日期: 2015年12月17日 3:28:15
+信息:
+说明: shortcuts 文件夹更名 link
+----
+已增加 : /trunk/include/of/att/link (从路径复制: /trunk/include/of/att/shortcuts, 版本, 106)
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/config.php
+已增加 : /trunk/include/of/base/link (从路径复制: /trunk/include/of/base/shortcuts, 版本, 106)
+已修改 : /trunk/include/of/base/link/L.php
+已删除 : /trunk/include/of/att/shortcuts
+已删除 : /trunk/include/of/base/shortcuts
+已修改 : /trunk/include/of/base/link/request.php
+已修改 : /trunk/include/of/base/link/response.php
+
+版本: 107
+作者: Edgar
+日期: 2015年12月17日 2:38:28
+信息:
+说明: 单点登录系统(自动安装)
+----
+已增加 : /trunk/include/of/att/sso
+已增加 : /trunk/include/of/att/sso/js
+已增加 : /trunk/include/of/att/sso/js/login.js
+已增加 : /trunk/include/of/att/sso/js/main.js
+已增加 : /trunk/include/of/att/sso/tpl
+已增加 : /trunk/include/of/att/sso/tpl/login.tpl.php
+已修改 : /trunk/include/of/base/sso/main.php
+已增加 : /trunk/include/of/att/sso/css
+已增加 : /trunk/include/of/att/sso/css/main.css
+已增加 : /trunk/include/of/att/sso/img
+已增加 : /trunk/include/of/att/sso/img/main
+已增加 : /trunk/include/of/att/sso/tpl/main.tpl.php
+已增加 : /trunk/include/of/base/sso/db
+已增加 : /trunk/include/of/base/sso/db/data.sql
+已增加 : /trunk/include/of/base/sso/db/table.sql
+已增加 : /trunk/include/of/att/sso/css/login.css
+已增加 : /trunk/include/of/att/sso/img/main/add1.png
+已增加 : /trunk/include/of/att/sso/img/main/add2.png
+已增加 : /trunk/include/of/att/sso/img/main/del1.png
+已增加 : /trunk/include/of/att/sso/img/main/del2.png
+已增加 : /trunk/include/of/att/sso/img/main/download1.png
+已增加 : /trunk/include/of/att/sso/img/main/download2.png
+已增加 : /trunk/include/of/att/sso/img/main/ice1.png
+已增加 : /trunk/include/of/att/sso/img/main/ice2.png
+已增加 : /trunk/include/of/att/sso/img/main/iceState.png
+已增加 : /trunk/include/of/att/sso/img/main/login_backgroud.png
+已增加 : /trunk/include/of/att/sso/img/main/login_error.png
+已增加 : /trunk/include/of/att/sso/img/main/search.png
+已增加 : /trunk/include/of/att/sso/img/main/select1.png
+已增加 : /trunk/include/of/att/sso/img/main/select2.png
+已增加 : /trunk/include/of/att/sso/img/main/upload1.png
+已增加 : /trunk/include/of/att/sso/img/main/upload2.png
+已删除 : /trunk/include/of/base/sso/css
+已删除 : /trunk/include/of/base/sso/img
+已删除 : /trunk/include/of/base/sso/js
+已删除 : /trunk/include/of/base/sso/tpl
+
+版本: 106
+作者: Edgar
+日期: 2015年12月17日 0:40:45
+信息:
+说明: 单点登录系统(代码优化)
+----
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/js/login.js
+已修改 : /trunk/include/of/base/sso/tpl/main.tpl.php
+
+版本: 105
+作者: Edgar
+日期: 2015年12月16日 20:25:55
+信息:
+说明: 单点登录系统(用户修改)
+----
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/api.php
+
+版本: 104
+作者: Edgar
+日期: 2015年12月15日 2:58:15
+信息:
+说明: 单点登录系统(用户加密)
+----
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/js/login.js
+
+版本: 103
+作者: Edgar
+日期: 2015年12月14日 20:16:15
+信息:
+说明: 单点登录系统(退出接口)
+----
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/api.php
+
+版本: 102
+作者: Edgar
+日期: 2015年12月14日 12:54:34
+信息:
+说明: 单点登录系统(登录校验)
+----
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/config.php
+
+版本: 101
+作者: Edgar
+日期: 2015年12月13日 5:36:11
+信息:
+说明: 单点登录系统(票据接口)
+----
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/js/login.js
+已修改 : /trunk/include/of/base/sso/tpl/login.tpl.php
+
+版本: 100
+作者: Edgar
+日期: 2015年12月13日 3:47:46
+信息:
+说明: 单点登录系统(权限界面)
+----
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/js/login.js
+已修改 : /trunk/include/of/base/sso/tpl/main.tpl.php
+已修改 : /trunk/include/of/base/sso/tpl/login.tpl.php
+已修改 : /trunk/demo/extensions/extensions.php
+
+版本: 99
+作者: Edgar
+日期: 2015年12月7日 1:13:43
+信息:
+说明: 单点登录系统(临时)
+----
+已增加 : /trunk/include/of/base/sso
+已增加 : /trunk/include/of/base/sso/main.php
+已增加 : /trunk/include/of/base/sso/api.php
+已增加 : /trunk/include/of/base/sso/css
+已增加 : /trunk/include/of/base/sso/img
+已增加 : /trunk/include/of/base/sso/js
+已增加 : /trunk/include/of/base/sso/tpl
+已增加 : /trunk/include/of/base/sso/js/login.js
+已增加 : /trunk/include/of/base/sso/tpl/main.tpl.php
+已增加 : /trunk/include/of/base/sso/tpl/login.tpl.php
+已增加 : /trunk/include/of/base/sso/css/login.css
+已增加 : /trunk/include/of/base/sso/css/main.css
+已增加 : /trunk/include/of/base/sso/img/main
+已增加 : /trunk/include/of/base/sso/img/main/add1.png
+已增加 : /trunk/include/of/base/sso/img/main/add2.png
+已增加 : /trunk/include/of/base/sso/img/main/del1.png
+已增加 : /trunk/include/of/base/sso/img/main/del2.png
+已增加 : /trunk/include/of/base/sso/img/main/download1.png
+已增加 : /trunk/include/of/base/sso/img/main/download2.png
+已增加 : /trunk/include/of/base/sso/img/main/ice1.png
+已增加 : /trunk/include/of/base/sso/img/main/ice2.png
+已增加 : /trunk/include/of/base/sso/img/main/iceState.png
+已增加 : /trunk/include/of/base/sso/img/main/login_backgroud.png
+已增加 : /trunk/include/of/base/sso/img/main/login_error.png
+已增加 : /trunk/include/of/base/sso/img/main/search.png
+已增加 : /trunk/include/of/base/sso/img/main/select1.png
+已增加 : /trunk/include/of/base/sso/img/main/select2.png
+已增加 : /trunk/include/of/base/sso/img/main/upload1.png
+已增加 : /trunk/include/of/base/sso/img/main/upload2.png
+已增加 : /trunk/include/of/base/sso/js/main.js
+
+版本: 97
+作者: Edgar
+日期: 2015年11月20日 10:34:41
+信息:
+说明: 增加框架分页放行
+       组件 common 变更为 com
+----
+已增加 : /trunk/include/of/att/com/com (从路径复制: /trunk/include/of/att/com/common, 版本, 90)
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/demo/index.php
+已增加 : /trunk/include/of/base/com/com.php (从路径复制: /trunk/include/of/base/com/common.php, 版本, 90)
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/base/extension/tool.php
+已修改 : /trunk/demo/view/tpl/demo/index/viewTest.tpl.php
+已增加 : /trunk/include/of/accy/com/com (从路径复制: /trunk/include/of/accy/com/common, 版本, 90)
+已删除 : /trunk/include/of/accy/com/common
+已删除 : /trunk/include/of/att/com/common
+已删除 : /trunk/include/of/base/com/common.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/include/of/base/error/tool.php
+
+版本: 96
+作者: Edgar
+日期: 2015年10月30日 10:58:30
+信息:
+说明: 代码格式化
+----
+已修改 : /trunk/include/of/base/com/hParse.php
+
+版本: 95
+作者: Edgar
+日期: 2015年10月30日 9:01:59
+信息:
+说明: 代码格式化
+       session 兼容 5.3
+       language 代码兼容 safari
+       hParse 解析数度提升 1/3
+----
+已修改 : /trunk/include/of/att/language/language.js
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/session/abstract.php
+
+版本: 94
+作者: Edgar
+日期: 2015年10月22日 13:37:44
+信息:
+说明: 代码格式化
+----
+已修改 : /trunk/include/of/base/tool/test.php
+已修改 : /trunk/include/of/view.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/session/abstract.php
+已修改 : /trunk/include/of/att/shortcuts/L.js
+
+版本: 92
+作者: Edgar
+日期: 2015年10月3日 1:01:53
+信息:
+说明: 集成phpMailer 5.2.13
+----
+已修改 : /trunk/include/of/addin/config.php
+已增加 : /trunk/include/of/addin/PHPMailer
+已增加 : /trunk/include/of/addin/PHPMailer/LICENSE
+已增加 : /trunk/include/of/addin/PHPMailer/PHPMailerAutoload.php
+已增加 : /trunk/include/of/addin/PHPMailer/README.md
+已增加 : /trunk/include/of/addin/PHPMailer/VERSION
+已增加 : /trunk/include/of/addin/PHPMailer/changelog.md
+已增加 : /trunk/include/of/addin/PHPMailer/class.phpmailer.php
+已增加 : /trunk/include/of/addin/PHPMailer/class.phpmaileroauth.php
+已增加 : /trunk/include/of/addin/PHPMailer/class.phpmaileroauthgoogle.php
+已增加 : /trunk/include/of/addin/PHPMailer/class.pop3.php
+已增加 : /trunk/include/of/addin/PHPMailer/class.smtp.php
+已增加 : /trunk/include/of/addin/PHPMailer/composer.json
+已增加 : /trunk/include/of/addin/PHPMailer/composer.lock
+已增加 : /trunk/include/of/addin/PHPMailer/extras
+已增加 : /trunk/include/of/addin/PHPMailer/extras/EasyPeasyICS.php
+已增加 : /trunk/include/of/addin/PHPMailer/extras/README.md
+已增加 : /trunk/include/of/addin/PHPMailer/extras/htmlfilter.php
+已增加 : /trunk/include/of/addin/PHPMailer/extras/ntlm_sasl_client.php
+已增加 : /trunk/include/of/addin/PHPMailer/get_oauth_token.php
+已增加 : /trunk/include/of/addin/PHPMailer/language
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-am.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-ar.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-az.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-be.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-bg.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-br.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-ca.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-ch.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-cz.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-de.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-dk.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-el.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-eo.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-es.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-et.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-fa.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-fi.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-fo.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-fr.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-gl.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-he.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-hr.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-hu.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-id.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-it.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-ja.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-ka.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-ko.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-lt.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-lv.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-ms.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-nl.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-no.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-pl.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-pt.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-ro.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-ru.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-se.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-sk.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-sl.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-sr.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-tr.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-uk.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-vi.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-zh.php
+已增加 : /trunk/include/of/addin/PHPMailer/language/phpmailer.lang-zh_cn.php
+已增加 : /trunk/include/of/addin/PHPMailer/travis.phpunit.xml.dist
+
+版本: 91
+作者: Edgar
+日期: 2015年10月3日 0:02:54
+信息:
+说明: 格式化语法规范
+       L::outputControl更名L::buffer
+----
+已修改 : /trunk/include/of/accy/db/pdoMysql.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已修改 : /trunk/include/of/base/extension/toolBaseClass.php
+已修改 : /trunk/include/of/base/extension/tool.php
+已修改 : /trunk/include/of/att/shortcuts/L.js
+已修改 : /trunk/demo/extensions/test/main/demo.php
+已修改 : /trunk/include/of/base/shortcuts/L.php
+已修改 : /trunk/include/of/base/shortcuts/response.php
+
+版本: 90
+作者: Edgar
+日期: 2015年9月19日 16:14:04
+信息:
+说明: 配置文件configPath更改为config
+----
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/config.php
+
+版本: 89
+作者: Edgar
+日期: 2015年9月19日 3:03:44
+信息:
+说明: 配置文件写路径配置更改为dataDir
+----
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/demo/index.php
+已修改 : /trunk/include/of/addin/oFileManager/include.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/base/tool/timer.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.js
+
+版本: 87
+作者: Edgar
+日期: 2015年9月19日 2:40:58
+信息:
+说明: 上传组件支持init回调
+----
+已修改 : /trunk/include/of/addin/oUpload/oUpload.js
+
+版本: 86
+作者: Edgar
+日期: 2015年9月19日 1:42:06
+信息:
+说明: 上传组件oUplaod整合
+----
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/addin/config.js
+已增加 : /trunk/include/of/addin/oUpload
+已增加 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/demo/view/tpl/demo/index/viewTest.tpl.php
+已修改 : /trunk/include/of/att/shortcuts/L.js
+已增加 : /trunk/include/of/addin/oUpload/oUpload.js
+已增加 : /trunk/include/of/addin/oUpload/images
+已增加 : /trunk/include/of/addin/oUpload/images/oUploadCancel.png
+已增加 : /trunk/include/of/addin/oUpload/images/oUploadClose.gif
+已增加 : /trunk/include/of/addin/oUpload/images/oUploadCount.png
+已增加 : /trunk/include/of/addin/oUpload/images/oUploadE.png
+已增加 : /trunk/include/of/addin/oUpload/images/oUploadEN.png
+已增加 : /trunk/include/of/addin/oUpload/images/oUploadES.png
+已增加 : /trunk/include/of/addin/oUpload/images/oUploadN.png
+已增加 : /trunk/include/of/addin/oUpload/images/oUploadOpen.gif
+已增加 : /trunk/include/of/addin/oUpload/images/oUploadS.png
+已增加 : /trunk/include/of/addin/oUpload/images/oUploadStart.png
+已增加 : /trunk/include/of/addin/oUpload/images/oUploadW.png
+已增加 : /trunk/include/of/addin/oUpload/images/oUploadWN.png
+已增加 : /trunk/include/of/addin/oUpload/images/oUploadWS.png
+已增加 : /trunk/include/of/addin/oUpload/images/transparent.gif
+已增加 : /trunk/include/of/addin/oUpload/maxSize.php
+已增加 : /trunk/include/of/addin/oUpload/oUpload.css
+已增加 : /trunk/include/of/addin/oUpload/oUpload.swf
+已修改 : /trunk/include/of/att/com/common/paging/main.js
+
+版本: 85
+作者: Edgar
+日期: 2015年9月14日 22:10:58
+信息:
+说明: 网络请求代码优化
+----
+已修改 : /trunk/include/of/base/com/net.php
+
+版本: 83
+作者: Edgar
+日期: 2015年9月11日 12:57:28
+信息:
+说明: 代码格式化
+     session/files.php 取消空文件夹清空
+     L.event 支持事件批量操作
+----
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/include/of/att/shortcuts/L.js
+已修改 : /trunk/include/of/base/shortcuts/L.php
+
+版本: 82
+作者: Edgar
+日期: 2015年9月7日 15:59:23
+信息:
+说明: 代码格式化
+----
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/att/shortcuts/L.js
+
+版本: 81
+作者: Edgar
+日期: 2015年9月2日 23:10:19
+信息:
+说明: 代码格式化
+----
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/base/com/common.php
+已修改 : /trunk/include/of/base/com/str.php
+
+版本: 80
+作者: Edgar
+日期: 2015年8月28日 21:44:59
+信息:
+说明: 修正 of_base_com_net::request https bug
+----
+已修改 : /trunk/include/of/base/com/net.php
+
+版本: 79
+作者: Edgar
+日期: 2015年8月27日 21:37:12
+信息:
+说明: 调整SESSION配置结构
+----
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/accy/session/memcache.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/accy/session/mysql.php
+
+版本: 77
+作者: Edgar
+日期: 2015年8月27日 17:00:08
+信息:
+说明: mysqlUpdate.php 支持水平分区备份恢复
+----
+已修改 : /trunk/include/of/base/tool/mysqlUpdate.php
+
+版本: 75
+作者: Edgar
+日期: 2015年8月21日 18:05:13
+信息:
+说明: mysqlUpdate.php 恢复备份结构支持 setInc 设置自增
+----
+已修改 : /trunk/include/of/base/tool/mysqlUpdate.php
+
+版本: 74
+作者: Edgar
+日期: 2015年8月21日 15:05:33
+信息:
+说明: of_base_tool_mysqlUpdate 代码格式化
+----
+已修改 : /trunk/include/of/base/tool/mysqlUpdate.php
+已修改 : /trunk/include/of/base/com/str.php
+
+版本: 72
+作者: Edgar
+日期: 2015年8月20日 16:04:58
+信息:
+说明: of_db::transaction 和 of_db::sql 方法合并(优化)
+     开始事务后,读连接切换到主连接
+----
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/accy/session/mysql.php
+
+版本: 70
+作者: Edgar
+日期: 2015年8月20日 0:47:39
+信息:
+说明: of_db::transaction 和 of_db::sql 方法合并
+----
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/accy/session/mysql.php
+已修改 : /trunk/include/of/base/shortcuts/L.php
+
+版本: 69
+作者: Edgar
+日期: 2015年8月19日 11:59:19
+信息:
+说明: 完善错误日志支持@符错误屏蔽
+----
+已修改 : /trunk/include/of/base/error/writeLog.php
+
+版本: 68
+作者: Edgar
+日期: 2015年8月19日 2:03:33
+信息:
+说明: 代码格式化
+     错误日志支持@符错误屏蔽
+     完善 of_base_com_disk::file
+----
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/com/disk.php
+
+版本: 67
+作者: Edgar
+日期: 2015年8月15日 10:33:13
+信息:
+说明: 网络请求函数优化
+----
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/common.php
+
+版本: 66
+作者: Edgar
+日期: 2015年8月14日 17:25:36
+信息:
+说明: 代码格式化
+----
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/view.php
+已修改 : /trunk/include/of/base/tool/timer.php
+已修改 : /trunk/include/of/base/com/common.php
+
+版本: 64
+作者: Edgar
+日期: 2015年8月11日 19:36:21
+信息:
+说明: 代码优化
+----
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+已修改 : /trunk/include/of/base/tool/timer.php
+已修改 : /trunk/include/of/base/com/disk.php
+
+版本: 63
+作者: Edgar
+日期: 2015年8月10日 20:35:50
+信息:
+说明: 代码优化
+----
+已修改 : /trunk/include/of/accy/session/memcache.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+
+版本: 61
+作者: Edgar
+日期: 2015年8月7日 23:24:00
+信息:
+说明: 精简 of_base_com_disk 方法名
+----
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/language/packs.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/language/toolBaseClass.php
+已修改 : /trunk/include/of/base/tool/timer.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/csv.php
+
+版本: 60
+作者: Edgar
+日期: 2015年8月7日 23:00:01
+信息:
+说明: 降低SESSION清理的出错概率
+----
+已修改 : /trunk/include/of/accy/session/files.php
+
+版本: 59
+作者: Edgar
+日期: 2015年8月7日 10:46:33
+信息:
+说明: 优化网络请求
+     优化错误日志
+----
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+
+版本: 57
+作者: Edgar
+日期: 2015年8月4日 0:29:21
+信息:
+说明: SESSION 高版本 支持加锁
+----
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/accy/session/memcache.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/accy/session/mysql.php
+已修改 : /trunk/include/of/base/session/abstract.php
+
+版本: 56
+作者: Edgar
+日期: 2015年8月3日 22:13:59
+信息:
+说明: 计划任务精确到5秒
+----
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/tool/timer.php
+已修改 : /trunk/include/of/base/extension/tool.php
+
+版本: 54
+作者: Edgar
+日期: 2015年7月19日 23:47:35
+信息:
+说明: 分页支持连续数字翻页
+----
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/att/com/common/paging/main.js
+
+版本: 53
+作者: Edgar
+日期: 2015年7月14日 11:36:42
+信息:
+说明: 代码格式化
+----
+已修改 : /trunk/include/of/addin/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/session/abstract.php
+
+版本: 51
+作者: Edgar
+日期: 2015年7月8日 12:35:31
+信息:
+说明: of_base_com_net::request 开始支持 OPTIONS,GET,HEAD,POST,PUT,DELETE,TRACE 模式
+----
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/base/com/common.php
+
+版本: 49
+作者: Edgar
+日期: 2015年7月1日 23:06:15
+信息:
+说明: 分页添加命名空间功能,可以分页中嵌套分页
+----
+已修改 : /trunk/include/of/base/com/common.php
+已修改 : /trunk/include/of/att/com/common/paging/main.js
+
+版本: 47
+作者: Edgar
+日期: 2015年6月20日 21:25:50
+信息:
+说明: mcrypt 加解密封装
+----
+已修改 : /trunk/include/of/base/com/str.php
+
+版本: 45
+作者: Edgar
+日期: 2015年6月18日 2:57:26
+信息:
+说明: 集成 nusoap 开始支持 webService
+----
+已修改 : /trunk/include/of/addin/config.php
+已增加 : /trunk/include/of/addin/nusoap
+已增加 : /trunk/include/of/addin/nusoap/changelog
+已增加 : /trunk/include/of/addin/nusoap/class.nusoap_base.php
+已增加 : /trunk/include/of/addin/nusoap/class.soap_fault.php
+已增加 : /trunk/include/of/addin/nusoap/class.soap_parser.php
+已增加 : /trunk/include/of/addin/nusoap/class.soap_server.php
+已增加 : /trunk/include/of/addin/nusoap/class.soap_transport_http.php
+已增加 : /trunk/include/of/addin/nusoap/class.soap_val.php
+已增加 : /trunk/include/of/addin/nusoap/class.soapclient.php
+已增加 : /trunk/include/of/addin/nusoap/class.wsdl.php
+已增加 : /trunk/include/of/addin/nusoap/class.wsdlcache.php
+已增加 : /trunk/include/of/addin/nusoap/class.xmlschema.php
+已增加 : /trunk/include/of/addin/nusoap/nusoap.php
+已增加 : /trunk/include/of/addin/nusoap/nusoapmime.php
+
+版本: 44
+作者: Edgar
+日期: 2015年5月17日 23:21:31
+信息:
+说明: 标准化 of_base_com_disk::getTempPath 返回值
+     优化 session 一处代码
+----
+已修改 : /trunk/include/of/base/session/abstract.php
+已修改 : /trunk/include/of/base/com/disk.php
+
+版本: 40
+作者: Edgar
+日期: 2015年5月8日 12:29:26
+信息:
+说明: 图表组件升级
+----
+已修改 : /trunk/include/of/addin/echarts/echarts.js
+已删除 : /trunk/include/of/addin/echarts/esl.js
+
+版本: 39
+作者: Edgar
+日期: 2015年5月6日 10:45:40
+信息:
+说明: 优化图表集成的返回值
+----
+已修改 : /trunk/include/of/addin/config.js
+
+版本: 37
+作者: Edgar
+日期: 2015年5月5日 21:57:27
+信息:
+说明: 添加 OF_DEBUG 状态常量
+----
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/language/packs.php
+
+版本: 36
+作者: Edgar
+日期: 2015年5月5日 13:35:09
+信息:
+说明: 模版引擎现在可以显示系统错误
+----
+已增加 : /trunk/include/of/att/htmlTpl
+已增加 : /trunk/include/of/att/htmlTpl/sysErrUi.js
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+
+版本: 34
+作者: Edgar
+日期: 2015年5月5日 0:01:18
+信息:
+说明: 分页可以选择数据库连接池
+----
+已修改 : /trunk/include/of/base/com/common.php
+
+版本: 33
+作者: Edgar
+日期: 2015年5月4日 23:58:05
+信息:
+说明: 分页可以选择数据库连接池
+----
+已修改 : /trunk/include/of/base/com/common.php
+
+版本: 32
+作者: Edgar
+日期: 2015年5月4日 23:45:40
+信息:
+说明: 强化错误提示
+----
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+
+版本: 31
+作者: Edgar
+日期: 2015年5月3日 18:21:04
+信息:
+说明: hParse 一处代码优化
+----
+已修改 : /trunk/include/of/base/com/hParse.php
+
+版本: 30
+作者: Edgar
+日期: 2015年5月2日 13:44:50
+信息:
+说明: 精简 of_db 事件名
+----
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/base/extension/match.php
+
+版本: 28
+作者: Edgar
+日期: 2015年5月2日 13:05:57
+信息:
+说明: 增加 of_base_htmlTpl_engine::compile 模版编译事件
+----
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+
+版本: 27
+作者: Edgar
+日期: 2015年4月13日 15:19:55
+信息:
+说明: 增加 分页.data 引用上次请求数据
+----
+已修改 : /trunk/include/of/att/com/common/paging/main.js
+
+版本: 25
+作者: Edgar
+日期: 2015年4月3日 2:35:26
+信息:
+说明: 优化分页统计总长速度
+----
+已修改 : /trunk/include/of/base/com/common.php
+
+版本: 24
+作者: Edgar
+日期: 2015年4月2日 15:50:04
+信息:
+说明: 优化分页统计总长速度
+----
+已修改 : /trunk/include/of/base/com/common.php
+
+版本: 23
+作者: Edgar
+日期: 2015年3月30日 22:01:33
+信息:
+说明: 纠正分页LIMIT负数问题
+----
+已修改 : /trunk/include/of/base/com/common.php
+
+版本: 20
+作者: Edgar
+日期: 2015年3月30日 20:36:19
+信息:
+说明: 强化L::sql封装方法
+     精简of_view::head输出的头
+----
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/view.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/base/shortcuts/L.php
+
+版本: 19
+作者: Edgar
+日期: 2015年3月27日 10:50:07
+信息:
+说明: 优化模版引擎路径解析
+----
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+
+版本: 18
+作者: Edgar
+日期: 2015年3月26日 9:08:13
+信息:
+说明: sql错误日志优化
+----
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+
+版本: 16
+作者: Edgar
+日期: 2015年3月25日 23:08:11
+信息:
+说明: 数据库多连接优化
+----
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/demo/extensions/test/main/demo.php
+
+版本: 14
+作者: Edgar
+日期: 2015年3月25日 20:09:00
+信息:
+说明: 更好的支持数据库多连接
+----
+已修改 : /trunk/include/of/base/com/common.php
+
+版本: 13
+作者: Edgar
+日期: 2015年3月25日 18:35:35
+信息:
+说明: 更好的支持数据库多连接
+----
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/base/shortcuts/L.php
+
+版本: 10
+作者: Edgar
+日期: 2015年3月25日 9:19:29
+信息:
+说明: 完善rc4加密算法
+----
+已修改 : /trunk/include/of/base/com/str.php
+
+版本: 7
+作者: Edgar
+日期: 2015年3月24日 23:47:48
+信息:
+说明: 文本加密算法换成RC4
+     调整 _common::txtEncrypt 到 _str::rc4
+     调整 _common::strsub 到 _str::strsub
+----
+已修改 : /trunk/demo/index.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/extension/toolBaseClass.php
+已修改 : /trunk/include/of/base/com/common.php
+已修改 : /trunk/include/of/base/com/str.php
+
+版本: 6
+作者: Edgar
+日期: 2015年3月17日 13:06:17
+信息:
+说明: 修正错误日志列表乱码问题
+----
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/base/error/tool.php
+
+版本: 2
+作者: Edgar
+日期: 2015年3月3日 4:12:19
+信息:
+说明: 开始 oFrame 2.0 框架

@@ -1,5 +1,7 @@
 <?php
-class demo_index extends L {
+namespace demo;
+use demo\myimplements;
+class index extends \L {
     /**
      * 描述 : 请求路径规范
      * 作者 : Edgar.lee
@@ -295,6 +297,11 @@ $("div").click(function () {
     function captcha() {
         echo $this->_com->captcha($this->post('captcha'));
     }
+	
+	public function getdata(){
+		$test1 = new myimplements();
+		echo $test1->getData(5555);
+	}
 }
 
 //允许外网访问
