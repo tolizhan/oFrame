@@ -163,17 +163,12 @@ class of_accy_db_mysqli extends of_db {
      * 作者 : Edgar.lee
      */
     protected function &_moreResults() {
-        $result = array();
-
-        if (mysqli_more_results($this->connection)) {
+        do {
             $result[] = &$this->_fetchAll();
-            while (mysqli_next_result($this->connection)) {
-                $result[] = &$this->_fetchAll();
-                if (!mysqli_more_results($this->connection)) {
-                    break;
-                }
-            }
-        }
+        } while (
+            mysqli_more_results($this->connection) &&
+            mysqli_next_result($this->connection)
+        );
 
         return $result;
     }

@@ -61,53 +61,61 @@ abstract class of_db {
      * 描述 : 读取/设置连接池
      * 参数 :
      *      key  : 使用的连接类,如果同一连接类不同的连接推荐使用::分割,如'mysql::我的区分符'
-     *      pool : 连接参数,初始化后便不再起作用,默认_of.db, 支持读写分离配置方式
+     *      pool : key连接池的操作参数
+     *          数组   : 连接参数,初始化后便不再起作用,默认_of.db, 支持读写分离配置方式
+     *          "level": 查询当前事务层次
      * 返回 :
-     *      连接池配置
+     *      pool 为 null 或 数组: 返回 连接池配置
+     *      pool 为 "level"     : 返回 整数, 0=不在事务里, 1=根事务, n=n层事务里
      * 作者 : Edgar.lee
      */
     final public static function pool($key, $pool = null) {
         //引用实例列表
         $instList = &self::$instList;
 
-        if (empty($instList[$key])) {
-            //初始配置
-            if ($pool === null) {
-                //引用数据库配置
-                $dbConfig = &self::$dbConfig;
-                //数据库配置初始化
-                if ($dbConfig === null) {
-                    //读取连接池参数
-                    $dbConfig = of::config('_of.db');
+        if ($pool === 'level') {
+            return isset($instList[$key]['inst']['level']) ?
+                $instList[$key]['inst']['level'] : 0;
+        } else {
+            if (empty($instList[$key])) {
+                //初始配置
+                if ($pool === null) {
+                    //引用数据库配置
+                    $dbConfig = &self::$dbConfig;
+                    //数据库配置初始化
+                    if ($dbConfig === null) {
+                        //读取连接池参数
+                        $dbConfig = of::config('_of.db');
 
-                    //单库连接配置
-                    if (
-                        isset($dbConfig['adapter']) && is_string($dbConfig['adapter']) ||
-                        ($key === 'default' && !isset($dbConfig[$key]) && (
-                            isset($dbConfig[0]) ||
-                            isset($dbConfig['write']) && isset($dbConfig['read'])
-                        ))
-                    ) {
-                        //配置文件格式化
-                        $dbConfig = array('default' => $dbConfig);
+                        //单库连接配置
+                        if (
+                            isset($dbConfig['adapter']) && is_string($dbConfig['adapter']) ||
+                            ($key === 'default' && !isset($dbConfig[$key]) && (
+                                isset($dbConfig[0]) ||
+                                isset($dbConfig['write']) && isset($dbConfig['read'])
+                            ))
+                        ) {
+                            //配置文件格式化
+                            $dbConfig = array('default' => $dbConfig);
+                        }
+                    }
+
+                    //引用连接池
+                    if (!$pool = &$dbConfig[$key]) {
+                        //指定的数据连接无效
+                        trigger_error('Did not find the specified database connection : ' . $key);
+                        exit;
                     }
                 }
 
-                //引用连接池
-                if (!$pool = &$dbConfig[$key]) {
-                    //指定的数据连接无效
-                    trigger_error('Did not find the specified database connection : ' . $key);
-                    exit;
-                }
+                //引用连接
+                $instList[$key] = array('pool' => &$pool);
             }
 
-            //引用连接
-            $instList[$key] = array('pool' => &$pool);
+            //设置当期连接池
+            self::$nowDbKey = $key;
+            return $instList[$key]['pool'];
         }
-
-        //设置当期连接池
-        self::$nowDbKey = $key;
-        return $instList[$key]['pool'];
     }
 
     /**
@@ -133,6 +141,8 @@ abstract class of_db {
 
         //返回结果
         $result = false;
+        //执行成功, false=执行失败, true=执行成功
+        $isDone = true;
         //触发sql前事件
         of::event('of_db::before', true, array('sql' => &$sql, 'pool' => &$pool));
         //设置连接池
@@ -166,10 +176,10 @@ abstract class of_db {
                             $result = &$dbObj->_moreResults();
                             break;
                     }
-                //SQL 执行错误
-                } else {
-                    of::event('of_db::error', true, array('type' => $dbObj->_error(), 'sql' => &$sql, 'pool' => &$pool));
                 }
+
+                //判断是否成功
+                $isDone = $result !== false;
             }
         //事务处理
         } else if ($dbObj = &self::getConnect('write')) {
@@ -178,8 +188,12 @@ abstract class of_db {
 
             //启动事务
             if ($sql === null) {
-                //根级事务
-                if (empty($index['level'])) {
+                //嵌套事务
+                if (isset($index['level'])) {
+                    $index['level'] += 1;
+                    $result = true;
+                //根级事务 && 开启事务成功
+                } else if ($isDone = $result = $dbObj->_begin()) {
                     //开启事务
                     $index['level'] = 1;
                     //最终状态
@@ -188,12 +202,6 @@ abstract class of_db {
                     $index['back'] = &$index['read'];
                     //读取切换主
                     $index['read'] = &$dbObj;
-                    //开启事务
-                    $result = $dbObj->_begin();
-                //嵌套事务
-                } else {
-                    $index['level'] += 1;
-                    $result = true;
                 }
             //结束事务
             } else if (isset($index['level'])) {
@@ -204,7 +212,7 @@ abstract class of_db {
                     $result = true;
                 } else {
                     //执行事务,若子事务回滚->父事务也回滚
-                    $result = $dbObj->{$fun[$sql && $index['state']]}();
+                    $isDone = $result = $dbObj->{$fun[$sql && $index['state']]}();
                     //切回原始配置
                     $index['read'] = &$index['back'];
                     //注销事务信息
@@ -215,6 +223,9 @@ abstract class of_db {
                 $result = $result && ($index['state'] || $sql === false);
             }
         }
+
+        //SQL 执行错误
+        $isDone || of::event('of_db::error', true, array('type' => $dbObj->_error(), 'sql' => &$sql, 'pool' => &$pool));
 
         //触发sql后事件
         of::event('of_db::after', true, array('sql' => &$sql, 'pool' => &$pool, 'result' => &$result));

@@ -114,7 +114,7 @@ class of_base_com_com {
      */
     public static function &paging($config = null, $params = null) {
         //全局参数 {'attr' : 顶层属性, 'conf' : 替换配置}
-        static $global = array('attr' => null, 'conf' => null);
+        static $global = array('attr' => null, 'conf' => null, 'func' => null);
 
         //配置分页
         if (is_array($config)) {
@@ -124,7 +124,7 @@ class of_base_com_com {
             of_view::head('head', '<script src="' .OF_URL. '/att/com/com/paging/main.js"></script>');
 
             //修改过使用方法
-            isset($global['attr']['method']) && $config['_attr']['method'] = $global['attr']['method'];
+            isset($global['func']) && $config['_attr']['method'] = $global['func'];
             //顶级属性
             $global['attr'] = &$config['_attr'];
             //引用全局属性
@@ -348,7 +348,7 @@ class of_base_com_com {
                 //重写配置
                 isset($params['config']) && $global['conf'] = &$params['config'];
                 //使用方法
-                $global['attr']['method'] = $config;
+                $global['func'] = $config;
 
                 $temp = explode('::', $config);
                 $result = call_user_func_array(
@@ -452,11 +452,12 @@ class of_base_com_com {
                                             break;
                                         //确定是 FROM 关键词
                                         } else {
-                                            $post['items'] = '/*SELECT*//*!50700 ( */ ' .
+                                            //MYSQL 50700 以上版本 不能使用 UNION ALL方法
+                                            $post['items'] = '/*CALL*/' .
                                                 substr($temp[1], 0, $temp['sLen']) .
                                                 ' SQL_CALC_FOUND_ROWS 1 c ' .
                                                 substr($temp[1]. $temp[2], $temp['match']['position']) .
-                                                ' LIMIT 0 /*!50700 ) */ UNION ALL SELECT FOUND_ROWS()';
+                                                ' LIMIT 0; SELECT FOUND_ROWS() c';
                                             break 2;
                                         }
                                     //寻找 ")"
@@ -489,7 +490,7 @@ class of_base_com_com {
                             //提取SQL长度
                             $post['items'] = of_db::sql($post['items'], $attr['dbPool']);
                             //获取总数量
-                            $post['items'] = $post['items'][0]['c'];
+                            $post['items'] = $post['items'][1][0]['c'];
                         }
 
                         //校正 $post['page']

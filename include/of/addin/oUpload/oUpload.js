@@ -455,7 +455,7 @@ var oUpload = (function () {
          */
         'inst' : function (params) {
             //组件对象
-            var file = '<input style="visibility: hidden; width: 0px; height: 0px;" type="file" name="[]"';
+            var file = '<input style="position: absolute; left: -1000px; width: 0px;" type="file" name="[]"';
             //允许多选
             params.multi && (file += ' multiple');
             //扩展限制
@@ -723,10 +723,16 @@ var oUpload = (function () {
             var index = html5.list[this.id];
 
             //设置数据
-            if( value != null ) {
+            if (value != null) {
                 index.config[name] = value;
+
+                if (name === 'multi') {
+                    this.multiple = !!value;
+                } else if (name === 'exts') {
+                    this.accept = '.' + value.replace(/;/g, ',.');
+                }
             //读取队列数
-            } else if( name === 'queueSize' ) {
+            } else if (name === 'queueSize')  {
                 return L.count(index.files);
             //读取配置
             } else {

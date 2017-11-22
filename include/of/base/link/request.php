@@ -33,17 +33,17 @@ class of_base_link_request {
                     //校验失败
                     if ($error) {
                         $json = array(
-                            'state' => 400,
-                            'data'  => &$error,
-                            'info'  => 'Invalid parameter: ' . $k
+                            'code' => 400,
+                            'data' => &$error,
+                            'info' => 'Invalid parameter: ' . $k
                         );
                         exit(of_base_com_data::json($json));
                     }
                 } else {
                     $json = array(
-                        'state' => 500,
-                        'data'  => array(),
-                        'info'  => "Invalid rule: {$func}.{$k}"
+                        'code' => 500,
+                        'data' => array(),
+                        'info' => "Invalid rule: {$func}.{$k}"
                     );
                     exit(of_base_com_data::json($json));
                 }

@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200216);
+define('OF_VERSION', 200218);
 
 /**
  * 描述 : 控制层核心
@@ -247,11 +247,14 @@ class of {
                 //"xx:yy"模式的参数
                 if (isset($temp[1])) {
                     //保存到全局中
-                    $temp[0] = '_' . strtoupper($temp[0]);
                     $GLOBALS['_ARGV'][$temp[0]] = &$temp[1];
+                    $temp[0] = '_' . strtoupper($temp[0]);
 
+                    //设置备用时区
+                    if ($temp[0] === '__TZ') {
+                        ini_set('date.timezone', $temp[1]);
                     //存在 $GLOBALS 变量中
-                    if (isset($GLOBALS[$temp[0]])) {
+                    } else if (isset($GLOBALS[$temp[0]])) {
                         //解析到对应超全局变量中
                         parse_str($temp[1], $temp[2]);
                         $GLOBALS[$temp[0]] = $temp[2] + $GLOBALS[$temp[0]];
@@ -289,7 +292,11 @@ class of {
         $config['_of'] = &self::arrayReplaceRecursive($of, $config['_of']);
 
         //默认时区 框架时区>系统时区>PRC时区
-        if (($index = &$of['timezone']) || (!ini_get('date.timezone') && $index = 'PRC')) {
+        if (
+            ($index = &$of['timezone']) ||
+            ($index = ini_get('date.timezone')) ||
+            ($index = 'PRC')
+        ) {
             date_default_timezone_set($index);
         }
         $index = date('P', $_SERVER['REQUEST_TIME']);
@@ -331,7 +338,7 @@ class of {
         if (
             !isset($_REQUEST['__OF_DEBUG__']) &&
             isset($_SERVER['HTTP_REFERER']) &&
-            strpos($_SERVER['HTTP_REFERER'], '__OF_DEBUG__', 10)
+            strpos($_SERVER['HTTP_REFERER'], '__OF_DEBUG__')
         ) {
             parse_str(strtr($_SERVER['HTTP_REFERER'], '?', '&'), $temp);
             isset($temp['__OF_DEBUG__']) && $_REQUEST['__OF_DEBUG__'] = &$temp['__OF_DEBUG__'];

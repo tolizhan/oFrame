@@ -50,6 +50,22 @@ class of_view {
     }
 
     /**
+     * 描述 : 批量设置属性
+     * 参数 :
+     *      prop : 批量设置的属性 {
+     *          属性键 : 属性值
+     *      }
+     * 作者 : Edgar.lee
+     */
+    public static function prop($prop) {
+        $obj = self::inst();
+
+        foreach ($prop as $k => &$v) {
+            $obj->$k = &$v;
+        }
+    }
+
+    /**
      * 描述 : 加载模板页面
      * 参数 :
      *      tpl : 模板名,默认调度方法名.视图扩展名

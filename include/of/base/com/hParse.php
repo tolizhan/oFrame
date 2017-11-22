@@ -2034,7 +2034,8 @@ class of_base_com_hParse {
                                                     $tempNodeKeys[$temp] = $temp;
                                                 }
                                             }
-                                        //直接兄节点
+                                            break;
+                                        //所有兄节点
                                         case '~':
                                             foreach ($nowNodeKeys as &$nodeKey) {
                                                 //读取所有父节点
@@ -2057,7 +2058,15 @@ class of_base_com_hParse {
                                 }
                             }
 
-                            if (count(array_intersect($nowNodeKeys, $env['temp']['filterNodeKeys'])) === 0) {
+                            //父节点与过滤节点重合
+                            if (count(
+                                array_intersect($nowNodeKeys, $env['temp']['filterNodeKeys'])
+                            )) {
+                                //当前节加入到过滤节点中
+                                $env['temp']['filterNodeKeys'][$matchNodeKey] = $matchNodeKey;
+                            //父节点与过滤节点不重合
+                            } else {
+                                //无效数据,从已匹配节点剔除
                                 unset($matchFilterNodeKeys[$matchNodeKey]);
                             }
                         }

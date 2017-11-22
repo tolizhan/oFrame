@@ -11,12 +11,12 @@ class of_base_tool_test extends of_base_com_data {
      *      action : 方法名,
      * 返回 :
      *      标准验证结构 {
-     *          "state" : 正整型, 200 成功, 400 请求参数类型校验失败, 
+     *          "code" : 正整型, 200 成功, 400 请求参数类型校验失败, 
      *              3xx 半失败半成功, 且合法
      *              4xx 因请求参数导致的错误
      *              5xx 因内不错误导致的问题
-     *          "data"  : 可扩展的数据数据
-     *          "info"  : 字符串的响应信息
+     *          "data" : 可扩展的数据数据
+     *          "info" : 字符串的响应信息
      *      }
      * 作者 : Edgar.lee
      */
@@ -33,9 +33,9 @@ class of_base_tool_test extends of_base_com_data {
         //引用校验结果
         if ($error = &of_base_com_data::$rule['result']) {
             return array(
-                'state' => 400,
-                'data'  => &$error,
-                'info'  => '参数结构验证失败'
+                'code' => 400,
+                'data' => &$error,
+                'info' => '参数结构验证失败'
             );
         //返回接口值
         } else {

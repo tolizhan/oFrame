@@ -91,6 +91,8 @@ return array(
         //'of_base_extension_match',
         //html模板引擎,实现UI,开发人员分离
         'of_base_htmlTpl_engine',
+        //加载兼容IE6+ bootstrap v3
+        //'of_addin_bsui_setup',
         //检查最新版本
         'of_base_version_check'
     ),

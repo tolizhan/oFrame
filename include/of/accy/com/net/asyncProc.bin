@@ -5,5 +5,4 @@ args = Replace(Mid(args, 2, Len(args) - 2), """""", """")
 
 obj.run args, 0, False
 
-'' Wscript.echo args & "-"
-'' WScript.CreateObject("WSCript.shell").run """" & WScript.Arguments(0) & """ """ & WScript.Arguments(1) & """", 0, False
+'' MsgBox args

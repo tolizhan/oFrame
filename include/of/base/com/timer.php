@@ -66,7 +66,7 @@ class of_base_com_timer {
             //连接解锁
             flock($lock, LOCK_UN);
             //加载定时器
-            of_base_com_net::request(OF_URL . '/index.php', array(), array(
+            of_base_com_net::request(OF_URL, array(), array(
                 'asCall' => 'of_base_com_timer::timer',
                 'params' => array($name, true)
             ));
@@ -131,43 +131,104 @@ class of_base_com_timer {
      *      params : 任务参数 {
      *          "time" : 执行时间, 五年内秒数=xx后秒执行, 其它=指定时间
      *          "call" : 框架标准的回调
+     *          "cNum" : 并发数量, 0=不设置, n=最大值
      *          "try"  : 尝试相隔秒数, 默认[], 如:[60, 100, ...]
      *      }
      * 作者 : Edgar.lee
      */
     public static function task($params) {
         //格式化
-        $params += array('time' => 0, 'try' => array());
+        $params += array('time' => 0, 'cNum' => 0, 'try' => array());
+        //当前时间
+        $nowTime = time();
 
         //时间戳
         if (is_numeric($params['time'])) {
             //小于5年定义为xx后秒执行
-            $params['time'] < 63072000 && $params['time'] += $_SERVER['REQUEST_TIME'];
+            $params['time'] < 63072000 && $params['time'] += $nowTime;
         //时间格式
         } else {
             //转换为数字
             $params['time'] = strtotime($params['time']);
         }
 
-        //添加计划任务
-        self::taskList($params);
+        if (
+            $params['time'] <= $nowTime &&
+            of::dispatch('class') === 'of_base_com_net'
+        ) {
+            //直接触发
+            $temp = array(&$params);
+            self::fireCalls($temp);
+        } else {
+            //添加到待执行列表中
+            self::taskList($params);
+        }
     }
 
     /**
      * 描述 : 回调任务函数
      * 参数 : 
      *      call : task 参数格式
+     *      cAvg : 并发参数 false=无并发, 数组=启动并发 {
+     *          "cMd5" : 回调唯一值
+     *          "cCid" : 并发ID
+     *      }
      * 作者 : Edgar.lee
      */
-    public static function taskCall($call) {
+    public static function taskCall($call, $cAvg = false) {
         //系统回调参数
         $params = array(
             'call' => &$call['call'],
             'time' => &$call['time'],
+            'cNum' => &$call['cNum'],
             'try'  => &$call['try']
         );
+
+        //清理机制
+        if (rand(0, 99) === 1) {
+            $path = self::$config['path'] . '/concurrent';
+
+            //读取单层文件夹
+            if (of_base_com_disk::each($path, $data)) {
+                foreach ($data as $k => &$v) {
+                    //是文件
+                    if (!$v) {
+                        //打开并发文件
+                        $fp = fopen($k, 'a');
+
+                        //加锁成功
+                        if ($clear = flock($fp, LOCK_EX | LOCK_NB)) {
+                            of_base_com_disk::delete(substr($k, 0, -4));
+                        }
+
+                        //连接解锁
+                        flock($fp, LOCK_UN);
+                        //关闭连接
+                        fclose($fp);
+                        //删除文件
+                        $clear && unlink($k);
+                    }
+                }
+            }
+        }
+
+        //启用并发
+        if (isset($cAvg['cMd5'])) {
+            //定时器根路径
+            $cDir = self::$config['path'] . '/concurrent/' . $cAvg['cMd5'];
+            is_dir($cDir) || mkdir($cDir, 0777, true);
+
+            //开启共享锁
+            of_base_com_disk::file($cDir . '.php', null);
+
+            //打开并发文件
+            $fp = fopen($cDir . '/' . $cAvg['cCid'], 'a');
+            //加锁成功 || 并发已开启, 不用继续执行
+            flock($fp, LOCK_EX | LOCK_NB) || $params = false;
+        }
+
         //回调失败
-        if (of::callFunc($call['call'], $params) === false) {
+        if ($params && of::callFunc($call['call'], $params) === false) {
             //不可重试
             if (($try = array_shift($call['try'])) === null) {
                 //达到最大尝试次数
@@ -463,18 +524,98 @@ class of_base_com_timer {
      *     &list : 任务列表 [{
      *          "time" : 标准执行时间戳
      *          "call" : 框架标准的回调
+     *          "cNum" : 并发数量, 0=不设置, n=最大值
      *          "try"  : 尝试相隔秒数, 默认[], 如:[60, 100, ...]
      *      }, ...]
      * 作者 : Edgar.lee
      */
     private static function fireCalls(&$list) {
+        //定时器根路径
+        $path = self::$config['path'] . '/concurrent';
+
         foreach ($list as &$v) {
-            //触发任务
-            of_base_com_net::request(OF_URL . '/index.php', array(), array(
-                'asCall' => 'of_base_com_timer::taskCall',
-                'params' => array(&$v)
-            ));
+            //并发数
+            $cNum = empty($v['cNum']) ? 0 : (int)$v['cNum'];
+
+            //多并发
+            if ($cNum > 0) {
+                $cMd5 = self::dataMd5($v['call']);
+                $cDir = $path . '/' . $cMd5;
+
+                //打开加读锁文件
+                $lock = of_base_com_disk::file($cDir . '.php', null);
+
+                //加锁成功
+                if ($lock) {
+                    //初始化进程信息
+                    if (!is_file($temp = $cDir . '/info.php')) {
+                        of_base_com_disk::file($temp, json_encode($v['call']), true);
+                    }
+
+                    do {
+                        //打开并发文件
+                        $fp = fopen($cDir . '/' . $cNum, 'a');
+
+                        //加锁成功, 没有使用的并发ID
+                        $isRun = flock($fp, LOCK_EX | LOCK_NB);
+
+                        //连接解锁
+                        flock($fp, LOCK_UN);
+                        //关闭连接
+                        fclose($fp);
+
+                        //触发任务
+                        $isRun && of_base_com_net::request(OF_URL, array(), array(
+                            'asCall' => 'of_base_com_timer::taskCall',
+                            'params' => array(
+                                &$v, array('cMd5' => $cMd5, 'cCid' => $cNum)
+                            )
+                        ));
+                    } while (--$cNum);
+                }
+
+                //连接解锁
+                flock($lock, LOCK_UN);
+                //关闭连接
+                fclose($lock);
+            //单计划
+            } else {
+                //触发任务
+                of_base_com_net::request(OF_URL, array(), array(
+                    'asCall' => 'of_base_com_timer::taskCall',
+                    'params' => array(&$v, false)
+                ));
+            }
         }
+    }
+
+    /**
+     * 描述 : 获取数据摘要
+     * 参数 :
+     *     &data : 数组数据
+     * 返回 :
+     *      校验后的 md5
+     * 作者 : Edgar.lee
+     */
+    private static function dataMd5($data) {
+        if (is_array($data)) {
+            //等待处理列表
+            $list = array(&$data);
+
+            do {
+                $lk = key($list);
+                $lv = &$list[$lk];
+                ksort($lv);
+                unset($list[$lk]);
+
+                foreach ($lv as &$v) {
+                    is_array($v) && $list[] = &$v;
+                }
+            } while (!empty($list));
+        }
+
+        //数据摘要
+        return md5(json_encode($data));
     }
 }
 

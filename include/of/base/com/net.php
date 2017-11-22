@@ -82,7 +82,7 @@ class of_base_com_net {
         //二次请求
         if ($url === null) {
             if (PHP_SAPI === 'cli') {
-                $data = $GLOBALS['_ARGV']['_DATA'];
+                $data = $GLOBALS['_ARGV']['data'];
             } else {
                 //请求数据流
                 $data = file_get_contents('php://input');
@@ -217,7 +217,8 @@ class of_base_com_net {
                 $exec = array(
                     'php',
                     OF_DIR . '/index.php',
-                    'get:a=request&c=of_base_com_net'
+                    'get:a=request&c=of_base_com_net',
+                    '_tz:' . date_default_timezone_get()
                 );
 
                 //Windows

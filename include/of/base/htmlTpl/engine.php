@@ -67,7 +67,7 @@ class of_base_htmlTpl_engine {
             //模版相对路径
             $tplDir = substr($tplFile, strlen(ROOT_DIR));
             //编译文件路径
-            $comFile = $config['path'] . substr($tplDir, 0, -4) . 'php';
+            $comFile = $config['path'] . '/compile' . substr($tplDir, 0, -4) . 'php';
 
             if (
                 //编译文件存在
@@ -180,7 +180,8 @@ class of_base_htmlTpl_engine {
             $printHeadArr['head'] = self::htmlLoadParse($headObj, false);
 
             //过滤节点
-            $filterObj = $headObj->find('link, script, style')->add($headObj->contents('!--'));
+            $filterObj = $headObj->find('link, script, style, meta')
+                ->add($headObj->contents('!--'));
             foreach ($filterObj->eq() as $nodeObj) {
                 //读取标签名
                 $tagName = $nodeObj->attr('tagName');
@@ -193,6 +194,10 @@ class of_base_htmlTpl_engine {
                     if (preg_match($config['tagKey'][3], $nodeObj->attr(''))) {
                         $beforeNode->before($nodeObj);
                     }
+                //meta标签 原样输出
+                } else if ($tagName === 'meta') {
+                    $temp = '"' . addslashes($nodeObj->html(true)) . '"';
+                    stripos($temp, 'charset') || $printHeadArr['head'][] = $temp;
                 //移动到 body 标签中
                 } else if (
                     //是 style 或 非引用js

@@ -19,10 +19,10 @@ var ofBaseSsoLogin = {
         //存储提交类型
         ofBaseSsoLogin.type = type;
 
-        if( type !== 'login' ) {
+        if (type !== 'login') {
             var temp = document.getElementById('extends');
             //显示界面
-            if( temp.style.display === 'none' ) {
+            if (temp.style.display === 'none') {
                 temp.style.display = '';
                 return ;
             }
@@ -48,11 +48,11 @@ var ofBaseSsoLogin = {
         }
 
         //简单校验通过
-        if( args.post.name && args.post.pwd && args.post.captcha ) {
+        if (args.post.name && args.post.pwd && args.post.captcha) {
             L.ajax(OF_URL + '/index.php?c=of_base_sso_main&a=index', args, function (data) {
                 data = L.json(data);
                 //成功
-                if( data.state === 'done' ) {
+                if (data.state === 'done') {
                     ofBaseSsoLogin.tipBar('操作成功');
 
                     //post 跳转页面
@@ -106,10 +106,10 @@ var ofBaseSsoLogin = {
         var qObj = document.getElementById('question');
 
         //得到焦点
-        if( type ) {
+        if (type) {
             node.select();
         //失去焦点 && 扩展打开
-        } else if( qObj.getBoundingClientRect().top ) {
+        } else if (qObj.getBoundingClientRect().top) {
             //生成提示信息
             var tips = ofBaseSsoLogin.type === 'reg' ?
                 ['正在检测用户信息', '用户已存在', '可以注册'] : ['正在获取提示信息', '获取成功', '用户不存在'];
@@ -119,7 +119,7 @@ var ofBaseSsoLogin = {
             type = OF_URL + '/index.php?c=of_base_sso_main&a=getUserInfo';
             L.ajax(type, {'post' : {'name' : node.value}}, function (data) {
                 //"\0"=不存在
-                if( data === '\0' ) {
+                if (data === '\0') {
                     ofBaseSsoLogin.tipBar(tips[2]);
                 //用户存在
                 } else {
@@ -138,16 +138,16 @@ var ofBaseSsoLogin = {
     'tipBar' : function (value, close) {
         var tipObj = document.getElementById('tipBar');
         //取消关闭
-        if( ofBaseSsoLogin.diff && ofBaseSsoLogin.bubble ) {
+        if (ofBaseSsoLogin.diff && ofBaseSsoLogin.bubble) {
             clearTimeout(ofBaseSsoLogin.diff);
             ofBaseSsoLogin.diff = tipObj.innerHTML = '';
-        } else if( ofBaseSsoLogin.diff === undefined ) {
+        } else if (ofBaseSsoLogin.diff === undefined) {
             //冒泡关闭
             L.event(document.body, 'click', ofBaseSsoLogin.tipBar);
         }
 
         ofBaseSsoLogin.bubble = true;
-        if( typeof value === 'string' ) {
+        if (typeof value === 'string') {
             //提示信息显示
             tipObj.innerHTML = L.entity(value, true);
             //添加取消
@@ -159,10 +159,10 @@ var ofBaseSsoLogin = {
 }
 
 delete ofBaseSsoLogin.args.a, delete ofBaseSsoLogin.args.c;
-if( ofBaseSsoLogin.args.tip ) {
+if (ofBaseSsoLogin.args.tip) {
     //默认提示信息
     ofBaseSsoLogin.tipBar(ofBaseSsoLogin.args.tip);
-} else if( ofBaseSsoLogin.args.form ) {
+} else if (ofBaseSsoLogin.args.form) {
     //隐藏登录窗口
     document.getElementById('loginBlock').style.display = 'none';
     ofBaseSsoLogin.tipBar('正在自动登录, 请稍后...');

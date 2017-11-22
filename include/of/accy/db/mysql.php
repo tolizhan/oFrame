@@ -134,8 +134,8 @@ class of_accy_db_mysql extends of_db {
      * 作者 : Edgar.lee
      */
     protected function &_fetch() {
-        ($result = mysql_fetch_assoc($this->query)) || $result = array();
-        mysql_free_result($this->query);
+        ($result = mysql_fetch_assoc($this->query[0])) || $result = array();
+        mysql_free_result($this->query[0]);
 
         return $result;
     }
@@ -144,12 +144,13 @@ class of_accy_db_mysql extends of_db {
      * 描述 : 读取全部数据
      * 作者 : Edgar.lee
      */
-    protected function &_fetchAll() {
+    protected function &_fetchAll($pos = 0) {
         $result = array();
-        while ($row = mysql_fetch_assoc($this->query)) {
+
+        while ($row = mysql_fetch_assoc($this->query[$pos])) {
             $result[] = $row;
         }
-        mysql_free_result($this->query);
+        mysql_free_result($this->query[$pos]);
 
         return $result;
     }
@@ -159,8 +160,15 @@ class of_accy_db_mysql extends of_db {
      * 作者 : Edgar.lee
      */
     protected function &_moreResults() {
-        $index = &$this->_fetchAll();
-        $result = array(&$index);
+        $result = array();
+
+        foreach ($this->query as $k => &$v) {
+            if (is_resource($v)) {
+                $result[] = &$this->_fetchAll($k);
+            } else {
+                $result[] = array();
+            }
+        }
 
         return $result;
     }
@@ -171,8 +179,80 @@ class of_accy_db_mysql extends of_db {
      */
     protected function _query(&$sql) {
         $this->query = false;
-        if ($this->_linkIdentifier() && $this->query = mysql_query($sql, $this->connection)) {
-            return true;
+
+        //可能为多段 SQL, 需要拆分
+        if (strpos($sql, ';')) {
+            $fSql = rtrim($sql, "; \t\n\r\0\x0B") . ';';
+            $offset = $pSqlPos = 0;
+            $dMatch = array(
+                ';'  => false,
+                '/*' => false,
+                '\'' => false,
+                '"'  => false,
+                '('  => false,
+            );
+            $stacks[] = $dMatch;
+
+            while ($nMatch = of_base_com_str::strArrPos($fSql, end($stacks), $offset)) {
+                switch ($nMatch['match']) {
+                    //分隔符
+                    case ';':
+                        //提取一段SQL
+                        $sqlList[] = substr(
+                            $fSql, $pSqlPos, 
+                            $nMatch['position'] - $pSqlPos
+                        );
+                        $pSqlPos = $nMatch['position'] + 1;
+                        break;
+                    //注释
+                    case '/*':
+                        $stacks[] = array('*/' => false);
+                        break;
+                    //左括号
+                    case  '(':
+                        $stacks[] = array(')' => false);
+                        break;
+                    //引号
+                    case  '"':
+                    case '\'':
+                        //已开启引号
+                        if (isset($attr['quote'])) {
+                            array_pop($stacks);
+                            unset($attr['quote']);
+                        //需要开启引号
+                        } else {
+                            $stacks[] = array($nMatch['match'] => true);
+                            $attr['quote'] = true;
+                        }
+                        break;
+                    //关闭符
+                    case  ')':
+                    case '*/':
+                        array_pop($stacks);
+                        break;
+                }
+
+                $offset = $nMatch['position'] + 1;
+            }
+        //单条 SQL
+        } else {
+            $sqlList[] = $sql;
+        }
+
+        if ($this->_linkIdentifier()) {
+            foreach ($sqlList as &$v) {
+                //执行成功
+                if ($temp = mysql_query($v, $this->connection)) {
+                    //记录连接源
+                    $this->query[] = $temp;
+                //执行失败
+                } else {
+                    //后续流程停止执行
+                    break ;
+                }
+            }
+
+            return !!$this->query;
         } else {
             return false;
         }
