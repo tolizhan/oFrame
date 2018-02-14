@@ -12,7 +12,7 @@ class of_base_link_extends {
      */
     public static function get($key) {
         //组件对象列表,存放在
-        static $_comObjs = null;
+        static $comObjs = null;
         //加载com组件
         if ($key[0] === '_') {
             isset($comObjs[$temp = 'of_base_com' . $key]) || $comObjs[$temp] = new $temp;

@@ -30,7 +30,11 @@ class of_base_extension_toolBaseClass {
         //遍历列表
         $eachList = array($temp . '/main' => true);
 
-        while (list($path, $isDir) = each($eachList)) {
+        do {
+            $path = key($eachList);
+            $isDir = &$eachList[$path];
+            unset($eachList[$path]);
+
             //分析文件
             if ($isDir === false) {
                 if (
@@ -46,8 +50,7 @@ class of_base_extension_toolBaseClass {
             } else if (is_array($temp = self::getDir($path))) {
                 $eachList += $temp;
             }
-            unset($eachList[$path]);
-        }
+        } while ($eachList);
     }
 
     /**

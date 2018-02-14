@@ -1290,7 +1290,7 @@ class of_base_com_hParse {
             'docNodeKey' => $this->objAttr['docNodeKey'],
             'nodeList'   => self::selectors($nodeKeyList, $selector, false)
         );
-        return $this->find('>' . $selector);
+        return new self;
     }
 
     /**
@@ -1776,7 +1776,7 @@ class of_base_com_hParse {
         if (!$selector = ltrim($selector)) return array();      //空字符串返回空数组
         $parseNode = &self::$parseNode;                         //解析节点引用
         $const = &self::$selectorsConst;                        //引用选择器常量
-        $isChild = $isChild ? ' ' : '';                           //是否从子节点开始查起 ? ' ' : ''
+        $isChild = $isChild ? ' ' : '';                         //是否从子节点开始查起 ? ' ' : ''
         self::nodeKeysUniqueSort($nodeKeys, true);              //分组去重排序
 
         $env = array(
@@ -1802,25 +1802,25 @@ class of_base_com_hParse {
             ),
         );
 
-        //判定空字符位置
         //解析过滤字符串
         while ($env['nMatchPos'] = of_base_com_str::strArrPos($env['selector'], $const['dMatches'], $env['nowPos'])) {
-            //空格在第一位(匹配子元素模式)
-            $emptyStrPos = strpos($env['selector'], ' ', $env['nowPos']);
+            //第一位是是空格
+            if ($env['nowPos'] === 0 && $env['selector'][0] === ' ') {
+                //记录本次匹配位置
+                $env['temp']['prevEmptyChrPos'] = 1;
+                $env['nMatchPos'] = array('match' => ' ', 'position' => 0);
             //判断空字符串分隔符
-            if (
-                //查询有效
-                $emptyStrPos !== false &&
-                //空格在匹配位置之前
-                $emptyStrPos < $env['nMatchPos']['position'] &&
-                //空格前一位不是'>+~,'
-                ($emptyStrPos === 0 || !isset($const['emptyCharSplit']['pre'][$env['selector'][$emptyStrPos - 1]])) &&
-                //空格到匹配位置不全是空字符
-                ltrim(substr($env['selector'], $emptyStrPos, $env['nMatchPos']['position'] - $emptyStrPos)) !== ''
+            } else if (
+                preg_match(
+                    '@[^ ]+(\s+)(.*)$@',
+                    substr($env['selector'], 0, $env['nMatchPos']['position']),
+                    $match, PREG_OFFSET_CAPTURE, $env['nowPos']
+                ) &&
+                trim($match[2][0])
             ) {
                 //记录本次匹配位置
-                $env['temp']['prevEmptyChrPos'] = $emptyStrPos + 1;
-                $env['nMatchPos'] = array('match' => ' ', 'position' => $emptyStrPos);
+                $env['temp']['prevEmptyChrPos'] = $match[1][1] + 1;
+                $env['nMatchPos'] = array('match' => ' ', 'position' => $match[1][1]);
             //'[:.#'前一位出现空字符,则空字符为分隔符
             } else if (
                 //匹配值为'[:.#'

@@ -695,6 +695,25 @@ class of_base_sso_main extends of_base_sso_api {
     }
 
     /**
+     * 描述 : 检查单点登录是否安装
+     * 作者 : Edgar.lee
+     */
+    public static function isInstall() {
+        $sql = 'SELECT
+            TABLE_NAME `name`            /*表名*/
+        FROM
+            information_schema.`TABLES`
+        WHERE 
+            TABLE_SCHEMA = DATABASE()    /*数据库名*/
+        AND TABLE_TYPE = "BASE TABLE"    /*表类型*/
+        AND TABLE_NAME = "_of_sso_user"';
+
+        $temp = of_db::sql($sql, self::$config['dbPool']);
+        //连接失败 || 已安装 算完成安装
+        return $temp === false || isset($temp[0]);
+    }
+
+    /**
      * 描述 : 登录相关操作
      * 作者 : Edgar.lee
      */
@@ -702,16 +721,7 @@ class of_base_sso_main extends of_base_sso_api {
         //展示登录界面
         if (empty($_POST)) {
             if (empty($_GET['referer'])) {
-                $sql = 'SELECT
-                    TABLE_NAME `name`            /*表名*/
-                FROM
-                    information_schema.`TABLES`
-                WHERE 
-                    TABLE_SCHEMA = DATABASE()    /*数据库名*/
-                AND TABLE_TYPE = "BASE TABLE"    /*表类型*/
-                AND TABLE_NAME = "_of_sso_user"';
-
-                if (!L::sql($sql, self::$config['dbPool'])) {
+                if (!self::isInstall()) {
                     $temp = of_base_tool_mysqlSync::init(array(
                         'callDb'  => array(
                             'asCall' => 'L::sql', 

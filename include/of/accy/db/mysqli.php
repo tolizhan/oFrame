@@ -10,10 +10,9 @@ class of_accy_db_mysqli extends of_db {
      */
     protected function _connect() {
         $params = &$this->params;
-        $func = $params['persistent'] ? 'mysqli_pconnect' : 'mysqli_connect';
 
-        $connection = $func(
-            $params['host'],
+        $connection = mysqli_connect(
+            ($params['persistent'] ? 'p:' : '') . $params['host'],
             $params['user'],
             $params['password'],
             $params['database'],

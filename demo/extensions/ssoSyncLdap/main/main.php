@@ -333,7 +333,7 @@ function syncUsers() {
                     $temp = json_encode(array(
                         'username' => $v['name'],
                         'date'     =>  substr($v['dExp'], 0, 10),
-                        'admin'    => ' 刘兴旺 QQ:332189016'
+                        'admin'    => 'xxxxxxx'
                     ));
                     $aliReq->setSmsParam($temp);
                     $aliReq->setRecNum($v['mobile']);

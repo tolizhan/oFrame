@@ -78,7 +78,7 @@ class of_base_com_str {
         } else {
             //SORT_NUMERIC,按数字排序
             asort($analyData);
-            list($m, $p) = each($analyData);
+            $p = current($analyData);
             $analyData = array_flip(array_keys($analyData, $p, true));
             foreach ($matches as $m => &$v) {
                 if (isset($analyData[$m])) {
@@ -347,17 +347,61 @@ class of_base_com_str {
 
     /**
      * 描述 : 获取更具唯一性的ID
-     * 返回 : 32位小写字母
+     * 参数 :
+     *      prefix : 编码前缀, 不同前缀并发互不影响, ''=生成32位小写字母唯一编码, 其它=短小有意义可排序的编码
+     *      isShow : 是否显示前缀, true=显示前缀, false=隐藏前缀, 数字=代替minLen
+     *      minLen : 自增值最小长度, prefix不为空时有效, 默认3
+     * 返回 : 
+     *      prefix 为假时返回 32位小写字母
+     *      prefix 为真时返回 大写prefix + 两位年月日时分秒12位 + minLen计数
      * 作者 : Edgar.lee
      */
-    public static function uniqid() {
+    public static function uniqid($prefix = '', $isShow = true, $minLen = 3) {
         static $lable = null;
-        $lable !== null || ($lable = function_exists('com_create_guid')) || $lable = json_encode($_SERVER);
 
-        if ($lable === true) {
-            return strtolower(str_replace(array('{', '}', '-'), '', com_create_guid()));
+        //有意义的编码规则
+        if ($prefix) {
+            //大小前缀
+            $prefix = strtoupper($prefix);
+            //当前时间
+            $time = time();
+            //依赖磁盘路径
+            $path = ROOT_DIR . OF_DATA . "/_of/of_base_com_str/uniqid/{$prefix}.php";
+            //快速设置参数
+            is_int($isShow) && $minLen = $isShow;
+
+            //写入锁的方式读取数据流
+            $fp = of_base_com_disk::file($path, null, null);
+            $data = &of_base_com_disk::file($fp, true, true);
+
+            //重置数据
+            if (!$data || $time > $data['time']) {
+                $data = array('time' => &$time, 'count' => 1);
+            //自增计数
+            } else {
+                $data['count'] += 1;
+            }
+
+            //写回数据
+            of_base_com_disk::file($fp, $data, true);
+
+            //生成唯一值
+            $result = $isShow ? $prefix : '';
+            $result .= date('ymdHis', $time);
+            $result .= str_pad($data['count'], $minLen, '0', STR_PAD_LEFT);
+
+            return $result;
+        //生成32位编码
         } else {
-            return md5(uniqid('', true) . $lable .  mt_rand());
+            $lable === null &&
+            (!$lable = function_exists('com_create_guid')) &&
+            ($lable = json_encode($_SERVER));
+
+            if ($lable === true) {
+                return strtolower(str_replace(array('{', '}', '-'), '', com_create_guid()));
+            } else {
+                return md5(uniqid('', true) . $lable .  mt_rand());
+            }
         }
     }
 }

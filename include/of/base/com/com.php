@@ -755,21 +755,15 @@ class of_base_com_com {
      * 作者 : Edgar.lee
      */
     public static function arraySort(array &$arrayData, array $sortArray, $sortType = 0) {
-        static $setParamFun = null;
         $evalSortStr = '';    //生成的执行排序代码
         $associateDataArr = array();    //排序所使用保持关联的数据
         $accordingSortArr = array();    //排序依据数据,当$sortType === 0时{$sortArray的键 : {'value' : [$sortArray解析后的排序方式,比对方式], 'evalKey' : 重新编码的$sortArray键, 'dataArr' : {$arrayData的键 : 根据排序索引值, ...}}}
-        $setParamFun || $setParamFun = create_function('&$memoryArr, &$extractStr', '
-            $arr = explode(\',\', strtoupper($extractStr));
-            $memoryArr[0] = \'SORT_\' . (in_array(\'DESC\', $arr) ? \'DESC\' : \'ASC\');
-            $memoryArr[1] = \'SORT_\' . (in_array(\'NUMERIC\', $arr) ? \'NUMERIC\' : (in_array(\'STRING\', $arr) ? \'STRING\' : \'REGULAR\'));
-        ');
 
         //根据指定值排序
         if ($sortType === 0) {
             foreach ($sortArray as $k => &$v) {
                 //排序比对参数分析
-                $setParamFun($accordingSortArr[$k]['value'], $v);
+                self::arraySortOrder($accordingSortArr[$k]['value'], $v);
 
                 //分析排序索引
                 $arr = explode('.', $k);
@@ -794,7 +788,7 @@ class of_base_com_com {
             }
         //根据指定顺序排序
         } else {
-            $setParamFun($accordingSortArr[0]['value'], $sortType);
+            self::arraySortOrder($accordingSortArr[0]['value'], $sortType);
         }
 
         //处理原始排序数据,保持索引关系
@@ -822,6 +816,17 @@ class of_base_com_com {
         foreach ($associateDataArr as $k => &$v) {
             $arrayData[substr($k, 1)] = &$v;
         }
+    }
+
+    /**
+     * 描述 : arraySort 辅助函数
+     * 作者 : Edgar.lee
+     */
+    private static function arraySortOrder(&$memoryArr, &$extractStr) {
+        $arr = explode(',', strtoupper($extractStr));
+        $memoryArr[0] = 'SORT_' . (in_array('DESC', $arr) ? 'DESC' : 'ASC');
+        $memoryArr[1] = 'SORT_' . (in_array('NUMERIC', $arr) ? 
+            'NUMERIC' : (in_array('STRING', $arr) ? 'STRING' : 'REGULAR'));
     }
 }
 return true;

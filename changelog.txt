@@ -1,3 +1,82 @@
+版本: 218
+作者: Edgar
+日期: 2017年11月22日 21:59:27
+信息:
+说明: 计划任务支持设置多并发 of_base_com_timer::task 中 cNum 为并发数量, 0=不设置
+      模版引擎添加一键清除模版缓存功能 框架地址/?c=of_base_htmlTpl_tool&a=index
+      wDate 时间插件升级 4.8 正式版本, 并获得商业授权
+      模版引擎现在识别 meta 标签
+      通过 of_db::pool(连接键, 'level') 可以得到所在事务的层级, 0=不在事务中
+      of_view::prop 可以批量向视图层传递数据
+      分页兼容 mysql 5.7 页数计算
+      整合"LXUI"的 bootstrap v3 兼容 IE6+
+      框架标准信息结构改为 {"code":状态码, "data":扩展数据, "info":提示信息}
+      现在 mysql_query 连接方式支持";"分割的多语句查询
+      修复 CLI 模式时区丢失问题
+      修复同一个页面不能多个分页的问题
+      修复kv files 模式下未过期数据丢失问题
+      修复mysqli用多结果集方式无法读取单结果查询的问题
+      修复 hParse 一处筛选失败的问题
+      修复 oUpload 上传插件 setting 无法改变上传类型与多选方式 的问题
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/include/of/accy/com/kv/files.php
+已修改 : /trunk/include/of/accy/com/net/asyncProc.bin
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/addin/WDatePicker/WdatePicker.js
+已修改 : /trunk/include/of/addin/WDatePicker/calendar.js
+已修改 : /trunk/include/of/addin/WDatePicker/skin/WdatePicker.css
+已增加 : /trunk/include/of/addin/bsui
+已增加 : /trunk/include/of/addin/bsui/css
+已增加 : /trunk/include/of/addin/bsui/css/lxui-ie6.min.css
+已增加 : /trunk/include/of/addin/bsui/css/lxui.min.css
+已增加 : /trunk/include/of/addin/bsui/fonts
+已增加 : /trunk/include/of/addin/bsui/fonts/glyphicons-halflings-regular.eot
+已增加 : /trunk/include/of/addin/bsui/fonts/glyphicons-halflings-regular.svg
+已增加 : /trunk/include/of/addin/bsui/fonts/glyphicons-halflings-regular.ttf
+已增加 : /trunk/include/of/addin/bsui/fonts/glyphicons-halflings-regular.woff
+已增加 : /trunk/include/of/addin/bsui/image
+已增加 : /trunk/include/of/addin/bsui/image/bg-black.png
+已增加 : /trunk/include/of/addin/bsui/image/bg-paper-note.png
+已增加 : /trunk/include/of/addin/bsui/image/bright_squares.png
+已增加 : /trunk/include/of/addin/bsui/image/buttons-theme1.png
+已增加 : /trunk/include/of/addin/bsui/image/carbon_fibre.png
+已增加 : /trunk/include/of/addin/bsui/image/close-ie.jpg
+已增加 : /trunk/include/of/addin/bsui/image/curr.gif
+已增加 : /trunk/include/of/addin/bsui/image/glyphicons-halflings-8.png
+已增加 : /trunk/include/of/addin/bsui/image/glyphicons-halflings-white.png
+已增加 : /trunk/include/of/addin/bsui/image/glyphicons-halflings.png
+已增加 : /trunk/include/of/addin/bsui/image/graphy.png
+已增加 : /trunk/include/of/addin/bsui/image/line.png
+已增加 : /trunk/include/of/addin/bsui/image/low_contrast_linen.png
+已增加 : /trunk/include/of/addin/bsui/image/mimiGlyphs-black.png
+已增加 : /trunk/include/of/addin/bsui/image/mimiGlyphs.png
+已增加 : /trunk/include/of/addin/bsui/image/top.png
+已增加 : /trunk/include/of/addin/bsui/image/white_tiles.png
+已增加 : /trunk/include/of/addin/bsui/image/wood_pattern.png
+已增加 : /trunk/include/of/addin/bsui/js
+已增加 : /trunk/include/of/addin/bsui/js/html5shiv.min.js
+已增加 : /trunk/include/of/addin/bsui/js/jquery.min.js
+已增加 : /trunk/include/of/addin/bsui/js/lxui-ie.min.js
+已增加 : /trunk/include/of/addin/bsui/js/lxui.min.js
+已增加 : /trunk/include/of/addin/bsui/js/respond.min.js
+已增加 : /trunk/include/of/addin/bsui/setup.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.js
+已修改 : /trunk/include/of/att/sso/js/login.js
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已增加 : /trunk/include/of/base/htmlTpl/tool.php
+已修改 : /trunk/include/of/base/link/request.php
+已修改 : /trunk/include/of/base/tool/test.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+
 版本: 216
 作者: Edgar
 日期: 2017年9月24日 10:58:35

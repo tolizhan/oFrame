@@ -66,8 +66,7 @@ class of_base_com_net {
      *      mode : 提交模式,
      *          false(默认) = 同步提交,
      *          true        = 无结果异步提交,
-     *          字符串      = 编译并调用方(变量$_接收响应数据),
-     *          数组        = {'asCall' : 符合可调用规范, 'params' : 回调参数}, 仅能传递动态参数,不能传递静态函数或资源文件
+     *          回调结构    = 符合 of::callFunc 结构(不能带递资源参数), 接收请求的响应结果
      * 返回 :
      *      失败时 : {state:false, errno:错误描述, errstr:失败码}
      *      成功时 : {state:true, header:响应头, response:响应数据}
@@ -120,14 +119,8 @@ class of_base_com_net {
                 $index = array('state' => true);
             }
 
-            //字符串 或 数组
-            if ($mode !== true) {
-                //创建方法
-                is_string($mode) && strpos($mode, ';') && $mode = create_function('&$_', $mode);
-                //函数回调
-                of::callFunc($mode, $index);
-            }
-
+            //函数回调
+            $mode === true || of::callFunc($mode, $index);
             return $url;
         }
 

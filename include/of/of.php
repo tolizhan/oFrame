@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200218);
+define('OF_VERSION', 200220);
 
 /**
  * 描述 : 控制层核心
@@ -21,6 +21,8 @@ class of {
     public static function init() {
         //支持命名空间
         self::$isSpace = version_compare(PHP_VERSION, '5.3.0', '>=');
+        //过期函数不会报错
+        error_reporting(error_reporting() & ~8192);
         //注册spl
         spl_autoload_register('of::loadClass');
         //加载系统配置文件
@@ -90,40 +92,82 @@ class of {
      * 参数 :
      *      name    : 配置名,以'.'分割读取深层数据
      *      default : 默认值(null)
-     *      format  : 格式化,off(默认)=不格式化,dir=格式化成目录,url=格式化成路径
+     *      action  : 功能操作
+     *          0=无任何操作
+     *          1=读取到的数据格式化成磁盘路径
+     *          2=读取到的数据格式化成网络路径
+     *          4=本次使用实时配置读取数据
      * 返回 :
      *      成功返回值,失败返回默认值
      * 作者 : Edgar.lee
      */
-    public static function config($name = null, $default = null, $format = 'off') {
-        //缓存配置文件
-        static $cacheConfig = null;
-        //配置文件引用
-        $config = &self::$config;
+    public static function config($name = null, $default = null, $action = 0) {
+        //缓存配置, 动态配置
+        static $memory = array('cache' => null, 'claim' => null);
+        //功能操作别名
+        static $aAlias = array('off' => 0, 'dir' => 1, 'url' => 2);
+
+        //功能符别名转化
+        is_int($action) || $action = &$aAlias[$action];
+
+        //本次使用实时配置
+        if ($action & 4) {
+            $cache = $claim = null;
+            //加载最新配置文件
+            $of = self::safeLoad(OF_DIR . '/config.php');
+            $of['config'] = isset($of['config']) ?
+                (array)$of['config'] : array();
+            empty($of['config'][0]) || $config = self::safeLoad(
+                ROOT_DIR . $of['config'][0],
+                array('of' => &$of)
+            );
+            $config['_of'] = &self::arrayReplaceRecursive($of, $config['_of']);
+        //使用缓存配置
+        } else {
+            $cache = &$memory['cache'];
+            $claim = &$memory['claim'];
+            //配置文件引用
+            $config = &self::$config;
+        }
 
         //有缓存
-        if (isset($cacheConfig[$name][$format])) {
-            $default = &$cacheConfig[$name][$format];
+        if (isset($cache[$name][$action])) {
+            $default = &$cache[$name][$action];
         } else {
-            //定位列表
-            $nPos = explode('.', $name);
-            //加载动态配置
-            if (
-                !isset($config[$index = &$nPos[0]]) &&
-                isset($config['_of']['config'][$index])
-            ) {
-                $config[$index] = include ROOT_DIR . $config['_of']['config'][$index];
+            //初始化动态配置
+            if ($claim === null) {
+                $claim = $config['_of']['config'];
+                unset($claim[0]);
+                ksort($claim);
+            }
+
+            //寻找动态配置
+            foreach ($claim as $k => &$v) {
+                if ($name === $k || !strncmp(
+                    $name . '.', $k . '.',
+                    min(strlen($name), strlen($k)) + 1
+                )) {
+                    $vaule = &of::getArrData($k, $config, null, 2);
+                    $vaule = include ROOT_DIR . $v;
+                    unset($claim[$k]);
+                }
             }
 
             //引用数据
-            $cacheVaule = &$cacheConfig[$name][$format];
+            $vaule = &$cache[$name][$action];
             //数组定位
-            $cacheVaule = of::getArrData(array(&$nPos, &$config, &$default, 2));
+            $vaule = of::getArrData(array(&$name, &$config, &$default, 2));
 
-            if ($cacheVaule !== null || ($cacheVaule = &$default) !== null) {
-                $format === 'off' || $cacheVaule = self::formatPath($cacheVaule, $format === 'dir' ? ROOT_DIR : ROOT_URL);
-                $default = &$cacheVaule;
+            //格式成 磁盘 或 网络 路径
+            if ($action & 1 || $action & 2) {
+                if ($vaule !== null) {
+                    $vaule = self::formatPath(
+                        $vaule, $action & 1 ? ROOT_DIR : ROOT_URL
+                    );
+                }
             }
+
+            $default = &$vaule;
         }
 
         return $default;
@@ -158,13 +202,19 @@ class of {
             'change' => false,
             'list'   => array()
         );
+        //引用当前列表
+        $nList = &$eventList[$key]['list'];
 
         //触发事件
         if ($event === true) {
             //返回结果集
             $result = array();
-            reset($eventList[$key]['list']);
-            while (list($k, $v) = each($eventList[$key]['list'])) {
+            //重置指针
+            reset($nList);
+
+            while (($k = key($nList)) !== null) {
+                next($nList);
+                $v = &$nList[$k];
                 //是回调 && 回调
                 $v['isCall'] && $result[$k] = &self::callFunc($v['event'], $params);
             }
@@ -176,12 +226,12 @@ class of {
             //引用事件
             $event === false ? $index = &$params : $index = &$event;
             //创建临时副本,防止打乱触发内循环
-            $temp = $eventList[$key]['list'];
+            $temp = $nList;
             //删除事件
             foreach ($temp as $k => &$v) {
                 if ($v['event'] == $index) {
                     $eventList[$key]['change'] = true;
-                    unset($eventList[$key]['list'][$k]);
+                    unset($nList[$k]);
                     break;
                 }
             }
@@ -189,7 +239,7 @@ class of {
             //添加事件
             if ($event !== false) {
                 $eventList[$key]['change'] = true;
-                $eventList[$key]['list'][] = array(
+                $nList[] = array(
                     'isCall' => !$params,
                     'event'  => &$event,
                     'change' => true
@@ -229,6 +279,8 @@ class of {
     private static function loadSystemEnv() {
         //默认编码
         ini_set('default_charset', 'UTF-8');
+        ini_get('expose_php') && header('X-Powered-By: oFrame');
+
         //of磁盘路径
         define('OF_DIR', strtr(dirname(__FILE__), '\\', '/'));
 
@@ -361,6 +413,20 @@ class of {
         self::event('of::loadClass', array(
             'classPre' => 'of_', 'mapping' => substr(OF_DIR, strlen(ROOT_DIR) + 1) . '/'
         ), true);
+    }
+
+    /**
+     * 描述 : 安全加载文件
+     * 参数 :
+     *      path : 磁盘路径
+     *      argv : 环境参数
+     * 返回 :
+     *      磁盘路径的返回值
+     * 作者 : Edgar.lee
+     */
+    private static function safeLoad($path, $argv = array()) {
+        extract($argv, EXTR_REFS);
+        return include $path;
     }
 
     /**
@@ -514,9 +580,11 @@ class of {
      * 作者 : Edgar.lee
      */
     public static function &callFunc($call, $params = null) {
-        if (is_string($call) || !isset($call['asCall'])) {
+        //标准调用格式转换
+        if (!is_array($call) || !isset($call['asCall'])) {
             $call = array('asCall' => $call);
         }
+
         if (is_array($call['asCall']) && is_string($call['asCall'][0])) {
             $call['asCall'][0] = new $call['asCall'][0];
         }

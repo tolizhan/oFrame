@@ -399,9 +399,7 @@ class PHPWord_Section
      */
     public function hasDifferentFirstPage()
     {
-        static $callback = null;
-        $callback || $callback = create_function('PHPWord_Section_Header &$header', 'return $header->getType() == PHPWord_Section_Header::FIRST;');
-        $value = array_filter($this->_headers, $callback);
+        $value = array_filter($this->_headers, 'PHPWord_Section::filterCallback');
         return count($value) > 0;
     }
 
@@ -440,5 +438,13 @@ class PHPWord_Section
         $footnote->setReferenceId($refID);
         $this->_elementCollection[] = $footnote;
         return $footnote;
+    }
+
+    /**
+     * 描述 : hasDifferentFirstPage 辅助方法
+     * 作者 : Edgar.lee
+     */
+    public static function filterCallback(PHPWord_Section_Header &$header) {
+        return $header->getType() == PHPWord_Section_Header::FIRST;
     }
 }

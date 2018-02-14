@@ -104,7 +104,7 @@ class of_base_com_kv {
      */
     final public static function add($name, $value = '', $time = 0, $pool = 'default', $retry = 0) {
         self::pool($pool);
-        $value = serialize($value);
+        $value = &of_base_com_data::json($value);
         $index = &self::$instList[$pool]['inst'];
         $retry *= 5000;
 
@@ -148,7 +148,7 @@ class of_base_com_kv {
      */
     final public static function set($name, $value = '', $time = 0, $pool = 'default') {
         self::pool($pool);
-        $value = serialize($value);
+        $value = &of_base_com_data::json($value);
         return self::$instList[$pool]['inst']->_set($name, $value, self::formatTime($time));
     }
 
@@ -163,7 +163,7 @@ class of_base_com_kv {
      */
     final public static function get($name, $default = false, $pool = 'default') {
         self::pool($pool);
-        ($value = self::$instList[$pool]['inst']->_get($name)) === false ? $value = &$default : $value = unserialize($value);
+        ($value = self::$instList[$pool]['inst']->_get($name)) === false ? $value = &$default : $value = &of_base_com_data::json($value, false);
         return $value;
     }
 

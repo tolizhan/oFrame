@@ -229,7 +229,7 @@ class of_base_htmlTpl_engine {
             $printHeadArr[''][] = "<!--{$config['tagKey'][0]}\n";
 
             //分页模版
-            if ($bodyObj->find('[method][name$=pagingBlock]')->size()) {
+            if ($bodyObj->find('[method*="::"]')->size()) {
                 $printHeadArr[''][] = "of_view::head('head', '<script src=\"' .OF_URL. '/att/com/com/paging/main.js\"></script>');\n";
             }
 

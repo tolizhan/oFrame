@@ -133,7 +133,7 @@ L.paging || (function () {
         //当前对象
         var tObj = {
             'b' : list[this].block, 'i' : list[this].items, 's' : list[this].sorts, 
-            'd' : L.json(data), 'n' : list[this].space, 'r' : RegExp('(`*){`' +list[this].space+ '(.+?)`}', 'g')
+            'd' : L.json(data), 'n' : list[this].space, 'r' : RegExp('(`*){`' +list[this].space+ '([^:]+?)`}', 'g')
         };
 
         //json有效

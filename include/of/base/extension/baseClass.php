@@ -271,7 +271,7 @@ class of_base_extension_baseClass {
     }
 
     /**
-     * 描述 : 引入 sharedData(类似 session) 机制, 代码会通过 create_function 创建匿名方法使用
+     * 描述 : 引入 sharedData(类似 session) 机制
      * 参数 :
      *      eKey        : 字符串=指定操作的扩展名, null=保存已修改的数据
      *      command     : 操作命令, true=独享方式读取数据(加锁), null=共享方式读取数据(解锁), false=保存数据(解锁)

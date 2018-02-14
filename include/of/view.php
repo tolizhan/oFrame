@@ -205,7 +205,6 @@ class of_view {
      * 描述 : 对象输出页面
      * 参数 :
      *      tpl : 模板名,默认调度方法名(不带扩增名)
-     *      dir : 相对磁盘根路径,默认相对视图根目录的调度类结构相同
      * 作者 : Edgar.lee
      */
     private function objDisplay(&$tpl) {

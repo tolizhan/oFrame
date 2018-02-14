@@ -37,10 +37,13 @@ class of_base_com_timer {
             if (OF_DEBUG === false) {
                 exit('Access denied: production mode.');
             } else {
-                echo "<pre>cron : "; 
+                echo '<pre><hr>Scheduled task : '; 
                 if (is_file(self::$config['cron']['path'])) {
                     print_r(include self::$config['cron']['path']);
                 }
+
+                echo '<hr>Concurrent Running : ';
+                print_r(of_base_com_timer::getCct());
                 echo '</pre>';
             }
         }
@@ -166,6 +169,81 @@ class of_base_com_timer {
     }
 
     /**
+     * 描述 : 获取当期运行的并发任务
+     * 返回 : 
+     *      {
+     *          任务唯一键 : {
+     *              "call" : 统一回调结构
+     *              "list" : 运行的任务列表 {
+     *                  运行的序号 : {
+     *                      "datetime"  : 任务启动时间
+     *                      "timestamp" : 任务启动时间戳
+     *                  }
+     *              }
+     *          }
+     *      }
+     * 作者 : Edgar.lee
+     */
+    public static function &getCct() {
+        $result = array();
+        $path = self::$config['path'] . '/concurrent';
+
+        if (of_base_com_disk::each($path, $tasks)) {
+            //遍历并发任务目录
+            foreach ($tasks as $kt => &$vt) {
+                //是目录
+                if ($vt) {
+                    //任务唯一键
+                    $taskId = basename($kt);
+                    //当前任务磁盘目录
+                    $dir = $path . '/' . $taskId;
+
+                    $tFp = fopen($dir . '.php', 'r+');
+
+                    //加锁成功, 任务没运行
+                    if (flock($tFp, LOCK_EX | LOCK_NB)) {
+                        flock($tFp, LOCK_UN);
+                    //任务已运行 && 文件信息存在
+                    } else if (is_file($temp = $dir . '/info.php')) {
+                        $index = &$result[$taskId];
+
+                        //读取任务回调信息
+                        $temp = of_base_com_disk::file($temp, false, true);
+                        $index['call'] = json_decode($temp, true);
+
+                        //读取运行中的进程, 打开并发列表
+                        of_base_com_disk::each($dir, $taskList);
+                        foreach ($taskList as $k => &$v) {
+                            //是文件 && 是进程加锁
+                            if (!$v && is_numeric($cId = basename($k))) {
+                                $fp = fopen($k, 'r');
+
+                                //加锁成功, 进程没启动
+                                if (flock($fp, LOCK_SH | LOCK_NB)) {
+                                    flock($fp, LOCK_UN);
+                                } else {
+                                    $temp = filemtime($k);
+                                    //记录并发执行的时间
+                                    $index['list'][$cId] = array(
+                                        'datetime' => date('Y-m-d H:i:s', $temp),
+                                        'timestamp' => $temp
+                                    );
+                                }
+
+                                fclose($fp);
+                            }
+                        }
+                    }
+
+                    fclose($tFp);
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * 描述 : 回调任务函数
      * 参数 : 
      *      call : task 参数格式
@@ -222,9 +300,15 @@ class of_base_com_timer {
             of_base_com_disk::file($cDir . '.php', null);
 
             //打开并发文件
-            $fp = fopen($cDir . '/' . $cAvg['cCid'], 'a');
-            //加锁成功 || 并发已开启, 不用继续执行
-            flock($fp, LOCK_EX | LOCK_NB) || $params = false;
+            $fp = fopen($cDir . '/' . $cAvg['cCid'], 'r+');
+            //加锁成功
+            if (flock($fp, LOCK_EX | LOCK_NB)) {
+                //更新文件修改时间
+                fwrite($fp, $_SERVER['REQUEST_TIME']);
+            //并发已开启, 不用继续执行
+            } else {
+                $params = false;
+            }
         }
 
         //回调失败
@@ -539,7 +623,7 @@ class of_base_com_timer {
 
             //多并发
             if ($cNum > 0) {
-                $cMd5 = self::dataMd5($v['call']);
+                $cMd5 = of_base_com_data::digest($v['call']);
                 $cDir = $path . '/' . $cMd5;
 
                 //打开加读锁文件
@@ -587,35 +671,6 @@ class of_base_com_timer {
                 ));
             }
         }
-    }
-
-    /**
-     * 描述 : 获取数据摘要
-     * 参数 :
-     *     &data : 数组数据
-     * 返回 :
-     *      校验后的 md5
-     * 作者 : Edgar.lee
-     */
-    private static function dataMd5($data) {
-        if (is_array($data)) {
-            //等待处理列表
-            $list = array(&$data);
-
-            do {
-                $lk = key($list);
-                $lv = &$list[$lk];
-                ksort($lv);
-                unset($list[$lk]);
-
-                foreach ($lv as &$v) {
-                    is_array($v) && $list[] = &$v;
-                }
-            } while (!empty($list));
-        }
-
-        //数据摘要
-        return md5(json_encode($data));
     }
 }
 

@@ -219,8 +219,8 @@ abstract class of_db {
                     unset($index['back'], $index['level']);
                 }
 
-                //返回结果 执行成功 && 逻辑目的与执行方法相同
-                $result = $result && ($index['state'] || $sql === false);
+                //返回结果 是回滚 || 执行成功 && 最终提交
+                $result = $sql === false || $result && $index['state'];
             }
         }
 

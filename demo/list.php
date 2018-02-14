@@ -6,7 +6,7 @@ class demo_list {
      */
     public static function init() {
         //框架入口
-        if ($_SERVER['SCRIPT_NAME'] === ROOT_URL . '/index.php') {
+        if ($_SERVER['SCRIPT_NAME'] === rawurldecode(ROOT_URL) . '/index.php') {
             //具体演示
             if( isset($_GET['c']) ) {
                 //页面输出完成后打印源码

@@ -1,5 +1,4 @@
 <?php
-
 /**
  * 描述 : 拦截session接口
  * 作者 : Edgar.lee
@@ -35,8 +34,8 @@ class of_base_session_base {
             ini_set('session.gc_divisor', 100);
             //设置path根路径
             ini_set('session.cookie_path', ROOT_URL . '/');
-            //启动session_set_save_handler
-            ini_set('session.save_handler', 'user');
+            //会话对接
+            self::handler();
 
             //初始化session状态
             if (!function_exists('session_status')) {
@@ -60,6 +59,27 @@ class of_base_session_base {
     }
 
     /**
+     * 描述 : 自定义会话函数
+     * 作者 : Edgar.lee
+     */
+    final public static function handler() {
+        session_set_save_handler(
+            //顺序 1
+            'of_base_session_base::open', 
+            //顺序 5
+            'of_base_session_base::close', 
+            //顺序 2
+            'of_base_session_base::read', 
+            //顺序 4
+            'of_base_session_base::write', 
+            //read->destroy->close
+            'of_base_session_base::destroy', 
+            //顺序 3 开启SESSION时调用
+            'of_base_session_base::gc'
+        );
+    }
+
+    /**
      * 描述 : 开始session
      * 作者 : Edgar.lee
      */
@@ -74,8 +94,8 @@ class of_base_session_base {
      * 作者 : Edgar.lee
      */
     final public static function close() {
+        self::$status > 1 && call_user_func(self::$adapterClass . '::_close');
         self::$status = 1;
-        call_user_func(self::$adapterClass . '::_close');
         return true;
     }
 
@@ -143,26 +163,10 @@ of::event('of::dispatch', 'of_base_session_base::init');
 function session_open() {
     static $repeat = null;
 
-    //session_set_save_handler 在 php <= 5.2.14 存在bug
-    if ($repeat === true || $repeat === null) {
-        //php < 5.3 每次开启均加载 handler
-        $repeat === null && $repeat = version_compare(PHP_VERSION, '5.3', '<');
-        //会话接入
-        session_set_save_handler(
-            //顺序 1
-            'of_base_session_base::open', 
-            //顺序 5
-            'of_base_session_base::close', 
-            //顺序 2
-            'of_base_session_base::read', 
-            //顺序 4
-            'of_base_session_base::write', 
-            //read->destroy->close
-            'of_base_session_base::destroy', 
-            //顺序 3 开启SESSION时调用
-            'of_base_session_base::gc'
-        );
-    }
+    //php < 5.3 每次开启均加载 handler
+    $repeat && of_base_session_base::handler();
+    //php < 5.3 第一次不调用, init 已初始化过 handler
+    $repeat === null && $repeat = version_compare(PHP_VERSION, '5.3', '<');
 
     return session_status() === 2 || session_start();
 }

@@ -111,8 +111,8 @@ class of_base_error_writeLog {
                     'backtrace' => $errno->getTrace()
                 )
             );
-        //常规错误
-        } else if (error_reporting()) {
+        //常规错误 && 不是过期函数
+        } else if (error_reporting() && $errno !== 8192) {
             $backtrace = array(
                 'errorType'     =>'error',
                 'environment'   => array(
@@ -124,9 +124,9 @@ class of_base_error_writeLog {
                     'backtrace' => debug_backtrace()
                 )
             );
-        //"@"错误
+        //"@"错误 || 过期函数
         } else {
-            //@trigger_error('')
+            //@trigger_error('') 返回 false
             return !!$errstr;
         }
 

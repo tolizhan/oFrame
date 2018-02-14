@@ -511,7 +511,6 @@ _top:expression(eval(document.documentElement.scrollTop) + 200);
 
                 window.L.open('tip')();
             });
-            
         }
     }
 

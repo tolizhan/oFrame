@@ -42,6 +42,33 @@ class demo_index extends L {
     }
 
     /**
+     * 描述 : 演示消息队列
+     * 作者 : Edgar.lee
+     */
+    public function mqTest($params = null) {
+        //触发消息队列
+        if ($params) {
+            file_put_contents(
+                ROOT_DIR . OF_DATA . '/mqTest.txt', 
+                time() . print_r($params, true),
+                FILE_APPEND | LOCK_EX
+            );
+            return true;
+        //生产消息队列
+        } else {
+            if (of::config('_of.com.mq.exchange')) {
+                echo '异步并发消息回调将在此文件中写入数据: ',
+                    ROOT_DIR . OF_DATA . '/mqTest.txt';
+                L::sql(null);
+                of_base_com_mq::set(array('key', 1234), 'bcd1', 'exchange');
+                L::sql(true);
+            } else {
+                echo '<font color="red">先取消/demo/config.php下_of.com.mq的注释</font><br>';
+            }
+        }
+    }
+
+    /**
      * 描述 : html解析演示
      * 作者 : Edgar.lee
      */
@@ -90,7 +117,7 @@ $("div").click(function () {
     }
 
     /*
-     * 描述 : 测试缓存
+     * 描述 : 演示会话缓存
      * 作者 : Edgar.lee
      */
     public function cache() {

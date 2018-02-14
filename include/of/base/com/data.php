@@ -26,6 +26,52 @@ class of_base_com_data {
     }
 
     /**
+     * 描述 : 计算数据的唯一摘要值
+     * 参数 :
+     *      data : 指定计算的数据
+     * 返回 :
+     *      返回32位摘要字符串
+     * 作者 : Edgar.lee
+     */
+    public static function digest($data) {
+        //数据拷贝(过滤内部循环引用)
+        $data = unserialize(preg_replace('@;R(:\d+;)@', ';i\1', serialize($data)));
+
+        //数组, 对象
+        if (!is_scalar($data) && $data !== null) {
+            //等待处理列表
+            $list = array(&$data);
+
+            do {
+                $lk = key($list);
+                $lv = &$list[$lk];
+                unset($list[$lk]);
+
+                //数组, 对象
+                $temp = is_array($lv) ? array(
+                    'data' => array(),
+                    'type' => 'array'
+                ) : array(
+                    'data' => array(),
+                    'name' => get_class($lv),
+                    'type' => 'object'
+                );
+
+                foreach ($lv as $k => &$v) {
+                    $temp['data'][$k] = &$v;
+                    !is_scalar($v) && $v !== null && $list[] = &$v;
+                }
+
+                $lv = $temp;
+                ksort($lv['data']);
+            } while ($list);
+        }
+
+        //数据摘要
+        return md5(json_encode($data));
+    }
+
+    /**
      * 描述 : 数据格式校验
      * 参数 :
      *     &data : 待填充校验的数据
