@@ -1,3 +1,67 @@
+版本: 220
+作者: Edgar
+日期: 2018年2月15日 7:40:40
+信息:
+说明: 框架开始兼容 php 7.2
+      添加 of_base_com_mq 消息队列封装, 目前实现 mysql 模式
+      添加 of_base_com_data::digest 方法, 用来计算包括数组对象在内的数据唯一摘要
+      of::callFunc 支持调用匿名函数
+      of_base_com_str::uniqid 可获取更短小的且有意义的唯一编码
+      of::config 支持使用最新配置读取数据, 功能操作符 4
+      动态加载配置支持用"."分割
+      直接访问 框架路径/index.php 将启动各模块并显示控制台
+      of_base_com_net::request 第三个异步控制参数, 不在支持 eval 字符串的方式
+      kv 数据改使用 json 格式存储
+      修复伪类与类中间有空格不能筛选的问题, 如: body > div li:eq(1)
+      修复 mysqli 不能使用长连接的问题
+      修复分页匿名空间下嵌入分页无法显示报表的问题
+      优化模版引擎自动加载分页组件功能
+      使用过期函数, 将不再抛出错误
+      php >= 5.3 版本, 不在必须使用 session_open 开启会话
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/config.php
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/demo/index.php
+已修改 : /trunk/demo/list.php
+已增加 : /trunk/demo/queue
+已增加 : /trunk/demo/queue/queue.php
+已增加 : /trunk/include/of/accy/com/mq
+已增加 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/addin/PHPMailer/extras/htmlfilter.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPWord/Section.php
+已修改 : /trunk/include/of/addin/oUpload/maxSize.php
+已修改 : /trunk/include/of/addin/tcpdf/tcpdf.php
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已增加 : /trunk/include/of/base/com/_meta.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/data.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/kv.php
+已增加 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/include/of/base/com/timer.php
+已增加 : /trunk/include/of/base/error/_meta.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已增加 : /trunk/include/of/base/extension/_meta.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/base/extension/toolBaseClass.php
+已增加 : /trunk/include/of/base/htmlTpl/_meta.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已增加 : /trunk/include/of/base/language/_meta.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/link/extends.php
+已修改 : /trunk/include/of/base/session/base.php
+已增加 : /trunk/include/of/base/sso/_meta.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+
 版本: 218
 作者: Edgar
 日期: 2017年11月22日 21:59:27

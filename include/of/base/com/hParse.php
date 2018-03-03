@@ -1804,11 +1804,16 @@ class of_base_com_hParse {
 
         //解析过滤字符串
         while ($env['nMatchPos'] = of_base_com_str::strArrPos($env['selector'], $const['dMatches'], $env['nowPos'])) {
-            //第一位是是空格
-            if ($env['nowPos'] === 0 && $env['selector'][0] === ' ') {
+            //分组的第一位是是空格
+            if (
+                (
+                    $env['nowPos'] === 0 ||
+                    $env['selector'][$env['nowPos'] - 1] === ','
+                ) && $env['selector'][$env['nowPos']] === ' '
+            ) {
                 //记录本次匹配位置
-                $env['temp']['prevEmptyChrPos'] = 1;
-                $env['nMatchPos'] = array('match' => ' ', 'position' => 0);
+                $env['temp']['prevEmptyChrPos'] = $env['nowPos'] + 1;
+                $env['nMatchPos'] = array('match' => ' ', 'position' => $env['nowPos']);
             //判断空字符串分隔符
             } else if (
                 preg_match(
