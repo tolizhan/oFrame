@@ -60,10 +60,13 @@ class demo_index extends L {
                 echo '异步并发消息回调将在此文件中写入数据: ',
                     ROOT_DIR . OF_DATA . '/mqTest.txt';
                 L::sql(null);
-                of_base_com_mq::set(array('key', 1234), 'bcd1', 'exchange');
+                //queue1 与 queue2 将同时收到信息, 延迟一分钟执行
+                of_base_com_mq::set(array('key', '消息ID', 60), '消息信息(可传数组)', 'exchange');
+                //因 queue2 没有 key1 键, 所以仅 queue1 会收到信息
+                of_base_com_mq::set(array('key1', '消息ID'), '消息信息(可传数组)', 'exchange');
                 L::sql(true);
             } else {
-                echo '<font color="red">先取消/demo/config.php下_of.com.mq的注释</font><br>';
+                echo '先取消/demo/config.php下_of.com.mq的注释';
             }
         }
     }

@@ -196,7 +196,7 @@ class of_base_sso_api {
             $sql = "SELECT
                 `id` `realmId`, `pwd`, `trust`
             FROM
-                `_of_sso_realm`
+                `_of_sso_realm_attr`
             WHERE
                 `name`  = '{$_GET['name']}'
             AND `state` <> '0'";
@@ -334,20 +334,29 @@ class of_base_sso_api {
                 //获取权限
                 if ($role = isset($_GET['role']) ? (int)$_GET['role'] : 0) {
                     $sql = "SELECT
-                        GROUP_CONCAT(DISTINCT `_of_sso_pack`.id) packIds,
-                        GROUP_CONCAT(DISTINCT `_of_sso_role`.funcId) funcIds
+                        GROUP_CONCAT(DISTINCT `_of_sso_realm_pack`.id) packIds,
+                        GROUP_CONCAT(DISTINCT `_of_sso_pack_func`.funcId) funcIds
                     FROM
-                        `_of_sso_permit`
-                            LEFT JOIN `_of_sso_pack` ON
-                                `_of_sso_pack`.`realmId` = '{$realm['realmId']}'
-                            AND `_of_sso_pack`.`state` <> '0'
-                            AND `_of_sso_pack`.`id` = `_of_sso_permit`.`packId`
-                            LEFT JOIN `_of_sso_role` ON
-                                `_of_sso_role`.`realmId` = '{$realm['realmId']}'
-                            AND `_of_sso_role`.`packId` = `_of_sso_pack`.`id`
+                        `_of_sso_realm_pack`
+                            LEFT JOIN `_of_sso_user_pack` ON
+                                `_of_sso_user_pack`.`realmId` = '{$realm['realmId']}'
+                            AND `_of_sso_user_pack`.`userId` = '{$index['user']}'
+                            AND `_of_sso_user_pack`.`packId` = `_of_sso_realm_pack`.`id`
+                            LEFT JOIN `_of_sso_user_bale` ON
+                                `_of_sso_user_bale`.`userId` = '{$index['user']}'
+                            LEFT JOIN `_of_sso_bale_pack` ON
+                                `_of_sso_bale_pack`.`realmId` = '{$realm['realmId']}'
+                            AND `_of_sso_bale_pack`.`baleId` = `_of_sso_user_bale`.`baleId`
+                            AND `_of_sso_bale_pack`.`packId` = `_of_sso_realm_pack`.`id`
+                            LEFT JOIN `_of_sso_pack_func` ON
+                                `_of_sso_pack_func`.`realmId` = '{$realm['realmId']}'
+                            AND `_of_sso_pack_func`.`packId` = `_of_sso_realm_pack`.`id`
                     WHERE
-                        `_of_sso_permit`.`realmId` = '{$realm['realmId']}'
-                    AND `_of_sso_permit`.`userId` = '{$index['user']}'";
+                        `_of_sso_realm_pack`.`realmId` = '{$realm['realmId']}'
+                    AND `_of_sso_realm_pack`.`state` <> '0'
+                    AND (
+                            `_of_sso_user_pack`.`id` IS NOT NULL
+                        OR `_of_sso_bale_pack`.`id` IS NOT NULL)";
                     $range = L::sql($sql, self::$config['dbPool']);
 
                     //获取拥有的权限
@@ -425,7 +434,7 @@ class of_base_sso_api {
                                 `find`, POSITION('_' IN `find`) + 1, SUBSTR(`find`, 1, POSITION('_' IN `find`) - 1)
                             ) `question`, `name`, `nike`
                         FROM
-                            `_of_sso_user`
+                            `_of_sso_user_attr`
                         WHERE
                             `name` = '{$_GET['user']}'";
 
@@ -463,7 +472,7 @@ class of_base_sso_api {
 
                     if ($sql && $where) {
                         $sql = 'UPDATE 
-                            `_of_sso_user` 
+                            `_of_sso_user_attr` 
                         SET ' . join(',', $sql) . "
                         WHERE 
                             `name` = '{$_GET['user']}'
@@ -490,7 +499,7 @@ class of_base_sso_api {
      * 作者 : Edgar.lee
      */
     protected static function logingLog(&$name, &$site) {
-        $sql = "INSERT INTO `_of_sso_log` (
+        $sql = "INSERT INTO `_of_sso_login_log` (
             `name`, `site`, `time`, `ip`
         ) VALUES (
             '{$name}', '{$site}', NOW(), '{$_SERVER['REMOTE_ADDR']}'
@@ -502,7 +511,7 @@ class of_base_sso_api {
             //90 天有效期
             $sql = date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME'] - 7776000);
             $sql = "DELETE FROM 
-                `_of_sso_log` 
+                `_of_sso_login_log` 
             WHERE 
                 `time` < '{$sql}'";
             //删除过期日志
@@ -531,7 +540,7 @@ class of_base_sso_api {
         $sql = "SELECT
             `id` `user`, `name`, IF(`nike` = '', `name`, `nike`) `nike`, `time`
         FROM
-            `_of_sso_user`
+            `_of_sso_user_attr`
         WHERE
             `name`  = '{$name}'
         AND `pwd`   = MD5('{$pwd}')
@@ -634,7 +643,7 @@ class of_base_sso_api {
         $sql = "SELECT
             `id`, `name`, `data`
         FROM
-            `_of_sso_func`
+            `_of_sso_realm_func`
         WHERE
             `realmId` = '{$realm['realmId']}'
         AND `id` {$type} IN (\"{$sql}\")
@@ -651,18 +660,18 @@ class of_base_sso_api {
 
         $sql = str_replace(',', '","', $range['packIds']);
         $sql = "SELECT
-            `_of_sso_pack`.`name`, `_of_sso_pack`.`data`, 
-            GROUP_CONCAT(`_of_sso_role`.funcId) `funcIds`
+            `_of_sso_realm_pack`.`name`, `_of_sso_realm_pack`.`data`, 
+            GROUP_CONCAT(`_of_sso_pack_func`.funcId) `funcIds`
         FROM
-            `_of_sso_pack`
-                LEFT JOIN `_of_sso_role` ON
-                    `_of_sso_role`.`realmId` = '{$realm['realmId']}'
-                AND `_of_sso_role`.`packId` = `_of_sso_pack`.`id`
+            `_of_sso_realm_pack`
+                LEFT JOIN `_of_sso_pack_func` ON
+                    `_of_sso_pack_func`.`realmId` = '{$realm['realmId']}'
+                AND `_of_sso_pack_func`.`packId` = `_of_sso_realm_pack`.`id`
         WHERE
-            `_of_sso_pack`.`realmId` = '{$realm['realmId']}'
-        AND `_of_sso_pack`.`id` {$type} IN (\"{$sql}\")
+            `_of_sso_realm_pack`.`realmId` = '{$realm['realmId']}'
+        AND `_of_sso_realm_pack`.`id` {$type} IN (\"{$sql}\")
         GROUP BY
-            `_of_sso_pack`.`id`";
+            `_of_sso_realm_pack`.`id`";
         $temp = L::sql($sql, self::$config['dbPool']);
 
         foreach ($temp as &$v) {

@@ -33,8 +33,8 @@ if (isset($_GET['c'])) {
         return $list;
     }
 
-    if (is_dir($path = OF_DIR . '/base')) {
-        foreach (scandir($path) as $v) {
+    if (is_dir($path = OF_DIR . '/base') && $handle = opendir($path)) {
+        while (is_string($v = readdir($handle))) {
             //寻找 of/base/xxx/_meta.php 文件
             if ($v[0] !== '.' && $list = &loadMeta("{$path}/{$v}/_meta.php")) {
                 foreach ($list as &$v) {
@@ -54,5 +54,6 @@ if (isset($_GET['c'])) {
                 }
             }
         }
+        closedir($handle);
     }
 }

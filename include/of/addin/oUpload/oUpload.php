@@ -39,15 +39,20 @@ if (empty($_POST['file'])) {
     //存储路径
     $path = $temp . of_base_com_str::uniqid() . ($fExt ? '.' . $fExt : '');
 } else {
-    //文件扩展名
-    $fExt = strtolower(pathinfo($_POST['file'], PATHINFO_EXTENSION));
     //存储路径
     $path = $_POST['file'];
 }
 
+//真实路径(过滤掉非法字符)
+$path = OF_DATA . of_base_com_str::realpath(str_replace(
+    array(':', '*', '?', '"', '<', '>', '|'),
+    '',
+    $_POST['folder'] . $path
+));
+//文件扩展名
+$fExt = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
 if (
-    //真实路径
-    ($path = of_base_com_str::realpath(OF_DATA . $_POST['folder'] . $path)) &&
     //路径有效
     $path[0] === '/' &&
     //路径验证

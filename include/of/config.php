@@ -97,6 +97,16 @@ return array(
         'of_base_version_check'
     ),
 
+    //快捷集成
+    'link'        => array(
+        //集成插件
+        'addin' => array(
+            //php扩展配置文件路径, 默认 OF_DIR . '/addin/config.php'
+            //'pConfig' => '/include/of/addin/config.php',
+            //js 扩展配置文件路径, 默认 OF_URL . '/addin/config.js'
+            //'jConfig' => '/include/of/addin/config.js',
+        )
+    ),
     //错误日志
     'error'       => array(
         //日志有效时间(天),0=不清理
@@ -273,8 +283,8 @@ return array(
     //系统插件
     'addin'       => array(
         'oUpload' => array(
-            //禁止上传的扩展文件
-            'filtExt' => '@^(?:exe|php|html|htm|js|css)$@',
+            //禁止上传的扩展文件, 白名单写法 "@^(?!(exe|php|html|htm|js|css)$)@"
+            'filtExt' => '@^(?:exe|php|html|htm|js|css|)$@',
             //允许上传的文件夹(仅可匹配文件夹), 正则结果[1]可以指定根目录
             'folder'  => '@^(/data)/upload/@'
         )

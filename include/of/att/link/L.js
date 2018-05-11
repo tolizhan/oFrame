@@ -676,8 +676,8 @@ L === undefined && (L = {
      * 作者 : Edgar.lee
      */
     'open'          : (function () {
-        //已加载的js列表, 可加载的插件, 同步加载方法
-        var cache = [], config, sync = function (url, win) {
+        //已加载的js列表, 可加载的插件, 插件配置文件路径, 同步加载方法
+        var cache = [], config, path, sync = function (url, win) {
             //查找使用的缓存
             var list = L.search(cache, win, 'obj')[0];
             //初始化并读取缓存
@@ -689,7 +689,7 @@ L === undefined && (L = {
                 return false;
             //未加载过
             } else {
-                L.ajax({'url' : OF_URL + '/addin' + url, 'async' : false, 'success' : function (code, ajax) {
+                L.ajax({'url' : win ? OF_URL + '/addin' + url : url, 'async' : false, 'success' : function (code, ajax) {
                     //css
                     if (/.*css$/.test(url)) {
                         var div = win.document.createElement("div");
@@ -713,10 +713,15 @@ L === undefined && (L = {
             }
         };
 
+        //插件配置文件路径
+        path = document.getElementsByTagName('script');
+        path = path.length && path[path.length - 1].getAttribute('addin')
+        path || (path = OF_URL + '/addin/config.js');
+
         return function (name, param, win) {
             //运行配置
             var run;
-            config || sync('/config.js', null), win || (win = window);
+            config || sync(path, null), win || (win = window);
 
             //插件存在
             if (run = config[name]) {

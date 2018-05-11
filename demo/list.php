@@ -33,7 +33,7 @@ class demo_list {
              */
             function printCode() {
                 //提取方法体
-                $matchFunc = '@^( +)public +function +' .(isset($_GET['a']) ? $_GET['a'] : 'index'). '.*?^\\1}@ms';
+                $matchFunc = '@^( +)public +(?:\w+ +)?function +' .(isset($_GET['a']) ? $_GET['a'] : 'index'). '.*?^\\1}@ms';
                 preg_match($matchFunc, file_get_contents(ROOT_DIR . '/demo/index.php'), $match);
                 echo '<br><br><hr>';
                 highlight_string("<?php    源码如下 : \n" . $match[0] . "\n?>");

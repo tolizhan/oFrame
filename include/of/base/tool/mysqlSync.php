@@ -462,13 +462,32 @@ class of_base_tool_mysqlSync {
             );
         }
 
+        $arg = $func['connect'] === 'mysql_connect' ?
+            array(&$arg0, &$db) : array(&$db, &$arg0);
+
         if (is_array($sql)) {
             //关闭连接
             $db === false || $func['close']($db);
             //使用内部连接
             self::$config['callDb'] = null;
+
+            //mysql 连接方式
+            if ($func['connect'] === 'mysql_connect') {
+                $db = @$func['connect']($sql['server'], $sql['username'], $sql['password']);
+            //mysqli 连接方式
+            } else {
+                $temp = explode(':', $sql['server']);
+                $db = mysqli_connect(
+                    $temp[0],
+                    $sql['username'],
+                    $sql['password'],
+                    '',
+                    $temp[1]
+                );
+            }
+
             //连接数据库
-            if ($return = $db = @$func['connect']($sql['server'], $sql['username'], $sql['password'])) {
+            if ($return = $db) {
                 //连接字符集
                 $temp = isset($sql['charset']) ?
                     $sql['charset'] : 
@@ -476,16 +495,21 @@ class of_base_tool_mysqlSync {
 
                 //兼容php < 5.2.6
                 if (function_exists($func['set_charset'])) {
-                    $func['set_charset']($temp, $db);
+                    $arg0 = $temp;
+                    $func['set_charset']($arg[0], $arg[1]);
                 } else {
-                    $func['query']("SET NAMES '{$temp}'", $db);
+                    $arg0 = "SET NAMES '{$temp}'";
+                    $func['query']($arg[0], $arg[1]);
                 }
 
-                //使用数据库
+                //选择数据库
                 $temp = isset($sql['database']) ?
                     $sql['database'] :
                     isset(self::$config['database']) ? self::$config['database'] : false;
-                $temp && $func['query']('USE `' .strtr($temp, array('`' => '``')). '`', $db);
+
+                //使用数据库
+                $arg0 = 'USE `' .strtr($temp, array('`' => '``')). '`';
+                $temp && $func['query']($arg[0], $arg[1]);
             } else {
                 self::message('error', 'SQL执行出错', __FUNCTION__, $func['error']());
             }
@@ -494,7 +518,8 @@ class of_base_tool_mysqlSync {
                 //过滤掉无用的字符串,已正确提取'SELECT', 'INSERT', 'UPDATE', 'DELETE'关键字
                 preg_match('/^[\(\s]*(\w+)\s/i', $sql, $sqlTyep);
                 $sqlTyep = strtoupper($sqlTyep[1]);
-                $re = $func['query']($sql, $db);
+                $arg0 = $sql;
+                $re = $func['query']($arg[0], $arg[1]);
 
                 //插入 更新 删除
                 if ($re === true) {

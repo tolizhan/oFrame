@@ -9,4 +9,4 @@
 它的标签是易部署, 易分布, 易迁移
 
 手册地址 http://doc.phpof.net/<br>
-问题反馈 tolizhan@gmail.com
+问题反馈 tolizhan@qq.com

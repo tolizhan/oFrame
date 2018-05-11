@@ -1,3 +1,57 @@
+版本: 222
+作者: Edgar
+日期: 2018年5月11日 16:45:57
+信息:
+说明: + 消息队列支持首次延迟执行 of_base_com_mq::set([消息类型, 消息ID, 延迟秒数])
+      + 消息队列触发回调返回false时每5次记录一次日志, 返回数字时不再记录日志
+      + 消息队列中队列配置路径可使用 {队列池:{队列名:{}, ...}} 写法
+      + 当SQL执行失败, 所在事务最终会回滚
+      + cli模式 可以通过 "_tz:Europe/London" 设置时区
+      + 响应头 X-Powered-By 信息在非生产模式下显示框架版本号
+      + 可以通过框架配置_of.link.addin来指定php和js插件的配置文件路径
+      + 当调用分页paging方法时, 第二个参数为true时, 重新计算分页数
+      + K-V 可以指定原始方式存储, 不使用json编码
+      - SSO 添加跨系统权限集合功能, 访问 框架地址/?c=of_base_sso_main 对数据库升级
+      - of_base_com_kv 的 add 及 set 方法默认有效时间改为 86400 秒
+      * 修复消息队列回调方法接收参数是json对象的问题
+      * 修复of_base_tool_mysqlSync 中mysqli连接方式错误的问题
+      * 修复单点登录开发注册功能无法新建用户的问题
+      * 提升分布式并发资源利用率
+      * 修复一处安全漏洞
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
+已修改 : /trunk/demo/extensions/test/main/demo.php
+已修改 : /trunk/demo/index.php
+已修改 : /trunk/demo/list.php
+已修改 : /trunk/demo/queue/queue.php
+已修改 : /trunk/demo/tool/htmlLoad/head.html
+已修改 : /trunk/demo/tool/htmlLoad/readme.txt
+已修改 : /trunk/include/of/accy/com/kv/files.php
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/att/link/L.js
+已修改 : /trunk/include/of/att/sso/css/main.css
+已修改 : /trunk/include/of/att/sso/js/main.js
+已修改 : /trunk/include/of/att/sso/tpl/main.tpl.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/link/setup.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/db/data.sql
+已修改 : /trunk/include/of/base/sso/db/table.sql
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/tool/mysqlSync.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/of.php
+
 版本: 220
 作者: Edgar
 日期: 2018年2月15日 7:40:40

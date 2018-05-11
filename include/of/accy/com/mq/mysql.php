@@ -61,7 +61,8 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
         $waitList = &$this->waitList;
 
         foreach ($msgs as $k => &$v) {
-            $unid = md5($v['queue'] . "\1" . $v['keys'][0] . "\1" . $v['keys'][1]);
+            $keys = &$v['keys'];
+            $unid = md5($v['queue'] . "\1" . $keys[0] . "\1" . $keys[1]);
 
             //删除数据
             if ($v['data'] === null) {
@@ -75,12 +76,12 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                 $attr = "SET
                     `queue` = '{$v['queue']}',
                     `unId` = '{$unid}',
-                    `type` = '{$v['keys'][0]}',
-                    `msId` = '{$v['keys'][1]}',
+                    `type` = '{$keys[0]}',
+                    `msId` = '{$keys[1]}',
                     `data` = '{$temp}',
                     `updateTime` = '{$nowTime}',
                     `syncLevel` = '0',
-                    `lockTime` = '{$nowTime}',
+                    `lockTime` = DATE_ADD('{$nowTime}', INTERVAL {$keys[2]} SECOND),
                     `lockUnid` = ''";
 
                 //掺入数据
@@ -175,7 +176,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             //查询成功
             if ($msgs = of_db::sql($sql, $this->dbPool)) {
                 $msgs = &$msgs[0];
-                $data['data'] = json_decode($msgs['data']);
+                $data['data'] = json_decode($msgs['data'], true);
 
                 //回调结果
                 $return = of::callFunc($call, $data);

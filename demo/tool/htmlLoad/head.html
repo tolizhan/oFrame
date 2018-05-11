@@ -16,7 +16,9 @@
     //配置视图根目录
     window.VIEW_URL = ROOT_URL + "/view";
 
+    //加载jquery
     document.write('<script src' + '="' + OF_URL + '/att/link/jquery.js"></' + 'script>');
-    document.write('<script src' + '="' + OF_URL + '/att/link/L.js"></' + 'script>');
+    //加载L.js addin属性以项目为根目录可指定js集成插件位置
+    document.write('<script src' + '="' + OF_URL + '/att/link/L.js" addin=""></' + 'script>');
 }();
 </script>

@@ -178,8 +178,10 @@ abstract class of_db {
                     }
                 }
 
-                //判断是否成功
-                $isDone = $result !== false;
+                //SQL执行失败 && 事务最终回滚
+                if (!$isDone = $result !== false) {
+                    self::$instList[$pool]['inst']['state'] = false;
+                }
             }
         //事务处理
         } else if ($dbObj = &self::getConnect('write')) {

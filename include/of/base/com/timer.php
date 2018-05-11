@@ -27,8 +27,10 @@ class of_base_com_timer {
         $index += array('path' => '', 'kvPool' => 'default');
         empty($index['path']) || $index['path'] = of::formatPath($index['path'], ROOT_DIR);
 
-        //嵌套创建文件夹
-        is_dir($config['path']) || @mkdir($config['path'], 0777, true);
+        //任务触发器路径(分布式)
+        $config['addrPath'] = $config['path'] . '/taskTrigger/' . md5($_SERVER['SERVER_ADDR']);
+        //记录IP地址
+        of_base_com_disk::file($config['addrPath'] . '/address.php', $_SERVER['SERVER_ADDR'], true);
 
         //web访问开启计划任务
         if (of::dispatch('class') === 'of_base_com_timer') {
@@ -57,14 +59,14 @@ class of_base_com_timer {
      */
     public static function &timer($name = 'taskLock', $type = null) {
         //定时器路径
-        $path = self::$config['path'];
+        $path = self::$config['addrPath'];
         //打开加锁文件
         $lock = fopen($path . '/' . $name, 'a');
 
         //加锁失败
         if (!flock($lock, LOCK_EX | LOCK_NB)) {
             $result = true;
-        //主动触发(非异步)
+        //主动触发(异步)
         } else if ($type === null) {
             //连接解锁
             flock($lock, LOCK_UN);
@@ -616,6 +618,8 @@ class of_base_com_timer {
     private static function fireCalls(&$list) {
         //定时器根路径
         $path = self::$config['path'] . '/concurrent';
+        //当前时间
+        $nowTime = time();
 
         foreach ($list as &$v) {
             //并发数
@@ -638,10 +642,11 @@ class of_base_com_timer {
 
                     do {
                         //打开并发文件
-                        $fp = fopen($cDir . '/' . $cNum, 'a');
+                        $fp = fopen($temp = $cDir . '/' . $cNum, 'a');
 
                         //加锁成功, 没有使用的并发ID
                         $isRun = flock($fp, LOCK_EX | LOCK_NB);
+                        $isRun && touch($temp, $nowTime);
 
                         //连接解锁
                         flock($fp, LOCK_UN);

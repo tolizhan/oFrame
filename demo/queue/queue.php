@@ -10,6 +10,10 @@ return array(
             'key' => array(
                 'cNum' => 3,
                 'call' => 'demo_index::mqTest'
+            ),
+            'key1' => array(
+                'cNum' => 1,
+                'call' => 'demo_index::mqTest'
             )
         )
     ),

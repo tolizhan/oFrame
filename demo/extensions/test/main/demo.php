@@ -9,7 +9,7 @@ function main() {
  */
 function extendDemo($event = null) {
     //触发 "页面运行结束" 事件
-    if( $event ) {
+    if( isset($event['parse']) ) {
         //通过hParse解析页面数据(包括扩展输出的数据)
         $hParse = &$event['parse']('obj');
         $hParse->find('font:eq(0)')->text('扩展会修改这段文字,已修改');                                                 //修改页面内容

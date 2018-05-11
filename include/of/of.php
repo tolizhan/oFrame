@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200220);
+define('OF_VERSION', 200222);
 
 /**
  * 描述 : 控制层核心
@@ -279,8 +279,6 @@ class of {
     private static function loadSystemEnv() {
         //默认编码
         ini_set('default_charset', 'UTF-8');
-        ini_get('expose_php') && header('X-Powered-By: oFrame');
-
         //of磁盘路径
         define('OF_DIR', strtr(dirname(__FILE__), '\\', '/'));
 
@@ -305,6 +303,9 @@ class of {
                     //设置备用时区
                     if ($temp[0] === '__TZ') {
                         ini_set('date.timezone', $temp[1]);
+                    //设置本机IP
+                    } else if ($temp[0] === '__IP') {
+                        $_SERVER['SERVER_ADDR'] = $temp[1];
                     //存在 $GLOBALS 变量中
                     } else if (isset($GLOBALS[$temp[0]])) {
                         //解析到对应超全局变量中
@@ -326,6 +327,8 @@ class of {
             $_SERVER['REQUEST_URI'] = $_SERVER['PHP_SELF'] = $_SERVER['SCRIPT_NAME'] . $_SERVER['PATH_INFO'];
             $_SERVER['PATH_TRANSLATED'] = ROOT_DIR . $_SERVER['PATH_INFO'];
             $_SERVER['QUERY_STRING'] && $_SERVER['REQUEST_URI'] .= '?' . $_SERVER['QUERY_STRING'];
+            //本机IP
+            isset($_SERVER['SERVER_ADDR']) || $_SERVER['SERVER_ADDR'] = '127.0.0.1';
         }
 
         //防注入处理的超全局变量
@@ -408,6 +411,10 @@ class of {
                 $config['_of']['debug'] == $_REQUEST['__OF_DEBUG__'] : false
             );
         }
+
+        //输出框架信息
+        $temp = OF_DEBUG === false ? '' : ' ' . OF_VERSION;
+        ini_get('expose_php') && header('X-Powered-By: oFrame' . $temp);
 
         //of_类映射
         self::event('of::loadClass', array(

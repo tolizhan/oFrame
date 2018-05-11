@@ -78,32 +78,40 @@ abstract class of_base_com_mq {
             if (OF_DEBUG === false) {
                 exit('Access denied: production mode.');
             } else {
+                $debug = isset($_GET['__OF_DEBUG__']) ? '&__OF_DEBUG__=' . $_GET['__OF_DEBUG__'] : '';
+
+                //重启消息队列
                 if (isset($_GET['type']) && $_GET['type'] === 'reload') {
                     of_base_com_disk::file(self::$mqDir . '/command.php', '');
-                }
+                    header('location: ?c=of_base_com_mq' . $debug);
+                //展示并发列表
+                } else {
+                    echo '<input type="button" onclick="',
+                        'window.location.href=\'?c=of_base_com_mq&type=reload',
+                        $debug,
+                        '\'" value="Reload the message queue">';
 
-                echo '<input type="button" onclick="window.location.href=\'?c=of_base_com_mq&type=reload\'" value="Reload the message queue">';
+                    echo '<pre><hr>Concurrent Running : ';
 
-                echo '<pre><hr>Concurrent Running : ';
-
-                //筛选消息队列任务
-                $list = of_base_com_timer::getCct();
-                foreach ($list as $k => &$v) {
-                    if (
-                        isset($v['call']['asCall']) &&
-                        $v['call']['asCall'] === 'of_base_com_mq::fireQueue'
-                    ) {
-                        $v = array(
-                            'fire' => &$v['call']['params'][0]['fire'],
-                            'list' => &$v['list']
-                        );
-                    } else {
-                        unset($list[$k]);
+                    //筛选消息队列任务
+                    $list = of_base_com_timer::getCct();
+                    foreach ($list as $k => &$v) {
+                        if (
+                            isset($v['call']['asCall']) &&
+                            $v['call']['asCall'] === 'of_base_com_mq::fireQueue'
+                        ) {
+                            $v = array(
+                                'fire' => &$v['call']['params'][0]['fire'],
+                                'list' => &$v['list']
+                            );
+                        } else {
+                            unset($list[$k]);
+                        }
                     }
-                }
-                print_r($list);
+                    print_r($list);
 
-                echo '</pre>';
+                    echo '</pre>';
+                }
             }
         }
     }
@@ -135,7 +143,7 @@ abstract class of_base_com_mq {
      * 参数 :
      *      keys : 消息定位
      *          事务操作: null=开启事务, true=提交事务, false=回滚事务
-     *          生产消息: 字符串=指定消息类型, 数组=[消息类型, 消息ID]
+     *          生产消息: 字符串=指定消息类型, 数组=[消息类型, 消息ID, 延迟秒数]
      *      data : 消息数据
      *          事务操作: 代替 pool 参数, 指定消息队列池
      *          生产消息: null=删除 [消息类型, 消息ID] 指定的信息, 其它=消息数据
@@ -212,6 +220,7 @@ abstract class of_base_com_mq {
             $mqArr = &$mqList[$bind]['pools'][$pool];
             is_array($keys) || $keys = array($keys);
             isset($keys[1]) || $keys[1] = of_base_com_str::uniqid();
+            isset($keys[2]) || $keys[2] = 0;
 
             foreach ($config['queues'] as $k => &$v) {
                 //可生产数据 && 有效的键值
@@ -276,11 +285,10 @@ abstract class of_base_com_mq {
                     //存在消息
                     if ($temp = $mqObj->_fire($call, $data)) {
                         foreach ($temp as &$v) {
-                            //(执行结果为false || 数字) && 每5次报错 || 不是true
+                            //(执行结果为false && 每5次报错) || (非布尔 && 非数字)
                             if (
-                                ($v['result'] === false || is_int($v['result'])) &&
-                                $v['count'] % 5 === 0 ||
-                                $v['result'] !== true
+                                $v['result'] === false && $v['count'] % 5 === 0 ||
+                                !is_bool($v['result']) && !is_int($v['result'])
                             ) {
                                 trigger_error(
                                     'Failed to consume message from queue: ' . var_export($v['result'], true) . "\n\n" .
@@ -333,7 +341,7 @@ abstract class of_base_com_mq {
                         //遍历配置文件 队列池 => 参数
                         foreach ($config as $ke => &$ve) {
                             //加载外部配置文件
-                            $ve['queues'] = include ROOT_DIR . $ve['queues'];
+                            self::getQueueConfig($ve['queues'], $ke);
 
                             //查找待触发的回调
                             foreach ($ve['queues'] as $kq => &$vq) {
@@ -492,7 +500,8 @@ abstract class of_base_com_mq {
 
             //初始化消息队列
             if (empty($mqArr['inst'])) {
-                $config[$pool]['queues'] = include ROOT_DIR . $config[$pool]['queues'];
+                self::getQueueConfig($config[$pool]['queues'], $pool);
+
                 //加载消息键
                 foreach ($config[$pool]['queues'] as $k => &$v) {
                     $mqArr['keys'][$k] = array(
@@ -543,6 +552,30 @@ abstract class of_base_com_mq {
         } else {
             fclose($fp);
             return false;
+        }
+    }
+
+    /**
+     * 描述 : 获取队列配置
+     * 参数 :
+     *     &path : 队列配置文件路径
+     *     &pool : 队列连接池
+     * 作者 : Edgar.lee
+     */
+    private static function getQueueConfig(&$config, &$pool) {
+        //加载最新队列配置
+        $config = include ROOT_DIR . $config;
+
+        if (
+            //可能是 {队列池:{队列名:{}, ...}} 方式
+            isset($config[$pool]) &&
+            //获取第一个队列成功
+            ($temp = current($config[$pool])) &&
+            //队列中 mode 为 null 或 bool
+            (!isset($temp['mode']) || is_bool($temp['mode']))
+        ) {
+            //{队列池:{队列名:{}, ...}} 转成 {队列名:{}, ...}
+            $config = $config[$pool];
         }
     }
 

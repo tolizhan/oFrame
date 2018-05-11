@@ -458,7 +458,7 @@ L.paging || (function () {
                     //分页基础数据
                     temp.post = {
                         'method' : temp.m,
-                        'items'  : temp.i,
+                        'items'  : mode ? '' : temp.i,
                         'size'   : temp.s,
                         'page'   : type
                     };

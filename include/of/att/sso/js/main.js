@@ -91,28 +91,35 @@ var ofBaseSsoMain = {
                 'editObj'  : document.getElementById('userEdit'),
                 'titleObj' : document.getElementById('userTitle'),
                 'linkBox'  : '',
-                'linkage'  : 'pack',
+                'linkage'  : ['bale', 'pack'],
                 'saveLink' : 'userPack'
+            },
+            'bale'  : {
+                'editObj'  : document.getElementById('baleEdit'),
+                'titleObj' : document.getElementById('baleTitle'),
+                'linkBox'  : 'user',
+                'linkage'  : ['realm', 'pack'],
+                'saveLink' : 'balePack'
             },
             'realm' : {
                 'editObj'  : document.getElementById('realmEdit'),
                 'titleObj' : document.getElementById('realmTitle'),
                 'linkBox'  : '',
-                'linkage'  : 'pack',
+                'linkage'  : ['pack'],
                 'saveLink' : ''
             },
             'pack' : {
                 'editObj'  : document.getElementById('packEdit'),
                 'titleObj' : document.getElementById('packTitle'),
                 'linkBox'  : 'user',
-                'linkage'  : 'func',
+                'linkage'  : ['func'],
                 'saveLink' : 'packFunc'
             },
             'func' : {
                 'editObj'  : document.getElementById('funcEdit'),
                 'titleObj' : document.getElementById('funcTitle'),
                 'linkBox'  : 'pack',
-                'linkage'  : '',
+                'linkage'  : [],
                 'saveLink' : ''
             }
         }
@@ -213,13 +220,16 @@ var ofBaseSsoMain = {
                     node.style.backgroundColor = '#DDD';
                     //记录选择节点
                     ofBaseSsoMain.state.editBlock[type].selItem = {'node' : node, 'key' : key};
-                    //重新设置节点
-                    ofBaseSsoMain.state.selNode = {'type' : type, 'key' : key};
+
+                    if (ofBaseSsoMain.isAuth(type)) {
+                        //重新设置节点
+                        ofBaseSsoMain.state.selNode = {'type' : type, 'key' : key};
+                        //激活修改
+                        ofBaseSsoMain.edit(true);
+                    }
 
                     //联动操作
                     ofBaseSsoMain.linkage(type);
-                    //激活修改
-                    ofBaseSsoMain.edit(true);
                     break;
                 }
             } while( node = node.parentNode );
@@ -230,7 +240,7 @@ var ofBaseSsoMain = {
      * 描述 : 激活或隐藏编辑区
      * 参数 :
      *      mode : 隐藏或展示 ofBaseSsoMain.state.selNode 编辑区, true=显示, false=隐藏
-     *      type : 分页类型, 添加时使用, "user"=用户分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
+     *      type : 分页类型, 添加时使用, "user"=用户分页, "bale"=集合分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
      * 作者 : Edgar.lee
      */
     'edit' : function (mode, type) {
@@ -239,7 +249,16 @@ var ofBaseSsoMain = {
         //当前工作区
         var selNode = ofBaseSsoMain.state.selNode, temp;
 
-        if( type && !ofBaseSsoMain.permit[type + 'Add'] ) {
+        if (
+            //显示模版 && 激活节点不是用户
+            mode && selNode &&
+            //授权模式下禁止编辑
+            !ofBaseSsoMain.isAuth(selNode.type)
+        ) {
+            //隐藏编辑区
+            ofBaseSsoMain.edit(false);
+            return ;
+        } else if( type && !ofBaseSsoMain.permit[type + 'Add'] ) {
             ofBaseSsoMain.tipBar('您没有添加本项的权限');
             return ;
         } else if( !type && selNode && !ofBaseSsoMain.permit[selNode.type + 'Mod']) {
@@ -337,10 +356,13 @@ var ofBaseSsoMain = {
                     }
                 }
 
-                temp = {'save' : result, 'keys' : {}};
+                temp = {'save' : result, 'keys' : {}, 'linksel' : {}};
                 //联动选中的复选框
                 if( editBlock[type].saveLink && ofBaseSsoMain.permit[editBlock[type].saveLink] ) {
-                    temp['linksel'] = document.getElementById(editBlock[type].linkage + 'Paging').paging().select;
+                    for (var i in editBlock[type].linkage) {
+                        i = editBlock[type].linkage[i];
+                        temp['linksel'][i] = document.getElementById(i + 'Paging').paging().select;
+                    }
                 } else {
                     delete temp['linksel'];
                 }
@@ -411,15 +433,23 @@ var ofBaseSsoMain = {
     'linkage' : function (type) {
         //当前引用
         var editBlock = ofBaseSsoMain.state.editBlock;
+        var selNode = ofBaseSsoMain.state.selNode;
         var params = {};
 
-        if( editBlock[type].linkage ) {
+        if( editBlock[type].linkage.length ) {
             for(var i in editBlock) {
                 params[i] = editBlock[i].selItem ? editBlock[i].selItem.key : '';
             }
 
             //联动数据, 清空选择
-            document.getElementById(editBlock[type].linkage + 'Paging').paging({'linkage' : params, 'select' : {}});
+            for (var i in editBlock[type].linkage) {
+                i = editBlock[type].linkage[i];
+                document.getElementById(i + 'Paging').paging({
+                    'selNode' : selNode,
+                    'linkage' : params,
+                    'select' : {}
+                });
+            }
         }
     },
 
@@ -511,6 +541,14 @@ var ofBaseSsoMain = {
     },
 
     /**
+     * 描述 : 
+     * 作者 : Edgar.lee
+     */
+    'isAuth' : function (type) {
+        return type === 'user' || document.getElementById('mainModelBox').checked
+    },
+
+    /**
      * 描述 : 模版批量导入
      * 作者 : Edgar.lee
      */
@@ -531,6 +569,75 @@ var ofBaseSsoMain = {
         } else {
             ofBaseSsoMain.tipBar('无效导入');
         }
+    },
+
+    /**
+     * 描述 : 获取符合筛选条件的节点
+     * 参数 :
+     *      obj  : 指定根节点
+     *      name : 属性名称
+     *      val  : 属性值, 可以是正则类型
+     *      attr : 需要修改的属性名称
+     *      data : 修改属性名的数据
+     * 返回 :
+     *      
+     * 作者 : Edgar.lee
+     */
+    'getObj' : function (obj, name, val, attr, data) {
+        var t = {'l' : obj.getElementsByTagName('*')}, result = [];
+        //字符串转正则
+        typeof val === 'string' && (val = RegExp('^' + val + '$'));
+
+        for(var i = 0, iL = t.l.length; i < iL; ++i) {
+            //属性存在 && (不判断值 || 正则匹配)
+            if( (t.v = t.l[i].getAttribute(name)) !== null && (val == null || val.test(t.v)) ) {
+                //加入返回列表
+                result.push(t.l[i]);
+                //批量设置属性
+                attr && (t.l[i][attr] = data);
+            }
+        }
+
+        return result;
+    },
+
+    /**
+     * 描述 : 切换编辑模式 或 切换授权模式
+     * 参数 :
+     *      node : 编辑节点
+     * 作者 : Edgar.lee
+     */
+    'model' : function (node) {
+        //当前引用
+        var editBlock = ofBaseSsoMain.state.editBlock;
+        var temp, list = document.getElementById('mainModelTip');
+
+        //切换编辑模式
+        if (node.checked) {
+            temp = [/\bedit\b/, /\buser\b/];
+            list.innerHTML = '编辑模式';
+            editBlock.pack.linkBox = 'bale';
+        //切换授权模式
+        } else {
+            temp = [/\buser\b/, /\bedit\b/];
+            list.innerHTML = '授权模式';
+            editBlock.pack.linkBox = 'user';
+        }
+
+        //一模式显示
+        list = ofBaseSsoMain.getObj(document, 'class', temp[0]);
+        for (var i in list) {
+            list[i].className = list[i].className.replace(/\s*\bnone\b\s*/g, ' ');
+        }
+
+        //一模式隐藏
+        list = ofBaseSsoMain.getObj(document, 'class', temp[1]);
+        for (var i in list) {
+            list[i].className += ' none';
+        }
+
+        //隐藏编辑区
+        ofBaseSsoMain.edit(false);
     }
 };
 

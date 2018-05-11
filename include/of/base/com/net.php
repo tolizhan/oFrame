@@ -211,7 +211,8 @@ class of_base_com_net {
                     'php',
                     OF_DIR . '/index.php',
                     'get:a=request&c=of_base_com_net',
-                    '_tz:' . date_default_timezone_get()
+                    '_tz:' . date_default_timezone_get(),
+                    '_ip:' . $_SERVER['SERVER_ADDR']
                 );
 
                 //Windows

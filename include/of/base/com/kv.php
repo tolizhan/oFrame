@@ -93,18 +93,28 @@ class of_base_com_kv {
     /**
      * 描述 : 添加数据
      * 参数 :
-     *      name  : 指定操作的键名
+     *      name  : 指定操作的键名, 可为数组 {
+     *          "name"  : 指定键名
+     *          "value" : 默认值, 默认false
+     *          "time"  : 过期时间秒, 默认86400
+     *          "pool"  : 连接池, 默认'default'
+     *          "json"  : 数据是否为json, 默认true,
+     *          "retry" : 尝试重试到成功, 0=不尝试
+     *      }
      *      value : ('')添加的数据
-     *      time  : (0) 过期时间
+     *      time  : (86400) 过期时间
      *      pool  : ('default') 连接池
      *      retry : 尝试重试到成功, 0=不尝试, 正数=尝试不超过秒数(可以是小数)
      * 返回 :
      *      false=指定键名已存在, true=成功创建
      * 作者 : Edgar.lee
      */
-    final public static function add($name, $value = '', $time = 0, $pool = 'default', $retry = 0) {
+    final public static function add($name, $value = '', $time = 86400, $pool = 'default', $retry = 0) {
+        $json = true;
+        is_array($name) && extract($name, EXTR_REFS);
         self::pool($pool);
-        $value = &of_base_com_data::json($value);
+
+        $json && $value = &of_base_com_data::json($value);
         $index = &self::$instList[$pool]['inst'];
         $retry *= 5000;
 
@@ -138,32 +148,55 @@ class of_base_com_kv {
     /**
      * 描述 : 设置数据
      * 参数 :
-     *      name  : 指定操作的键名
+     *      name  : 指定操作的键名, 可为数组 {
+     *          "name"  : 指定键名
+     *          "value" : 默认值, 默认false
+     *          "time"  : 过期时间秒, 默认86400
+     *          "pool"  : 连接池, 默认'default'
+     *          "json"  : 数据是否为json, 默认true
+     *      }
      *      value : ('')添加的数据
-     *      time  : (0) 过期时间
+     *      time  : (86400) 过期时间秒
      *      pool  : ('default') 连接池
      * 返回 :
      *      false=成功, true=失败
      * 作者 : Edgar.lee
      */
-    final public static function set($name, $value = '', $time = 0, $pool = 'default') {
+    final public static function set($name, $value = '', $time = 86400, $pool = 'default') {
+        $json = true;
+        is_array($name) && extract($name, EXTR_REFS);
         self::pool($pool);
-        $value = &of_base_com_data::json($value);
+
+        $json && $value = &of_base_com_data::json($value);
         return self::$instList[$pool]['inst']->_set($name, $value, self::formatTime($time));
     }
 
     /**
      * 描述 : 读取数据
      * 参数 :
-     *      name  : 指定操作的键名
-     *      pool  : ('default') 连接池
+     *      name    : 指定操作的键名, 可为数组 {
+     *          "name"    : 指定键名
+     *          "default" : 默认值, 默认false
+     *          "pool"    : 连接池, 默认'default'
+     *          "json"    : 数据是否为json, 默认true
+     *      }
+     *      default : (false)默认值
+     *      pool    : ('default') 连接池
      * 返回 :
      *      false=指定键名已存在, true=成功创建
      * 作者 : Edgar.lee
      */
     final public static function get($name, $default = false, $pool = 'default') {
+        $json = true;
+        is_array($name) && extract($name, EXTR_REFS);
         self::pool($pool);
-        ($value = self::$instList[$pool]['inst']->_get($name)) === false ? $value = &$default : $value = &of_base_com_data::json($value, false);
+
+        if (($value = self::$instList[$pool]['inst']->_get($name)) === false) {
+            $value = &$default;
+        } else if ($json) {
+            $value = &of_base_com_data::json($value, false);
+        }
+
         return $value;
     }
 

@@ -25,7 +25,7 @@ class of_accy_com_kv_files extends of_base_com_kv {
 
         //不存在 || 失效
         if ($result = !ftell($fp) || fileatime($path) < time()) {
-            of_base_com_disk::file($fp, $value, true);
+            of_base_com_disk::file($fp, (string)$value, true);
             //修改访问时间
             touch($path, $time);
         }
@@ -68,7 +68,7 @@ class of_accy_com_kv_files extends of_base_com_kv {
         $fp = of_base_com_disk::file($path, null, null);
 
         //写入数据
-        $result = of_base_com_disk::file($fp, $value, true);
+        $result = of_base_com_disk::file($fp, (string)$value, true);
 
         //连接解锁
         flock($fp, LOCK_UN);

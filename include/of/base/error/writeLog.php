@@ -174,7 +174,7 @@ class of_base_error_writeLog {
      * 描述 : 记录日志数据
      * 参数 :
      *     &logData  : 日志数据
-     *      logType  : 日志内容[js, php, mysql]
+     *      logType  : 日志内容[js, php, sql]
      *      printStr : 显示错误内容,会根据相关配置绝对是否显示
      * 作者 : Edgar.lee
      */

@@ -30,7 +30,7 @@ function login($params = null) {
     if (isset($params['sql'])) {
         //用户登录SQL
         if( strpos($params['sql'], 'AND `pwd`   = MD5(') ) {
-            $temp = '@SELECT.*FROM\\s+`_of_sso_user`\\s+WHERE\\s+`name`  = \'(.*)\'\\s+AND `pwd`   = MD5\\(\'(.*)\'\\)\\s+AND `state` <> \'0\'@s';
+            $temp = '@SELECT.*FROM\\s+`_of_sso_user_attr`\\s+WHERE\\s+`name`  = \'(.*)\'\\s+AND `pwd`   = MD5\\(\'(.*)\'\\)\\s+AND `state` <> \'0\'@s';
             //提取帐号密码
             if( preg_match($temp, $params['sql'], $temp) ) {
 
@@ -60,19 +60,19 @@ function login($params = null) {
                         $params['sql'] = "SELECT
                             `id` `user`, `name`, IF(`nike` = '', `name`, `nike`) `nike`, `time`
                         FROM
-                            `_of_sso_user`
+                            `_of_sso_user_attr`
                         WHERE
                             `name`  = '{$temp[1]}'";
 
                         L::sql("DELETE FROM `{$this->_getConst('eDbPre')}unrecorded` WHERE `name` = '{$temp[1]}'");
                     } else {
                         //登录失败的SQL
-                        $params['sql'] = "SELECT 1 FROM `_of_sso_user` WHERE FALSE";
+                        $params['sql'] = "SELECT 1 FROM `_of_sso_user_attr` WHERE FALSE";
 
                         $sql = "SELECT
                             1
                         FROM
-                            `_of_sso_user`
+                            `_of_sso_user_attr`
                         WHERE
                             `name`  = '{$temp[1]}'";
 
@@ -139,15 +139,15 @@ function modifyPage($sysArgs, $params) {
  * 描述 : 用户权限变更强制修改密码
  * 作者 : Edgar.lee
  */
-function permit($params = null) {
+function permit() {
     //原始权限列表
     static $permit = null;
 
-    if( $params ) {
+    if( $permit ) {
         $sql = "SELECT
             MD5(GROUP_CONCAT(CONCAT(`realmId`, ':', `packId`) SEPARATOR ',')) `md5`
         FROM
-            `_of_sso_permit`
+            `_of_sso_user_pack`
         WHERE
             `userId` = '{$permit['user']}'";
         $temp = L::sql($sql);
@@ -157,7 +157,7 @@ function permit($params = null) {
         //权限有变化
         if( $permit['oMd5'] !== $permit['nMd5'] ) {
             $sql = "UPDATE
-                `_of_sso_user`
+                `_of_sso_user_attr`
             SET
                 `time` = '2000-01-01 00:00:00'
             WHERE
@@ -176,7 +176,7 @@ function permit($params = null) {
             $sql = "SELECT
                 MD5(GROUP_CONCAT(CONCAT(`realmId`, ':', `packId`) SEPARATOR ',')) `md5`
             FROM
-                `_of_sso_permit`
+                `_of_sso_user_pack`
             WHERE
                 `userId` = '{$permit['user']}'";
             $temp = L::sql($sql);
@@ -203,7 +203,7 @@ function syncUsers() {
         //登录成功
         if (ldap_bind($conn, 'LDAP 帐号', 'LDAP 密码')) {
             $sql = "UPDATE 
-                `_of_sso_user` 
+                `_of_sso_user_attr` 
             SET 
                 `name` = 'lizhan'
             WHERE
@@ -212,7 +212,7 @@ function syncUsers() {
             L::sql($sql);
 
             $sql = "UPDATE 
-                `_of_sso_user` 
+                `_of_sso_user_attr` 
             SET 
                 `state` = '2',
                 `time`  = `time`
@@ -269,7 +269,7 @@ function syncUsers() {
             } while ($dnList);
 
             $sql = "UPDATE 
-                `_of_sso_user` 
+                `_of_sso_user_attr` 
             SET 
                 `state` = '0',
                 `time`  = `time`
@@ -293,18 +293,18 @@ function syncUsers() {
     $smstip = $this->_getConst('eDbPre') . 'smstip';
 
     $sqle = "SELECT
-        `_of_sso_user`.`name`, `{$smstip}`.`mobile`, 
-        DATE_ADD(`_of_sso_user`.`time`, INTERVAL {$dExp} DAY) `dExp`
+        `_of_sso_user_attr`.`name`, `{$smstip}`.`mobile`, 
+        DATE_ADD(`_of_sso_user_attr`.`time`, INTERVAL {$dExp} DAY) `dExp`
     FROM
-        `_of_sso_user`
+        `_of_sso_user_attr`
             LEFT JOIN `{$smstip}` ON
-                `{$smstip}`.`name` = `_of_sso_user`.`name`
+                `{$smstip}`.`name` = `_of_sso_user_attr`.`name`
     WHERE
-        `_of_sso_user`.`state` = '1'                            /*有效帐号*/
-    AND `_of_sso_user`.`time` <= '{$tip}'                       /*快过期*/
-    AND `_of_sso_user`.`time` >= '{$exp}'                       /*没过期*/
+        `_of_sso_user_attr`.`state` = '1'                            /*有效帐号*/
+    AND `_of_sso_user_attr`.`time` <= '{$tip}'                       /*快过期*/
+    AND `_of_sso_user_attr`.`time` >= '{$exp}'                       /*没过期*/
     AND `{$smstip}`.`mobile` <> ''                              /*有效手机号*/
-    AND `{$smstip}`.`pwdTip` < `_of_sso_user`.`time`            /*没提示过*/";
+    AND `{$smstip}`.`pwdTip` < `_of_sso_user_attr`.`time`            /*没提示过*/";
 
     //非debug模式发短信
     if (!OF_DEBUG) {
@@ -390,7 +390,7 @@ function setUser(&$params) {
     //(无密码 || 初始密码) && 使用过期时间
     (!$temp['pwd'] || strlen($params['pwd']) < 8) && $temp['time'] = '2000-01-01 00:00:00';
 
-    $sql = "INSERT INTO `_of_sso_user` (
+    $sql = "INSERT INTO `_of_sso_user_attr` (
         `name`, `pwd`, `nike`, `notes`, `state`, `find`, `time`
     ) VALUES (
         '{$temp['user']}', '{$temp['pwd']}', '{$temp['name']}', '{$temp['dept']}::{$temp['post']}', '1', '', '{$temp['time']}'

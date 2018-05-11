@@ -3,6 +3,13 @@
  * 描述 : 快速映射类
  * 作者 : Edgar.lee
  */
+//插件配置文件
+$addin = of::config('_of.link.addin');
+$addin['pConfig'] = isset($addin['pConfig']) ?
+    ROOT_DIR . $addin['pConfig'] : OF_DIR . '/addin/config.php';
+$addin['jConfig'] = isset($addin['jConfig']) ?
+    ROOT_URL . $addin['jConfig'] : OF_URL . '/addin/config.js';
+
 //输出控制监听
 of::event('of::halt', array('asCall' => 'L::buffer', 'params' => array(true, true)));
 //为前端集成 jquery, L 封装 及 框架常量
@@ -12,7 +19,7 @@ of_view::head('head',
     //加载 jquery.js
     '<script src="' .OF_URL. '/att/link/jquery.js" ></script>' .
     //加载 L.js
-    '<script src="' .OF_URL. '/att/link/L.js" ></script>'
+    '<script src="' .OF_URL. '/att/link/L.js" addin="' .$addin['jConfig']. '" ></script>'
 );
 
 /**
@@ -124,7 +131,7 @@ of::link('rule', '&$rule', 'of_base_link_request::rule($rule);');
  *      "/addin/config.php" 决定返回值
  * 作者 : Edgar.lee
  */
-of::link('open', '$name', 'return include OF_DIR . \'/addin/config.php\';');
+of::link('open', '$name', "return include '{$addin['pConfig']}';");
 
 /**                                  预留接口******************************
  * 描述 : 获取翻译文本,映射 of_base_language_packs::getText
