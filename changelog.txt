@@ -1,3 +1,46 @@
+版本: 224
+作者: Edgar
+日期: 2018年6月14日 16:40:29
+信息:
+说明: + mysql 结构同步工具开始支持 5.7+ 的虚拟列
+      + 计划任务和消息队列触发参数中增加this键记录当前并发信息, 无并发false
+      + 通过 of_db::pool(连接键, 'state') 可以得到所在事务的状态, true=事务正常, false=最终回滚, null=不在事务中
+      + 通过 of_db::pool(连接键, 'state', false) 可强制事务最终回滚
+      - of_base_com_disk::each() 第二个参数现在一直以数组的形式返回
+      - of_base_com_timer::getCct() 方法更名 info(type), 通过type可获得任务及定时器信息
+      - 数据库抽象方法 of_db::_error(&$node) 增加 node 参数可记录SQL错误的额外信息
+      - 框架配置文件数据库mysql适配器 pdoMysql 更名 mysqlPdo
+      * 解决 of_base_com_net::request 对不标准cookie响应头解析失败的问题
+      * 解决 mysql>=5.7 版本中因死锁导致的事务不一致性问题
+      * 解决几处对 php7.x 兼容性问题
+      * 解决消息队列锁超时问题
+      * 解决消息队列一些情况信息下不回滚的问题
+      * 解决mac系统无法使用异步操作的问题
+      * 解决火狐浏览器不记录js详细错误问题
+      * 优化SQL死锁日志,不再展现在错误分页中仅存放在详情中
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/tool/htmlLoad/readme.txt
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/accy/db/mysql.php
+已增加 : /trunk/include/of/accy/db/mysqlPdo.php (从路径复制: /trunk/include/of/accy/db/pdoMysql.php, 版本, 219)
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已删除 : /trunk/include/of/accy/db/pdoMysql.php
+已修改 : /trunk/include/of/base/com/_meta.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/jsLog.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/base/tool/mysqlSync.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/license.txt
+
 版本: 222
 作者: Edgar
 日期: 2018年5月11日 16:45:57

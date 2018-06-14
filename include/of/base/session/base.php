@@ -121,7 +121,7 @@ class of_base_session_base {
      * 描述 : 销毁session
      * 作者 : Edgar.lee
      */
-    final public static function destroy(&$sessionId) {
+    final public static function destroy($sessionId) {
         call_user_func_array(self::$adapterClass . '::_destroy', array(&$sessionId));
         return true;
     }

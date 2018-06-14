@@ -70,6 +70,12 @@ class of_base_com_net {
      * 返回 :
      *      失败时 : {state:false, errno:错误描述, errstr:失败码}
      *      成功时 : {state:true, header:响应头, response:响应数据}
+     * 注明 :
+     *      异步请求参数结构($data) : {
+     *          含同步请求结构 : 数组结构均转成字符串
+     *          "mode"         : 回调函数
+     *          "staticCookie" : 所有请求过程中记忆的cookie
+     *      }
      * 作者 : Edgar.lee
      */
     public static function &request($url = null, $data = array(), $mode = false) {
@@ -189,7 +195,7 @@ class of_base_com_net {
             $data['url'] = $url;
             //静态cookie
             $data['staticCookie'] = &self::$cookie;
-            //操作系统类型
+            //操作系统类型(WINNT:windows, Darwin:mac, 其它:linux)
             $osType = strtolower(substr(PHP_OS, 0, 3));
 
             //web是否支持命令操作
@@ -253,7 +259,9 @@ class of_base_com_net {
                     //linux 异步数据结构
                     $exec[] = 'data:' . addslashes(serialize($data));
                     //exec("ls -l /proc/{$pid}/exe", $output, $state);
-                    $exec = 'nohup "' . join('" "', $exec) . '" >/dev/null 2>&1 &';
+                    $exec = '"' . join('" "', $exec) . '" >/dev/null 2>&1 &';
+                    //是mac系统 || linux 使用 nohup
+                    $osType === 'dar' || $exec = 'nohup ' . $exec;
                 }
 
                 is_string($exec) && pclose(popen($exec, 'r'));
@@ -347,18 +355,19 @@ class of_base_com_net {
 
                 //请求成功
                 if (preg_match('/.* (\d+) .*/', $res['header'], $temp) && $temp[1] < 400) {
-                    preg_match_all('@^Set-Cookie: ([^=\s]+)=(.*?)(?:; .*|$)$@m', $res['header'], $match, PREG_SET_ORDER);
+                    preg_match_all('@^Set-Cookie: ([^=\s]+)=(.*?)(?:;.*)?\r$@mi', $res['header'], $match, PREG_SET_ORDER);
                     //提取cookie
                     foreach ($match as &$v) {
-                        preg_match('@expires=(.*?)(?:; |$)@', $v[0], $v['expires']);
-                        preg_match('@path=(.*?)(?:; |$)@', $v[0], $v['path']);
-                        preg_match('@domain=(.*?)(?:; |$)@', $v[0], $v['domain']);
+                        $v[0] = substr($v[0], 0, -1);
+                        preg_match('@expires=(.*?)(?:;|$)@i', $v[0], $v['expires']);
+                        preg_match('@path=(.*?)(?:;|$)@i', $v[0], $v['path']);
+                        preg_match('@domain=(.*?)(?:;|$)@i', $v[0], $v['domain']);
 
                         //记忆cookie
                         self::cookie(array(
                             'domain'  => isset($v['domain'][1]) ? $v['domain'][1] : $data['url']['host'],
                             'path'    => isset($v['path'][1]) ? 
-                                trim($v['path'][1]) : of_base_com_str::realpath('/' . $data['url']['path'] . 'a/../'),
+                                $v['path'][1] : of_base_com_str::realpath('/' . $data['url']['path'] . 'a/../'),
                             'name'    => &$v[1],
                             'value'   => &$v[2],
                             'expires' => &$v['expires'][1],

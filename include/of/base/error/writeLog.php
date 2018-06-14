@@ -124,6 +124,7 @@ class of_base_error_writeLog {
                     'backtrace' => debug_backtrace()
                 )
             );
+            array_splice($backtrace['environment']['backtrace'], 0, 1);
         //"@"错误 || 过期函数
         } else {
             //@trigger_error('') 返回 false
@@ -148,7 +149,16 @@ class of_base_error_writeLog {
      * 作者 : Edgar.lee
      */
     public static function sqlLog($params) {
+        //回溯信息偏移量 php >= 7.0.0 ? 3 : 4
+        static $offset = null;
+
+        //初始回溯信息偏移量
+        if ($offset === null) {
+            $offset = 4 - (int)version_compare(PHP_VERSION, '7.0.0', '>=');
+        }
+
         $sysBacktrace = debug_backtrace();
+        array_splice($sysBacktrace, 0, $offset);
 
         //生成错误列表
         $backtrace = array(
@@ -158,6 +168,7 @@ class of_base_error_writeLog {
                 'message'   => &$params['sql'],
                 'file'      => '(',
                 'line'      => 0,
+                'note'      => &$params['note'],
                 'backtrace' => &$sysBacktrace
             )
         );
@@ -262,7 +273,6 @@ class of_base_error_writeLog {
     private static function formatLog(&$logData) {
         //引用回溯
         $backtrace = &$logData['environment']['backtrace'];
-        $logData['errorType'] === 'exception' || array_splice($backtrace, 0, 1);
 
         //debug运行追踪
         if (strpos($logData['environment']['file'], '(') !== false) {

@@ -264,10 +264,12 @@ class of_base_com_csv {
             //初始非ASCII字符集
             if ($params['cs'] === null && preg_match('@[^\x00\x09\x10\x13\x20-\x7F]@', $result)) {
                 //是 UTF-8 编码
-                if (@iconv('UTF-8', 'UTF-8', $result) === $result) {
+                if (@iconv('UTF-8', 'UTF-8//IGNORE', $result) === $result) {
                     $params['cs'] = 'UTF-8';
                 //是用户群体编码
-                } else if (@iconv($temp = of::config('_of.charset', 'GB18030'), $temp, $result) === $result) {
+                } else if (@iconv(
+                    $temp = of::config('_of.charset', 'GB18030'), $temp . '//IGNORE', $result
+                ) === $result) {
                     $params['cs'] = $temp;
                 //未知编码
                 } else {

@@ -34,7 +34,9 @@ class of_base_com_timer {
 
         //web访问开启计划任务
         if (of::dispatch('class') === 'of_base_com_timer') {
-            echo self::timer() ? 'runing' : 'starting', "<br>\n";
+            echo self::info(2) ? 'runing' : 'starting', "<br>\n";
+            //开启计划任务
+            self::timer();
 
             if (OF_DEBUG === false) {
                 exit('Access denied: production mode.');
@@ -45,7 +47,7 @@ class of_base_com_timer {
                 }
 
                 echo '<hr>Concurrent Running : ';
-                print_r(of_base_com_timer::getCct());
+                print_r(of_base_com_timer::info(1));
                 echo '</pre>';
             }
         }
@@ -171,9 +173,10 @@ class of_base_com_timer {
     }
 
     /**
-     * 描述 : 获取当期运行的并发任务
+     * 描述 : 获取当期运行的信息
+     *      type : 读取类型(可叠加), 1=并发的任务, 2=分布定时器
      * 返回 : 
-     *      {
+     *      type为1时 : 并发的任务 {
      *          任务唯一键 : {
      *              "call" : 统一回调结构
      *              "list" : 运行的任务列表 {
@@ -184,14 +187,26 @@ class of_base_com_timer {
      *              }
      *          }
      *      }
+     *      type为2时 : 分布定时器 {
+     *          服务器IP : {}
+     *      }
+     *      type其它时 : 如1+2为3时 {
+     *          "concurrent"  : type为1的结构,
+     *          "taskTrigger" : type为2的结构
+     *      }
      * 作者 : Edgar.lee
      */
-    public static function &getCct() {
+    public static function &info($type) {
         $result = array();
-        $path = self::$config['path'] . '/concurrent';
 
-        if (of_base_com_disk::each($path, $tasks)) {
+        //读取并发数定时任务
+        if ($type & 1) {
+            $path = self::$config['path'] . '/concurrent';
+            $type === 1 ? $save = &$result : $save = &$result['concurrent'];
+            $save = array();
+
             //遍历并发任务目录
+            of_base_com_disk::each($path, $tasks);
             foreach ($tasks as $kt => &$vt) {
                 //是目录
                 if ($vt) {
@@ -207,7 +222,7 @@ class of_base_com_timer {
                         flock($tFp, LOCK_UN);
                     //任务已运行 && 文件信息存在
                     } else if (is_file($temp = $dir . '/info.php')) {
-                        $index = &$result[$taskId];
+                        $index = &$save[$taskId];
 
                         //读取任务回调信息
                         $temp = of_base_com_disk::file($temp, false, true);
@@ -242,6 +257,30 @@ class of_base_com_timer {
             }
         }
 
+        //分布定时器执行情况
+        if ($type & 2) {
+            $path = self::$config['path'] . '/taskTrigger';
+            $type === 2 ? $save = &$result : $save = &$result['taskTrigger'];
+            $save = array();
+
+            //遍历定时器文件夹
+            of_base_com_disk::each($path, $data);
+            foreach ($data as $k => &$v) {
+                //是文件夹 && 任务锁打开成功
+                if ($v && $fp = fopen($k . '/taskLock', 'a')) {
+                    //任务开启
+                    if (!flock($fp, LOCK_EX | LOCK_NB)) {
+                        $temp = of_base_com_disk::file($k . '/address.php', false, true);
+                        $save[$temp] = array();
+                    }
+                    //连接解锁
+                    flock($fp, LOCK_UN);
+                    //关闭连接
+                    fclose($fp);
+                }
+            }
+        }
+
         return $result;
     }
 
@@ -261,7 +300,8 @@ class of_base_com_timer {
             'call' => &$call['call'],
             'time' => &$call['time'],
             'cNum' => &$call['cNum'],
-            'try'  => &$call['try']
+            'try'  => &$call['try'],
+            'this' => &$cAvg
         );
 
         //清理机制
@@ -302,9 +342,11 @@ class of_base_com_timer {
             of_base_com_disk::file($cDir . '.php', null);
 
             //打开并发文件
-            $fp = fopen($cDir . '/' . $cAvg['cCid'], 'r+');
+            $fp = fopen($cDir . '/' . $cAvg['cCid'], 'a+');
             //加锁成功
             if (flock($fp, LOCK_EX | LOCK_NB)) {
+                //清空文件内容
+                ftruncate($fp, 0);
                 //更新文件修改时间
                 fwrite($fp, $_SERVER['REQUEST_TIME']);
             //并发已开启, 不用继续执行
@@ -560,7 +602,7 @@ class of_base_com_timer {
                                     $temp && (
                                         !$vl[3] || 
                                         $index >= $vl[1] && 
-                                        ($index - $vl[1]) % $vl[3] === 0
+                                        ($index - (int)$vl[1]) % $vl[3] === 0
                                     )
                                 ) {
                                     //进入下一项校验

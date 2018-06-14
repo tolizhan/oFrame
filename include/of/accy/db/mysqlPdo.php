@@ -1,5 +1,5 @@
 <?php
-class of_accy_db_pdoMysql extends of_db {
+class of_accy_db_mysqlPdo extends of_db {
     //连接源
     private $connection = null;
     //当前结果集
@@ -52,16 +52,17 @@ class of_accy_db_pdoMysql extends of_db {
      * 描述 : 读取当前错误
      * 作者 : Edgar.lee
      */
-    protected function _error() {
-        //进程访问权限
-        static $process = null;
+    protected function _error(&$node) {
+        //事务回滚动作
+        static $rollback = null;
         $error = $this->connection->errorInfo() + array(2 => '');
 
         //INNODB可能死锁
         if ($error[1] === 1205 || $error[1] === 1213) {
-            //判断进程权限
-            if ($process === null) {
-                $process = 'SELECT
+            //初始化回滚属性
+            if ($rollback === null) {
+                //判断进程权限
+                $temp = 'SELECT
                     1 c
                 FROM
                     information_schema.`USER_PRIVILEGES`
@@ -77,17 +78,33 @@ class of_accy_db_pdoMysql extends of_db {
                         "\'"
                     )
                 AND `USER_PRIVILEGES`.PRIVILEGE_TYPE = "PROCESS"';
-                $this->_query($process);
-                $process = $this->_fetch();
+                $this->_query($temp);
+                $rollback['lockLog'] = $this->_fetch();
+
+                //事务回滚模式
+                $temp = 'SELECT 
+                    @@innodb_rollback_on_timeout outBack,
+                    VERSION() version';
+                $this->_query($temp);
+                $temp = $this->_fetch();
+                $rollback['enable'] = version_compare($temp['version'], '5.7', '>=');
+                $rollback['outBack'] = $temp['outBack'] === '1';
             }
 
-            if ($process) {
+            if ($rollback['lockLog']) {
                 $temp = 'SHOW ENGINE INNODB STATUS';
                 $this->_query($temp);
                 $temp = &$this->_fetch();
-                //死锁日志
-                $error[2] .= $temp['Status'];
+                //记录死锁日志
+                $node = $temp['Status'];
             }
+
+            //mysql版本>=5.7回滚事务后需手动重启事务
+            $rollback['enable'] &&
+            //(超时回滚事务 || 死锁回滚事务)
+            ($rollback['outBack'] || $error[1] === 1213) &&
+            //重新开始事务
+            $this->_begin();
         }
 
         return $error[1] . ':' . $error[2];

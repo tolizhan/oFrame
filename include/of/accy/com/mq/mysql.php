@@ -15,7 +15,7 @@
  *          `lockTime` datetime NOT NULL COMMENT '锁定时间, 每 syncLevel * 5 分钟重试',
  *          `lockUnid` char(32) NOT NULL COMMENT '锁定时生成的唯一ID',
  *          PRIMARY KEY (`queue`,`unId`),
- *          KEY `常规排序搜索` (`type`,`lockTime`,`queue`,`lockUnid`) USING BTREE
+ *          KEY `常规排序搜索` (`type`,`lockTime`,`queue`) USING BTREE
  *      ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='消息队列表'
  *      /*!50100 PARTITION BY KEY (queue)
  *      PARTITIONS 250 * /;
@@ -73,8 +73,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                 );
             } else {
                 $temp = addslashes(json_encode($v['data']));
-                $attr = "SET
-                    `queue` = '{$v['queue']}',
+                $temp = "`queue` = '{$v['queue']}',
                     `unId` = '{$unid}',
                     `type` = '{$keys[0]}',
                     `msId` = '{$keys[1]}',
@@ -84,28 +83,11 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                     `lockTime` = DATE_ADD('{$nowTime}', INTERVAL {$keys[2]} SECOND),
                     `lockUnid` = ''";
 
-                //掺入数据
-                $sql = "/*UPDATE*/ INSERT IGNORE INTO 
-                    `_of_com_mq` 
-                {$attr},
-                    `createTime` = '{$nowTime}',
-                    `syncCount` = '0'";
-
-                //执行失败
-                if (($temp = of_db::sql($sql, $this->dbPool)) === false) {
-                    return false;
-                //执行成功
-                } else if ($temp) {
-                    unset($waitList[$unid]);
-                //延迟修改
-                } else {
-                    $waitList[$unid] = array(
-                        'type'  => 'update',
-                        'unid'  => $unid,
-                        'queue' => $v['queue'],
-                        'attr'  => $attr
-                    );
-                }
+                $waitList[$unid] = array(
+                    'type'  => 'update',
+                    'time'  => &$nowTime,
+                    'attr'  => $temp
+                );
             }
         }
 
@@ -121,6 +103,10 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
      *          "queue" : 队列名称,
      *          "key"   : 消息键,
      *          "data"  :x消息数据, _fire 函数实现
+     *          "this"  : 当前并发信息 {
+     *              "cMd5" : 回调唯一值
+     *              "cCid" : 当前并发值
+     *          }
      *      }
      * 返回 :
      *      [{
@@ -143,84 +129,90 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
         $expTime = date('Y-m-d H:i:s', $time + 600);
         //结果集
         $result = array();
+        //计算消息数据偏移量
+        $limit = ($data['this']['cCid'] - 1) * 5;
 
-        //寻找合适消息
-        $sql = "UPDATE
-            `_of_com_mq`
-        SET
-            `lockTime` = '{$expTime}',
-            `lockUnid` = '{$uniqid}'
-        WHERE
-            `queue` = '{$data['queue']}'
-        AND `type` = '{$data['key']}'
-        AND `lockTime` <= '{$nowTime}'
-        ORDER BY
-            `lockTime`
-        LIMIT 1";
-
-        //执行成功
-        if (of_db::sql($sql, $this->dbPool)) {
+        //通过先筛选主键后加锁的方式解决同时修改与筛选导致索引死锁的问题
+        do {
+            //当筛选成功, 锁定失败时保持循环
+            $loop = false;
+            //筛选合适消息
             $sql = "SELECT
-                `unid`, `data`, `syncLevel`
+                `unId`, `data`, `syncLevel`, `lockTime`
             FROM
                 `_of_com_mq`
             WHERE
                 `queue` = '{$data['queue']}'
             AND `type` = '{$data['key']}'
-            AND `lockTime` = '{$expTime}'
-            AND `lockUnid` = '{$uniqid}'
+            AND `lockTime` <= '{$nowTime}'
             ORDER BY
                 `lockTime`
-            LIMIT 1";
+            LIMIT
+                {$limit}, 1";
+            $msgs = of_db::sql($sql, $this->dbPool);
 
-            //查询成功
-            if ($msgs = of_db::sql($sql, $this->dbPool)) {
-                $msgs = &$msgs[0];
-                $data['data'] = json_decode($msgs['data'], true);
-
-                //回调结果
-                $return = of::callFunc($call, $data);
-
-                //执行成功
-                if ($return === true) {
-                    $sql = "DELETE FROM
-                        `_of_com_mq`
-                    WHERE
-                        `queue` = '{$data['queue']}'
-                    AND `unid` = '{$msgs['unid']}'
-                    AND `lockUnid` = '{$uniqid}'";
-                    of_db::sql($sql, $this->dbPool);
-                //执行失败
-                } else {
-                    //执行结果
-                    $result[] = array(
-                        'result' => $return,
-                        'count'  => $msgs['syncLevel'] + 1,
-                        'params' => $data
-                    );
-
-                    //非指定时间的其它错误(包括 false), 计算下次执行时间(s)
-                    is_int($return) || $return = ($msgs['syncLevel'] + 1) * 300;
-                    $expTime = date('Y-m-d H:i:s', time() + $return);
-
-                    //修改消息重试次数
-                    $sql = "UPDATE
-                        `_of_com_mq`
-                    SET
-                        `syncCount` = `syncCount` + 1,
-                        `syncLevel` = `syncLevel` + 1,
-                        `lockTime` = '{$expTime}',
-                        `lockUnid` = ''
-                    WHERE
-                        `queue` = '{$data['queue']}'
-                    AND `unid` = '{$msgs['unid']}'
-                    AND `lockUnid` = '{$uniqid}'";
-                    of_db::sql($sql, $this->dbPool);
-                }
+            //筛选成功
+            if ($msgs = &$msgs[0]) {
+                //锁定数据
+                $sql = "UPDATE
+                    `_of_com_mq`
+                SET
+                    `lockTime` = '{$expTime}',
+                    `lockUnid` = '{$uniqid}'
+                WHERE
+                    `queue` = '{$data['queue']}'
+                AND `unId` = '{$msgs['unId']}'
+                AND `lockTime` = '{$msgs['lockTime']}'";
+                $loop = !of_db::sql($sql, $this->dbPool);
             }
+        } while ($loop);
 
-            //执行成功, 被删除, 修改, 掉线 都视为成功
-            $result || $result[] = array('result' => true);
+        //执行成功
+        if ($msgs) {
+            $data['data'] = json_decode($msgs['data'], true);
+
+            //回调结果
+            $return = of::callFunc($call, $data);
+
+            //执行成功
+            if ($return === true) {
+                //执行结果
+                $result[] = array('result' => true);
+
+                $sql = "DELETE FROM
+                    `_of_com_mq`
+                WHERE
+                    `queue` = '{$data['queue']}'
+                AND `unId` = '{$msgs['unId']}'
+                AND `lockUnid` = '{$uniqid}'";
+                of_db::sql($sql, $this->dbPool);
+            //执行失败
+            } else {
+                //执行结果
+                $result[] = array(
+                    'result' => $return,
+                    'count'  => $msgs['syncLevel'] + 1,
+                    'params' => $data
+                );
+
+                //非指定时间的其它错误(包括 false), 计算下次执行时间(s)
+                is_int($return) || $return = ($msgs['syncLevel'] + 1) * 300;
+                $expTime = date('Y-m-d H:i:s', time() + $return);
+
+                //修改消息重试次数
+                $sql = "UPDATE
+                    `_of_com_mq`
+                SET
+                    `syncCount` = `syncCount` + 1,
+                    `syncLevel` = `syncLevel` + 1,
+                    `lockTime` = '{$expTime}',
+                    `lockUnid` = ''
+                WHERE
+                    `queue` = '{$data['queue']}'
+                AND `unId` = '{$msgs['unId']}'
+                AND `lockUnid` = '{$uniqid}'";
+                of_db::sql($sql, $this->dbPool);
+            }
         }
 
         return $result;
@@ -248,12 +240,14 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             foreach ($waitList as &$v) {
                 //修改数据
                 if ($v['type'] === 'update') {
-                    $sql = "UPDATE
+                    $sql = "INSERT INTO
                         `_of_com_mq`
-                    {$v['attr']}
-                    WHERE 
-                        `queue` = '{$v['queue']}'
-                    AND `unId` = '{$v['unid']}'";
+                    SET
+                        {$v['attr']},
+                        `createTime` = '{$v['time']}',
+                        `syncCount` = '0'
+                    ON DUPLICATE KEY UPDATE
+                        {$v['attr']}";
                 //删除数据
                 } else {
                     $sql = "DELETE FROM 
@@ -267,6 +261,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             }
 
             $waitList = array();
+            return of_db::pool($this->dbPool, 'state');
         } else {
             return $this->noTran || of_db::sql(true, $this->dbPool);
         }
@@ -281,6 +276,8 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
         if ($type === 'after') {
             $this->waitList = array();
             return $this->noTran || of_db::sql(false, $this->dbPool);
+        } else {
+            return true;
         }
     }
 }

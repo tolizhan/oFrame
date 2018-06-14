@@ -2,7 +2,7 @@
 return array(
     //用__FILE__表示的站点根目录,修改substr的第二参数即可
     'rootDir'     => strtr(substr(__FILE__, 0, -22), '\\', '/'),
-    //域名到产品根目录地址,根路径为空字符串,null=自动计算
+    //域名到产品根目录地址,根路径为空字符串,null=尝试自动计算
     'rootUrl'     => null,
     //配置文件路径, 数组=动态配置{动态键 : 配置路径}, 字符串=等同{"0" : 全局配置}
     'config'      => '/demo/config.php',
@@ -27,7 +27,7 @@ return array(
     'db'          => array(
         #单数据库混合写法
         //*
-        //数据库连接方式(pdoMysql, mysql, mysqli)
+        //数据库连接方式(mysqlPdo, mysqli, mysql)
         'adapter'        => 'mysqli',
         //数据库连接参数
         'params'         => array(

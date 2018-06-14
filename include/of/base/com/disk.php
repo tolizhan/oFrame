@@ -99,7 +99,7 @@ class of_base_com_disk {
      * 描述 : 遍历目录结构
      * 参数 :
      *     &dir    : 字符串=指定遍历的目录
-     *     &data   : 接收的数据,false=结束遍历, 数组={
+     *     &data   : 接收的数据, 数组={
      *          磁盘路 : false=文件,true=目录,如果遍历data时将目录其改成null,那么将不会继续遍历子
      *      }
      *      single : 单层遍历,false=一次返回深层数据,true(默认)=每次返回一个文件夹数据
@@ -147,13 +147,12 @@ class of_base_com_disk {
             if (!$single) unset($cahceDir[$dir]);
         }
 
-        //结束遍历
-        if ($data === false) {
-            unset($cahceDir[$dir]);
-            return false;
-        } else {
-            return true;
-        }
+        //操作结束 && 格式化数组
+        ($fail = $data === false) && $data = array();
+        //操作结束 && 清除缓存
+        if ($fail) unset($cahceDir[$dir]);
+        //返回结束信息
+        return !$fail;
     }
 
     /**

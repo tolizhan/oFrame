@@ -24,6 +24,7 @@
  *      消息队列列表($mqList) : {
  *          事务数据库连接池名 : {
  *              "leval" : 当前数据库池等级, 0=不在事务里, 1=根事务, n=n层事务里
+ *              "state" : 当前事务最终状态, true=提交, false=回滚
  *              "pools" : {
  *                  消息队列池名 : {
  *                      "leval" : 内部事务层级, 0=不在事务里, 1=根事务, n=n层事务里
@@ -73,45 +74,48 @@ abstract class of_base_com_mq {
 
         //web访问开启消息队列
         if (of::dispatch('class') === 'of_base_com_mq') {
+            //debug 参数
+            $debug = isset($_GET['__OF_DEBUG__']) ?
+                '&__OF_DEBUG__=' . $_GET['__OF_DEBUG__'] : '';
+            //重新加载消息
+            if ($reload = isset($_GET['type']) && $_GET['type'] === 'reload') {
+                header('location: ?c=of_base_com_mq' . $debug);
+            }
+            //输出运行状态(并尝试开启)
             echo self::state() ? 'runing' : 'starting', " ";
 
             if (OF_DEBUG === false) {
                 exit('Access denied: production mode.');
+            //重启消息队列
+            } else if ($reload) {
+                of_base_com_disk::file(self::$mqDir . '/command.php', '');
+            //展示并发列表
             } else {
-                $debug = isset($_GET['__OF_DEBUG__']) ? '&__OF_DEBUG__=' . $_GET['__OF_DEBUG__'] : '';
+                echo '<input type="button" onclick="',
+                    'window.location.href=\'?c=of_base_com_mq&type=reload',
+                    $debug,
+                    '\'" value="Reload the message queue">';
 
-                //重启消息队列
-                if (isset($_GET['type']) && $_GET['type'] === 'reload') {
-                    of_base_com_disk::file(self::$mqDir . '/command.php', '');
-                    header('location: ?c=of_base_com_mq' . $debug);
-                //展示并发列表
-                } else {
-                    echo '<input type="button" onclick="',
-                        'window.location.href=\'?c=of_base_com_mq&type=reload',
-                        $debug,
-                        '\'" value="Reload the message queue">';
+                echo '<pre><hr>Concurrent Running : ';
 
-                    echo '<pre><hr>Concurrent Running : ';
-
-                    //筛选消息队列任务
-                    $list = of_base_com_timer::getCct();
-                    foreach ($list as $k => &$v) {
-                        if (
-                            isset($v['call']['asCall']) &&
-                            $v['call']['asCall'] === 'of_base_com_mq::fireQueue'
-                        ) {
-                            $v = array(
-                                'fire' => &$v['call']['params'][0]['fire'],
-                                'list' => &$v['list']
-                            );
-                        } else {
-                            unset($list[$k]);
-                        }
+                //筛选消息队列任务
+                $list = of_base_com_timer::info(1);
+                foreach ($list as $k => &$v) {
+                    if (
+                        isset($v['call']['asCall']) &&
+                        $v['call']['asCall'] === 'of_base_com_mq::fireQueue'
+                    ) {
+                        $v = array(
+                            'fire' => &$v['call']['params'][0]['fire'],
+                            'list' => &$v['list']
+                        );
+                    } else {
+                        unset($list[$k]);
                     }
-                    print_r($list);
-
-                    echo '</pre>';
                 }
+                print_r($list);
+
+                echo '</pre>';
             }
         }
     }
@@ -257,18 +261,20 @@ abstract class of_base_com_mq {
     /**
      * 描述 : 触发队列
      * 参数 :
-     *      params : 异步触发 {
+     *      params  : 异步触发 {
      *          "fire" : 触发目标 {
      *              "pool"  : 连接池,
      *              "queue" : 消息队列,
      *              "key"   : 消息键
      *          }
      *      }
+     *      nowTask : 定时器触发数据
      * 作者 : Edgar.lee
      */
-    public static function fireQueue($params) {
+    public static function fireQueue($params, $nowTask) {
         $config = &self::pool($params['fire']['pool'], $bind);
         $data = &$params['fire'];
+        $data['this'] = &$nowTask['this'];
 
         //有效回调
         if ($call = &$config['queues'][$data['queue']]['keys'][$data['key']]['call']) {
@@ -291,7 +297,8 @@ abstract class of_base_com_mq {
                                 !is_bool($v['result']) && !is_int($v['result'])
                             ) {
                                 trigger_error(
-                                    'Failed to consume message from queue: ' . var_export($v['result'], true) . "\n\n" .
+                                    'Failed to consume message from queue: ' .
+                                    var_export($v['result'], true) . "\n\n" .
                                     'call--' . print_r($call, true) . "\n\n" .
                                     'argv--' . print_r($v['params'], true)
                                 );
@@ -425,22 +432,29 @@ abstract class of_base_com_mq {
         ) {
             $nowMqList = &self::$mqList[$params['pool']];
             //同步事务等级
-            $nowleval = &$nowMqList['leval'];
-            $preLeval = $nowleval;
-            $nowleval = of_db::pool($params['pool'], 'level');
+            $nowLeval = &$nowMqList['leval'];
+            $nowState = &$nowMqList['state'];
+            $preLeval = $nowLeval;
+            $nowLeval = of_db::pool($params['pool'], 'level');
 
             if ($type === 'after') {
                 //最后提交或回滚
-                if (is_bool($params['sql']) && $preLeval === 1 && $nowleval === 0) {
+                if (is_bool($params['sql']) && $preLeval === 1 && $nowLeval === 0) {
                     //提交事务 && 提交成功 ? 提交适配器 : 回滚适配器
                     $tFunc = $params['sql'] && $params['result'] ?
                         '_commit' : '_rollBack';
-                } else if ($params['sql'] === null && $preLeval === 0 && $nowleval === 1) {
+                //开启事务
+                } else if (
+                    $params['sql'] === null &&
+                    $preLeval === 0 &&
+                    $nowLeval === 1
+                ) {
                     $tFunc = '_begin';
+                    $nowState = true;
                 } else {
                     return ;
                 }
-            } else if ($nowleval === 1 && is_bool($params['sql'])) {
+            } else if ($nowLeval === 1 && is_bool($params['sql'])) {
                 $tFunc = $params['sql'] ? '_commit' : '_rollBack';
             } else {
                 return ;
@@ -448,7 +462,14 @@ abstract class of_base_com_mq {
 
             //批量触发事务
             foreach ($nowMqList['pools'] as $k => &$v) {
-                $v['inst']->$tFunc($type);
+                $temp = $v['inst']->$tFunc($type);
+                $nowState && $nowState = $temp;
+            }
+
+            //提交事务前 && 消息队列执行失败
+            if ($type === 'before' && !$nowState) {
+                //强制主事务回滚, 保持数据一致性
+                of_db::pool($params['pool'], 'state', false);
             }
         }
     }
@@ -488,6 +509,7 @@ abstract class of_base_com_mq {
             //绑定事务初始化
             if (!isset($mqList[$bind]['leval'])) {
                 $mqList[$bind]['leval'] = of_db::pool($bind, 'level');
+                $mqList[$bind]['state'] = of_db::pool($bind, 'state');
                 of::event('of_db::before', array(
                     'asCall' => 'of_base_com_mq::dbEvent',
                     'params' => array('before')
@@ -524,8 +546,13 @@ abstract class of_base_com_mq {
                     'bind' => $bind
                 ));
 
-                //绑定事务已开启 && 开始适配器事务
-                $mqList[$bind]['leval'] && $mqArr['inst']->_begin();
+                //绑定事务已开启
+                if ($mqList[$bind]['leval']) {
+                    //开始适配器事务
+                    $temp = $mqArr['inst']->_begin();
+                    //最终提交 && 赋值消息队列开始事务结果
+                    $mqList[$bind]['state'] && $mqList[$bind]['state'] = $temp;
+                }
             }
 
             return $config[$pool];
@@ -617,6 +644,10 @@ abstract class of_base_com_mq {
      *          "queue" : 队列名称,
      *          "key"   : 消息键,
      *          "data"  :x消息数据, _fire 函数实现
+     *          "this"  : 当前并发信息 {
+     *              "cMd5" : 回调唯一值
+     *              "cCid" : 当前并发值
+     *          }
      *      }
      * 返回 :
      *      [{

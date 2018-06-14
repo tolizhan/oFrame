@@ -82,17 +82,26 @@ window.L.extension.jsErrorLog || !function () {
 <?php } ?>
 
     window.onerror = function (message ,file ,line) {
+        var temp;
 <?php if (OF_DEBUG) { ?>
-        var span = document.createElement("span");
-        span.innerHTML = '<span><input type="text" value="' +line+ '" style="width:30px;" readonly="readonly" />' + 
+        temp = document.createElement("span");
+        temp.innerHTML = '<span><input type="text" value="' +line+ '" style="width:30px;" readonly="readonly" />' + 
             '<input type="text" value="' +window.L.entity(file, true)+ '" style="width:435px;" readonly="readonly" /></span><span>' + 
             '<input type="text" value="' +window.L.entity(message, true)+ '" style="width:475px;" readonly="readonly" /></span>';
-        nodes[0].appendChild(span);
+        nodes[0].appendChild(temp);
         count += 1;
 
         nodes[1].onclick && refresh();
 <?php } ?>
-        arguments[4] && (message = arguments[4].stack);
+        if (arguments[4]) {
+            //[需查找的信息, 被查找的信息]
+            temp = [
+                message.substr(message.indexOf(':') + 1),
+                arguments[4].stack
+            ];
+            //js回溯中包含错误信息 ? 使用回溯信息 : 使用错误信息 + 回溯信息
+            message = temp[1].indexOf(temp[0]) > -1 ? temp[1] : message + '\n' + temp[1];
+        }
         window.L.ajax({
             "url"   : OF_URL + '/index.php?a=writeJsErr&c=of_base_error_jsLog',
             "async" : true,

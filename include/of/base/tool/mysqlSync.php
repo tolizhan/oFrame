@@ -957,7 +957,11 @@ class of_base_tool_mysqlSync {
                 $addIndex = $v['EXTRA'] === 'auto_increment' ? " ,ADD INDEX (`{$columnName}`)" : '';
 
                 if (
-                    ($v['IS_NULLABLE'] === 'NO' && $v['COLUMN_DEFAULT'] === null) || 
+                    //默认值不为 null && 默认值为 null
+                    ($v['IS_NULLABLE'] === 'NO' && $v['COLUMN_DEFAULT'] === null) ||
+                    //不是虚拟字段(json字段的虚拟字段没有默认值)
+                    strpos($v['EXTRA'], 'GENERATED ALWAYS') !== false ||
+                    //没有默认值的字段类型
                     preg_match('@blob|text|point|point|polygon|geometry@', $v['COLUMN_TYPE']) 
                 //默认值
                 ) {
@@ -972,11 +976,18 @@ class of_base_tool_mysqlSync {
                 }
 
                 if (
-                    !isset($columnsOriginal[$v['TABLE_NAME']][$v['COLUMN_NAME']]) || 
-                    $temp = $columnsOriginal[$v['TABLE_NAME']][$v['COLUMN_NAME']] !== $v 
+                    !($temp = isset($columnsOriginal[$v['TABLE_NAME']][$v['COLUMN_NAME']])) || 
+                    ($temp = $columnsOriginal[$v['TABLE_NAME']][$v['COLUMN_NAME']] !== $v)
                 ) {
+                    //修改字段 && 是虚拟字段
+                    if ($temp === true && strpos($v['EXTRA'], 'GENERATED ALWAYS') !== false) {
+                        //虚拟字段不能直接修改虚拟类型, 为了简便操作需要先删除
+                        $bulkSql[$v['TABLE_NAME']][] = "DROP COLUMN `{$columnName}`";
+                        //删除后新加字段
+                        $temp = false;
+                    }
                     $temp = $temp === true ? 'MODIFY' : 'ADD';
-                    $bulkSql[$v['TABLE_NAME']][] = "{$temp} COLUMN `{$columnName}` {$v['COLUMN_TYPE']} {$charset}{$collationName} {$isNullable} NULL {$columnDefault} {$v['EXTRA']} COMMENT '{$columnComment}' {$position} {$addIndex}";
+                    $bulkSql[$v['TABLE_NAME']][] = "{$temp} COLUMN `{$columnName}` {$v['COLUMN_TYPE']} {$charset}{$collationName} {$v['EXTRA']} {$isNullable} NULL {$columnDefault} COMMENT '{$columnComment}' {$position} {$addIndex}";
                 }
                 //删除已同步的字段
                 unset($columnsOriginal[$v['TABLE_NAME']][$v['COLUMN_NAME']]);
@@ -1890,7 +1901,20 @@ class of_base_tool_mysqlSync {
                     `COLUMNS`.CHARACTER_SET_NAME,    /*字符集*/
                     `COLUMNS`.COLLATION_NAME,        /*排序规则*/
                     `COLUMNS`.COLUMN_TYPE,           /*字段信息*/
-                    `COLUMNS`.EXTRA,                 /*附加信息*/
+                    /*!50700
+                    IF(
+                        LOCATE(' GENERATED', `COLUMNS`.EXTRA),
+                        CONCAT(
+                            'GENERATED ALWAYS AS (',
+                            `COLUMNS`.`GENERATION_EXPRESSION`,
+                            ') ',
+                            LEFT(`COLUMNS`.EXTRA, LOCATE(' ', `COLUMNS`.EXTRA) - 1)
+                        ),
+                    */
+                        `COLUMNS`.EXTRA
+                    /*!50700
+                    )
+                    */ EXTRA,                        /*附加信息*/
                     `COLUMNS`.COLUMN_COMMENT         /*注释*/
                 FROM
                     `information_schema`.COLUMNS

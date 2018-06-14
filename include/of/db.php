@@ -21,9 +21,9 @@
  *              "inst" : 初始化的连接源对象 {
  *                  "write' : 写入连接源,
  *                  "read"  : 读取连接源,
- *                  "back"  : 当启动事务时, read的备份
- *                  "level" : 当启动事务时, 嵌套的层次
- *                  "state" : 当启动事务时, 嵌套未回滚
+ *                  "back"  : read的备份, 启动事务时有效
+ *                  "level" : 嵌套的层次, 启动事务时有效
+ *                  "state" : 嵌套未回滚, 启动事务时有效
  *              }
  *          }
  *      }
@@ -60,22 +60,37 @@ abstract class of_db {
     /**
      * 描述 : 读取/设置连接池
      * 参数 :
-     *      key  : 使用的连接类,如果同一连接类不同的连接推荐使用::分割,如'mysql::我的区分符'
-     *      pool : key连接池的操作参数
-     *          数组   : 连接参数,初始化后便不再起作用,默认_of.db, 支持读写分离配置方式
-     *          "level": 查询当前事务层次
+     *      key   : 使用的连接类,如果同一连接类不同的连接推荐使用::分割,如'mysql::我的区分符'
+     *      pool  : key连接池的操作参数
+     *          数组    : 连接参数,初始化后便不再起作用,默认_of.db, 支持读写分离配置方式
+     *          "level" : 查询当前事务层次
+     *          "state" : 读写当前事务提交状态, 当SQL执行失败, 改值会变为false
+     *      value : 设置pool参数值
+     *          "state" : false=强制事务最终回滚
      * 返回 :
      *      pool 为 null 或 数组: 返回 连接池配置
-     *      pool 为 "level"     : 返回 整数, 0=不在事务里, 1=根事务, n=n层事务里
+     *      pool 为 "level" 读取: 返回 整数, 0=不在事务里, 1=根事务, n=n层事务里
+     *      pool 为 "state" 读取: 返回 null=不在事务里, true=提交事务, false=回滚事务
      * 作者 : Edgar.lee
      */
-    final public static function pool($key, $pool = null) {
+    final public static function pool($key, $pool = null, $value = null) {
         //引用实例列表
         $instList = &self::$instList;
 
+        //查询当前事务层次
         if ($pool === 'level') {
             return isset($instList[$key]['inst']['level']) ?
                 $instList[$key]['inst']['level'] : 0;
+        //查写当前提交状态
+        } else if ($pool === 'state') {
+            //读取
+            if ($value === null) {
+                return isset($instList[$key]['inst']['level']) ?
+                    $instList[$key]['inst']['state'] : null;
+            //设置
+            } else if (!$value && isset($instList[$key]['inst'])) {
+                $instList[$key]['inst']['state'] = false;
+            }
         } else {
             if (empty($instList[$key])) {
                 //初始配置
@@ -227,7 +242,10 @@ abstract class of_db {
         }
 
         //SQL 执行错误
-        $isDone || of::event('of_db::error', true, array('type' => $dbObj->_error(), 'sql' => &$sql, 'pool' => &$pool));
+        $isDone || of::event('of_db::error', true, array(
+            'note' => &$note, 'type' => $dbObj->_error($note),
+            'sql' => &$sql, 'pool' => &$pool
+        ));
 
         //触发sql后事件
         of::event('of_db::after', true, array('sql' => &$sql, 'pool' => &$pool, 'result' => &$result));
@@ -305,7 +323,7 @@ abstract class of_db {
     abstract protected function _close();
 
     //读取当前错误,返回 错误号:错误信息
-    abstract protected function _error();
+    abstract protected function _error(&$node);
 
     //查看影响行数
     abstract protected function _affectedRows();
