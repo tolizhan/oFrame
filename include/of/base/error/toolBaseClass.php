@@ -28,6 +28,7 @@ class of_base_error_toolBaseClass {
         }
 
         ini_set('max_execution_time', 0);
+        ini_set('memory_limit', '1024M');
         //self::test();    //演示方法
     }
 
@@ -99,7 +100,7 @@ class of_base_error_toolBaseClass {
      * 作者 : Edgar.lee
      */
     public static function &fileS($path, $curPage = null, $pageSize = 10) {
-        //语言包根目录
+        //日志根目录
         $filePath = self::$config[substr($path, -2) === 'js' ? 'js' : substr($path, -3)] . $path;
         $data = array();
 
@@ -119,7 +120,7 @@ class of_base_error_toolBaseClass {
             while ($curPage === null || $curSize > $line) {
                 if ($temp = fgets($fp)) {
                     if ($curPage !== null && $curPage <= $line && $curSize > $line) {
-                        $data[$line] = unserialize($temp);
+                        $data[$line] = unserialize(strtr($temp, array("+\1+" => "\n")));
                     }
                     $line += 1;
                 } else {

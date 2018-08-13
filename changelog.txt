@@ -1,3 +1,148 @@
+版本: 226
+作者: Edgar
+日期: 2018年8月13日 8:41:10
+信息:
+说明: + 依赖管理工具 composer 集成到 include/composer 中
+      + mysql同步工具 of_base_tool_mysqlSync 可通过backupTable和revertTable方法备份恢复表语句
+      + mysql同步工具 of_base_tool_mysqlSync::init 参数添加 checkRole=false 调过权限检查
+      + 参数规则验证 L::rule(&$rule, $exit = true) 增加第二参数 false 时返回验证信息
+      * 按照MVCS的设计模式调整demo文件结构, /demo/serv/ 为独立访问的服务层
+      * 框架配置 _of.sso.url 设置了地址时, 框架控制台将不在显示sso模块管理
+      * 解决高并发下 of_base_com_str::uniqid 短唯一值重复问题
+      * 完善 of_base_com_data::rule 数据校验提示信息
+      * 丢失的数据连接在事务中不再尝试重新连接
+      * 解决特殊字符导致错误日志无法浏览的问题
+      * mysql 连接默认设置 GROUP_CONCAT 为最大长度
+----
+已修改 : /trunk/changelog.txt
+已删除 : /trunk/demo/PageExtension.php
+已增加 : /trunk/demo/config
+已增加 : /trunk/demo/config/config.php
+已增加 : /trunk/demo/config/crontab.php
+已增加 : /trunk/demo/config/queue.php
+已删除 : /trunk/demo/config.php
+已增加 : /trunk/demo/ctrl
+已增加 : /trunk/demo/ctrl/PageExtension.php
+已增加 : /trunk/demo/ctrl/PageExtension.txt
+已增加 : /trunk/demo/ctrl/index.php
+已增加 : /trunk/demo/extend
+已增加 : /trunk/demo/extend/extensions.php
+已增加 : /trunk/demo/extend/sqlProfiling
+已增加 : /trunk/demo/extend/sqlProfiling/_info
+已增加 : /trunk/demo/extend/sqlProfiling/config.php
+已增加 : /trunk/demo/extend/sqlProfiling/main
+已增加 : /trunk/demo/extend/sqlProfiling/main/main.php
+已增加 : /trunk/demo/extend/ssoSyncLdap
+已增加 : /trunk/demo/extend/ssoSyncLdap/_info
+已增加 : /trunk/demo/extend/ssoSyncLdap/_info/backupData
+已增加 : /trunk/demo/extend/ssoSyncLdap/_info/backupData/installData
+已增加 : /trunk/demo/extend/ssoSyncLdap/_info/backupData/installData/backupData.sql
+已增加 : /trunk/demo/extend/ssoSyncLdap/_info/backupData/installData/structure.sql
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/Autoloader.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/TopSdk.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/aliyun
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/aliyun/AliyunClient.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/ApplicationVar.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/ClusterTopClient.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/HttpdnsGetRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/RequestCheckUtil.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/ResultSet.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/SpiUtils.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/TopClient.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/TopLogger.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/domain
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/domain/Area.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/domain/BizResult.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/domain/FcPartnerSmsDetailDto.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/domain/KfcSearchResult.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/domain/Result.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/domain/Subtask.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/domain/Task.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/httpdns.conf
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcFlowChargeProvinceRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcFlowChargeRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcFlowGradeRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcFlowQueryRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcSmsNumQueryRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcSmsNumSendRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcTtsNumSinglecallRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcVoiceNumDoublecallRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/AlibabaAliqinFcVoiceNumSinglecallRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/AppipGetRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/AreasGetRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/HttpdnsGetRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/KfcKeywordSearchRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/TimeGetRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/TopAuthTokenCreateRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/TopAuthTokenRefreshRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/TopIpoutGetRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/TopSecretGetRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/TopatsResultGetRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/request/TopatsTaskDeleteRequest.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/config.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/main
+已增加 : /trunk/demo/extend/ssoSyncLdap/main/main.php
+已增加 : /trunk/demo/extend/ssoSyncLdap/style
+已增加 : /trunk/demo/extend/ssoSyncLdap/style/imgBg.png
+已增加 : /trunk/demo/extend/ssoSyncLdap/style/login.css
+已增加 : /trunk/demo/extend/test
+已增加 : /trunk/demo/extend/test/_info
+已增加 : /trunk/demo/extend/test/_info/backupData
+已增加 : /trunk/demo/extend/test/_info/backupData/installData
+已增加 : /trunk/demo/extend/test/_info/backupData/installData/backupData.sql
+已增加 : /trunk/demo/extend/test/_info/backupData/installData/sharedData.php
+已增加 : /trunk/demo/extend/test/_info/backupData/installData/structure.sql
+已增加 : /trunk/demo/extend/test/_info/language
+已增加 : /trunk/demo/extend/test/config.php
+已增加 : /trunk/demo/extend/test/main
+已增加 : /trunk/demo/extend/test/main/demo.php
+已增加 : /trunk/demo/extend/test/main/loadClassTest.php
+已增加 : /trunk/demo/extend/test/main/loadFileTest.js
+已增加 : /trunk/demo/extend/test/main/loadFileTest.php
+已删除 : /trunk/demo/extensions
+已删除 : /trunk/demo/index.php
+已删除 : /trunk/demo/list.php
+已增加 : /trunk/demo/model
+已增加 : /trunk/demo/model/list.php
+已删除 : /trunk/demo/queue
+已增加 : /trunk/demo/serv
+已增加 : /trunk/demo/serv/index.php
+已增加 : /trunk/demo/serv/papi
+已增加 : /trunk/demo/serv/papi/demo.php
+已增加 : /trunk/demo/serv/papi/main.php
+已增加 : /trunk/demo/serv/readme.txt
+已删除 : /trunk/demo/timer
+已增加 : /trunk/demo/view/tpl/ctrl
+已增加 : /trunk/demo/view/tpl/ctrl/index
+已增加 : /trunk/demo/view/tpl/ctrl/index/viewTest.tpl.php
+已删除 : /trunk/demo/view/tpl/demo
+已修改 : /trunk/demo/说明.txt
+已增加 : /trunk/include/composer
+已增加 : /trunk/include/composer/composer
+已增加 : /trunk/include/composer/composer.bat
+已增加 : /trunk/include/composer/composer.json
+已增加 : /trunk/include/composer/composer.phar
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqlPdo.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/base/com/data.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/toolBaseClass.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/link/request.php
+已修改 : /trunk/include/of/base/link/setup.php
+已修改 : /trunk/include/of/base/sso/_meta.php
+已修改 : /trunk/include/of/base/tool/mysqlSync.php
+已修改 : /trunk/include/of/base/tool/test.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+
 版本: 224
 作者: Edgar
 日期: 2018年6月14日 16:40:29
@@ -14,7 +159,7 @@
       * 解决 mysql>=5.7 版本中因死锁导致的事务不一致性问题
       * 解决几处对 php7.x 兼容性问题
       * 解决消息队列锁超时问题
-      * 解决消息队列一些情况信息下不回滚的问题
+      * 解决消息队列一些情况下信息不回滚的问题
       * 解决mac系统无法使用异步操作的问题
       * 解决火狐浏览器不记录js详细错误问题
       * 优化SQL死锁日志,不再展现在错误分页中仅存放在详情中
@@ -99,22 +244,22 @@
 作者: Edgar
 日期: 2018年2月15日 7:40:40
 信息:
-说明: 框架开始兼容 php 7.2
-      添加 of_base_com_mq 消息队列封装, 目前实现 mysql 模式
-      添加 of_base_com_data::digest 方法, 用来计算包括数组对象在内的数据唯一摘要
-      of::callFunc 支持调用匿名函数
-      of_base_com_str::uniqid 可获取更短小的且有意义的唯一编码
-      of::config 支持使用最新配置读取数据, 功能操作符 4
-      动态加载配置支持用"."分割
-      直接访问 框架路径/index.php 将启动各模块并显示控制台
-      of_base_com_net::request 第三个异步控制参数, 不在支持 eval 字符串的方式
-      kv 数据改使用 json 格式存储
-      修复伪类与类中间有空格不能筛选的问题, 如: body > div li:eq(1)
-      修复 mysqli 不能使用长连接的问题
-      修复分页匿名空间下嵌入分页无法显示报表的问题
-      优化模版引擎自动加载分页组件功能
-      使用过期函数, 将不再抛出错误
-      php >= 5.3 版本, 不在必须使用 session_open 开启会话
+说明: + 框架开始兼容 php 7.2
+      + 添加 of_base_com_mq 消息队列封装, 目前实现 mysql 模式
+      + 添加 of_base_com_data::digest 方法, 用来计算包括数组对象在内的数据唯一摘要
+      + of::callFunc 支持调用匿名函数
+      + of_base_com_str::uniqid 可获取更短小的且有意义的唯一编码
+      + of::config 支持使用最新配置读取数据, 功能操作符 4
+      + 动态加载配置支持用"."分割
+      + 直接访问 框架路径/index.php 将启动各模块并显示控制台
+      + php >= 5.3 版本, 不在必须使用 session_open 开启会话
+      + 使用过期函数, 将不再抛出错误
+      - of_base_com_net::request 第三个异步控制参数, 不在支持 eval 字符串的方式
+      - kv 数据改使用 json 格式存储
+      * 修复伪类与类中间有空格不能筛选的问题, 如: body > div li:eq(1)
+      * 修复 mysqli 不能使用长连接的问题
+      * 修复分页匿名空间下嵌入分页无法显示报表的问题
+      * 优化模版引擎自动加载分页组件功能
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/demo/config.php
@@ -163,22 +308,22 @@
 作者: Edgar
 日期: 2017年11月22日 21:59:27
 信息:
-说明: 计划任务支持设置多并发 of_base_com_timer::task 中 cNum 为并发数量, 0=不设置
-      模版引擎添加一键清除模版缓存功能 框架地址/?c=of_base_htmlTpl_tool&a=index
-      wDate 时间插件升级 4.8 正式版本, 并获得商业授权
-      模版引擎现在识别 meta 标签
-      通过 of_db::pool(连接键, 'level') 可以得到所在事务的层级, 0=不在事务中
-      of_view::prop 可以批量向视图层传递数据
-      分页兼容 mysql 5.7 页数计算
-      整合"LXUI"的 bootstrap v3 兼容 IE6+
-      框架标准信息结构改为 {"code":状态码, "data":扩展数据, "info":提示信息}
-      现在 mysql_query 连接方式支持";"分割的多语句查询
-      修复 CLI 模式时区丢失问题
-      修复同一个页面不能多个分页的问题
-      修复kv files 模式下未过期数据丢失问题
-      修复mysqli用多结果集方式无法读取单结果查询的问题
-      修复 hParse 一处筛选失败的问题
-      修复 oUpload 上传插件 setting 无法改变上传类型与多选方式 的问题
+说明: + 计划任务支持设置多并发 of_base_com_timer::task 中 cNum 为并发数量, 0=不设置
+      + 模版引擎添加一键清除模版缓存功能 框架地址/?c=of_base_htmlTpl_tool&a=index
+      + wDate 时间插件升级 4.8 正式版本, 并获得商业授权
+      + 模版引擎现在识别 meta 标签
+      + 通过 of_db::pool(连接键, 'level') 可以得到所在事务的层级, 0=不在事务中
+      + of_view::prop 可以批量向视图层传递数据
+      + 整合"LXUI"的 bootstrap v3 兼容 IE6+
+      + 现在 mysql_query 连接方式支持";"分割的多语句查询
+      - 框架标准信息结构改为 {"code":状态码, "data":扩展数据, "info":提示信息}
+      * 分页兼容 mysql 5.7 页数计算
+      * 修复 CLI 模式时区丢失问题
+      * 修复同一个页面不能多个分页的问题
+      * 修复kv files 模式下未过期数据丢失问题
+      * 修复mysqli用多结果集方式无法读取单结果查询的问题
+      * 修复 hParse 一处筛选失败的问题
+      * 修复 oUpload 上传插件 setting 无法改变上传类型与多选方式 的问题
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/include/of/accy/com/kv/files.php
@@ -242,19 +387,19 @@
 作者: Edgar
 日期: 2017年9月24日 10:58:35
 信息:
-说明: 兼容 64 位系统下 key-value 一处有效期问题
-      k-v redis 兼容低版本 php_redis 扩展
-      k-v 未配置 default 连接池时, 会以 files 方式初始化
-      静态计划任务, * * x * * 不再是 1 1 X */1 */1 而是 */1 */1 X */1 */1
-      静态计划任务, [x-y]/n 写法不再从 0 算起 是 x 算起
-      当框架配置 _of.debug 为字符串时, $_REQUEST["__OF_DEBUG__"] 需要与其相同才能强制切换调试模式
-      现在可以从 $_SERVER['HTTP_REFERER'] 头信息中识别 __OF_DEBUG__
-      错误日志, 语言包, 扩展, 计划任务等管理界面, 生产模式禁止访问, 可以通过 __OF_DEBUG__ 切换
-      of_base_com_disk::file 解决网络文件系统掉包问题
-      解决异步操作一些环境下不执行的问题
-      hParse css 方法值设置为""时, 可以删除对应样式
-      加强tcpdf解析html 图片中 src 的准确性
-      完善分页
+说明: + 当框架配置 _of.debug 为字符串时, $_REQUEST["__OF_DEBUG__"] 需要与其相同才能强制切换调试模式
+      + 现在可以从 $_SERVER['HTTP_REFERER'] 头信息中识别 __OF_DEBUG__
+      + 错误日志, 语言包, 扩展, 计划任务等管理界面, 生产模式禁止访问, 可以通过 __OF_DEBUG__ 切换
+      + k-v 未配置 default 连接池时, 会以 files 方式初始化
+      - 静态计划任务, * * x * * 不再是 1 1 X */1 */1 而是 */1 */1 X */1 */1
+      - 静态计划任务, [x-y]/n 写法不再从 0 算起 是 x 算起
+      * 兼容 64 位系统下 key-value 一处有效期问题
+      * k-v redis 兼容低版本 php_redis 扩展
+      * of_base_com_disk::file 解决网络文件系统掉包问题
+      * 解决异步操作一些环境下不执行的问题
+      * hParse css 方法值设置为""时, 可以删除对应样式
+      * 加强tcpdf解析html 图片中 src 的准确性
+      * 完善分页
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
@@ -277,18 +422,18 @@
 作者: Edgar
 日期: 2017年8月20日 12:12:15
 信息:
-说明: CLI 模式下支持异步操作
-      CLI 模式下类似 xx:yy 的参数,将被以 $GLOBALS['_ARGV'][xx]=yy 存储
-      CLI 访问 /index.php 时, 不在进行返回值验证
-      of_base_com_net 使用更高效的异步操作
-      非生产环境时, mysql 使用严格模式
-      支持嵌套事务,若子事务回滚->父事务也回滚,非Savepoint方式
-      分页回调参数添加 attr 分页属性 {"data" : &当页二维数据, "attr" : &当前分页属性}
-      完善 sso, 配置 _of.sso.expiry 仅作为密码过期时间
-      优化 _of.db 配置方式识别率
-      解决hParse替换插入子节点不能全部移除的问题
-      加强csv对UTF-16LE编码解析准确性
-      of_base_com_kv::add 中尝试重试参数(retry)现在可以是小数
+说明: + CLI 模式下支持异步操作
+      + CLI 模式下类似 xx:yy 的参数,将被以 $GLOBALS['_ARGV'][xx]=yy 存储
+      + 支持嵌套事务,若子事务回滚->父事务也回滚,非Savepoint方式
+      + 分页回调参数添加 attr 分页属性 {"data" : &当页二维数据, "attr" : &当前分页属性}
+      - 非生产环境时, mysql 使用严格模式
+      * CLI 访问 /index.php 时, 不在进行返回值验证
+      * of_base_com_net 使用更高效的异步操作
+      * 完善 sso, 配置 _of.sso.expiry 仅作为密码过期时间
+      * 优化 _of.db 配置方式识别率
+      * 解决hParse替换插入子节点不能全部移除的问题
+      * 加强csv对UTF-16LE编码解析准确性
+      * of_base_com_kv::add 中尝试重试参数(retry)现在可以是小数
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
@@ -318,17 +463,17 @@
 作者: Edgar
 日期: 2017年7月5日 17:19:10
 信息:
-说明: 升级 tcpdf 到 6.2.13
-      当发生错误时触发 of_base_error_writeLog::error 回调钩子, 接收 {"type" : 错误来源, "data" : 错误信息}
-      html模版引擎当识别到分页模版时自动引用分页脚本
-      分页模版支持 name="pageCount" 数据总长度
-      固定 $_REQUEST 变量, 不再受 php.ini 中 request_order 影响
-      框架配置可以设置时区, 支持夏令时 _of.timezone 和 _of.db.params.timezone
-      手动触发计划任务显示当前状态 OF_URL/?c=of_base_com_timer
-      分页兼容 mysql >= 5.7 语法
-      csv 默认改为 UTF-16LE 编码, 兼容性更强
-      修复SSO不能删除系统帐号的外键问题
-      解决sso服务器session过期后客户端通知退出报错问题
+说明: + 当发生错误时触发 of_base_error_writeLog::error 回调钩子, 接收 {"type" : 错误来源, "data" : 错误信息}
+      + html模版引擎当识别到分页模版时自动引用分页脚本
+      + 分页模版支持 name="pageCount" 数据总长度
+      + 固定 $_REQUEST 变量, 不再受 php.ini 中 request_order 影响
+      + 框架配置可以设置时区, 支持夏令时 _of.timezone 和 _of.db.params.timezone
+      + 手动触发计划任务显示当前状态 OF_URL/?c=of_base_com_timer
+      * 升级 tcpdf 到 6.2.13
+      * 分页兼容 mysql >= 5.7 语法
+      * csv 默认改为 UTF-16LE 编码, 兼容性更强
+      * 修复SSO不能删除系统帐号的外键问题
+      * 解决sso服务器session过期后客户端通知退出报错问题
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/include/of/accy/db/mysql.php
@@ -367,15 +512,15 @@
 作者: Edgar
 日期: 2017年5月4日 21:54:27
 信息:
-说明: SSO添加权限模版导出功能
-      框架配置debug支持测试环境 true=开发环境, null=测试环境, false=生产环境
-      html模版引擎多行注释支持跨脚本块
-      预加载 of_base_version_check 可以在非生产模式下自动检查框架版本
-      框架配置config支持动态配置加载, 数组=动态配置{动态键 : 配置路径}, 字符串=等同{"0" : 全局配置}
-      of::getArrData 第四个参数添加 2 功能符, 默认值赋值到原数据
-      升级日期插件
-      php >= 5.3 可以通过命名空间方式调用框架
-      更好的准守PSR规范
+说明: + SSO添加权限模版导出功能
+      + 框架配置debug支持测试环境 true=开发环境, null=测试环境, false=生产环境
+      + html模版引擎多行注释支持跨脚本块
+      + 预加载 of_base_version_check 可以在非生产模式下自动检查框架版本
+      + 框架配置config支持动态配置加载, 数组=动态配置{动态键 : 配置路径}, 字符串=等同{"0" : 全局配置}
+      + of::getArrData 第四个参数添加 2 功能符, 默认值赋值到原数据
+      + php >= 5.3 可以通过命名空间方式调用框架
+      * 升级日期插件
+      * 更好的准守PSR规范
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/demo/extensions/ssoSyncLdap/aliMsg/top/TopClient.php
@@ -437,13 +582,13 @@
 作者: Edgar
 日期: 2017年3月5日 4:54:41
 信息:
-说明: 加强对命名空间的兼容性
-      模块引擎默认注释脚本改为 <!--<? ?--> 方式, 使得对各种编辑器高亮更友好
-      加强SESSION files 模式的安全性
-      修复SESSION gc 回收时报错问题
-      上传组件可以限制更详细的上传位置
-      完善 of_base_com_net 类的异步请求功能
-      框架配置文件 extension.format 作废
+说明: + 上传组件可以限制更详细的上传位置
+      - 框架配置文件 extension.format 作废
+      * 加强对命名空间的兼容性
+      * 模块引擎默认注释脚本改为 <!--<? ?--> 方式, 使得对各种编辑器高亮更友好
+      * 加强SESSION files 模式的安全性
+      * 修复SESSION gc 回收时报错问题
+      * 完善 of_base_com_net 类的异步请求功能
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/demo/tool/htmlLoad/code/load.js
@@ -466,14 +611,14 @@
 作者: Edgar
 日期: 2017年2月19日 13:59:14
 信息:
-说明: of::dispatch 第三个校验参数 false改为"永不通过", null改为"永远通过"
-      of::event 中"of::dispatch"事件添加触发参数 {"class" : &调度类名, "action" : &调度方法, "check" : &校验参数}
-      扩展入口同步添加"of::dispatch"事件触发参数
-      k-v 添加 redis 主从连接方式
-      htmlLoad readme.txt 中添加一段 "本地调用框架中的js扩展" 演示代码
-      错误日志对 eval 中的错误提示位置更准确
-      加强 html 模版引擎对 htmlLoad 支持
-      修复 sso 状态同步失败的问题
+说明: + of::event 中"of::dispatch"事件添加触发参数 {"class" : &调度类名, "action" : &调度方法, "check" : &校验参数}
+      + 扩展入口同步添加"of::dispatch"事件触发参数
+      + k-v 添加 redis 主从连接方式
+      + htmlLoad readme.txt 中添加一段 "本地调用框架中的js扩展" 演示代码
+      - of::dispatch 第三个校验参数 false改为"永不通过", null改为"永远通过"
+      * 错误日志对 eval 中的错误提示位置更准确
+      * 加强 html 模版引擎对 htmlLoad 支持
+      * 修复 sso 状态同步失败的问题
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/demo/extensions/sqlProfiling/main/main.php
@@ -508,15 +653,14 @@
 作者: Edgar
 日期: 2017年1月25日 17:29:12
 信息:
-说明: 计划任务支持分布式
-      修复sso LDAP密码不过期问题
-      sessinon memcache 方式改为 kv
-      添加 oFill js数据填充工具
-      修复 of_base_com_data::rule 规则校验 bug
-      of_base_com_kv::add 增加第五个参数 添加失败重试
-      html 模版引擎 动态title属性 由_改为__html
-      添加 L::rule 接口请求参数规则校验
-      添加 of_base_tool_test::check 支持接口单元测试
+说明: + 计划任务支持分布式
+      + 添加 oFill js数据填充工具
+      + of_base_com_kv::add 增加第五个参数 添加失败重试
+      + 添加 L::rule 接口请求参数规则校验
+      + 添加 of_base_tool_test::check 支持接口单元测试
+      - sessinon memcache 方式改为 kv
+      * 修复sso LDAP密码不过期问题
+      * 修复 of_base_com_data::rule 规则校验 bug
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/demo/config.php
@@ -547,21 +691,21 @@
 作者: Edgar
 日期: 2017年1月12日 15:04:52
 信息:
-说明: cli 模式下可以传 get post 等参数
-      支持更好的面向接口的开发方式
-      hParse 可以面向 节点键 操作, 效率更高
-      of_view::head 支持向 body 加入属性
-      of_view::head 支持向 head 中 include 文件
-      添加 of_base_com_data::json 更安全的 json
-      添加 of_base_com_data::rule 校验数据格式
-      模版引擎支持 /demo/tool/jsLoad 的 include 功能
-      模版引擎编译后使用的js script[type=php] 改为 script[type=tpl]
-      模版引擎title动态标题由 _ 属性改为 __html 属性
-      大幅度优化 模版引擎 编译速度
-      修正 of_base_com_net::request 通信掉线卡死问题
-      ssoSyncLdap 扩展支持 淘宝短信接口
-      单点登录管理界面排序搜索优化
-      加强 php 5.2 兼容性
+说明: + cli 模式下可以传 get post 等参数
+      + 支持更好的面向接口的开发方式
+      + hParse 可以面向 节点键 操作, 效率更高
+      + of_view::head 支持向 body 加入属性
+      + of_view::head 支持向 head 中 include 文件
+      + 添加 of_base_com_data::json 更安全的 json
+      + 添加 of_base_com_data::rule 校验数据格式
+      + 模版引擎支持 /demo/tool/jsLoad 的 include 功能
+      - 模版引擎编译后使用的js script[type=php] 改为 script[type=tpl]
+      - 模版引擎title动态标题由 _ 属性改为 __html 属性
+      * 大幅度优化 模版引擎 编译速度
+      * 修正 of_base_com_net::request 通信掉线卡死问题
+      * ssoSyncLdap 扩展支持 淘宝短信接口
+      * 单点登录管理界面排序搜索优化
+      * 加强 php 5.2 兼容性
 ----
 已修改 : /trunk
 已修改 : /trunk/changelog.txt

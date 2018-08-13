@@ -1,5 +1,5 @@
 <?php
-class demo_index extends L {
+class ctrl_index extends L {
     /**
      * 描述 : 请求路径规范
      * 作者 : Edgar.lee
@@ -66,7 +66,7 @@ class demo_index extends L {
                 of_base_com_mq::set(array('key1', '消息ID'), '消息信息(可传数组)', 'exchange');
                 L::sql(true);
             } else {
-                echo '先取消/demo/config.php下_of.com.mq的注释';
+                echo '先取消/demo/config/config.php下_of.com.mq的注释';
             }
         }
     }
@@ -124,10 +124,10 @@ $("div").click(function () {
      * 作者 : Edgar.lee
      */
     public function cache() {
-        $temp = &$this->_com->cache('demo_index::cache', array('key' => true), 'bb');
+        $temp = &$this->_com->cache('ctrl_index::cache', array('key' => true), 'bb');
         echo $temp, '<br/>';
-        echo $this->_com->cache('demo_index::cache', array('key' => false)) === null, '<br/>';
-        echo $this->_com->cache('demo_index::cache', array('key' => 1 < 2), 'bb'), '<br/>';
+        echo $this->_com->cache('ctrl_index::cache', array('key' => false)) === null, '<br/>';
+        echo $this->_com->cache('ctrl_index::cache', array('key' => 1 < 2), 'bb'), '<br/>';
     }
 
     /**

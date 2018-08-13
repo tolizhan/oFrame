@@ -1,8 +1,9 @@
 <?php
 class of_accy_db_mysql extends of_db {
-
     //连接源
     private $connection = null;
+    //事务状态(true=已开启, false=未开启)
+    private $transState = false;
     //当前结果集
     private $query = null;
 
@@ -22,8 +23,8 @@ class of_accy_db_mysql extends of_db {
 
         if (mysql_ping($connection) && mysql_select_db($params['database'], $connection)) {
             $this->connection = $connection;
-            //设置字体
-            $temp = "SET NAMES '{$params['charset']}'";
+            //设置字体, GROUP_CONCAT最大长度
+            $temp = "SET NAMES '{$params['charset']}', GROUP_CONCAT_MAX_LEN = 4294967295";
             //设置严格模式
             OF_DEBUG === false || $temp .= ', SQL_MODE = "STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ZERO_DATE,NO_ZERO_IN_DATE,NO_ENGINE_SUBSTITUTION"';
             //设置时区
@@ -127,7 +128,8 @@ class of_accy_db_mysql extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _begin() {
-        return mysql_query('START TRANSACTION', $this->connection);
+        $this->transState = mysql_query('START TRANSACTION', $this->connection);
+        return $this->transState;
     }
 
     /**
@@ -135,6 +137,7 @@ class of_accy_db_mysql extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _commit() {
+        $this->transState = false;
         return mysql_query('COMMIT', $this->connection);
     }
 
@@ -143,6 +146,7 @@ class of_accy_db_mysql extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _rollBack() {
+        $this->transState = false;
         return mysql_query('ROLLBACK', $this->connection);
     }
 
@@ -283,6 +287,8 @@ class of_accy_db_mysql extends of_db {
      */
     private function _linkIdentifier($restLink = true) {
         if (
+            //事务状态下不重新检查
+            $this->transState ||
             (is_resource($this->connection) && mysql_ping($this->connection)) ||
             ($restLink && $this->_connect())
         ) {

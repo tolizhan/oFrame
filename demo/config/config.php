@@ -2,33 +2,35 @@
 return array(
     //重写框架配置
     '_of' => array(
-        'view' => array(
+        //修改视图层目录
+        'view'      => array(
             'tplPath' => '/demo/view'
         ),
+        //修改预加载
         'preloaded' => array(
             //语言包支持
             'd0' => 'of_base_language_packs',
             //扩展支持
             'd1' => 'of_base_extension_match',
             //初始化演示界面
-            'd2' => 'demo_list',
+            'd2' => 'demo_model_list',
         ),
+        //修改扩展路径
         'extension' => array(
-            'path' => '/demo/extensions'
+            'path' => '/demo/extend'
         ),
         'com' => array(
+            //计划任务
             'timer' => array(
-                //计划任务
+                //静态任务
                 'cron' => array(
                     //静态计划任务文件
-                    'path'   => '/demo/timer/crontab.php',
-                    //k-v 池
-                    'kvPool' => 'default'
+                    'path'   => '/demo/config/crontab.php'
                 )
             ),
             'mq'    => array(
                 //消息队列池
-                /*'exchange' => array(
+                /* 'exchange' => array(
                     //适配器
                     'adapter' => 'mysql',
                     //调度参数
@@ -38,7 +40,7 @@ return array(
                     //绑定事务数据库
                     'bindDb'  => 'default',
                     //队列列表
-                    'queues'  => '/demo/queue/queue.php'
+                    'queues'  => '/demo/config/queue.php'
                 ) // */
             )
         )

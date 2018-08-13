@@ -361,18 +361,18 @@ class of_base_com_str {
 
         //有意义的编码规则
         if ($prefix) {
-            //大小前缀
-            $prefix = strtoupper($prefix);
-            //当前时间
-            $time = time();
-            //依赖磁盘路径
-            $path = ROOT_DIR . OF_DATA . "/_of/of_base_com_str/uniqid/{$prefix}.php";
             //快速设置参数
             is_int($isShow) && $minLen = $isShow;
-
+            //大小前缀
+            $prefix = strtoupper($prefix);
+            //依赖磁盘路径
+            $path = ROOT_DIR . OF_DATA . "/_of/of_base_com_str/uniqid/{$prefix}.php";
             //写入锁的方式读取数据流
             $fp = of_base_com_disk::file($path, null, null);
+            //获取计数数据
             $data = &of_base_com_disk::file($fp, true, true);
+            //当前时间
+            $time = time();
 
             //重置数据
             if (!$data || $time > $data['time']) {
@@ -387,9 +387,11 @@ class of_base_com_str {
 
             //生成唯一值
             $result = $isShow ? $prefix : '';
-            $result .= date('ymdHis', $time);
+            $result .= date('ymdHis', $data['time']);
             $result .= str_pad($data['count'], $minLen, '0', STR_PAD_LEFT);
 
+            //关闭连接
+            flock($fp, LOCK_UN) && fclose($fp);
             return $result;
         //生成32位编码
         } else {

@@ -35,7 +35,7 @@ echo "\n", $this->str;
 <script>
 function captcha(thisObj)
 {
-    $.post(ROOT_URL + '/index.php?a=captcha&c=demo_index', {'captcha' : $('#captcha').val()}, function(data) {
+    $.post(ROOT_URL + '/index.php?a=captcha&c=ctrl_index', {'captcha' : $('#captcha').val()}, function(data) {
         $(thisObj).val(data ? '成功' : '失败');
         $('#captchaImg').click();
     });

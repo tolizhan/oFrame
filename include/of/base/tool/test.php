@@ -35,7 +35,7 @@ class of_base_tool_test extends of_base_com_data {
             return array(
                 'code' => 400,
                 'data' => &$error,
-                'info' => '参数结构验证失败'
+                'info' => 'Rule verification failed'
             );
         //返回接口值
         } else {

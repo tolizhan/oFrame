@@ -21,11 +21,11 @@ return array(
     ),
     'matches' => array(
         'main_demo::test' => array(                         //当访问以下路径时会调用main_demo对象的test方法
-            'demo_pageExtension::index',                    //匹配常规页面,用ADMIN_DIR匹配后台地址
-            'demo_index::viewTest'
+            'ctrl_pageExtension::index',                    //匹配常规页面,用ADMIN_DIR匹配后台地址
+            'ctrl_index::viewTest'
         ),
         'main_demo::extendDemo' => array(                   //拦截扩展演示页面
-            'demo_index::extendDemo'
+            'ctrl_index::extendDemo'
         )
     )
 );

@@ -14,39 +14,45 @@ class of_base_link_request {
      *              }
      *          }
      *      }
+     *      exit : 校验失败是否停止, true=停止, false=返回
      * 返回 :
      *      无返回, 校验失败直接 exit
      * 作者 : Edgar.lee
      */
-    public static function rule(&$rule) {
+    public static function rule(&$rule, $exit = true) {
         //获取方法名
         $func = of::dispatch('action');
 
         //规则存在
         if (isset($rule[$func])) {
             foreach ($rule[$func] as $k => &$v) {
+                //读取 GET, POST, COOKIE 等
                 $k = '_' . strtoupper($k);
 
-                if (isset($GLOBALS[$k])) {
-                    $error = of_base_com_data::rule($GLOBALS[$k], $v);
-
-                    //校验失败
-                    if ($error) {
-                        $json = array(
-                            'code' => 400,
-                            'data' => &$error,
-                            'info' => 'Invalid parameter: ' . $k
-                        );
-                        exit(of_base_com_data::json($json));
-                    }
-                } else {
-                    $json = array(
-                        'code' => 500,
-                        'data' => array(),
-                        'info' => "Invalid rule: {$func}.{$k}"
-                    );
-                    exit(of_base_com_data::json($json));
+                //判断项不存在
+                if (!isset($GLOBALS[$k])) {
+                    $error[$k] = 'Invalid item : ' . $k;
+                //规则校验失败
+                } else if ($temp = of_base_com_data::rule($GLOBALS[$k], $v)) {
+                    $error[$k] = $temp;
                 }
+            }
+        //方法禁止调用
+        } else {
+            $error = 'Invalid func: ' . $func;
+        }
+
+        if (isset($error)) {
+            $json = array(
+                'code' => 400,
+                'data' => &$error,
+                'info' => 'Rule verification failed'
+            );
+
+            if ($exit) {
+                exit(of_base_com_data::json($json));
+            } else {
+                return $json;
             }
         }
     }

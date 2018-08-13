@@ -117,11 +117,12 @@ of::link('&buffer', '$mode = true, $pool = null', 'return of_base_link_response:
  *              }
  *          }
  *      }
+ *      exit : 校验失败是否停止, true=停止, false=返回
  * 返回 :
  *      无返回, 校验失败直接 exit
  * 作者 : Edgar.lee
  */
-of::link('rule', '&$rule', 'of_base_link_request::rule($rule);');
+of::link('rule', '&$rule, $exit = true', 'return of_base_link_request::rule($rule, $exit);');
 
 /**
  * 描述 : 加载集成插件

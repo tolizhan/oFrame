@@ -210,7 +210,11 @@ class of_base_error_writeLog {
             is_dir($temp = dirname($logPath)) || mkdir($temp, 0777, true);
             file_put_contents(
                 $logPath, 
-                strtr(serialize($logData), array("\r\n" => ' ' . ($temp = chr(0)), "\r" => $temp, "\n" => $temp)) . "\n", 
+                strtr(serialize($logData), array(
+                    "\r\n" => " +\1+",
+                    "\r"   => "+\1+",
+                    "\n"   => "+\1+"
+                )) . "\n", 
                 FILE_APPEND | LOCK_EX
             );
         }

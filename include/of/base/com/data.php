@@ -81,11 +81,14 @@ class of_base_com_data {
      *              "keys"    : 按顺序验证键名中各"*"的类型 [
      *                  null为不验证,
      *                  type字符串验证类型(正则或内置),
-     *                  {"type" => 同值类型, "min" => 数组最小个数, "max" => 数组最大个数},
+     *                  {"type" => 同"值的类型", "min" => 数组最小个数, "max" => 数组最大个数},
      *                  ...
      *              ],
      *              "type"    : 值的类型
-     *                  数组=子节点验证,
+     *                  数组=验证子节点键{
+     *                      子节点键 : 同"值的类型",
+     *                      ...
+     *                  },
      *                  "@"开头字符串=正则验证,
      *                  字符串=内置类型
      *                      "int"   : 整形, argv参数 {
@@ -108,7 +111,7 @@ class of_base_com_data {
      *                              false=强制验证布尔类型,
      *                              true=弱类型为true的均转true
      *                      }
-     *                      "date"  : 布尔类型, argv参数 {
+     *                      "date"  : 时间类型, argv参数 {
      *                          "format" : 格式化样式, 默认="Y-m-d H:i:s", false=不格式,
      *                          "min"    : 最小时间,
      *                          "max"    : 最大时间,
@@ -251,7 +254,8 @@ class of_base_com_data {
                     ) {
                         $temp = str_replace(':', '&#058;', htmlspecialchars($index['type'], ENT_QUOTES, 'UTF-8'));
                         $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') .
-                            " illegal, should be regexp \"{$temp}\" : {$shift[0]}";
+                            " illegal, should be regexp \"{$temp}\" : " .
+                            (is_scalar($shift[0]) ? var_export($shift[0], true) : print_r($shift[0], true));
                     }
                 } else {
                     $argv = &$index['argv'];
@@ -270,13 +274,17 @@ class of_base_com_data {
                                 isset($argv['max']) && $temp[] = ' <= ' . $argv['max'];
                                 ($temp = join(' and', $temp)) && $temp = ', length' . $temp;
                                 $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') .
-                                    " illegal, should be {$index['type']}{$temp} : {$shift[0]}";
+                                    " illegal, should be {$index['type']}{$temp} : " .
+                                    (is_scalar($shift[0]) ? var_export($shift[0], true) : print_r($shift[0], true));
                             }
                             break;
                         //整型
                         case 'int':
                             if (
-                                !(empty($argv['idem']) ? preg_match('@^(?:\-|\+)?\d+$@', $shift[0]) : is_int($shift[0])) ||
+                                !(empty($argv['idem']) ? 
+                                    is_numeric($shift[0]) && strpos($shift[0], '.') === false :
+                                    is_int($shift[0])
+                                ) ||
                                 isset($argv['min']) && $shift[0] < $argv['min'] ||
                                 isset($argv['max']) && $shift[0] > $argv['max']
                             ) {
@@ -286,7 +294,8 @@ class of_base_com_data {
                                 ($temp = join(' and', $temp)) && $temp = ', value' . $temp;
                                 empty($argv['idem']) || $temp = ', strict type' . $temp;
                                 $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') . 
-                                    " illegal, should be {$index['type']}{$temp} : {$shift[0]}";
+                                    " illegal, should be {$index['type']}{$temp} : " .
+                                    (is_scalar($shift[0]) ? var_export($shift[0], true) : print_r($shift[0], true));
                             } else {
                                 $shift[0] += 0;
                             }
@@ -304,7 +313,8 @@ class of_base_com_data {
                                 ($temp = join(' and', $temp)) && $temp = ', value' . $temp;
                                 empty($argv['idem']) || $temp = ', strict type' . $temp;
                                 $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') . 
-                                    " illegal, should be {$index['type']}{$temp} : {$shift[0]}";
+                                    " illegal, should be {$index['type']}{$temp} : " .
+                                    (is_scalar($shift[0]) ? var_export($shift[0], true) : print_r($shift[0], true));
                             } else {
                                 $shift[0] += 0;
                             }
@@ -324,7 +334,8 @@ class of_base_com_data {
                             //严格模式 false
                             } else if (!is_bool($shift[0])) {
                                 $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') . 
-                                    " illegal, should be {$index['type']}, strict type : {$shift[0]}";
+                                    " illegal, should be {$index['type']}, strict type : " .
+                                    (is_scalar($shift[0]) ? var_export($shift[0], true) : print_r($shift[0], true));
                             }
                             break;
                         //日期
@@ -353,21 +364,24 @@ class of_base_com_data {
                                 );
                                 ($temp = join(' and', $temp)) && $temp = ', value' . $temp;
                                 $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') . 
-                                    " illegal, should be {$index['type']}{$temp} : {$shift[0]}";
+                                    " illegal, should be {$index['type']}{$temp} : " .
+                                    (is_scalar($shift[0]) ? var_export($shift[0], true) : print_r($shift[0], true));
                             }
                             break;
                         //邮件
                         case 'mail':
                             if (!preg_match('/^[\w-.]+@([\w-]+\.)+[a-z]+$/i', $shift[0])) {
                                 $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') . 
-                                    " illegal, should be {$index['type']} : {$shift[0]}";
+                                    " illegal, should be {$index['type']} : " .
+                                    (is_scalar($shift[0]) ? var_export($shift[0], true) : print_r($shift[0], true));
                             }
                             break;
                         //回调
                         case 'call':
                             if ($temp = of::callFunc($argv, array('check' => &$shift[0]))) {
                                 $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') . 
-                                    ' illegal, ' . str_replace(':', '&#058;', $temp) . ' : ' . $shift[0];
+                                    ' illegal, ' . str_replace(':', '&#058;', $temp) . ' : ' .
+                                    (is_scalar($shift[0]) ? var_export($shift[0], true) : print_r($shift[0], true));
                             }
                             break;
                     }

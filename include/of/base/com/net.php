@@ -68,7 +68,7 @@ class of_base_com_net {
      *          true        = 无结果异步提交,
      *          回调结构    = 符合 of::callFunc 结构(不能带递资源参数), 接收请求的响应结果
      * 返回 :
-     *      失败时 : {state:false, errno:错误描述, errstr:失败码}
+     *      失败时 : {state:false, errno:失败码, errstr:错误描述}
      *      成功时 : {state:true, header:响应头, response:响应数据}
      * 注明 :
      *      异步请求参数结构($data) : {

@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200224);
+define('OF_VERSION', 200226);
 
 /**
  * 描述 : 控制层核心
@@ -722,4 +722,5 @@ class of {
         return $result;
     }
 }
+
 of::init();

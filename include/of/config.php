@@ -5,7 +5,7 @@ return array(
     //域名到产品根目录地址,根路径为空字符串,null=尝试自动计算
     'rootUrl'     => null,
     //配置文件路径, 数组=动态配置{动态键 : 配置路径}, 字符串=等同{"0" : 全局配置}
-    'config'      => '/demo/config.php',
+    'config'      => '/demo/config/config.php',
     //系统时区, 设置php支持的时区(如: Europe/London 支持夏令时), 读取格式为 ±00:00
     'timezone'    => 'PRC',
     //统一调试模式, true=开发环境, null=测试环境, false=生产环境, 字符串=切换调试环境密码
@@ -94,7 +94,9 @@ return array(
         //加载兼容IE6+ bootstrap v3
         //'of_addin_bsui_setup',
         //检查最新版本
-        'of_base_version_check'
+        'of_base_version_check',
+        //加载 composer
+        //'include_composer_vendor_autoload'
     ),
 
     //快捷集成

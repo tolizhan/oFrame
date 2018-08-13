@@ -1,0 +1,18 @@
+演示文件功能说明
+	PageExtension.php      : 页面扩展的安装与加载运行
+	index.php      : 开发演示
+		参数说明:
+			index.php 默认会加载index方法
+			index.php?a=viewTest 演示通用头,自带变量,js错误,语言包切换,js语言包,php语言包的用法
+			index.php?a=jsError js错误日志的演示,配置文件中_log['jsLog']是日志存储路径,false= 关闭js日志
+			index.php?a=mysqlError mysql错误日志的演示
+			index.php?a=phpError php错误日志的演示,配置文件中_log['phpLog']是日志存储路径
+			index.php?a=dbReset 调用存储过程自动重置的演示
+			index.php?a=testTry 异常手动,自动捕捉的演示
+
+几点注意事项
+	js调用语言包形式不建议使用<SCRIPT>形式
+	config.inc.php配置文件的路径结构要按照严格的书写方式[/XXXX/YYY],如果是根目录则为空['']
+	发布时配置文件中的_language[defaultLanguage]不要等于default[效率问题]
+	开发过程生成的语言包文件十分珍贵,一定不要忘记提交
+	配置文件的_log与_language中相关路径要有可读写权限

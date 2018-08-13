@@ -9,8 +9,10 @@
  *      sql          : 执行sql语句
  *      backupData   : 备份表数据到指定文件
  *      backupBase   : 备份表结构到指定文件
+ *      backupTable  : 备份表语句到指定文件
  *      revertData   : 更新表数据(解析并运行指定文件中的sql语句)
  *      revertBase   : 更新表结构
+ *      revertTable  : 恢复表语句(会删除原表及数据)
  *      fetchFileSql : 从文件中提取一条sql语句
  * 作者 : Edgar.lee
  */
@@ -39,6 +41,7 @@ class of_base_tool_mysqlSync {
      *          'sqlMark'        : sql标记,将关键位置加上特殊注释,方便callAdjustSql调用时定位, true=加标记,默认false {
      *              "/*`N:T'*\/" : 标志前面是表名,T 可以是['T'(TABLE), 'V'(VIEW), 'P'(PROCEDURE), 'F'(FUNCTION)]之一
      *          }
+     *          'checkRole'      : 检查角色所有权限, 数字(默认)=检查, false=不检查
      *          'matches'        : 备份不同匹配数据类型的更新项,默认全匹配 {
      *              'table'      : 表   null(默认)=全匹配,false=禁止备份,数组=按规则过滤{'include' : 一个包含的正则数组, 'exclude' : 一个排除的正则数组(优先级别高)}
      *              'view'       : 视图 同上,默认=false
@@ -69,6 +72,8 @@ class of_base_tool_mysqlSync {
             'sqlSplit'       => ';',
             //标记sql语句
             'sqlMark'        => false,
+            //检查权限
+            'checkRole'      => true,
             //匹配
             'matches'        => array()
         );
@@ -254,9 +259,18 @@ class of_base_tool_mysqlSync {
             }
         }
 
-        if (!isset($userGrants['ALL PRIVILEGES']) && count($temp = array_diff_key($needGrants, $userGrants))) {
+        //缺少权限
+        if (
+            $config['checkRole'] &&
+            !isset($userGrants['ALL PRIVILEGES']) &&
+            count($temp = array_diff_key($needGrants, $userGrants))
+        ) {
             self::message('error', '数据库缺少以下权限(数据库名:权限)', __FUNCTION__, join(', ', array_keys($temp)));
             return false;
+        //初始配置
+        } else {
+            //设置 GROUP_CONCAT 最大值
+            self::sql('SET SESSION group_concat_max_len = 4294967295');
         }
 
         return true;
@@ -1228,6 +1242,30 @@ class of_base_tool_mysqlSync {
         return $returnBool;
     }
 
+    /**
+     * 描述 : 更新备份结构
+     * 参数 :
+     *      file : 指定解析的文件全路径
+     * 返回 :
+     *      文件不存在或任何一条提取的sql执行错误返回false,否则true
+     * 作者 : Edgar.lee
+     */
+    public static function revertTable($file) {
+        self::message('tip', '开始更新结构', __FUNCTION__);
+
+        //打开文件流
+        if ($returnBool = self::fetchFileSql($file)) {
+            while ($sql = self::fetchFileSql()) {
+                self::sql($sql) === false && $returnBool = false;
+            }
+        }
+
+        self::message($returnBool ? 
+            'success' : 'error', '结构更新' . ($returnBool ? '完成' : '失败'), 'revertBaseProgress', 100);
+
+        return $returnBool;
+    }
+
     /************************************************************** 备份数据库
      * 描述 : 备份表数据到指定文件
      * 参数 :
@@ -1639,6 +1677,136 @@ class of_base_tool_mysqlSync {
         return $returnBool;
     }
 
+    /**
+     * 描述 : 备份表语句
+     * 参数 :
+     *      file   : 指定备份全路径
+     * 返回 :
+     *      包含错误返回false,否则true
+     * 作者 : Edgar.lee
+     */
+    public static function backupTable($file) {
+        //返回的布尔值
+        $returnBool = true;
+        //分隔符
+        $sqlSplit = self::$config['sqlSplit'];
+        //打开文件流
+        $fp = &self::openFile($file, 'w');
+        //关闭外键限制
+        fwrite($fp, "SET FOREIGN_KEY_CHECKS=0{$sqlSplit}\n\n");
+
+        //文件打卡成功
+        if ($returnBool = $fp !== false) {
+            //获取过滤列表
+            $tableMatches = &self::getMatches('table');
+            self::message('tip', '开始备份表', __FUNCTION__, count($tableMatches));
+
+            //生成创表语句
+            foreach ($tableMatches as &$v) {
+                //表名
+                $name = strtr($v, array('`' => '``'));
+
+                //写入删表语句
+                fwrite($fp, "DROP TABLE IF EXISTS `{$name}`{$sqlSplit}\n\n");
+
+                //写入创表语句
+                $temp = self::sql('SHOW CREATE TABLE `' . $name . '`');
+                //去掉自增
+                $temp[0]['Create Table'] = preg_replace(
+                    '@\sAUTO_INCREMENT\s*=\s*\d+\s@i',
+                    ' ',
+                    $temp[0]['Create Table']
+                );
+                fwrite($fp, $temp[0]['Create Table'] . "{$sqlSplit}\n\n");
+            }
+
+            //表语句备份完成
+            self::message('tip', '已备份百分比', 'backupBaseProgress', 25);
+
+            //获取过滤列表
+            $viewsMatches = &self::getMatches('view');
+            self::message('tip', '开始备份视图', __FUNCTION__, count($viewsMatches));
+
+            //生成创图语句
+            foreach ($viewsMatches as &$v) {
+                //视图名
+                $name = strtr($v, array('`' => '``'));
+
+                //写入删图语句
+                fwrite($fp, "DROP VIEW IF EXISTS `{$name}`{$sqlSplit}\n\n");
+
+                //写入创图语句
+                $temp = self::sql('SHOW CREATE VIEW `' . $name . '`');
+                //去掉调用权限
+                $temp[0]['Create View'] = preg_replace(
+                    '@\sDEFINER\s*=\s*[^ ]+\s@i',
+                    ' ',
+                    $temp[0]['Create View']
+                );
+                fwrite($fp, $temp[0]['Create View'] . "{$sqlSplit}\n\n");
+            }
+
+            //视图语句备份完成
+            self::message('tip', '已备份百分比', 'backupBaseProgress', 50);
+
+            //获取过滤列表
+            $procMatches = &self::getMatches('procedure');
+            self::message('tip', '开始备份过程', __FUNCTION__, count($procMatches));
+
+            //生成过程语句
+            foreach ($procMatches as &$v) {
+                //表名
+                $name = strtr($v, array('`' => '``'));
+
+                //写入删过程语句
+                fwrite($fp, "DROP PROCEDURE IF EXISTS `{$name}`{$sqlSplit}\n\n");
+
+                //写入创过程语句
+                $temp = self::sql('SHOW CREATE PROCEDURE `' . $name . '`');
+                //去掉调用权限
+                $temp[0]['Create Procedure'] = preg_replace(
+                    '@\sDEFINER\s*=\s*[^ ]+\s@i',
+                    ' ',
+                    $temp[0]['Create Procedure']
+                );
+                fwrite($fp, $temp[0]['Create Procedure'] . "{$sqlSplit}\n\n");
+            }
+
+            //过程备份完成
+            self::message('tip', '已备份百分比', 'backupBaseProgress', 75);
+
+            //获取过滤列表
+            $funcMatches = &self::getMatches('function');
+            self::message('tip', '开始备份函数', __FUNCTION__, count($funcMatches));
+
+            //生成过程语句
+            foreach ($funcMatches as &$v) {
+                //表名
+                $name = strtr($v, array('`' => '``'));
+
+                //写入删过程语句
+                fwrite($fp, "DROP FUNCTION IF EXISTS `{$name}`{$sqlSplit}\n\n");
+
+                //写入创过程语句
+                $temp = self::sql('SHOW CREATE FUNCTION `' . $name . '`');
+                //去掉调用权限
+                $temp[0]['Create Function'] = preg_replace(
+                    '@\sDEFINER\s*=\s*[^ ]+\s@i',
+                    ' ',
+                    $temp[0]['Create Function']
+                );
+                fwrite($fp, $temp[0]['Create Function'] . "{$sqlSplit}\n\n");
+            }
+
+            //过程备份完成
+            self::message('tip', '已备份百分比', 'backupBaseProgress', 100);
+        }
+
+        //开启外键限制
+        fwrite($fp, "SET FOREIGN_KEY_CHECKS=1{$sqlSplit}");
+        return $returnBool;
+    }
+
     /************************************************************** sql操作工具
      * 描述 : 从文件中提取一条sql语句
      * 参数 :
@@ -1690,6 +1858,8 @@ class of_base_tool_mysqlSync {
                     "--\t"    => false,
                     //  多行注释
                     '/*'      => false,
+                    //BEGIN 开始
+                    'BEGIN'   => false,
                     //; 语句分隔符
                     $sqlSplit => false
                 );
@@ -1703,7 +1873,8 @@ class of_base_tool_mysqlSync {
 
                     //读取到数据
                     if ($lastStr) {
-                        $matchData = of_base_com_str::strArrPos($str, $tempMatches === null ? $defaultMatches : $tempMatches, $nowOffset);
+                        $upper = strtoupper($str);
+                        $matchData = of_base_com_str::strArrPos($upper, $tempMatches === null ? $defaultMatches : $tempMatches, $nowOffset);
 
                         //没查找到数据
                         if ($matchData === false) {
@@ -1744,6 +1915,12 @@ class of_base_tool_mysqlSync {
                                 case '*':
                                     //匹配下一个字符串
                                     $tempMatches = $tempMatches === null ? array( '*/' => false ) : null;
+                                    break;
+                                //BEGIN 开始存储过程
+                                case 'B':
+                                //END 结束存储过程
+                                case 'E':
+                                    $tempMatches = $tempMatches === null ? array('END' => false) : null;
                                     break;
                             }
                         }

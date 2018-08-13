@@ -20,13 +20,13 @@ class of_base_error_tool {
                 $data[$k]['_code'] = isset($v['environment']['type']) ? $v['environment']['type'] : $v['errorType'];
                 $data[$k]['_file'] = $v['environment']['file'];
                 $data[$k]['_line'] = $v['environment']['line'];
-                $data[$k]['_message'] = '<pre>' . strtr(htmlentities($v['environment']['message'], ENT_QUOTES, 'UTF-8'), array("\0" => "\n", "\n" => '<br>', ' ' => '&nbsp;')) . '</pre>';
+                $data[$k]['_message'] = '<pre>' .
+                    htmlentities($v['environment']['message'], ENT_QUOTES, 'UTF-8') .
+                '</pre>';
                 //防止非UTF8不显示
-                $data[$k]['_detaile'] = iconv('UTF-8', 'UTF-8//IGNORE',
-                    strtr(
-                        htmlspecialchars(print_r($v['environment'], true)), 
-                        array("\0" => "\n", "\n" => '<br>', ' ' => '&nbsp;')
-                    )
+                $data[$k]['_detaile'] = iconv(
+                    'UTF-8', 'UTF-8//IGNORE',
+                    htmlspecialchars(print_r($v['environment'], true))
                 );
             }
         } else {

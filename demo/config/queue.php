@@ -9,11 +9,11 @@ return array(
             //不存在的键将被抛弃
             'key' => array(
                 'cNum' => 3,
-                'call' => 'demo_index::mqTest'
+                'call' => 'ctrl_index::mqTest'
             ),
             'key1' => array(
                 'cNum' => 1,
-                'call' => 'demo_index::mqTest'
+                'call' => 'ctrl_index::mqTest'
             )
         )
     ),
@@ -25,7 +25,7 @@ return array(
             //不存在的键将被抛弃
             'key' => array(
                 'cNum' => 4,
-                'call' => 'demo_index::mqTest'
+                'call' => 'ctrl_index::mqTest'
             )
         )
     )

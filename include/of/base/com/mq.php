@@ -85,7 +85,7 @@ abstract class of_base_com_mq {
             echo self::state() ? 'runing' : 'starting', " ";
 
             if (OF_DEBUG === false) {
-                exit('Access denied: production mode.');
+                exit("<br>\nAccess denied: production mode.");
             //重启消息队列
             } else if ($reload) {
                 of_base_com_disk::file(self::$mqDir . '/command.php', '');
