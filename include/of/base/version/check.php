@@ -20,8 +20,7 @@ class of_base_version_check {
 
             //读取失败
             if (!$version) {
-                $temp = 'https://raw.githubusercontent.com/tolizhan/oFrame/master/include/of/of.php';
-                of_base_com_net::request($temp, array(), 'of_base_version_check::version');
+                of_base_com_net::request(OF_URL, array(), 'of_base_version_check::version');
             //读取成功 && 有最新版本
             } else if ($version > OF_VERSION) {
                 $temp = '<a ' .
@@ -42,10 +41,25 @@ class of_base_version_check {
      *      params : of_base_com_net::request 回调参数
      * 作者 : Edgar.lee
      */
-    public static function version($params) {
-        preg_match('@\bOF_VERSION[^\d]+(\d+)@', $params['response'], $temp);
-        $temp = $temp ? (int)$temp[1] : 1;
-        of_base_com_kv::set('of_base_version_check::version', $temp, 86400);
+    public static function version() {
+        //尝试列表
+        $temp = array(
+            //github
+            'https://raw.githubusercontent.com/tolizhan/oFrame/master/include/of/of.php',
+            //码云
+            'https://gitee.com/tolizhan/oFrame/raw/master/include/of/of.php'
+        );
+
+        foreach ($temp as &$v) {
+            $params = of_base_com_net::request($v);
+            //请求成功
+            if ($params['state']) {
+                preg_match('@\bOF_VERSION[^\d]+(\d+)@', $params['response'], $temp);
+                $temp = $temp ? (int)$temp[1] : 1;
+                of_base_com_kv::set('of_base_version_check::version', $temp, 86400);
+                break ;
+            }
+        }
     }
 }
 

@@ -26,7 +26,7 @@ session_write_close();
 //读取配置文件
 $config = of::config('_of.addin.oUpload', array()) + array(
     'filtExt' => '@^(?:exe|php|html|htm|js|css)$@',
-    'folder'  => '@^' . OF_DATA . '/@'
+    'folder'  => '@^' . OF_DATA . '/upload/@'
 );
 //保证有字符输出
 echo ' ';
@@ -55,6 +55,8 @@ $fExt = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 if (
     //路径有效
     $path[0] === '/' &&
+    //框架写入路径禁止上传
+    strncmp($temp = OF_DATA . '/_of/', $path, strlen($temp)) &&
     //路径验证
     preg_match($config['folder'], $path, $math) &&
     //扩展验证

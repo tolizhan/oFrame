@@ -26,7 +26,7 @@ function extendDemo($event = null) {
  * 描述 : 配置文件中 'main_demo::test' 的入口文件
  * 作者 : Edgar.lee
  */
-function test(&$params) {
+function test(&$params = null) {
     echo '<br>扩展的简单演示<pre>';
     //*
     echo '打印调度信息 ';

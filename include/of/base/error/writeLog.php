@@ -88,7 +88,7 @@ class of_base_error_writeLog {
                     ini_get('error_append_string');
                 $backtrace['backtrace'] = array();
                 $backtrace = array(
-                    'errorType'   => 'error',
+                    'errorType'   => 'phpError',
                     'environment' => $backtrace
                 );
             } else {
@@ -114,7 +114,7 @@ class of_base_error_writeLog {
         //常规错误 && 不是过期函数
         } else if (error_reporting() && $errno !== 8192) {
             $backtrace = array(
-                'errorType'     =>'error',
+                'errorType'     =>'phpError',
                 'environment'   => array(
                     'type'      => $errno,
                     'message'   => $errstr,
@@ -131,15 +131,24 @@ class of_base_error_writeLog {
             return !!$errstr;
         }
 
-        //错误类型
-        $backtrace['environment']['type'] = $errorLevel[$backtrace['environment']['type']];
-        //移除无效字符
-        $index = iconv('UTF-8', 'UTF-8//IGNORE', $index = &$backtrace['environment']['message']);
         //格式化日志
         self::formatLog($backtrace);
 
-        $temp = htmlentities($index, ENT_QUOTES, 'UTF-8');
-        self::writeLog($backtrace, 'php', "{$backtrace['environment']['type']} : \"{$temp}\" in {$backtrace['environment']['file']} on line {$backtrace['environment']['line']}");
+        //错误日志
+        $index = &$backtrace['environment'];
+        //错误编码
+        $index['code'] = $index['type'];
+        //错误类型
+        $backtrace['errorType'] === 'phpError' && $index['type'] = $errorLevel[$index['type']];
+        //移除无效字符
+        $index['message'] = iconv('UTF-8', 'UTF-8//IGNORE', $index['message']);
+
+        //输出错误日志
+        $temp = htmlentities($index['message'], ENT_QUOTES, 'UTF-8');
+        self::writeLog(
+            $backtrace, 'php',
+            "{$index['type']} : \"{$temp}\" in {$index['file']} on line {$index['line']}"
+        );
     }
 
     /**
@@ -176,9 +185,17 @@ class of_base_error_writeLog {
         //格式化日志
         self::formatLog($backtrace);
 
+        //错误日志
+        $index = &$backtrace['environment'];
+        //错误编码
+        $index['code'] = substr($params['type'], 0, strpos($params['type'], ':'));
+
         //输出错误日志
-        $temp = htmlentities($backtrace['environment']['message'], ENT_QUOTES, 'UTF-8');
-        self::writeLog($backtrace, 'sql', "[{$backtrace['environment']['type']}] : \"{$temp}\" in {$backtrace['environment']['file']} on line {$backtrace['environment']['line']}");
+        $temp = htmlentities($index['message'], ENT_QUOTES, 'UTF-8');
+        self::writeLog(
+            $backtrace, 'sql',
+            "[{$index['type']}] : \"{$temp}\" in {$index['file']} on line {$index['line']}"
+        );
     }
 
     /**
@@ -206,17 +223,56 @@ class of_base_error_writeLog {
 
         //写入日志
         if ($index = &$config[$logType . 'Log']) {
+            //日志路径
             $logPath = ROOT_DIR . $index . date('/Y/m/d', $logData['time']) . $logType;
-            is_dir($temp = dirname($logPath)) || mkdir($temp, 0777, true);
-            file_put_contents(
-                $logPath, 
-                strtr(serialize($logData), array(
-                    "\r\n" => " +\1+",
-                    "\r"   => "+\1+",
-                    "\n"   => "+\1+"
-                )) . "\n", 
-                FILE_APPEND | LOCK_EX
-            );
+            //追加方式打开日志
+            $handle = &of_base_com_disk::file($logPath . 'Data.php', null, null);
+            //日志文本数据
+            $logText = strtr(serialize($logData), array(
+                "\r\n" => " +\1+",
+                "\r"   => "+\1+",
+                "\n"   => "+\1+"
+            )) . "\n";
+
+            //已写入日志
+            if ($temp = ftell($handle)) {
+                //日志当前偏移
+                $logSize = str_pad(
+                    //日志大小转换(十进制字节=>8位36进制)
+                    base_convert($temp, 10, 36),
+                    8, '0', STR_PAD_LEFT
+                );
+            //新日志文件
+            } else {
+                //写入保护代码
+                fwrite($handle, '<?php exit; ?> ');
+                //删除索引数据
+                of_base_com_disk::delete($logPath . 'Attr');
+                //日志起始偏移
+                $logSize = '0000000f';
+            }
+
+            //写入日志成功
+            if (of_base_com_disk::file($handle, $logText, null)) {
+                //记录索引日志
+                of_base_com_disk::file($logPath . 'Attr/index.bin', $logSize, null);
+
+                //错误分组标识
+                $index = &$logData['environment'];
+                $eMd5 = md5($index['file'] . '::' . $index['line'] . '::' . $index['code']);
+                //错误分组标识路径
+                $ePath = $logPath . 'Attr/group/' . $eMd5 . '.bin';
+
+                //分组明细日志不存在 && 添加到分组概要日志
+                is_file($ePath) || of_base_com_disk::file(
+                    $logPath . 'Attr/group.bin', $logSize . $eMd5, null
+                );
+                //记录分组明细日志
+                of_base_com_disk::file($ePath, $logSize, null);
+            }
+
+            //释放连接源
+            $handle = null;
         }
 
         //错误回调
@@ -253,7 +309,7 @@ class of_base_error_writeLog {
      * 参数 :
      *     &logData : 日志数据
      * 结构 : {
-     *      'errorType'   : 错误类型(sqlError, exception, error)
+     *      'errorType'   : 错误类型(jsError, sqlError, phpError, exception)
      *      'environment' : 错误体,包括环境,错误细节,回溯 {
      *          'type'    : php=错误级别, sql=错误码及说明
      *          'message' : php=错误描述, sql=错误sql
@@ -281,29 +337,27 @@ class of_base_error_writeLog {
         //debug运行追踪
         if (strpos($logData['environment']['file'], '(') !== false) {
             foreach ($backtrace as $k => &$v) {
-                //大部分正常方式
-                if (isset($v['file'])) {
-                    $temp = array(strtr($v['file'], '\\', '/'));
-
-                    //在 eval 中, 尝试精确的地址
-                    if (strpos($v['file'], '(')) {
-                        if (
-                            //通过类名变相定位 && sql类型下有效类名
-                            isset($v['class']) && (
-                                $logData['errorType'] !== 'sqlError' || 
-                                strncmp($v['class'], 'of_', 3) && $v['class'] !== 'L'
-                            )
-                        ) {
-                            $temp = array(ROOT_DIR . '/' . strtr($v['class'], '_', '/') . '.php');
-                            $k > 0 && $temp[0] .= "({$backtrace[$k-1]['line']})";
-                        } else {
-                            //不存在类名 || sql类型无效类名
-                            continue ;
-                        }
+                //通过类名找到文件
+                if (
+                    //存在类
+                    isset($v['class']) &&
+                    //不是内置 L 类
+                    $v['class'] !== 'L' &&
+                    //不是框架类
+                    strncmp($v['class'], 'of_', 3) &&
+                    //类文件存在
+                    is_file(
+                        $temp = ROOT_DIR . '/' . strtr($v['class'], '_', '/') . '.php'
+                    )
+                ) {
+                    //sql错误取上一个link做为行数
+                    if ($logData['errorType'] === 'sqlError' && $k > 0) {
+                        $temp .= "({$backtrace[--$k]['line']})";
                     }
-                //回调中的类是通过 eval 生成的
-                } else if (isset($v['class'])) {
-                    $temp = array(ROOT_DIR . '/' . strtr($v['class'], '_', '/') . '.php');
+                    $temp = array($temp);
+                //大部分正常方式
+                } else if (isset($v['file']) && !strpos($v['file'], '(')) {
+                    $temp = array(strtr($v['file'], '\\', '/') . "({$v['line']})");
                 //无法定位文件
                 } else {
                     continue ;
@@ -315,8 +369,15 @@ class of_base_error_writeLog {
                 ) {
                     //在eval中
                     if (($temp[1] = strpos($temp[0], '(')) !== false) {
-                        $logData['environment']['file'] = substr($temp[0], 0, $temp[1]);
-                        $logData['environment']['line'] = substr($temp[0], $temp[1] + 1, strpos($temp[0], ')') - $temp[1] - 1);
+                        //提取文件
+                        $logData['environment']['file'] = substr(
+                            $temp[0], 0, $temp[1]
+                        );
+                        //提取行数
+                        $logData['environment']['line'] = substr(
+                            $temp[0], $temp[1] + 1,
+                            strpos($temp[0], ')') - $temp[1] - 1
+                        );
                     //正常执行的错误
                     } else {
                         $logData['environment']['file'] = $temp[0];

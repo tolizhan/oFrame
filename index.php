@@ -14,6 +14,19 @@ if (isset($_GET['c'])) {
         isset($_GET['a']) ? $_GET['a'] : 'index',
         PHP_SAPI === 'cli' ? null : true
     );
+
     //返回数组转成json
-    if (is_array($result)) echo of_base_com_data::json($result);
+    if (is_array($result)) {
+        //jsonp 方式
+        if (
+            isset($_GET['callback']) &&
+            isset($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+            $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest'
+        ) {
+            echo $_GET['callback'], '(', of_base_com_data::json($result), ');';
+        //常规 方式
+        } else {
+            echo of_base_com_data::json($result);
+        }
+    }
 }

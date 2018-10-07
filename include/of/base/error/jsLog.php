@@ -23,7 +23,7 @@ class of_base_error_jsLog extends of_base_error_writeLog {
                 $logPath = ROOT_DIR . $logPath . date('/Y/m', $_SERVER['REQUEST_TIME']);
                 preg_match('@\w+Error@', $_POST['message'], $match);
                 $data = array(
-                    'errorType'   => $match ? $match[0] : 'jsError',
+                    'errorType'   => 'jsError',
                     'environment' => &$_POST,
                     'time'        => &$_SERVER['REQUEST_TIME']
                 );
@@ -32,6 +32,8 @@ class of_base_error_jsLog extends of_base_error_writeLog {
                     '_SESSION' => &$_SESSION,
                     '_SERVER'  => &$_SERVER,
                 );
+                //js七类错误
+                $_POST['code'] = $_POST['type'] = $match ? $match[0] : 'Error';
 
                 self::writeLog($data, 'js', '');
             }

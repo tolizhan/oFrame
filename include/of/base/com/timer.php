@@ -4,7 +4,10 @@
  * 作者 : Edgar.lee
  */
 class of_base_com_timer {
+    //日志配置, _of.com.timer
     private static $config = null;
+    //当前运行的任务, 并发时生成 {"call" : taskCall参数, "cAvg" : taskCall参数}
+    private static $nowTask = null;
 
     /**
      * 描述 : 初始化
@@ -214,7 +217,7 @@ class of_base_com_timer {
                     $taskId = basename($kt);
                     //当前任务磁盘目录
                     $dir = $path . '/' . $taskId;
-
+                    //打卡并发文件流
                     $tFp = fopen($dir . '.php', 'r+');
 
                     //加锁成功, 任务没运行
@@ -227,6 +230,7 @@ class of_base_com_timer {
                         //读取任务回调信息
                         $temp = of_base_com_disk::file($temp, false, true);
                         $index['call'] = json_decode($temp, true);
+                        $index['list'] = array();
 
                         //读取运行中的进程, 打开并发列表
                         of_base_com_disk::each($dir, $taskList);
@@ -250,6 +254,8 @@ class of_base_com_timer {
                                 fclose($fp);
                             }
                         }
+
+                        ksort($index['list']);
                     }
 
                     fclose($tFp);
@@ -279,6 +285,128 @@ class of_base_com_timer {
                     fclose($fp);
                 }
             }
+
+            ksort($save);
+        }
+
+        return $result;
+    }
+
+    /**
+     * 描述 : 为并发提供共享数据
+     * 参数 :
+     *      data : 读写数据,
+     *          null=无锁读取
+     *          false=清空读取, 读取数据后清空原始数据
+     *          true=写锁读取, 读取数据同时加独享锁, 指针在最后位置
+     *          数组=单层替换, 将数组键的值替换对应共享数据键的值
+     *      cIds : 指定任务中的并发ID
+     *          null=读取自身
+     *          数字=指定并发ID
+     *          数组=多个并发ID, [并发ID, ...]
+     *          true=正在运行
+     *          false=包括停止
+     *      call : 指定任务ID
+     *          null=读取自身
+     *          '/'开头字符串=指定任务ID
+     *          符合框架回调结构=指定任务的回调
+     * 返回 :
+     *      {
+     *          "info" : {
+     *              并发ID : {
+     *                  "isRun" : 是否运行, true=运行, false=停止
+     *                  "wRes"  : 写资源, data为true时有效
+     *                  "data"  : 并发所存数据
+     *              }, ...
+     *          }
+     *      }
+     * 作者 : Edgar.lee
+     */
+    public static function &data($data = null, $cIds = null, $call = null) {
+        //返回结构
+        $result = array('info' => array());
+
+        if ($cIds !== null && $call !== null || $nowTask = &self::$nowTask) {
+            //读取自身任务
+            if ($call === null) {
+                $call = '/' . $nowTask['cAvg']['cMd5'];
+            //计算任务路径
+            } else if (is_array($call) || $call[0] !== '/') {
+                $call = '/' . of_base_com_data::digest($call);
+            }
+
+            //任务路径
+            $path = self::$config['path'] . '/concurrent'. $call;
+            //过滤加锁(true=不过滤)
+            $filt = $cIds !== true;
+
+            //读取自身
+            if (is_bool($cIds)) {
+                //重置并发ID
+                $cIds = array();
+
+                //读取运行中的进程, 打开并发列表
+                of_base_com_disk::each($path, $task);
+                //筛选并发ID
+                foreach ($task as $k => &$v) {
+                    //是文件 && 是进程
+                    if (!$v && is_numeric($temp = basename($k))) {
+                        $cIds[] = $temp;
+                    }
+                }
+            } else if (!is_array($cIds)) {
+                $cIds = array($cIds === null ? $nowTask['cAvg']['cCid'] : $cIds);
+            }
+
+            //读取数据
+            foreach ($cIds as &$v) {
+                //并发文件存在
+                if (is_file($cDir = $path . '/' . $v)) {
+                    //进程是否运行, true=运行, false=停止
+                    $isRun = !flock(fopen($cDir, 'r'), LOCK_SH | LOCK_NB);
+
+                    //进程运行 || 不过滤
+                    if ($isRun || $filt) {
+                        $index = &$result['info'][$v];
+                        //进程运行状态
+                        $index = array('isRun' => $isRun, 'wRes' => null);
+
+                        //加写锁(array, bool)
+                        if ($data || $data === false) {
+                            //打开写锁流
+                            $index['wRes'] = &of_base_com_disk::file(
+                                $cDir . '.dat', null, null
+                            );
+
+                            //文件尺寸
+                            $temp = ftell($index['wRes']);
+                            //移动到首位
+                            fseek($index['wRes'], 0);
+                            //解析并发数据
+                            $index['data'] = fread($index['wRes'], $temp + 1);
+                            $index['data'] = $index['data'] ?
+                                unserialize($index['data']) : array();
+
+                            //合并数据
+                            if (is_array($data)) {
+                                //写入数据
+                                $index['data'] = $data + $index['data'];
+                                of_base_com_disk::file($index['wRes'], $index['data']);
+                            //删除数据
+                            } else if ($data === false) {
+                                of_base_com_disk::file($index['wRes'], '');
+                            }
+
+                            //加锁读取 || 解锁资源
+                            $data === true || $index['wRes'] = null;
+                        //读数据
+                        } else {
+                            $index['data'] = &of_base_com_disk::file($cDir . '.dat', true);
+                            $index['data'] || $index['data'] = array();
+                        }
+                    }
+                }
+            }
         }
 
         return $result;
@@ -295,6 +423,11 @@ class of_base_com_timer {
      * 作者 : Edgar.lee
      */
     public static function taskCall($call, $cAvg = false) {
+        //记录当前任务
+        self::$nowTask = array(
+            'call' => $call,
+            'cAvg' => $cAvg
+        );
         //系统回调参数
         $params = array(
             'call' => &$call['call'],

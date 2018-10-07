@@ -296,7 +296,7 @@ class of_base_sso_tool extends of_base_sso_api {
         $mode && session_write_close();
         $response = &of_base_com_net::request($url);
         //引用响应值
-        $data = $response['response'];
+        $data = &$response['response'];
         //重启session
         $mode && (function_exists('session_open') ? session_open() : session_start());
 

@@ -616,11 +616,13 @@ class of_base_com_com {
                 $result[$key] .= $char;
             }
 
-            //加入干扰象素
-            /*for($i=0;$i<100;$i++) {
-                $randcolor = ImageColorallocate($im,rand(0,255),rand(0,255),rand(0,255));
-                imagesetpixel($im, rand() % 70 , rand() % 30 , $randcolor);
-            }*/
+            /* 加入干扰象素
+            for($i = 0, $j = $width * $height * 0.2; $i < $j; ++$i) {
+                $randcolor = ImageColorallocate(
+                    $im, rand(0, 255), rand(0, 255), rand(0, 255)
+                );
+                imagesetpixel($im, rand() % $width, rand() % $height, $randcolor);
+            } // */
 
             //发送到浏览器
             imagepng($im);

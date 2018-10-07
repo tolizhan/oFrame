@@ -543,7 +543,7 @@ var oUpload = (function () {
                         'name' : files[i].name,
                         'modificationDate' : {
                             //最后修改时间戳
-                            'time' : files[i].lastModifiedDate.getTime()
+                            'time' : files[i].lastModified || files[i].lastModifiedDate.getTime()
                         }
                     },
                     'file'   : files[i],

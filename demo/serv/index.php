@@ -9,6 +9,6 @@ require dirname(dirname(dirname(__FILE__))) . '/include/of/of.php';
 //调查初始化
 $_GET += array('c' => 'main', 'a' => 'index');
 //调度代码 : 类名, 动作, 安全校验
-$result = of::dispatch('serv_pApi_' . $_GET['c'], $_GET['a'], null);
+$result = of::dispatch('serv_papi_' . $_GET['c'], $_GET['a'], null);
 //返回数组转成json
 if (is_array($result)) echo of_base_com_data::json($result);

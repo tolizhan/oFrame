@@ -69,7 +69,8 @@ class of_base_com_csv {
                 //支持字符串和数字两种类型
                 if (is_string($v)) {
                     //数字类型 ? 防止科学记数法 : 字符串替换
-                    $v = is_numeric($v) ? $v . "\t" : str_replace('"', '""', $v);
+                    $v = isset($v[8]) && is_numeric($v) ?
+                        $v . "\t" : str_replace('"', '""', $v);
                 }
             }
             //保存到结果集

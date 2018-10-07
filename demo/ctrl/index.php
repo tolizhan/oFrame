@@ -45,12 +45,15 @@ class ctrl_index extends L {
      * 描述 : 演示消息队列
      * 作者 : Edgar.lee
      */
-    public function mqTest($params = null) {
+    public static function mqTest($params = null) {
         //触发消息队列
         if ($params) {
+            //写入当前并发数据
+            $data = of_base_com_timer::data(array('params' => $params));
+            //记录到日志
             file_put_contents(
                 ROOT_DIR . OF_DATA . '/mqTest.txt', 
-                time() . print_r($params, true),
+                time() . print_r($data, true),
                 FILE_APPEND | LOCK_EX
             );
             return true;
@@ -61,7 +64,7 @@ class ctrl_index extends L {
                     ROOT_DIR . OF_DATA . '/mqTest.txt';
                 L::sql(null);
                 //queue1 与 queue2 将同时收到信息, 延迟一分钟执行
-                of_base_com_mq::set(array('key', '消息ID', 60), '消息信息(可传数组)', 'exchange');
+                of_base_com_mq::set(array('key', '消息ID', 600), '消息信息(可传数组)', 'exchange');
                 //因 queue2 没有 key1 键, 所以仅 queue1 会收到信息
                 of_base_com_mq::set(array('key1', '消息ID'), '消息信息(可传数组)', 'exchange');
                 L::sql(true);

@@ -10,8 +10,13 @@
  *              "bindDb"  : 事务数据库连接池名,
  *              "queues"  : 生产消息时会同时发给队列, 字符串=该结构的配置文件路径 {
  *                  队列名 : {
- *                      "mode" : 队列模式, null=生产及消费,false=仅生产,true=仅消费,
- *                      "keys" : 消费消息时回调结构 {
+ *                      "mode"   : 队列模式, null=生产及消费,false=仅生产,true=仅消费,
+ *                      "check"  : 自动重载消息队列触发函数,
+ *                          true=(默认)校验"消费回调"加载的文件变动,
+ *                          false=仅校验队列配置文件变动,
+ *                          字符串=以"@"开头的正则忽略路径(软链接使用真实路径), 如: "@/ctrl/@i"
+ *                      "memory" : 单个并发未释放内存积累过高后自动重置, 单位M, 默认50, 0=不限制
+ *                      "keys"   : 消费消息时回调结构 {
  *                          消息键 : 不存在的键将被抛弃 {
  *                              "cNum" : 并发数量,
  *                              "call" : 回调结构
@@ -60,6 +65,13 @@ abstract class of_base_com_mq {
     private static $waitMq = array();
     //依赖根路径
     private static $mqDir = null;
+    //触发时的环境变量
+    private static $fireEnv = array(
+        //未释放的内存(默认1M)
+        'memory'   => 1048576,
+        //时区
+        'timezone' => null
+    );
 
     /**
      * 描述 : 初始化
@@ -109,6 +121,18 @@ abstract class of_base_com_mq {
                             'fire' => &$v['call']['params'][0]['fire'],
                             'list' => &$v['list']
                         );
+
+                        //读取消息状态信息
+                        foreach ($v['list'] as $kl => &$vl) {
+                            $vl['execInfo'] = of_base_com_timer::data(null, $kl, '/' . $k);
+                            $vl['execInfo'] = &$vl['execInfo']['info'][$kl]['data']['_mq'];
+
+                            if (isset($vl['execInfo']['minMemory'])) {
+                                $vl['execInfo']['minMemory'] = round(
+                                    $vl['execInfo']['minMemory'] / 1048576, 2
+                                ) . 'M';
+                            }
+                        }
                     } else {
                         unset($list[$k]);
                     }
@@ -272,22 +296,43 @@ abstract class of_base_com_mq {
      * 作者 : Edgar.lee
      */
     public static function fireQueue($params, $nowTask) {
-        $config = &self::pool($params['fire']['pool'], $bind);
         $data = &$params['fire'];
         $data['this'] = &$nowTask['this'];
+        $config = &self::pool($params['fire']['pool'], $bind);
+        $config = &$config['queues'][$data['queue']];
+        $fireEnv = &self::$fireEnv;
 
         //有效回调
-        if ($call = &$config['queues'][$data['queue']]['keys'][$data['key']]['call']) {
+        if ($call = &$config['keys'][$data['key']]['call']) {
+            //校验文件变动, ture=加载的文件, false=不校验, 字符串=@开头的正则白名单
+            $check = &$config['check'];
+            //检查内存占用峰值
+            $memory = $config['memory'] * 1048576;
+            //重新加载提示
+            $isTip = $data['this']['cCid'] === 1;
+            //可以垃圾回收
+            ($isGc = function_exists('gc_enable')) && gc_enable();
+            //接收环境变化路径
             $path = self::$mqDir . '/command.php';
+            //消息队列实例对象
             $mqObj = &self::$mqList[$bind]['pools'][$data['pool']]['inst'];
+            //记录默认时区
+            $fireEnv['timezone'] = date_default_timezone_get();
+            //重置当前并发数据
+            of_base_com_timer::data(array('_mq' => array()));
 
             while (true) {
                 $cmd = of_base_com_disk::file($path, true);
                 $cmd || $cmd = array('taskPid' => '', 'compare' => '');
                 isset($tPid) || $tPid = $cmd['taskPid'];
 
-                //有效任务ID && 为当前任务
-                if ($cmd['taskPid'] && $cmd['taskPid'] === $tPid) {
+                //运行环境无变化
+                if (
+                    //有效任务ID && 为当前任务
+                    $cmd['taskPid'] && $cmd['taskPid'] === $tPid &&
+                    //不验证文件 || 验证通过
+                    (!$check || self::isFileNew($check, $isTip))
+                ) {
                     //存在消息
                     if ($temp = $mqObj->_fire($call, $data)) {
                         foreach ($temp as &$v) {
@@ -303,6 +348,19 @@ abstract class of_base_com_mq {
                                     'argv--' . print_r($v['params'], true)
                                 );
                             }
+                        }
+
+                        //回收内存
+                        $isGc && gc_collect_cycles();
+                        //检查内存 && 未释放内存过高
+                        if ($memory && $fireEnv['memory'] > $memory) {
+                            //memory footprint reaches 100mb
+                            trigger_error(
+                                'MQ auto reload: (M)Unreleased memory takes up ' .
+                                "more than {$config['memory']}MB"
+                            );
+                            //重置消息队列
+                            break;
                         }
                     //消息为空
                     } else {
@@ -484,6 +542,42 @@ abstract class of_base_com_mq {
     }
 
     /**
+     * 描述 : 触发时具体方法回调
+     *     &call : 框架标准回调结构
+     *     &data : 传入到 [_] 位置的参数
+     * 作者 : Edgar.lee
+     */
+    protected static function &callback(&$call, &$data) {
+        //运行次数
+        static $count = 0;
+
+        //生成并发日志
+        $cLog = array(
+            'msgId'     => &$data['msgId'],
+            'startTime' => date('Y-m-d H:i:s', time()),
+            'doneTime'  => '',
+            'runCount'  => ++$count,
+            'minMemory' => &self::$fireEnv['memory']
+        );
+        //记录监听数据
+        of_base_com_timer::data(array('_mq' => &$cLog));
+
+        //处理消息
+        $result = &of::callFunc($call, $data);
+
+        //恢复默认时区
+        date_default_timezone_set(self::$fireEnv['timezone']);
+        //修改并发日志
+        $cLog['doneTime'] = date('Y-m-d H:i:s', time());
+        //记录当前内存
+        $cLog['minMemory'] = memory_get_peak_usage();
+        //记录监听数据
+        of_base_com_timer::data(array('_mq' => &$cLog));
+
+        return $result;
+    }
+
+    /**
      * 描述 : 获取队列池
      * 参数 :
      *     &pool : 消息队列池
@@ -526,6 +620,13 @@ abstract class of_base_com_mq {
 
                 //加载消息键
                 foreach ($config[$pool]['queues'] as $k => &$v) {
+                    $v += array(
+                        //默认校验加载的文件变动
+                        'check'  => true,
+                        //检查内存占用峰值
+                        'memory' => 50,
+                    );
+                    //记录消息队列列表数据
                     $mqArr['keys'][$k] = array(
                         'mode' => &$v['mode'],
                         'data' => &$v['keys']
@@ -604,6 +705,50 @@ abstract class of_base_com_mq {
             //{队列池:{队列名:{}, ...}} 转成 {队列名:{}, ...}
             $config = $config[$pool];
         }
+    }
+
+    /**
+     * 描述 : 校验文件是
+     * 参数 :
+     *     &preg  : 忽略校验的正则, true=全校验, 字符串=以"@"开头的正则忽略路径
+     *      isTip : 验证失败是否抛出错误, ture=是, false=否
+     * 返回 :
+     *      true=最新的, false=有变动
+     * 作者 : Edgar.lee
+     */
+    private static function isFileNew(&$preg, $isTip) {
+        //已加载路径{完整路径:修改时间}
+        static $load = array();
+        //当前加载的文件
+        $list = get_included_files();
+
+        foreach ($list as &$v) {
+            //统一磁盘路径
+            $v = strtr($v, '\\', '/');
+            //在校验范围内
+            if ($preg === true || !preg_match($preg, $v)) {
+                //文件存在, 继续验证修改时间
+                if (is_file($v)) {
+                    //读取文件修改时间
+                    $mTime = filemtime($v);
+
+                    //新加载的文件
+                    if (empty($load[$v])) {
+                        $load[$v] = $mTime;
+                    //文件被修改过
+                    } else if ($load[$v] !== $mTime) {
+                        $isTip && trigger_error('MQ auto reload: (U)' . $v);
+                        return false;
+                    }
+                //文件删除
+                } else {
+                    $isTip && trigger_error('MQ auto reload: (D)' . $v);
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     /**

@@ -9,9 +9,9 @@ class of_base_com_disk {
      * 描述 : 从一个文件读取或写入数据
      * 参数 :
      *      filePath  : 文件路径,或已经加锁的数据流
-     *      data      : 文件数据,false(默认)=读取数据,ture=会用unserialize转化,null=返回文件链接源,字符串=写入数据,数组=会用serialize转化
+     *      data      : 文件数据,false(默认)=读取数据,true=会用unserialize转化,null=返回文件链接源,字符串=写入数据,数组=会用serialize转化
      *      protected : 默认=false, 
-     *          数据流 : true=写入锁,false=读取锁,null=尾部写入锁; 
+     *          数据流 : true=写入锁,false=读取锁,null=尾部写入锁
      *          写入时 : true=向写入的字符串前追加"<?php exit; ?> "15个字符,false=不追加,null=尾部写入
      *          读取时 : true=文件已写入"<?php exit; ?> "保护, false=文件没写入保护
      * 返回 : 

@@ -27,7 +27,7 @@ class ctrl_list {
             //打印演示列表
             } else {
                 //提取描述与方法名
-                $matchFunc = '@^[^\n]*描述 : ([^\n]*)[^(]*?public +function +([^()]+) *\([^;\n]*$@ms';
+                $matchFunc = '@^[^\n]*描述 : ([^\n]*)[^(]*?public *\w* +function +([^()]+) *\([^;\n]*$@ms';
                 preg_match_all($matchFunc, file_get_contents(ROOT_DIR . '/demo/ctrl/index.php'), $match, PREG_SET_ORDER);
 
                 //打印html头

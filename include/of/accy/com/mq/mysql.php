@@ -3,27 +3,28 @@
  * 描述 : 实现 mysql 消息队列
  * 注明 :
  *      建表语句 : CREATE TABLE `_of_com_mq` (
+ *          `mark` char(35) NOT NULL COMMENT '消息唯一ID(虚拟主机+队列名称+消息类型+消息ID)',
+ *          `vHost` char(50) NOT NULL COMMENT '虚拟主机',
  *          `queue` char(50) NOT NULL COMMENT '队列名称',
- *          `unId` char(32) NOT NULL COMMENT '消息唯一ID(队列名称+消息类型+消息ID)',
- *          `type` char(20) NOT NULL COMMENT '消息类型',
- *          `msId` char(100) NOT NULL COMMENT '消息ID',
+ *          `type` char(50) NOT NULL COMMENT '消息类型',
+ *          `msgId` char(100) NOT NULL COMMENT '消息ID',
  *          `data` mediumtext NOT NULL COMMENT '队列数据',
  *          `syncCount` int(11) NOT NULL COMMENT '已同步次数',
- *          `updateTime` datetime NOT NULL COMMENT '消息最后更新时间',
- *          `createTime` datetime NOT NULL COMMENT '消息首次创建时间',
+ *          `updateTime` timestamp NOT NULL COMMENT '消息最后更新时间',
+ *          `createTime` timestamp NOT NULL COMMENT '消息首次创建时间',
  *          `syncLevel` int(11) NOT NULL COMMENT '同步等级, 数值越大优先级越低',
- *          `lockTime` datetime NOT NULL COMMENT '锁定时间, 每 syncLevel * 5 分钟重试',
- *          `lockUnid` char(32) NOT NULL COMMENT '锁定时生成的唯一ID',
- *          PRIMARY KEY (`queue`,`unId`),
+ *          `lockTime` timestamp NOT NULL COMMENT '锁定时间, 每 syncLevel * 5 分钟重试',
+ *          `lockMark` char(32) NOT NULL COMMENT '锁定时生成的唯一ID',
+ *          PRIMARY KEY (`type`,`mark`) USING BTREE,
  *          KEY `常规排序搜索` (`type`,`lockTime`,`queue`) USING BTREE
  *      ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='消息队列表'
- *      /*!50100 PARTITION BY KEY (queue)
- *      PARTITIONS 250 * /;
+/*!50100 PARTITION BY KEY (`type`) PARTITIONS 250 * /;
  * 作者 : Edgar.lee
  */
 class of_accy_com_mq_mysql extends of_base_com_mq {
     private $dbPool = '';
     private $noTran = true;
+    private $vHost = '';
     private $waitList = array();
 
     /**
@@ -32,6 +33,9 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
      */
     protected function _init($fire) {
         $params = &$this->params;
+
+        //设置虚拟机
+        isset($params['params']['vHost']) && $this->vHost = $params['params']['vHost'];
 
         //是相同(停止事务)
         if ($this->noTran = $fire['bind'] === $params['params']['dbPool']) {
@@ -62,28 +66,30 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
 
         foreach ($msgs as $k => &$v) {
             $keys = &$v['keys'];
-            $unid = md5($v['queue'] . "\1" . $keys[0] . "\1" . $keys[1]);
+            $mark = md5($this->vHost . "\1" . $v['queue'] . "\1" . $keys[0] . "\1" . $keys[1]);
 
             //删除数据
             if ($v['data'] === null) {
-                $waitList[$unid] = array(
-                    'type'  => 'delete',
-                    'unid'  => $unid,
-                    'queue' => $v['queue']
+                $waitList[$mark] = array(
+                    'type' => 'delete',
+                    'mark' => $mark,
+                    'key'  => $keys[0]
                 );
+            //增改数据
             } else {
                 $temp = addslashes(json_encode($v['data']));
-                $temp = "`queue` = '{$v['queue']}',
-                    `unId` = '{$unid}',
+                $temp = "`vHost` = '{$this->vHost}',
+                    `queue` = '{$v['queue']}',
+                    `mark` = '{$mark}',
                     `type` = '{$keys[0]}',
-                    `msId` = '{$keys[1]}',
+                    `msgId` = '{$keys[1]}',
                     `data` = '{$temp}',
                     `updateTime` = '{$nowTime}',
                     `syncLevel` = '0',
                     `lockTime` = DATE_ADD('{$nowTime}', INTERVAL {$keys[2]} SECOND),
-                    `lockUnid` = ''";
+                    `lockMark` = ''";
 
-                $waitList[$unid] = array(
+                $waitList[$mark] = array(
                     'type'  => 'update',
                     'time'  => &$nowTime,
                     'attr'  => $temp
@@ -136,15 +142,31 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
         do {
             //当筛选成功, 锁定失败时保持循环
             $loop = false;
+
+            //读取正在执行消息ID
+            $lock = of_base_com_timer::data(null, true);
+            foreach ($lock['info'] as $k => &$v) {
+                //正在执行
+                if (($index = &$v['data']['_mq']) && $index['doneTime'] === '') {
+                    $v = $index['msgId'];
+                //没有执行
+                } else {
+                    unset($lock['info'][$k]);
+                }
+            }
+            $lock = join('\',\'', $lock['info']);
+
             //筛选合适消息
             $sql = "SELECT
-                `unId`, `data`, `syncLevel`, `lockTime`
+                `mark`, `data`, `msgId`, `syncLevel`, `lockTime`
             FROM
                 `_of_com_mq`
             WHERE
-                `queue` = '{$data['queue']}'
+                `vHost` = '{$this->vHost}'
+            AND `queue` = '{$data['queue']}'
             AND `type` = '{$data['key']}'
             AND `lockTime` <= '{$nowTime}'
+            AND `msgId` NOT IN ('{$lock}')
             ORDER BY
                 `lockTime`
             LIMIT
@@ -158,10 +180,10 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                     `_of_com_mq`
                 SET
                     `lockTime` = '{$expTime}',
-                    `lockUnid` = '{$uniqid}'
+                    `lockMark` = '{$uniqid}'
                 WHERE
-                    `queue` = '{$data['queue']}'
-                AND `unId` = '{$msgs['unId']}'
+                    `type` = '{$data['key']}'
+                AND `mark` = '{$msgs['mark']}'
                 AND `lockTime` = '{$msgs['lockTime']}'";
                 $loop = !of_db::sql($sql, $this->dbPool);
             }
@@ -169,10 +191,11 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
 
         //执行成功
         if ($msgs) {
+            $data['msgId'] = $msgs['msgId'];
             $data['data'] = json_decode($msgs['data'], true);
 
             //回调结果
-            $return = of::callFunc($call, $data);
+            $return = self::callback($call, $data);
 
             //执行成功
             if ($return === true) {
@@ -182,9 +205,9 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                 $sql = "DELETE FROM
                     `_of_com_mq`
                 WHERE
-                    `queue` = '{$data['queue']}'
-                AND `unId` = '{$msgs['unId']}'
-                AND `lockUnid` = '{$uniqid}'";
+                    `type` = '{$data['key']}'
+                AND `mark` = '{$msgs['mark']}'
+                AND `lockMark` = '{$uniqid}'";
                 of_db::sql($sql, $this->dbPool);
             //执行失败
             } else {
@@ -206,11 +229,11 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                     `syncCount` = `syncCount` + 1,
                     `syncLevel` = `syncLevel` + 1,
                     `lockTime` = '{$expTime}',
-                    `lockUnid` = ''
+                    `lockMark` = ''
                 WHERE
-                    `queue` = '{$data['queue']}'
-                AND `unId` = '{$msgs['unId']}'
-                AND `lockUnid` = '{$uniqid}'";
+                    `type` = '{$data['key']}'
+                AND `mark` = '{$msgs['mark']}'
+                AND `lockMark` = '{$uniqid}'";
                 of_db::sql($sql, $this->dbPool);
             }
         }
@@ -247,14 +270,18 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                         `createTime` = '{$v['time']}',
                         `syncCount` = '0'
                     ON DUPLICATE KEY UPDATE
-                        {$v['attr']}";
+                        `data` = VALUES(`data`),
+                        `updateTime` = VALUES(`updateTime`),
+                        `syncLevel` = VALUES(`syncLevel`),
+                        `lockTime` = VALUES(`lockTime`),
+                        `lockMark` = VALUES(`lockMark`)";
                 //删除数据
                 } else {
                     $sql = "DELETE FROM 
                         `_of_com_mq`
                     WHERE
-                        `queue` = '{$v['queue']}'
-                    AND `unId` = '{$v['unid']}'";
+                        `type` = '{$v['key']}'
+                    AND `mark` = '{$v['mark']}'";
                 }
 
                 of_db::sql($sql, $this->dbPool);

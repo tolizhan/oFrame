@@ -256,12 +256,23 @@ class of_base_com_net {
                     }
                 //类 linux
                 } else {
-                    //linux 异步数据结构
-                    $exec[] = 'data:' . addslashes(serialize($data));
-                    //exec("ls -l /proc/{$pid}/exe", $output, $state);
-                    $exec = '"' . join('" "', $exec) . '" >/dev/null 2>&1 &';
-                    //是mac系统 || linux 使用 nohup
-                    $osType === 'dar' || $exec = 'nohup ' . $exec;
+                    //异步前缀, 是mac系统 || linux 使用 nohup
+                    $aPre = $osType === 'dar' ? '' : 'nohup ';
+                    //校验有效命令
+                    $check = $aPre . 'php -r "echo 1;" 0>/dev/null 2>&1';
+
+                    //命令校验成功
+                    if (($temp = fgets(popen($check, 'r'))) === '1') {
+                        //linux 异步数据结构
+                        $exec[] = 'data:' . addslashes(serialize($data));
+                        //拼成异步命令
+                        $exec = $aPre . '"' . join('" "', $exec) . '" >/dev/null 2>&1 &';
+                    //命令校验失败
+                    } else {
+                        trigger_error($temp = "Command error: {$temp}");
+                        //状态,内容
+                        $res = array('state' => false, 'errno' => 1, 'errstr' => &$temp);
+                    }
                 }
 
                 is_string($exec) && pclose(popen($exec, 'r'));

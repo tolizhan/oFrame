@@ -1,13 +1,53 @@
+版本: 228
+作者: Edgar
+日期: 2018年10月7日 9:14:31
+信息:
+说明: + 错误日志默认使用分组模式展现, 按ESC键切换模式
+      + 可通过 of_base_com_timer::data 读写异步并发数据
+      + 消息队列工作台显示当前处理的消息及未释放内存大小
+      + 消息队列会校验加载的文件变化自动重载, 队列配置 队列名.check 设置校验范围
+      + 消息队列未释放的内存大于50M时自动重载, 队列配置 队列名.memory 设置内存大于
+      - 消息队列mysql方式增加虚拟主机概念, 无缝升级参看手册"消息队列"
+      * 为错误日志生成索引, 使加载日志时更快
+      * 框架检查更新模块现在从"GitHub"和"码云"上获取最新版本信息
+      * 异步网络请求命令不支持时抛出错误
+      * 上传插件禁止传入框架写入路径 /data/_of/
+      * 上传插件兼容火狐61+版本
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/ctrl/index.php
+已修改 : /trunk/demo/extend/test/main/demo.php
+已修改 : /trunk/demo/model/list.php
+已修改 : /trunk/demo/serv/index.php
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.js
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/jsLog.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/toolBaseClass.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/base/version/check.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/index.php
+
 版本: 226
 作者: Edgar
 日期: 2018年8月13日 8:41:10
 信息:
 说明: + 依赖管理工具 composer 集成到 include/composer 中
       + mysql同步工具 of_base_tool_mysqlSync 可通过backupTable和revertTable方法备份恢复表语句
-      + mysql同步工具 of_base_tool_mysqlSync::init 参数添加 checkRole=false 调过权限检查
+      + mysql同步工具 of_base_tool_mysqlSync::init 参数添加 checkRole=false 跳过权限检查
       + 参数规则验证 L::rule(&$rule, $exit = true) 增加第二参数 false 时返回验证信息
       * 按照MVCS的设计模式调整demo文件结构, /demo/serv/ 为独立访问的服务层
-      * 框架配置 _of.sso.url 设置了地址时, 框架控制台将不在显示sso模块管理
+      * 框架配置 _of.sso.url 设置了地址时, 框架控制台将不再显示sso模块管理
       * 解决高并发下 of_base_com_str::uniqid 短唯一值重复问题
       * 完善 of_base_com_data::rule 数据校验提示信息
       * 丢失的数据连接在事务中不再尝试重新连接
