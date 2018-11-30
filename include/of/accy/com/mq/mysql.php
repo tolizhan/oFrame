@@ -10,15 +10,15 @@
  *          `msgId` char(100) NOT NULL COMMENT '消息ID',
  *          `data` mediumtext NOT NULL COMMENT '队列数据',
  *          `syncCount` int(11) NOT NULL COMMENT '已同步次数',
- *          `updateTime` timestamp NOT NULL COMMENT '消息最后更新时间',
- *          `createTime` timestamp NOT NULL COMMENT '消息首次创建时间',
+ *          `updateTime` timestamp NOT NULL DEFAULT '2000-01-01 00:00:00' COMMENT '消息最后更新时间',
+ *          `createTime` timestamp NOT NULL DEFAULT '2000-01-01 00:00:00' COMMENT '消息首次创建时间',
  *          `syncLevel` int(11) NOT NULL COMMENT '同步等级, 数值越大优先级越低',
- *          `lockTime` timestamp NOT NULL COMMENT '锁定时间, 每 syncLevel * 5 分钟重试',
+ *          `lockTime` timestamp NOT NULL DEFAULT '2000-01-01 00:00:00' COMMENT '锁定时间, 每 syncLevel * 5 分钟重试',
  *          `lockMark` char(32) NOT NULL COMMENT '锁定时生成的唯一ID',
  *          PRIMARY KEY (`type`,`mark`) USING BTREE,
  *          KEY `常规排序搜索` (`type`,`lockTime`,`queue`) USING BTREE
  *      ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='消息队列表'
-/*!50100 PARTITION BY KEY (`type`) PARTITIONS 250 * /;
+ *      /*!50100 PARTITION BY KEY (`type`) PARTITIONS 250 * /;
  * 作者 : Edgar.lee
  */
 class of_accy_com_mq_mysql extends of_base_com_mq {
@@ -192,6 +192,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
         //执行成功
         if ($msgs) {
             $data['msgId'] = $msgs['msgId'];
+            $data['count'] = $msgs['syncLevel'] + 1;
             $data['data'] = json_decode($msgs['data'], true);
 
             //回调结果
@@ -219,7 +220,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                 );
 
                 //非指定时间的其它错误(包括 false), 计算下次执行时间(s)
-                is_int($return) || $return = ($msgs['syncLevel'] + 1) * 300;
+                is_int($return) || $return = $data['count'] * 300;
                 $expTime = date('Y-m-d H:i:s', time() + $return);
 
                 //修改消息重试次数

@@ -140,7 +140,7 @@ function afterSql($params) {
             $logPath = dirname($logPath);
 
             //执行清洗
-            if( of_base_com_disk::each($logPath, $data, false) ) {
+            if (of_base_com_disk::each($logPath, $data, false)) {
                 foreach($data as $k => &$v) {
                     //是文件 && 文件已过期
                     if( $v === false && filectime($k) <= $gcTime ) {
@@ -174,7 +174,7 @@ function logMsg($params = null) {
 
         //修改日志年份
         $pBodyObj->find('.tool select > option:gt(1)')->remove();
-        if (of_base_com_disk::each($logPath, $data)) {
+        if (of_base_com_disk::each($logPath, $data, null)) {
             foreach ($data as $k => &$v) {
                 $v = '<option value="/' .($k = basename($k)). '">' .$k. '</option>';
             }
@@ -198,7 +198,7 @@ function logMsg($params = null) {
             $logPath = $this->_getConst('eDir') . '/_info/log';
             $pathLen = strlen($logPath);
             $temp = $logPath . $_POST['path'];
-            if (of_base_com_disk::each($temp, $data)) {
+            if (of_base_com_disk::each($temp, $data, null)) {
                 foreach ($data as $k => &$v) {
                     $result['data'][substr($k, $pathLen)] = &$v;
                 }

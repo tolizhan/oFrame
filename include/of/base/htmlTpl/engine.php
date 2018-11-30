@@ -393,12 +393,14 @@ class of_base_htmlTpl_engine {
         foreach ($parseObj->contents('!text')->get() as $nodeKey) {
             //文本父节点键
             $parentKey = of_base_com_hParse::nodeConn($nodeKey, 'parent', 0);
+            //父节点标签
+            $tagName = of_base_com_hParse::nodeAttr($parentKey, 'tagName');
             //注释行数
             $line = ' #line : ' . of_base_com_hParse::nodeAttr($nodeKey, '>tagLine::start') . "\n";
             $text = of_base_com_hParse::nodeAttr($nodeKey, '');
 
             //是 js 脚本
-            if (of_base_com_hParse::nodeAttr($parentKey, 'tagName') === 'script') {
+            if ($tagName === 'script') {
                 //待校验列表
                 $checkSyntaxList = array();
                 preg_match_all(
@@ -418,7 +420,10 @@ class of_base_htmlTpl_engine {
                 //属性写回
                 of_base_com_hParse::nodeAttr($nodeKey, '', $text);
             //纯文本节点
-            } else if (preg_match('@^(\s*)([^<\s].*?)(\s*)$@s', $text, $temp)) {
+            } else if (
+                $tagName !== 'style' &&
+                preg_match('@^(\s*)([^<\s].*?)(\s*)$@s', $text, $temp)
+            ) {
                 $temp[2] = "<?php{$line} echo L::getText('{$temp[2]}'); ?>\n";
                 //修改为php标签
                 of_base_com_hParse::nodeAttr($nodeKey, '', $temp[1] . $temp[2]. $temp[3]);
@@ -442,7 +447,7 @@ class of_base_htmlTpl_engine {
         $format = trim($code);
 
         //是路径格式
-        if (preg_match('@^(?:\w+:/)?(?:[\w\-.%]*(?:/[\w\-.%]*|[\w\-.%]+\.\w+|^))+([?#][^ :$]*)?$@s', $format)) {
+        if (preg_match('@^(?:\w+:/)?(?:[\w\-.%]*(?:/[\w\-.%]*|[\w\-.%]+\.\w+|^))+([?#].*)?$@s', $format)) {
             $format = &self::formatUrl($line, $format, $isPrint);
         //以;和}结尾的脚本
         } else if (preg_match('@^.*[;}]\s*$@s', $format)) {

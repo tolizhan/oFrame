@@ -32,6 +32,8 @@ class of_base_session_base {
             ini_set('session.gc_probability', 1);
             //百分之一的机率清理
             ini_set('session.gc_divisor', 100);
+            //设置httponly标识
+            ini_set('session.cookie_httponly', of::config('_of.session.httpOnly', true));
             //设置path根路径
             ini_set('session.cookie_path', ROOT_URL . '/');
             //会话对接

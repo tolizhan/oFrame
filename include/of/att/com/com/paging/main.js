@@ -52,9 +52,9 @@ L.paging || (function () {
         //字符串转正则
         typeof val === 'string' && (val = RegExp('^' + val + '$'));
 
-        for(var i = 0, iL = t.l.length; i < iL; ++i) {
+        for (var i = 0, iL = t.l.length; i < iL; ++i) {
             //属性存在 && (不判断值 || 正则匹配)
-            if( (t.v = t.l[i].getAttribute(name)) !== null && (val == null || val.test(t.v)) ) {
+            if ((t.v = t.l[i].getAttribute(name)) !== null && (val == null || val.test(t.v))) {
                 //加入返回列表
                 result.push(t.l[i]);
                 //批量设置属性
@@ -68,16 +68,21 @@ L.paging || (function () {
     var eventFunc = function (event) {
         var target = event.target, space;
         do {
-            if( target === this ) {
+            if (target === this) {
                 return ;
             } else {
                 //命名空间
                 space = list[L.search(list, this, 'block')[0]].space;
-                switch( target.getAttribute('name') ) {
+                switch (target.getAttribute('name')) {
                     //排序
                     case space + 'pagingSort' :
-                        //点击 && 存在排序
-                        if( event.type !== 'click' || !(target = target.getAttribute('sort')) ) return ;
+                        //点击事件 && 存在排序
+                        if (
+                            event.type !== 'click' ||
+                            !(target = target.getAttribute('sort'))
+                        ) {
+                            return ;
+                        }
                         break;
                     //第一页
                     case space + 'pagingFirst':
@@ -98,8 +103,8 @@ L.paging || (function () {
                     //跳转页
                     case space + 'pagingJump' :
                         //点击跳转
-                        if( target.getAttribute('nth') !== null ) {
-                            if( event.type === 'click' ) {
+                        if (target.getAttribute('nth') !== null) {
+                            if (event.type === 'click') {
                                 target = parseInt(target.getAttribute('value'), 10);
                                 typeof target === 'number' || (target = 1);
                             }
@@ -108,26 +113,31 @@ L.paging || (function () {
                     //展示数
                     case space + 'pagingSize' :
                         //全选
-                        if( event.type === 'mouseover' ) {
+                        if (event.type === 'mouseover') {
                             target.focus();
                             target.select();
                         //回车
-                        } else if( event.type === 'keyup' && event.event.keyCode === 13 ) {
-                            if( target.getAttribute('name') === space + 'pagingSize' ) {
-                                target = target.value;
-                            } else if( !isNaN(parseInt(target.value, 10)) ) {
+                        } else if (event.type === 'keyup' && event.event.keyCode === 13) {
+                            if (target.getAttribute('name') === space + 'pagingSize') {
+                                //单页条数文本框中提取数字
+                                if (target = /\d+/g.exec(target.value)) {
+                                    target = target[0];
+                                } else {
+                                    return false;
+                                }
+                            } else if (!isNaN(parseInt(target.value, 10))) {
                                 target = parseInt(target.value, 10);
                             }
                         }
                         break;
                 }
 
-                if( typeof target !== 'object' ) {
+                if (typeof target !== 'object') {
                     L.paging.call(this, target);
                     return false;
                 }
             }
-        } while ( target = target.parent );
+        } while (target = target.parent);
     }
     var layoutFunc = function (data) {
         //当前对象
@@ -137,7 +147,7 @@ L.paging || (function () {
         };
 
         //json有效
-        if( tObj.d ) {
+        if (tObj.d) {
             //操作数据
             data = L.json(data);
             //引用数据
@@ -171,37 +181,37 @@ L.paging || (function () {
 
             //隐藏显示总页数
             tObj.w = getAttrObj(tObj.b, 'name', tObj.n + 'pagingCount');
-            for(var i in tObj.w) {
+            for (var i in tObj.w) {
                 tObj.w[i].innerHTML = data.items;
                 tObj.w[i].style.display = data.items > -1 ? '' : 'none';
             }
 
             //隐藏等待
             tObj.w = getAttrObj(tObj.b, 'name', tObj.n + 'pagingWait');
-            for(var i in tObj.w) tObj.w[i].style.display = 'none';
+            for (var i in tObj.w) tObj.w[i].style.display = 'none';
 
             //隐藏显示最后一页
             tObj.w = getAttrObj(tObj.b, 'name', tObj.n + 'pagingLast');
-            for(var i in tObj.w) tObj.w[i].style.display = data.items > -1 ? '' : 'none';
+            for (var i in tObj.w) tObj.w[i].style.display = data.items > -1 ? '' : 'none';
 
             //隐藏空无
             tObj.w = getAttrObj(tObj.b, 'name', tObj.n + 'pagingEmpty');
 
-            if( L.count(data.data) ) {
+            if (L.count(data.data)) {
                 //隐藏无数据
-                for(var i in tObj.w) tObj.w[i].style.display = 'none';
+                for (var i in tObj.w) tObj.w[i].style.display = 'none';
 
                 //遍历数据
-                for(var i in data.data) {
+                for (var i in data.data) {
                     //不以"_"开头的属性进行html编码
-                    for(var j in tObj.w = data.data[i]) j.substr(0, 1) === '_' || (tObj.w[j] = L.entity(tObj.w[j]));
+                    for (var j in tObj.w = data.data[i]) j.substr(0, 1) === '_' || (tObj.w[j] = L.entity(tObj.w[j]));
                     //使用的数据条
                     tObj.t = tObj.i[i % tObj.i.length];
                     tObj.t.itemObj.outerHTML || (tObj.t.itemObj.outerHTML = document.createElement('div').appendChild(tObj.t.itemObj).parentNode.innerHTML);
                     //反引号, 关键词
                     tObj.w = tObj.t.itemObj.outerHTML.replace(tObj.r, function (all, bac, key) {
                         //单数"`"
-                        if( bac.length % 2 ) {
+                        if (bac.length % 2) {
                             return all.substr(Math.ceil(bac.length / 2)) 
                         } else {
                             return bac.substr(bac.length / 2) + (data.data[i][key] == null ? '' : data.data[i][key]);
@@ -209,7 +219,7 @@ L.paging || (function () {
                     });
 
                     //tr td 转换
-                    if( tObj.m = wrapMap[tObj.t.itemObj.tagName] ) {
+                    if (tObj.m = wrapMap[tObj.t.itemObj.tagName]) {
                         frag.innerHTML = 't' + tObj.m[0] + tObj.w + tObj.m[1];
                         tObj.w = getAttrObj(frag, 'name', 'root')[0].firstChild
                     //其它转换
@@ -223,18 +233,18 @@ L.paging || (function () {
             //无数据
             } else {
                 //显示无数据
-                for(var i in tObj.w) tObj.w[i].style.display = '';
+                for (var i in tObj.w) tObj.w[i].style.display = '';
             }
 
             //移除单行
-            for(var i in tObj.removes) tObj.removes[i].parentNode.removeChild(tObj.removes[i]);
+            for (var i in tObj.removes) tObj.removes[i].parentNode.removeChild(tObj.removes[i]);
 
             //修改排序图标
             tObj.w = getAttrObj(tObj.b, 'name', tObj.n + 'pagingSort');
-            for(var i in tObj.w) {
-                for(var j in tObj.t = (tObj.w[i].getAttribute('sort') || '').split(/\s+/)) {
+            for (var i in tObj.w) {
+                for (var j in tObj.t = (tObj.w[i].getAttribute('sort') || '').split(/\s+/)) {
                     //字符串
-                    if( typeof tObj.s[tObj.t[j]] === 'string' ) {
+                    if (typeof tObj.s[tObj.t[j]] === 'string') {
                         tObj.w[i].className = tObj.w[i].className.replace(/\b\s*of-paging_sort_(?:asc|desc)\b\s*/g, ' ');
                         tObj.w[i].className += ' of-paging_sort_' + tObj.s[tObj.t[j]].toLowerCase();
                     }
@@ -242,7 +252,7 @@ L.paging || (function () {
             }
 
             //保存状态
-            if( list[this].save ) {
+            if (list[this].save) {
                 L.cookie(list[this].save + L.param({
                     '' : L.json({
                         'params' : data.params,
@@ -256,21 +266,21 @@ L.paging || (function () {
 
             //修改跳转按钮
             tObj.w = getAttrObj(tObj.b, 'name', tObj.n + 'pagingJump');
-            for(var i in tObj.w) {
+            for (var i in tObj.w) {
                 //跳转按钮
-                if( (tObj.t = tObj.w[i]).getAttribute('nth') !== null ) {
+                if ((tObj.t = tObj.w[i]).getAttribute('nth') !== null) {
                     //隐藏元素
                     tObj.t.style.display = 'none';
                     tObj.t = tObj.t.getAttribute('nth').replace(/(`*){`(.+?)`}/g, function (all, bac, key) {
                         //有效跳转次数
-                        if( bac.length % 2 === 0 ) {
+                        if (bac.length % 2 === 0) {
                             //L.json 代替 eval
                             key = L.json(key.replace(/\bm\b/g, tObj.maxPage)
                                 //计算最后结果
                                 .replace(/\bp\b/g, tObj.b.getAttribute('page'))
                             );
 
-                            if( 
+                            if (
                                 //数值 && > 0
                                 typeof key === 'number' && key > 0 &&
                                 //小于等于最大页
@@ -296,25 +306,25 @@ L.paging || (function () {
 
             //触发翻页后事件
             tObj.w = L.data('paging.after');
-            for(var i in tObj.w) if( tObj.w[i].call(tObj.b, 'after') === false ) break ;
+            for (var i in tObj.w) if (tObj.w[i].call(tObj.b, 'after') === false) break ;
 
             L.paging(tObj.b);
 
             //没有初始化
-            if( list[this].init ) {
+            if (list[this].init) {
                 //标记初始化
                 list[this].init = false;
                 //触发初始化事件
                 tObj.w = L.data('paging.init');
-                for(var i in tObj.w) if( tObj.w[i].call(tObj.b, 'init') === false ) return ;
+                for (var i in tObj.w) if( tObj.w[i].call(tObj.b, 'init') === false ) return ;
             }
         }
     }
     var fbarFunc = function (event) {
         //fbar调整
-        if( this === document || event.type === 'resize' ) {
-            for(var i in list) {
-                if(
+        if (this === document || event.type === 'resize') {
+            for (var i in list) {
+                if (
                     //功能条存在
                     list[i].fbar && (
                         list[i].fbar.currentStyle ? list[i].fbar.currentStyle : getComputedStyle(list[i].fbar, false)
@@ -322,7 +332,7 @@ L.paging || (function () {
                 ) {
                     list[i].fbar.style.width = 
                         (100 - Math.ceil(L.val(list[i].fbar.parentNode.getElementsByTagName('div'), '[-1]').offsetWidth * 100 / list[i].fbar.parentNode.clientWidth)) + '%';
-                    if( list[i].fbar.getElementsByTagName('div')[0].offsetWidth < list[i].fbar.offsetWidth - 50 ) {
+                    if (list[i].fbar.getElementsByTagName('div')[0].offsetWidth < list[i].fbar.offsetWidth - 50) {
                         list[i].fbar.style.width = '';
                         L.val(list[i].fbar.getElementsByTagName('label'), '[-1]').style.display = 'none';
                     } else {
@@ -349,22 +359,22 @@ L.paging || (function () {
     //分页方法
     L.paging = function (type, mode) {
         //分页调用
-        if( this.tagName ) {
-            switch( L.type(type) ) {
+        if (this.tagName) {
+            switch (L.type(type)) {
                 //读取参数
                 case 'undefined':
                 //修改参数
                 case 'object'   :
                 //内核参数
                 case 'null'     :
-                    if( type === null ) {
+                    if (type === null) {
                         type = '+0';
                         mode = false;
                     } else {
                         L.type(temp = L.json(this.getAttribute('params'))) === 'object' || L.count(temp, temp = {});
 
                         //读取参数
-                        if( type === undefined ) {
+                        if (type === undefined) {
                             return temp;
                         } else {
                             //单层替换 || 完全替换
@@ -375,7 +385,7 @@ L.paging || (function () {
                             this.setAttribute('items', '');
 
                             //不刷新
-                            if( mode === false ) {
+                            if (mode === false) {
                                 return ;
                             //刷新分页
                             } else {
@@ -385,13 +395,13 @@ L.paging || (function () {
                     }
                 case 'string'   :
                     //设置展示数
-                    if( /^\d+$/.test(type) ) {
+                    if (/^\d+$/.test(type)) {
                         this.setAttribute('size', type);
                         type = '+0';
                     //排序字段
-                    } else if( !/^(?:\+|-)\d+$/.test(type) ) {
+                    } else if (!/^(?:\+|-)\d+$/.test(type)) {
                         temp = {'l' : type.split(/\s*,\s*/), 's' : {}, 'k' : L.search(list, this, 'block')[0]};
-                        for(var i in temp.l) {
+                        for (var i in temp.l) {
                             temp.t = temp.l[i].split(' ');
                             //自动切换
                             temp.t[1] || (temp.t[1] = list[temp.k].sorts[temp.t[0]] === 'DESC' ? 'ASC' : 'DESC');
@@ -419,7 +429,7 @@ L.paging || (function () {
                         //排序列表
                         't' : []
                     }
-                    if( temp.i > -1 && temp.s > 0 ) {
+                    if (temp.i > -1 && temp.s > 0) {
                         //最大页数
                         temp.m = Math.ceil(temp.i / temp.s);
                         //正数溢出纠正
@@ -434,7 +444,7 @@ L.paging || (function () {
                     temp.m = this.getAttribute('method');
                     //共享参数
                     temp.p = this.getAttribute('params');
-                    if( 
+                    if (
                         //没初始化
                         list[temp.k].init &&
                         //状态保存
@@ -464,22 +474,22 @@ L.paging || (function () {
                     };
 
                     //返回内核参数
-                    if( mode === false ) {
+                    if (mode === false) {
                         temp.post.sort = L.each({}, temp.d);
                         return temp.post;
                     //可以发送请求
-                    } else if( list[temp.k].lock === false ) {
+                    } else if (list[temp.k].lock === false) {
                         list[temp.k].lock = true;
                         //显示等待
                         temp.w = getAttrObj(list[temp.k].block, 'name', list[temp.k].space + 'pagingWait');
-                        for(var i in temp.w) temp.w[i].style.display = '';
+                        for (var i in temp.w) temp.w[i].style.display = '';
 
                         //触发翻页前事件
                         temp.w = L.data('paging.before');
-                        for(var i in temp.w) if( temp.w[i].call(this, 'before') === false ) return ;
+                        for (var i in temp.w) if( temp.w[i].call(this, 'before') === false ) return ;
 
                         //整理排序列表
-                        for(var i in temp.d) /^[\w.-`]+$/.test(i) && temp.t.push(i + ' ' + temp.d[i]);
+                        for (var i in temp.d) /^[\w.-`]+$/.test(i) && temp.t.push(i + ' ' + temp.d[i]);
                         //排序字段
                         temp.post.sort = temp.t.join(', ');
                         //共享参数
@@ -500,15 +510,15 @@ L.paging || (function () {
         //系统调用
         } else {
             var blocks = getAttrObj(type || (type = document), 'name', /^(\w+:)?pagingBlock$/), index, space;
-            for(var i in blocks) {
+            for (var i in blocks) {
                 temp = blocks[i];
                 //父层分页初始会移除子分页
-                while( (temp = temp.parentNode) && temp !== type ) {}
+                while ((temp = temp.parentNode) && temp !== type) {}
                 //子分页不初始化
-                if( !temp ) continue;
+                if (!temp) continue;
 
                 //开始初始化
-                if( !L.search(list, blocks[i], 'block') ) {
+                if (!L.search(list, blocks[i], 'block')) {
                     //命名空间
                     space= (space = blocks[i].getAttribute('name')).indexOf(':') > -1 ?
                         space.split(':')[0] + ':' : '';
@@ -516,10 +526,10 @@ L.paging || (function () {
                     temp = getAttrObj(blocks[i], 'name', space + 'pagingItem');
 
                     //有效分页
-                    if( temp.length ) {
+                    if (temp.length) {
                         index = {'block' : blocks[i], 'items' : [], 'sorts' : {}, 'lock' : false, 'init' : true, 'space' : space};
 
-                        for(var j in temp) {
+                        for (var j in temp) {
                             //保存节点
                             index.items.push({'itemObj' : temp[j], 'parent' : temp[j].parentNode});
                             //移除节点
@@ -531,10 +541,10 @@ L.paging || (function () {
                         //读取空无
                         temp = getAttrObj(blocks[i], 'name', space + 'pagingEmpty');
                         //隐藏无数据
-                        for(var j in temp) temp[j].style.display = 'none';
+                        for (var j in temp) temp[j].style.display = 'none';
 
                         //保存状态
-                        if( index.save = blocks[i].getAttribute('save') || '' ) {
+                        if (index.save = blocks[i].getAttribute('save') || '') {
                             temp = blocks[i].getAttribute('method') + ':' + index.save + ':' + (blocks[i].getAttribute('params') || '');
                             index.save = { 'of_base_com_com' : { 'pagingSave' : {} } };
                             index.save.of_base_com_com.pagingSave[temp] = '';
@@ -542,7 +552,7 @@ L.paging || (function () {
                         }
 
                         //读取功能条
-                        if( index.fbar = getAttrObj(blocks[i], 'name', space + 'pagingFbar')[0] ) {
+                        if (index.fbar = getAttrObj(blocks[i], 'name', space + 'pagingFbar')[0]) {
                             //移动事件
                             L.event(index.fbar, 'mouseover', fbarFunc);
                             index.fbar.style.width = '50%';

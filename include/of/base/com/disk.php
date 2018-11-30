@@ -100,16 +100,23 @@ class of_base_com_disk {
      * 参数 :
      *     &dir    : 字符串=指定遍历的目录
      *     &data   : 接收的数据, 数组={
-     *          磁盘路 : false=文件,true=目录,如果遍历data时将目录其改成null,那么将不会继续遍历子
+     *          磁盘路 : false=文件,true=目录,如果遍历data时将目录其改成false,那么将不会继续遍历
      *      }
-     *      single : 单层遍历,false=一次返回深层数据,true(默认)=每次返回一个文件夹数据
+     *      single : 遍历方式
+     *          true =(默认)每次返回一个文件夹数据
+     *          false=一次返回深层数据
+     *          null =返回指定子目录不影响已有遍历
      * 返回 :
      *      成功返回true,失败返回false(并结束遍历)
      * 作者 : Edgar.lee
      */
     public static function each(&$dir, &$data, $single = true) {
         static $cahceDir = array();
-        ($nowDir = &$cahceDir[$dir]) === null && $data = null;
+
+        //返回指定子目录
+        if ($single === null || ($nowDir = &$cahceDir[$dir]) === null) {
+            $nowDir = $data = null;
+        }
 
         //读取数据
         if ($data !== false) {
@@ -136,21 +143,20 @@ class of_base_com_disk {
                         }
                     }
                     closedir($handle);
-                    if ($single) break;
+                    //不为深度遍历时跳出
+                    if ($single !== false) break;
                 //目录打开失败
                 } else {
                     $data = false;
                     break;
                 }
             }
-            //深度读取
-            if (!$single) unset($cahceDir[$dir]);
         }
 
         //操作结束 && 格式化数组
         ($fail = $data === false) && $data = array();
-        //操作结束 && 清除缓存
-        if ($fail) unset($cahceDir[$dir]);
+        //(操作结束 || 深度遍历) && 清除缓存
+        if ($fail || $single === false) unset($cahceDir[$dir]);
         //返回结束信息
         return !$fail;
     }

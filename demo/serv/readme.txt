@@ -12,7 +12,7 @@
 4. 通过访问 /serv/?c=demo&a=assert 进行断言测试
 
 使用:
-1. 在 /serv/pApi/ 中创建接口类并继承serv_pApi_main类
-2. 按照 serv_pApi_main 类中的注释设置 $funcRule 规则
-3. 如果需要可设置 serv_pApi_main 中的共享规则 $shareRule
+1. 在 /serv/pApi/ 中创建接口类并继承serv_papi_main类
+2. 按照 serv_papi_main 类中的注释设置 $funcRule 规则
+3. 如果需要可设置 serv_papi_main 中的共享规则 $shareRule
 4. 实现接口方法并访问测试 /serv/?c=文件名&a=方法名

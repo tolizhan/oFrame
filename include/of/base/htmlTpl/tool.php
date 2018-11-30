@@ -60,7 +60,7 @@ class of_base_htmlTpl_tool {
 
         if (
             flock($lFp, LOCK_EX | LOCK_NB) &&
-            of_base_com_disk::each($dDir, $data)
+            of_base_com_disk::each($dDir, $data, null)
         ) {
             foreach ($data as $k => &$v) {
                 //是文件夹 && 删除文件夹

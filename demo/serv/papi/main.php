@@ -50,7 +50,7 @@ class serv_papi_main {
         $cPre = substr(__CLASS__, 0, strrpos(__CLASS__, '_') + 1);
 
         //获取接口文件名
-        of_base_com_disk::each($path, $data);
+        of_base_com_disk::each($path, $data, null);
         //提取规则与注释
         foreach ($data as $k => &$v) {
             if (!$v) {

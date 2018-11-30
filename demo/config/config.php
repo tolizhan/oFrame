@@ -29,8 +29,8 @@ return array(
                 )
             ),
             'mq'    => array(
-                //消息队列池
-                /* 'exchange' => array(
+                /* 消息队列池
+                'exchange' => array(
                     //适配器
                     'adapter' => 'mysql',
                     //调度参数

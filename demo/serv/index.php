@@ -11,4 +11,12 @@ $_GET += array('c' => 'main', 'a' => 'index');
 //调度代码 : 类名, 动作, 安全校验
 $result = of::dispatch('serv_papi_' . $_GET['c'], $_GET['a'], null);
 //返回数组转成json
-if (is_array($result)) echo of_base_com_data::json($result);
+if (is_array($result)) {
+    //jsonp 方式
+    if (isset($_GET['callback'])) {
+        echo $_GET['callback'], '(', of_base_com_data::json($result), ');';
+    //常规 方式
+    } else {
+        echo of_base_com_data::json($result);
+    }
+}

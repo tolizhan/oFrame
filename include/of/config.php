@@ -124,6 +124,8 @@ return array(
     'session'     => array(
         //存储方式, files=文件存储, kv=_of.com.kv方式, mysql=数据库方式
         'adapter'     => 'files',
+        //禁止 js 读取 session_id
+        'httpOnly'    => true,
         //正则匹配"调度类名::方法名"判断是否自动开启
         'autoStart'   => '@^(?!of_base_com_net:|of_base_sso_api:)@',
         //最大生存时间(分钟)

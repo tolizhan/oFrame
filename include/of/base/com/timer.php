@@ -209,7 +209,7 @@ class of_base_com_timer {
             $save = array();
 
             //遍历并发任务目录
-            of_base_com_disk::each($path, $tasks);
+            of_base_com_disk::each($path, $tasks, null);
             foreach ($tasks as $kt => &$vt) {
                 //是目录
                 if ($vt) {
@@ -233,7 +233,7 @@ class of_base_com_timer {
                         $index['list'] = array();
 
                         //读取运行中的进程, 打开并发列表
-                        of_base_com_disk::each($dir, $taskList);
+                        of_base_com_disk::each($dir, $taskList, null);
                         foreach ($taskList as $k => &$v) {
                             //是文件 && 是进程加锁
                             if (!$v && is_numeric($cId = basename($k))) {
@@ -270,7 +270,7 @@ class of_base_com_timer {
             $save = array();
 
             //遍历定时器文件夹
-            of_base_com_disk::each($path, $data);
+            of_base_com_disk::each($path, $data, null);
             foreach ($data as $k => &$v) {
                 //是文件夹 && 任务锁打开成功
                 if ($v && $fp = fopen($k . '/taskLock', 'a')) {
@@ -346,7 +346,7 @@ class of_base_com_timer {
                 $cIds = array();
 
                 //读取运行中的进程, 打开并发列表
-                of_base_com_disk::each($path, $task);
+                of_base_com_disk::each($path, $task, null);
                 //筛选并发ID
                 foreach ($task as $k => &$v) {
                     //是文件 && 是进程
@@ -442,7 +442,7 @@ class of_base_com_timer {
             $path = self::$config['path'] . '/concurrent';
 
             //读取单层文件夹
-            if (of_base_com_disk::each($path, $data)) {
+            if (of_base_com_disk::each($path, $data, null)) {
                 foreach ($data as $k => &$v) {
                     //是文件
                     if (!$v) {

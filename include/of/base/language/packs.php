@@ -207,7 +207,7 @@ class of_base_language_packs {
                 //文件存在
                 is_file($temp = "{$envVar['path']}/{$envVar['name']}/{$type}.txt") &&
                 //打开文件
-                $temp = file_get_contents($temp)
+                $temp = of_base_com_disk::file($temp)
             ) {
                 //解码文件 js=>json; php=>serialize
                 $index = $type === 'js' ? json_decode($temp, true) : unserialize($temp);

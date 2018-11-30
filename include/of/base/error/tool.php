@@ -68,7 +68,7 @@ class of_base_error_tool {
             }
         } else {
             //分组概要时, 时间改数量
-            $params['mode'] === 'groupMain' && $title = array('数量', '{`_count`}');
+            $params['mode'] === 'groupMain' && $title = array('次数', '{`_count`}');
             $totalItems = -1;
         }
 

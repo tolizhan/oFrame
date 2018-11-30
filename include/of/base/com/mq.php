@@ -335,21 +335,6 @@ abstract class of_base_com_mq {
                 ) {
                     //存在消息
                     if ($temp = $mqObj->_fire($call, $data)) {
-                        foreach ($temp as &$v) {
-                            //(执行结果为false && 每5次报错) || (非布尔 && 非数字)
-                            if (
-                                $v['result'] === false && $v['count'] % 5 === 0 ||
-                                !is_bool($v['result']) && !is_int($v['result'])
-                            ) {
-                                trigger_error(
-                                    'Failed to consume message from queue: ' .
-                                    var_export($v['result'], true) . "\n\n" .
-                                    'call--' . print_r($call, true) . "\n\n" .
-                                    'argv--' . print_r($v['params'], true)
-                                );
-                            }
-                        }
-
                         //回收内存
                         $isGc && gc_collect_cycles();
                         //检查内存 && 未释放内存过高
@@ -544,7 +529,17 @@ abstract class of_base_com_mq {
     /**
      * 描述 : 触发时具体方法回调
      *     &call : 框架标准回调结构
-     *     &data : 传入到 [_] 位置的参数
+     *     &data : 传入到 [_] 位置的参数 {
+     *          "pool"  : 指定消息队列池,
+     *          "queue" : 队列名称,
+     *          "key"   : 消息键,
+     *          "this"  : 当前并发信息 {
+     *              "cMd5" : 回调唯一值
+     *              "cCid" : 当前并发值
+     *          }
+     *          "count" : 调用计数, 首次为 1
+     *          "data"  : 消息数据
+     *      }
      * 作者 : Edgar.lee
      */
     protected static function &callback(&$call, &$data) {
@@ -565,6 +560,8 @@ abstract class of_base_com_mq {
         //处理消息
         $result = &of::callFunc($call, $data);
 
+        //恢复永不超时
+        ini_set('max_execution_time', 0);
         //恢复默认时区
         date_default_timezone_set(self::$fireEnv['timezone']);
         //修改并发日志
@@ -573,6 +570,35 @@ abstract class of_base_com_mq {
         $cLog['minMemory'] = memory_get_peak_usage();
         //记录监听数据
         of_base_com_timer::data(array('_mq' => &$cLog));
+
+        //(执行结果为false && 每5次报错) || (非布尔 && 非数字)
+        if (
+            $result === false && $data['count'] % 5 === 0 ||
+            !is_bool($result) && !is_int($result)
+        ) {
+            //克隆回调数组
+            $func = json_decode(json_encode($call), true);
+            if (is_array($call)) {
+                if (isset($call[0])) {
+                    $temp = array(&$func[0], &$call[0]);
+                } else if (is_array($call['asCall'])) {
+                    $temp = array(&$func['asCall'][0], &$call['asCall'][0]);
+                } else {
+                    $temp = array(&$func['asCall'], &$call['asCall']);
+                }
+            } else {
+                $temp = array(&$func, &$call);
+            }
+            //对象转换成易读方式
+            is_object($temp[1]) && $temp[0] = 'new ' . get_class($temp[1]);
+
+            trigger_error(
+                'Failed to consume message from queue: ' .
+                var_export($result, true) . "\n\n" .
+                'call--' . print_r($func, true) . "\n\n" .
+                'argv--' . print_r($data, true)
+            );
+        }
 
         return $result;
     }

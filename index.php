@@ -18,11 +18,7 @@ if (isset($_GET['c'])) {
     //返回数组转成json
     if (is_array($result)) {
         //jsonp 方式
-        if (
-            isset($_GET['callback']) &&
-            isset($_SERVER['HTTP_X_REQUESTED_WITH']) &&
-            $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest'
-        ) {
+        if (isset($_GET['callback'])) {
             echo $_GET['callback'], '(', of_base_com_data::json($result), ');';
         //常规 方式
         } else {

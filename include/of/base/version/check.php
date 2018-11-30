@@ -28,7 +28,7 @@ class of_base_version_check {
                     'style="position: absolute; background-color: red; z-index: 100000;" ' .
                     'target="_blank"' .
                 '>' .
-                    'Frame update : ' . OF_VERSION . ' -> ' .$version .
+                    'Framework Update : ' . OF_VERSION . ' -> ' .$version .
                 '<a>';
                 of_view::head('before', $temp);
             }

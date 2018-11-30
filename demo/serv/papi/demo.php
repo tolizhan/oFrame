@@ -1,5 +1,5 @@
 <?php
-class serv_papi_demo extends serv_pApi_main {
+class serv_papi_demo extends serv_papi_main {
     //方法规则
     protected $funcRule = array(
         //接口演示 /serv/?c=demo&a=index
@@ -33,7 +33,7 @@ class serv_papi_demo extends serv_pApi_main {
         //L::sql(null);
 
         //模拟GET, POST, COOKIE 等数据
-        $_GET['size'] = '244';
+        //$_GET['size'] = '244';
 
         //断言测试
         $error = of_base_tool_test::check('serv_papi_demo', 'index');

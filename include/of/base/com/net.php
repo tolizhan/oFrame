@@ -57,11 +57,21 @@ class of_base_com_net {
      *      data : 提交数据,含有如下结构的数组,其数据可以是字符串或数组 {
      *          "type"    : 交互类型,('GET')可以是 OPTIONS,GET,HEAD,POST,PUT,DELETE,TRACE
      *          "data"    : 报文主体数据('')
-     *          "header"  : 自定义头信息('')
+     *          "header"  : 自定义头信息(''), 可数组[不换行头, ...]
+     *          "cookie"  : cookie数据(''),
      *          "get"     : get数据(''),
      *          "post"    : post数据,相当于type=POST, data=当期值(''),
-     *          "cookie"  : cookie数据(''),
-     *          "timeout" : 超时时间(10s)
+     *          "file"    : 上传文件,默认设置type=POST, 结构为 [{
+     *              "name" : 附件字段名
+     *              "path" : 文件磁盘路径, 设置 data 不用设置此值
+     *              "data" : 文件二进制数据, 设置 path 时不用设置此值
+     *              "mime" : 附件类型('application/octet-stream')
+     *              "head" : 自定义头信息(''), 可数组[不换行头, ...]
+     *              "file" : 附件文件名, 默认使用 path 文件名或生成'xx.bin'
+     *          }, ...]
+     *          "timeout" : 超时时间(10s),
+     *              数字=连接超时
+     *              数组=[连接超时(10), 请求超时(default_socket_timeout)]
      *      }
      *      mode : 提交模式,
      *          false(默认) = 同步提交,
@@ -79,13 +89,14 @@ class of_base_com_net {
      * 作者 : Edgar.lee
      */
     public static function &request($url = null, $data = array(), $mode = false) {
-        //永不超时
-        ini_set('max_execution_time', 0);
         //配置引用
         $config = &self::$config;
 
         //二次请求
         if ($url === null) {
+            //永不超时
+            ini_set('max_execution_time', 0);
+
             if (PHP_SAPI === 'cli') {
                 $data = $GLOBALS['_ARGV']['data'];
             } else {
@@ -119,7 +130,10 @@ class of_base_com_net {
             unset($data['staticCookie'], $data['mode']);
 
             //OF_URL 的无参数地址无需请求
-            if (strncmp($data['url'], OF_URL, strlen(OF_URL)) || strpos($data['url'], '=')) {
+            if (
+                strncmp($data['url'], OF_URL, strlen(OF_URL)) ||
+                strpos($data['url'], '=')
+            ) {
                 $index = &of_base_com_net::request($data['url'], $data);
             } else {
                 $index = array('state' => true);
@@ -132,14 +146,23 @@ class of_base_com_net {
 
         //同步请求
         if ($mode === false) {
-            //post格式化
-            if (isset($data['post'])) {
+            if (
+                //post格式化
+                ($temp = isset($data['post'])) ||
+                //上传文件
+                empty($data['type']) && !empty($data['file'])
+            ) {
                 $data['type'] = 'POST';
-                $data['data'] = &$data['post'];
+                $temp && $data['data'] = &$data['post'];
             }
 
             //参数初始化
-            $data += array('get' => '', 'data' => '', 'cookie' => '', 'header' => '', 'timeout' => 10);
+            $data += array(
+                'get' => '', 'data' => '', 'cookie' => '',
+                'header' => '', 'timeout' => array()
+            );
+            //格式化超时设置[连接超时(10), 请求超时(default_socket_timeout)]
+            $data['timeout'] = (array)$data['timeout'] + array(10);
             //格式化get参数
             is_array($data['get']) && $data['get'] = http_build_query($data['get']);
             //格式化post参数
@@ -275,6 +298,7 @@ class of_base_com_net {
                     }
                 }
 
+                //管道执行命令
                 is_string($exec) && pclose(popen($exec, 'r'));
                 return $res;
             } else {
@@ -284,7 +308,7 @@ class of_base_com_net {
                     'data'    => serialize($data), 
                     'header'  => '',
                     'cookie'  => '', //session_name() .'='. session_id() . (isset($_SERVER['HTTP_COOKIE']) ? '; ' . $_SERVER['HTTP_COOKIE'] : ''), 
-                    'timeout' => 30
+                    'timeout' => array(30)
                 );
 
                 $data['url'] = $config['asUrl'];
@@ -302,30 +326,87 @@ class of_base_com_net {
         //创建连接
         $fp = fsockopen(
             ($data['url']['scheme'] === 'https' ? 'ssl://' : '') . $data['url']['host'], 
-            $index = &$data['url']['port'], $errno, $errstr, $data['timeout']
+            $index = &$data['url']['port'], $errno, $errstr, $data['timeout'][0]
         );
         //连接成功
         if ($fp) {
+            //设置内存不溢出
+            $memory = ini_set('memory_limit', -1);
             //请求类型
             $data['type'] = empty($data['type']) ? 'GET' : strtoupper($data['type']);
             //自定请求头
             $data['header'] = trim($data['header'], "\r\n");
             //简单标准化处理 https(443) 和 http(80) 默认不传端口
-            $temp = $index === 443 || $index === 80 ? '' : ':' . $index;
+            $port = $index === 443 || $index === 80 ? '' : ':' . $index;
+            //附件分界线
+            $line = '----ofFormBoundaryTCG418T3MwECCs03----';
+
+            //写入报文数据
+            if (empty($data['file'])) {
+                $body = &$data['data'];
+            //上传附件
+            } else {
+                //发送文本报文
+                if ($data['data']) {
+                    $temp = str_replace('=', "\"\r\n\r\n", $data['data']);
+                    $temp = 'Content-Disposition: form-data; name="' . str_replace(
+                        '&',
+                        "\r\n--{$line}\r\nContent-Disposition: form-data; name=\"",
+                        $temp
+                    );
+                    $body[] = "--{$line}\r\n{$temp}";
+                }
+
+                //发生附件报文
+                foreach ($data['file'] as $k => &$v) {
+                    //初始化文件名
+                    empty($v['file']) && $v['file'] = isset($v['path']) ? 
+                        pathinfo($v['path'], PATHINFO_BASENAME) :
+                        'file' . $k . '.bin';
+                    //初始化附件类型
+                    empty($v['mime']) && $v['mime'] = 'application/octet-stream';
+                    //初始化自定义头
+                    empty($v['head']) && $v['head'] = '';
+                    is_array($v['head']) && $v['head'] = join("\r\n", $v['head']);
+                    ($v['head'] = trim($v['head'], "\r\n")) && $v['head'] .= "\r\n";
+
+                    //发生字段头
+                    $body[] = "--{$line}\r\nContent-Disposition: form-data; " .
+                        "name=\"{$v['name']}\"; filename=\"{$v['file']}\"\r\n" .
+                        "Content-Type: {$v['mime']}\r\n{$v['head']}";
+
+                    //发送字段报文
+                    if (isset($v['data'])) {
+                        $body[] = &$v['data'];
+                    //发生文件流
+                    } else {
+                        //文件流
+                        $body[] = &of_base_com_disk::file($v['path']);
+                    }
+                }
+
+                //合并报文数据
+                $body[] = '--' . $line . '--';
+                $body = join("\r\n", $body);
+            }
 
             //组合请求数据
             $out[] = $data['type'] . " {$data['url']['path']}?{$data['url']['query']} HTTP/1.1";
-            $out[] = 'Host: ' . $data['url']['host'] . $temp;
+            $out[] = 'Host: ' . $data['url']['host'] . $port;
             //禁止缓存
             $out[] = 'Connection: Close';
             //禁止压缩
             $out[] = 'Accept-Encoding: none';
             //post数据长度
-            $out[] = 'Content-Length: ' . strlen($data['data']);
+            $out[] = 'Content-Length: ' . strlen($body);
             //支持的 MIME 类型
             preg_match('@^Accept *:@im', $data['header']) || $out[] = 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
-            //报文类型
-            preg_match('@^Content-Type *:@im', $data['header']) || $out[] = 'Content-Type: application/x-www-form-urlencoded';
+            //默认报文类型
+            if (preg_match('@^Content-Type *:@im', $data['header']) === 0) {
+                $out[] = empty($data['file']) ? 
+                    'Content-Type: application/x-www-form-urlencoded' :
+                    'Content-Type: multipart/form-data; boundary=' . $line;
+            }
             //发送cookie
             $data['cookie'] && $out[] = 'Cookie: ' . $data['cookie'];
             //会替换下面的默认值
@@ -333,15 +414,28 @@ class of_base_com_net {
             //使用的浏览器
             $out[] = 'User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:26.0) Gecko/20100101 Firefox/26.0';
             $out[] = '';
-            //post数据
-            $out[] = &$data['data'];
+            //报文数据
+            $out[] = &$body;
 
             fwrite($fp, join("\r\n", $out));
 
+            //释放大内存
+            unset($out, $body);
+            //恢复内存设置
+            ini_set('memory_limit', $memory);
+            //初始化响应数据
             $res = null;
+
             //同步调用
             if ($mode === false) {
+                //引用头数据
                 $index = &$res['header'];
+
+                //设置请求超时
+                if (isset($data['timeout'][1])) {
+                    stream_set_timeout($fp, $data['timeout'][1]);
+                }
+
                 //读取响应
                 while ($temp = fgets($fp, 2048)) {
                     $index[] = $temp;
@@ -350,8 +444,11 @@ class of_base_com_net {
                     }
                 }
 
-                //响应头, empty=可能掉线或被GFW屏蔽地址
-                if (empty($res['header'])) {
+                //判断超时
+                $meta = stream_get_meta_data($fp);
+
+                //响应头, 超时 || empty=可能掉线或被GFW屏蔽地址
+                if ($meta['timed_out'] || empty($res['header'])) {
                     $res = array('header' => ' 503 ', 'response' => 'Internet failure');
                 } else {
                     $res['header'] = join($res['header']);
@@ -359,7 +456,7 @@ class of_base_com_net {
                 }
 
                 //chunk传输
-                if (preg_match('@Transfer-Encoding:\s*chunked@', $res['header'])) {
+                if (preg_match('@Transfer-Encoding:\s*chunked@i', $res['header'])) {
                     //chunk还原
                     $res['response'] = &self::dechunk($res['response']);
                 }
