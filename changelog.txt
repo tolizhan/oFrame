@@ -1,3 +1,77 @@
+版本: 232
+作者: Edgar
+日期: 2019年5月27日 21:49:54
+信息:
+说明: + 消息队列在分布系统上会自动开启相同的消费并发数
+      + 支持自定义错误 of::event('of::error', true, 异常对象或错误数组)
+      * 解决消息队列回调方法抛出异常时队列进程重启的问题
+      * 解决glusterfs网络磁盘下异步保护进程无法kill掉问题
+      * 解决linux与windows下异步操作含特殊字符时调用失败的问题
+      * 解决分布式部署时计划任务重复跑的问题
+      * 解决计划任务配置范围末尾是0不执行的问题, 如: * 20-0 * * *
+      * 解决分页执行包含"HAVING"SQL语句失败的问题
+      * 解决命名空间下的语言包在 linux 上生成路径错误的问题
+      * 请求执行时间过长, redis模式session写入失败时将抛出占用明细错误
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/config/queue.php
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/accy/session/kv.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.js
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/base/language/packs.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/version/check.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/license.txt
+
+版本: 230
+作者: Edgar
+日期: 2018年11月30日 14:28:35
+信息:
+说明: + of_base_com_net::request 支持附件上传
+      + of_base_com_net::request 可以设置响应超时时间
+      + of_base_com_disk::each 第三个参数为null时非遍历方式读取子目录
+      + 配置增加 _of.session.httpOnly 来禁止 js 读取 session_id
+      + 消息队列回调参数中增加调用次数"count"
+      * 修复html模版引擎将style标签内容按多语言处理
+      * 加强html模版引擎对路径格式的识别率
+      * 修复单页条数填写无效数字导致分页失败问题
+      * 解决单条队列消息执行超过十分钟被重复执行问题
+      * 加强 of_base_com_net::request 对不标准响应头的解析
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/config/config.php
+已修改 : /trunk/demo/extend/sqlProfiling/main/main.php
+已修改 : /trunk/demo/serv/index.php
+已修改 : /trunk/demo/serv/papi/demo.php
+已修改 : /trunk/demo/serv/papi/main.php
+已修改 : /trunk/demo/serv/readme.txt
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Calculation/Functions.php
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/htmlTpl/tool.php
+已修改 : /trunk/include/of/base/language/packs.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/base/version/check.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/index.php
+
 版本: 228
 作者: Edgar
 日期: 2018年10月7日 9:14:31

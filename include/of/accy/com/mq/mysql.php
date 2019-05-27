@@ -135,16 +135,17 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
         $expTime = date('Y-m-d H:i:s', $time + 600);
         //结果集
         $result = array();
-        //计算消息数据偏移量
-        $limit = ($data['this']['cCid'] - 1) * 5;
 
         //通过先筛选主键后加锁的方式解决同时修改与筛选导致索引死锁的问题
         do {
             //当筛选成功, 锁定失败时保持循环
             $loop = false;
-
-            //读取正在执行消息ID
+            //读取正在执行并发ID
             $lock = of_base_com_timer::data(null, true);
+            //计算消息数据偏移量
+            $limit = $lock['info'][$data['this']['cCid']]['sort'] * 5;
+
+            //提取正在执行消息ID
             foreach ($lock['info'] as $k => &$v) {
                 //正在执行
                 if (($index = &$v['data']['_mq']) && $index['doneTime'] === '') {

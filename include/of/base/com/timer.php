@@ -105,24 +105,25 @@ class of_base_com_timer {
             $fp = fopen($path . '/taskLock', 'a');
 
             do {
-                //连接加锁
-                if (flock($fp, LOCK_EX)) {
-                    //连接解锁
-                    flock($fp, LOCK_UN);
+                //连接加锁(阻塞) 兼容 glusterfs 网络磁盘
+                while (!flock($fp, LOCK_EX | LOCK_NB)) {
+                    usleep(200);
+                }
+                //连接解锁
+                flock($fp, LOCK_UN);
 
-                    //无效保护进程继续运行
-                    if (self::taskList(null) === false && self::crontab() === false) {
-                        //关闭连接
-                        fclose($fp);
-                        //结束保护
-                        break;
-                    //读取加锁源
-                    } else {
-                        //任务进程
-                        self::timer('taskLock');
-                        //等待处理
-                        sleep(30);
-                    }
+                //无效保护进程继续运行
+                if (self::taskList(null) === false && self::crontab() === false) {
+                    //关闭连接
+                    fclose($fp);
+                    //结束保护
+                    break;
+                //读取加锁源
+                } else {
+                    //任务进程
+                    self::timer('taskLock');
+                    //等待处理
+                    sleep(30);
                 }
             } while (true);
         }
@@ -313,8 +314,9 @@ class of_base_com_timer {
      * 返回 :
      *      {
      *          "info" : {
-     *              并发ID : {
+     *              并发ID, 从小到大排序 : {
      *                  "isRun" : 是否运行, true=运行, false=停止
+     *                  "sort"  : 在返回列表中的位置, 从0开始
      *                  "wRes"  : 写资源, data为true时有效
      *                  "data"  : 并发所存数据
      *              }, ...
@@ -339,6 +341,8 @@ class of_base_com_timer {
             $path = self::$config['path'] . '/concurrent'. $call;
             //过滤加锁(true=不过滤)
             $filt = $cIds !== true;
+            //并发ID排序计数
+            $sort = -1;
 
             //读取自身
             if (is_bool($cIds)) {
@@ -358,6 +362,9 @@ class of_base_com_timer {
                 $cIds = array($cIds === null ? $nowTask['cAvg']['cCid'] : $cIds);
             }
 
+            //从小到大排序并发ID
+            sort($cIds, SORT_NUMERIC);
+
             //读取数据
             foreach ($cIds as &$v) {
                 //并发文件存在
@@ -369,7 +376,9 @@ class of_base_com_timer {
                     if ($isRun || $filt) {
                         $index = &$result['info'][$v];
                         //进程运行状态
-                        $index = array('isRun' => $isRun, 'wRes' => null);
+                        $index = array(
+                            'isRun' => $isRun, 'wRes' => null, 'sort' => ++$sort
+                        );
 
                         //加写锁(array, bool)
                         if ($data || $data === false) {
@@ -720,7 +729,7 @@ class of_base_com_timer {
 
                             foreach ($list as &$vl) {
                                 //x 模式
-                                if (!$vl[2]) {
+                                if ($vl[2] === '') {
                                     $temp = $index == $vl[1] || $vl[1] === '*';
                                 //大-小 模式
                                 } else if ($vl[1] > $vl[2]) {
@@ -758,12 +767,10 @@ class of_base_com_timer {
 
                             //对应时间整点没有执行过
                             if ($temp < $timeBox['nowTime']) {
-                                //更新当前时间
-                                $vt['time'] = $timeBox['nowTime'];
                                 //记录成功项
-                                $result[] = &$vt;
+                                $result[] = array('time' => $timeBox['nowTime']) + $vt;
                                 //记录最后更新时间戳
-                                of_base_com_kv::set($tKey, $vt['time'], 86400, $config['kvPool']);
+                                of_base_com_kv::set($tKey, $timeBox['nowTime'], 86400, $config['kvPool']);
                             }
 
                             //解锁
@@ -797,11 +804,17 @@ class of_base_com_timer {
         $nowTime = time();
 
         foreach ($list as &$v) {
-            //并发数
-            $cNum = empty($v['cNum']) ? 0 : (int)$v['cNum'];
-
+            //单计划
+            if (empty($v['cNum'])) {
+                //触发任务
+                of_base_com_net::request(OF_URL, array(), array(
+                    'asCall' => 'of_base_com_timer::taskCall',
+                    'params' => array(&$v, false)
+                ));
             //多并发
-            if ($cNum > 0) {
+            } else {
+                //并发数组
+                $cArr = is_array($v['cNum']) ? $v['cNum'] : range(1, $v['cNum']);
                 $cMd5 = of_base_com_data::digest($v['call']);
                 $cDir = $path . '/' . $cMd5;
 
@@ -815,7 +828,7 @@ class of_base_com_timer {
                         of_base_com_disk::file($temp, json_encode($v['call']), true);
                     }
 
-                    do {
+                    foreach ($cArr as &$cNum) {
                         //打开并发文件
                         $fp = fopen($temp = $cDir . '/' . $cNum, 'a');
 
@@ -835,20 +848,13 @@ class of_base_com_timer {
                                 &$v, array('cMd5' => $cMd5, 'cCid' => $cNum)
                             )
                         ));
-                    } while (--$cNum);
+                    }
                 }
 
                 //连接解锁
                 flock($lock, LOCK_UN);
                 //关闭连接
                 fclose($lock);
-            //单计划
-            } else {
-                //触发任务
-                of_base_com_net::request(OF_URL, array(), array(
-                    'asCall' => 'of_base_com_timer::taskCall',
-                    'params' => array(&$v, false)
-                ));
             }
         }
     }

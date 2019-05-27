@@ -21,7 +21,7 @@ return array(
         //默认视图模板模板路径
         'tplPath' => '/view',
         //全局标题
-        'title'   => ' oFrame 框架 http://phpof.net/',
+        'title'   => ' OF 框架 http://phpof.net/',
     ),
     //数据库连接池
     'db'          => array(
@@ -36,6 +36,7 @@ return array(
             'user'       => 'root',
             'password'   => 'admin',
             'database'   => 'test',
+            //mysql > 5.5.3 可配置utf8mb4存储emoji表情
             'charset'    => 'utf8',
             //数据库时区, 默认true=框架时区, false=数据库时区, "±00:00"=指定时区
             'timezone'   => true,
@@ -127,7 +128,7 @@ return array(
         //禁止 js 读取 session_id
         'httpOnly'    => true,
         //正则匹配"调度类名::方法名"判断是否自动开启
-        'autoStart'   => '@^(?!of_base_com_net:|of_base_sso_api:)@',
+        'autoStart'   => '@^(?!of_base_com_net:|of_base_sso_api:|of_base_language_packs:)@',
         //最大生存时间(分钟)
         'maxLifeTime' => 60,
         //各调度参数

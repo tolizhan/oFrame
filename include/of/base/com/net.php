@@ -71,7 +71,7 @@ class of_base_com_net {
      *          }, ...]
      *          "timeout" : 超时时间(10s),
      *              数字=连接超时
-     *              数组=[连接超时(10), 请求超时(default_socket_timeout)]
+     *              数组=[连接超时(10), 响应超时(default_socket_timeout)]
      *      }
      *      mode : 提交模式,
      *          false(默认) = 同步提交,
@@ -127,7 +127,8 @@ class of_base_com_net {
             $data = unserialize($data);
             $mode = &$data['mode'];
             self::$cookie = &$data['staticCookie'];
-            unset($data['staticCookie'], $data['mode']);
+            $_SERVER['REMOTE_ADDR'] = &$data['remoteAddr'];
+            unset($data['staticCookie'], $data['remoteAddr'], $data['mode']);
 
             //OF_URL 的无参数地址无需请求
             if (
@@ -218,6 +219,8 @@ class of_base_com_net {
             $data['url'] = $url;
             //静态cookie
             $data['staticCookie'] = &self::$cookie;
+            //记录当前IP地址
+            $data['remoteAddr'] = &$_SERVER['SERVER_ADDR'];
             //操作系统类型(WINNT:windows, Darwin:mac, 其它:linux)
             $osType = strtolower(substr(PHP_OS, 0, 3));
 
@@ -241,20 +244,21 @@ class of_base_com_net {
                     OF_DIR . '/index.php',
                     'get:a=request&c=of_base_com_net',
                     '_tz:' . date_default_timezone_get(),
-                    '_ip:' . $_SERVER['SERVER_ADDR']
+                    '_ip:' . $_SERVER['SERVER_ADDR'],
+                    '_rl:' . ROOT_URL
                 );
 
                 //Windows
                 if ($osType === 'win') {
                     //win 异步数据结构
-                    $exec[] = 'data:' . str_replace('"', '""', serialize($data));
+                    $exec[] = 'data:' . str_replace('"', '\"', serialize($data));
 
                     if (empty($config['exeDir'])) {
                         $temp = 'wmic process where processid=' . getmypid() . ' get ExecutablePath';
 
                         //通道打开
                         if ($pp = popen($temp, 'r')) {
-                            $temp = explode("\n", fread($pp, 2048));
+                            $temp = explode("\n", stream_get_contents($pp, 2048));
                             $config['exeDir'] = trim($temp[1]);
                             pclose($pp);
                         //执行错误
@@ -287,7 +291,7 @@ class of_base_com_net {
                     //命令校验成功
                     if (($temp = fgets(popen($check, 'r'))) === '1') {
                         //linux 异步数据结构
-                        $exec[] = 'data:' . addslashes(serialize($data));
+                        $exec[] = 'data:' . addcslashes(serialize($data), '`"\$');
                         //拼成异步命令
                         $exec = $aPre . '"' . join('" "', $exec) . '" >/dev/null 2>&1 &';
                     //命令校验失败
@@ -307,7 +311,7 @@ class of_base_com_net {
                     'type'    => 'POST',
                     'data'    => serialize($data), 
                     'header'  => '',
-                    'cookie'  => '', //session_name() .'='. session_id() . (isset($_SERVER['HTTP_COOKIE']) ? '; ' . $_SERVER['HTTP_COOKIE'] : ''), 
+                    'cookie'  => '',
                     'timeout' => array(30)
                 );
 

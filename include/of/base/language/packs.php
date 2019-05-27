@@ -260,7 +260,7 @@ class of_base_language_packs {
 
             //存在类
             if ($params['class']) {
-                $temp = strtr($params['class'], '_', '/');
+                $temp = str_replace(array('_', '\\'), '/', $params['class']);
                 strncmp($temp, 'of/', 3) === 0 && $temp = substr(OF_DIR, strlen(ROOT_DIR) + 1) . '/' . substr($temp, 3);
 
                 if (($temp = '/' . $temp . '.php') !== $filePath) {

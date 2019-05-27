@@ -24,7 +24,7 @@ return array(
         'keys' => array(
             //不存在的键将被抛弃
             'key' => array(
-                'cNum' => 4,
+                'cNum' => 2,
                 'call' => 'ctrl_index::mqTest'
             )
         )

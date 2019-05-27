@@ -439,7 +439,8 @@ _top:expression(eval(document.documentElement.scrollTop) + 200);
 
                         toolObj.post({
                             'type'   : 'getFile', 
-                            'path'   : $('.urlBar').html() + '/' + $(this).children('span').html(),
+                            'path'   : ($('.urlBar').html() + '/' + $(this).children('span').html())
+                                .replace('//', '/'),
                             'status' : {
                                 'ignore' : $('#getDiscardState').prop('checked'),
                                 'keyInv' : $('[name=translateLevel]:checked').val() === 'key'

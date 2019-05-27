@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200230);
+define('OF_VERSION', 200232);
 
 /**
  * 描述 : 控制层核心
@@ -306,6 +306,9 @@ class of {
                     //设置本机IP
                     } else if ($temp[0] === '__IP') {
                         $_SERVER['SERVER_ADDR'] = $temp[1];
+                    //设置默认 ROOT_URL
+                    } else if ($temp[0] === '__RL') {
+                        $of['rootUrl'] = $temp[1];
                     //存在 $GLOBALS 变量中
                     } else if (isset($GLOBALS[$temp[0]])) {
                         //解析到对应超全局变量中
@@ -414,7 +417,7 @@ class of {
 
         //输出框架信息
         $temp = OF_DEBUG === false ? '' : ' ' . OF_VERSION;
-        ini_get('expose_php') && header('X-Powered-By: oFrame' . $temp);
+        ini_get('expose_php') && header('X-Powered-By: OF' . $temp);
 
         //of_类映射
         self::event('of::loadClass', array(

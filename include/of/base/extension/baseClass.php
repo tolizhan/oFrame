@@ -120,8 +120,7 @@ class of_base_extension_baseClass {
             switch (strtolower($fileExtend === null ? pathinfo($v, PATHINFO_EXTENSION) : $fileExtend)) {
                 //include文件
                 case 'php':
-                    include $extensionDir . $v;
-                    break;
+                    return include $extensionDir . $v;
                 //script 标签,同时会激活语言包
                 case 'js' :
                     echo '<script eUrl="' .$extensionUrl. '" eKey="' .$this->_getConst('eKey'). '" src="', $extensionUrl, $v, '" ></script>';

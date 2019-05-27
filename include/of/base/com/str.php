@@ -239,7 +239,7 @@ class of_base_com_str {
      * 演示 :
      *      strsub('我a是m', 2);
      *      返回的结果为'是m'
-     *      strsub('我a是m', array('start' => 2. 'overflow' => '...'));
+     *      strsub('我a是m', array('start' => 2, 'overflow' => '...'));
      *      返回的结果为'...是m'
      * 作者 : Edgar.lee
      */

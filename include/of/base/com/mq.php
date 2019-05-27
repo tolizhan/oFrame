@@ -65,6 +65,8 @@ abstract class of_base_com_mq {
     private static $waitMq = array();
     //依赖根路径
     private static $mqDir = null;
+    //队列监听路径
+    private static $tPath = null;
     //触发时的环境变量
     private static $fireEnv = array(
         //未释放的内存(默认1M)
@@ -82,7 +84,8 @@ abstract class of_base_com_mq {
         of::event('of::halt', 'of_base_com_mq::ofHalt');
 
         self::$mqDir = ROOT_DIR . OF_DATA . '/_of/of_base_com_mq';
-        is_dir(self::$mqDir) || @mkdir(self::$mqDir, 0777, true);
+        self::$tPath = self::$mqDir . '/queueTrigger/' . md5($_SERVER['SERVER_ADDR']);
+        is_dir(self::$tPath) || @mkdir(self::$tPath, 0777, true);
 
         //web访问开启消息队列
         if (of::dispatch('class') === 'of_base_com_mq') {
@@ -100,7 +103,14 @@ abstract class of_base_com_mq {
                 exit("<br>\nAccess denied: production mode.");
             //重启消息队列
             } else if ($reload) {
-                of_base_com_disk::file(self::$mqDir . '/command.php', '');
+                //队列监听列表
+                $path = self::$mqDir . '/queueTrigger';
+                //遍历并发任务目录
+                of_base_com_disk::each($path, $tasks, null);
+                //遍历发送重置命令
+                foreach ($tasks as $kt => &$vt) {
+                    $vt && of_base_com_disk::file($kt . '/command.php', '');
+                }
             //展示并发列表
             } else {
                 echo '<input type="button" onclick="',
@@ -153,17 +163,38 @@ abstract class of_base_com_mq {
      * 作者 : Edgar.lee
      */
     public static function state($start = true) {
-        //占用监听成功, 消息队列没运行
-        if ($fp = self::lockListion()) {
-            //关闭锁
-            flock($fp, LOCK_UN);
-            fclose($fp);
+        //队列监听列表
+        $path = self::$mqDir . '/queueTrigger';
+        //遍历并发任务目录
+        of_base_com_disk::each($path, $tasks, null);
+        //最终运行状态
+        $result = false;
+        //判断所有监听, 一个运行便为运行
+        foreach ($tasks as $kt => &$vt) {
+            //是目录
+            if ($vt) {
+                //当前任务磁盘目录
+                if (is_file($temp = $kt . '/queueLock')) {
+                    //打卡并发文件流
+                    $fp = fopen($temp, 'r+');
 
-            //尝试开启
-            $start && self::listion('queueLock');
+                    //任务已运行
+                    if ($result = !flock($fp, LOCK_EX | LOCK_NB)) {
+                        break ;
+                    //任务未运行
+                    } else {
+                        flock($fp, LOCK_UN);
+                    }
+
+                    //关闭连接
+                    fclose($fp);
+                }
+            }
         }
 
-        return !$fp;
+        //需要开启 && 尝试开启
+        $start && self::listion('queueLock');
+        return $result;
     }
 
     /**
@@ -303,7 +334,10 @@ abstract class of_base_com_mq {
         $fireEnv = &self::$fireEnv;
 
         //有效回调
-        if ($call = &$config['keys'][$data['key']]['call']) {
+        if (
+            $_SERVER['REMOTE_ADDR'] === $_SERVER['SERVER_ADDR'] &&
+            $call = &$config['keys'][$data['key']]['call']
+        ) {
             //校验文件变动, ture=加载的文件, false=不校验, 字符串=@开头的正则白名单
             $check = &$config['check'];
             //检查内存占用峰值
@@ -313,7 +347,7 @@ abstract class of_base_com_mq {
             //可以垃圾回收
             ($isGc = function_exists('gc_enable')) && gc_enable();
             //接收环境变化路径
-            $path = self::$mqDir . '/command.php';
+            $path = self::$tPath . '/command.php';
             //消息队列实例对象
             $mqObj = &self::$mqList[$bind]['pools'][$data['pool']]['inst'];
             //记录默认时区
@@ -364,8 +398,140 @@ abstract class of_base_com_mq {
      * 作者 : Edgar.lee
      */
     public static function listion($name = 'queueLock', $type = null) {
+        //开始监听
+        if ($type === true && $name === 'queueLock') {
+            //打开监听触发锁
+            $tLock = fopen(self::$mqDir . '/triggerLock', 'a+');
+            //加锁监听触发锁
+            if (flock($tLock, LOCK_EX)) {
+                //监听加锁成功
+                if ($lock = self::lockListion($name)) {
+                    //已绑定的监听ID
+                    $tNum = array(0);
+                    //命令配置路径
+                    $cPath = self::$tPath . '/command.php';
+                    //队列监听列表
+                    $qPath = self::$mqDir . '/queueTrigger';
+
+                    //遍历并发任务目录
+                    of_base_com_disk::each($qPath, $tasks, null);
+                    //读取已启动的监听数据
+                    foreach ($tasks as $kt => &$vt) {
+                        //是文件夹 && 不是当前监听
+                        if ($vt && $kt !== self::$tPath) {
+                            $fp = fopen($kt . '/queueLock', 'a+');
+
+                            //监听开启状态
+                            if (!flock($fp, LOCK_EX | LOCK_NB)) {
+                                //已绑定的监听ID
+                                $temp = of_base_com_disk::file($kt . '/params.php', true, true);
+                                $tNum[] = $temp['tNum'];
+                            } else {
+                                flock($fp, LOCK_UN);
+                            }
+
+                            fclose($fp);
+                        }
+                    }
+
+                    //计算最小未绑定的监听ID
+                    $tNum = array_diff(range(1, max($tNum) + 1), $tNum);
+                    $tNum = reset($tNum);
+
+                    //回写监听参数数据
+                    of_base_com_disk::file(self::$tPath . '/params.php', array(
+                        //监听编号
+                        'tNum' => $tNum,
+                        //IP地址
+                        'addr' => $_SERVER['SERVER_ADDR']
+                    ), true);
+
+                    //关闭监听触发锁
+                    flock($tLock, LOCK_UN);
+
+                    //监听标志存在
+                    while (true) {
+                        //读取命令
+                        $cmd = of_base_com_disk::file($cPath, true);
+                        $cmd || $cmd = array('taskPid' => '', 'compare' => '');
+                        isset($tPid) || $tPid = $cmd['taskPid'];
+                        //加载最新配置文件
+                        $config = of::config('_of.com.mq', array(), 4);
+                        //待回调列表
+                        $waitCall = array();
+
+                        //任务ID相同
+                        if ($cmd['taskPid'] === $tPid && $config) {
+                            //遍历配置文件 队列池 => 参数
+                            foreach ($config as $ke => &$ve) {
+                                //加载外部配置文件
+                                self::getQueueConfig($ve['queues'], $ke);
+
+                                //查找待触发的回调
+                                foreach ($ve['queues'] as $kq => &$vq) {
+                                    //可消费
+                                    if (!isset($vq['mode']) || $vq['mode']) {
+                                        foreach ($vq['keys'] as $kk => &$vk) {
+                                            //并发起始进程ID
+                                            $temp = ($tNum - 1) * $vk['cNum'] + 1;
+                                            //待回调列表
+                                            $waitCall[] = array(
+                                                'time' => 0,
+                                                'cNum' => range(
+                                                    $temp,
+                                                    $temp + $vk['cNum'] - 1
+                                                ),
+                                                'call' => array(
+                                                    'asCall' => 'of_base_com_mq::fireQueue',
+                                                    'params' => array(array(
+                                                        'fire' => array(
+                                                            'pool'  => $ke,
+                                                            'queue' => $kq,
+                                                            'key'   => $kk
+                                                        )
+                                                    ))
+                                                )
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+
+                            //比对配置文件变化(更新后所有当前消息队列停止)
+                            $temp = of_base_com_data::digest($config);
+                            if ($cmd['compare'] !== $temp) {
+                                $cmd['compare'] = $temp;
+                                $cmd['taskPid'] = $tPid = of_base_com_str::uniqid();
+                                of_base_com_disk::file($cPath, $cmd);
+                            }
+
+                            //激活消息队列
+                            foreach ($waitCall as &$v) {
+                                of_base_com_timer::task($v);
+                            }
+
+                            sleep(60);
+                            //启动保护监听
+                            self::listion('protected');
+                        //关闭监听器
+                        } else {
+                            //停止在运行的消息进程
+                            $config || of_base_com_disk::file($cPath, '');
+                            break ;
+                        }
+                    }
+
+                    //关闭锁
+                    flock($lock, LOCK_UN);
+                    fclose($lock);
+                }
+            };
+
+            //关闭监听触发锁
+            flock($tLock, LOCK_UN);
+            fclose($tLock);
         //成功占用监听
-        if ($lock = self::lockListion($name)) {
+        } else if ($lock = self::lockListion($name)) {
             if ($type === null) {
                 flock($lock, LOCK_UN);
                 //加载定时器
@@ -373,78 +539,13 @@ abstract class of_base_com_mq {
                     'asCall' => 'of_base_com_mq::listion',
                     'params' => array($name, true)
                 ));
-            } else if ($name === 'queueLock') {
-                $path = self::$mqDir . '/command.php';
-
-                while (true) {
-                    //读取命令
-                    $cmd = of_base_com_disk::file($path, true);
-                    $cmd || $cmd = array('taskPid' => '', 'compare' => '');
-                    isset($tPid) || $tPid = $cmd['taskPid'];
-                    //加载最新配置文件
-                    $config = of::config('_of.com.mq', array(), 4);
-                    //待回调列表
-                    $waitCall = array();
-
-                    //任务ID相同
-                    if ($cmd['taskPid'] === $tPid && $config) {
-                        //遍历配置文件 队列池 => 参数
-                        foreach ($config as $ke => &$ve) {
-                            //加载外部配置文件
-                            self::getQueueConfig($ve['queues'], $ke);
-
-                            //查找待触发的回调
-                            foreach ($ve['queues'] as $kq => &$vq) {
-                                //可消费
-                                if (!isset($vq['mode']) || $vq['mode']) {
-                                    foreach ($vq['keys'] as $kk => &$vk) {
-                                        $waitCall[] = array(
-                                            'time' => 0,
-                                            'cNum' => $vk['cNum'],
-                                            'call' => array(
-                                                'asCall' => 'of_base_com_mq::fireQueue',
-                                                'params' => array(array(
-                                                    'fire' => array(
-                                                        'pool'  => $ke,
-                                                        'queue' => $kq,
-                                                        'key'   => $kk
-                                                    )
-                                                ))
-                                            )
-                                        );
-                                    }
-                                }
-                            }
-                        }
-
-                        //比对配置文件变化(更新后所有当前消息队列停止)
-                        $temp = of_base_com_data::digest($config);
-                        if ($cmd['compare'] !== $temp) {
-                            $cmd['compare'] = $temp;
-                            $cmd['taskPid'] = $tPid = of_base_com_str::uniqid();
-                            of_base_com_disk::file($path, $cmd);
-                        }
-
-                        //激活消息队列
-                        foreach ($waitCall as &$v) {
-                            of_base_com_timer::task($v);
-                        }
-
-                        sleep(60);
-                        //启动保护监听
-                        self::listion('protected');
-                    //关闭监听器
-                    } else {
-                        //停止在运行的消息进程
-                        $config || of_base_com_disk::file($path, '');
-                        break ;
-                    }
-                }
             } else if ($name === 'protected') {
                 //打开连接
-                $fp = fopen(self::$mqDir . '/queueLock.php', 'a');
-                //连接加锁(阻塞)
-                flock($fp, LOCK_EX);
+                $fp = fopen(self::$tPath . '/queueLock', 'a');
+                //连接加锁(阻塞) 兼容 glusterfs 网络磁盘
+                while (!flock($fp, LOCK_EX | LOCK_NB)) {
+                    usleep(200);
+                }
                 //连接解锁
                 flock($fp, LOCK_UN);
                 //关闭锁
@@ -557,8 +658,13 @@ abstract class of_base_com_mq {
         //记录监听数据
         of_base_com_timer::data(array('_mq' => &$cLog));
 
-        //处理消息
-        $result = &of::callFunc($call, $data);
+        try {
+            //处理消息
+            $result = &of::callFunc($call, $data);
+        } catch (Exception $e) {
+            $result = false;
+            of::event('of::error', true, $e);
+        }
 
         //恢复永不超时
         ini_set('max_execution_time', 0);
@@ -697,7 +803,7 @@ abstract class of_base_com_mq {
      * 作者 : Edgar.lee
      */
     private static function lockListion(&$name = 'queueLock') {
-        $fp = fopen(self::$mqDir . "/{$name}.php", 'a+');
+        $fp = fopen(self::$tPath . "/{$name}", 'a+');
 
         //成功加锁
         if (flock($fp, LOCK_EX | LOCK_NB)) {

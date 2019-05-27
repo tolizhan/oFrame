@@ -13,7 +13,11 @@ class of_base_version_check {
             //非生成环境
             OF_DEBUG !== false &&
             //非框架路径
-            strncmp($_SERVER['SCRIPT_NAME'], OF_URL . '/', strlen(OF_URL) + 1)
+            strncmp(
+                $_SERVER['SCRIPT_NAME'],
+                $temp = rawurldecode(OF_URL) . '/',
+                strlen($temp)
+            )
         ) {
             //获取版本号
             $version = of_base_com_kv::get('of_base_version_check::version');

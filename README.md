@@ -1,4 +1,4 @@
-# oFrame 模块化轻量级php框架
+# orange-framework 模块化轻量级php框架
 
 框架本身是套解决方案, 兼容全浏览器及php5.2~7.x<br>
 它基于MVCS, 同时[支持多种设计模式](http://doc.phpof.net/?oFrame/FAQ/architect.html,oFrame/navigation.html)<br>

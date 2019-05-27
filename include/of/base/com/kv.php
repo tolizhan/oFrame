@@ -116,14 +116,14 @@ class of_base_com_kv {
 
         $json && $value = &of_base_com_data::json($value);
         $index = &self::$instList[$pool]['inst'];
-        $retry *= 5000;
+        $retry += time();
 
         do {
             $result = $index->_add($name, $value, self::formatTime($time));
-            if ($result || $retry <= 0) {
+            if ($result || $retry <= time()) {
                 break ;
             } else {
-                $retry -= 1;
+                //各版操作系统时间不定
                 usleep(200);
             }
         } while (true);

@@ -20,13 +20,27 @@ class of_accy_session_kv extends of_base_session_base {
         $params['rand'] = mt_rand();
         $params['sKey'] = 'of_accy_session_kv::sessionId#' . $sessionId;
         $params['lock'] = $params['sKey'] . '~lock~';
+        $timeout = ($timeout = ini_get('max_execution_time')) ? $timeout - 2 : 600;
 
         //加锁
-        if (of_base_com_kv::add($params['lock'], $params['rand'], 1800, $params['kvPool'], 600)) {
+        if (of_base_com_kv::add($params['lock'], $params['rand'], 86400, $params['kvPool'], $timeout)) {
+            //记录执行信息
+            of_base_com_kv::set($params['sKey'] . '~exec~', array(
+                'ctrl' => join('::', of::dispatch()),
+                'data' => array(
+                    'time'    => &$_SERVER['REQUEST_TIME'],
+                    '_GET'    => &$_GET,
+                    '_POST'   => &$_POST,
+                    '_COOKIE' => &$_COOKIE,
+                )
+            ), 86400, $params['kvPool']);
             //读取
             $data = of_base_com_kv::get($params['sKey'], '', $params['kvPool']);
         } else {
-            trigger_error('Session lock failed.');
+            trigger_error('Session lock occupancy: ' . print_r(
+                of_base_com_kv::get($params['sKey'] . '~exec~', '', $params['kvPool']),
+                true
+            ));
             exit ;
         }
     }
@@ -34,26 +48,28 @@ class of_accy_session_kv extends of_base_session_base {
     protected static function _write(&$sessionId, &$data, $maxLifeTime) {
         $params = &self::$params;
 
+        //回写数据
+        of_base_com_kv::set($params['sKey'], $data, $maxLifeTime, $params['kvPool']);
+
         //加锁状态
         if ($params['rand'] === of_base_com_kv::get($params['lock'], '', $params['kvPool'])) {
-            of_base_com_kv::set($params['sKey'], $data, $maxLifeTime, $params['kvPool']);
             //解锁
+            of_base_com_kv::del($params['sKey'] . '~exec~', $params['kvPool']);
             of_base_com_kv::del($params['lock'], $params['kvPool']);
-        } else {
-            trigger_error('Session write failed.');
         }
     }
 
     protected static function _destroy(&$sessionId) {
         $params = &self::$params;
 
+        //销毁数据
+        of_base_com_kv::del($params['sKey'], $params['kvPool']);
+
         //加锁状态
         if ($params['rand'] === of_base_com_kv::get($params['lock'], '', $params['kvPool'])) {
-            of_base_com_kv::del($params['sKey'], $params['kvPool']);
             //解锁
+            of_base_com_kv::del($params['sKey'] . '~exec~', $params['kvPool']);
             of_base_com_kv::del($params['lock'], $params['kvPool']);
-        } else {
-            trigger_error('Session destroy failed.');
         }
     }
 

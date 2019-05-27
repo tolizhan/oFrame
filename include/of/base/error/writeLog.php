@@ -1,8 +1,10 @@
 <?php
-//常规错误
+//系统错误
 set_error_handler('of_base_error_writeLog::phpLog');
 //系统异常
 set_exception_handler('of_base_error_writeLog::phpLog');
+//代码错误
+of::event('of::error', 'of_base_error_writeLog::phpLog');
 //致命错误
 of::event('of::halt', 'of_base_error_writeLog::phpLog');
 //SQL 错误
@@ -95,7 +97,7 @@ class of_base_error_writeLog {
                 return ;
             }
         //系统异常
-        } else if ($errstr === null) {
+        } else if (is_object($errno)) {
             $backtrace = array(
                 'errorType'     => 'exception',
                 'environment'   => array(
@@ -111,8 +113,28 @@ class of_base_error_writeLog {
                     'backtrace' => $errno->getTrace()
                 )
             );
-        //常规错误 && 不是过期函数
+        //系统错误 && 不是过期函数
         } else if (error_reporting() && $errno !== 8192) {
+            //错误回溯
+            $errTrace = debug_backtrace();
+            //代码错误
+            if (is_array($errno)) {
+                array_splice($errTrace, 0, 2);
+                $errno += array(
+                    'code' => E_USER_NOTICE,
+                    'info' => 'Unknown error',
+                    'file' => $errTrace[0]['file'],
+                    'line' => $errTrace[0]['line']
+                );
+                $errstr = (string)$errno['info'];
+                $errfile = (string)$errno['file'];
+                $errline = (int)$errno['line'];
+                $errno = (int)$errno['code'];
+            //系统错误
+            } else {
+                array_splice($errTrace, 0, 1);
+            }
+
             $backtrace = array(
                 'errorType'     =>'phpError',
                 'environment'   => array(
@@ -120,11 +142,9 @@ class of_base_error_writeLog {
                     'message'   => $errstr,
                     'file'      => $errfile,
                     'line'      => $errline,
-                    //错误回溯
-                    'backtrace' => debug_backtrace()
+                    'backtrace' => &$errTrace
                 )
             );
-            array_splice($backtrace['environment']['backtrace'], 0, 1);
         //"@"错误 || 过期函数
         } else {
             //@trigger_error('') 返回 false

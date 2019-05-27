@@ -395,6 +395,7 @@ class of_base_com_com {
                             //匹配信息
                             'match'  => null
                         );
+                        //定位 {`LIMIT`} 关键词
                         while (true) {
                             if ($temp['match'] = of_base_com_str::strArrPos($attr['data'], $temp['keys'], $temp['offset'])) {
                                 if (
@@ -435,57 +436,16 @@ class of_base_com_com {
                             $post['sort'] = empty($post['sort']) ? $temp[3][1][0] : "{$post['sort']}, {$temp[3][1][0]}";
                         }
 
+                        //生成查询总长度SQL
                         if (empty($post['items'])) {
-                            //去掉 SQL LIMIT 并转换成大写
-                            $temp['uStr'] = strtoupper($temp[1] . $temp[2]);
-                            //定位 FROM 关键栈
-                            $temp['keys'] = array(array('"' => true, '\'' => true, '(' => false, 'FROM' => false));
-                            //SELECT后的位置 = 起始偏移量
-                            $temp['sLen'] = $temp['offset'] = strpos($temp['uStr'], 'SELECT') + 6;
-
-                            while ($temp['match'] = of_base_com_str::strArrPos($temp['uStr'], end($temp['keys']), $temp['offset'])) {
-                                switch ($temp['match']['match']) {
-                                    //定位成功
-                                    case 'FROM':
-                                        //类似 FROM_UNIXTIME
-                                        if (trim(substr($temp['uStr'], $temp['match']['position'] + 4, 1))) {
-                                            break;
-                                        //确定是 FROM 关键词
-                                        } else {
-                                            //MYSQL 50700 以上版本 不能使用 UNION ALL方法
-                                            $post['items'] = '/*CALL*/' .
-                                                substr($temp[1], 0, $temp['sLen']) .
-                                                ' SQL_CALC_FOUND_ROWS 1 c ' .
-                                                substr($temp[1]. $temp[2], $temp['match']['position']) .
-                                                ' LIMIT 0; SELECT FOUND_ROWS() c';
-                                            break 2;
-                                        }
-                                    //寻找 ")"
-                                    case '('   :
-                                        $temp['keys'][] = array('"' => true, '\'' => true, '(' => false, ')' => false);
-                                        break;
-                                    //结束 ")"
-                                    case ')'   :
-                                        //从关键栈中删除括号查询
-                                        array_pop($temp['keys']);
-                                        break;
-                                    //结束 " 与 '
-                                    default    :
-                                        //已开启引号
-                                        if (isset($temp['quote'])) {
-                                            //从关键栈中删除引号查询
-                                            array_pop($temp['keys']);
-                                            unset($temp['quote']);
-                                        //需要开启引号
-                                        } else {
-                                            $temp['keys'][] = array($temp['match']['match'] => true);
-                                            //标记引号开启
-                                            $temp['quote'] = true;
-                                        }
-                                }
-                                //更新偏移位置
-                                $temp['offset'] = $temp['match']['position'] + 1;
-                            }
+                            //SELECT后的位置
+                            $temp['sLen'] = stripos($temp[1], 'SELECT') + 6;
+                            //MYSQL 50700 以上版本 不能使用 UNION ALL方法
+                            $post['items'] = '/*CALL*/' .
+                                substr($temp[1], 0, $temp['sLen']) .
+                                ' SQL_CALC_FOUND_ROWS ' .
+                                substr($temp[1]. $temp[2], $temp['sLen']) .
+                                ' LIMIT 0; SELECT FOUND_ROWS() c';
 
                             //提取SQL长度
                             $post['items'] = of_db::sql($post['items'], $attr['dbPool']);

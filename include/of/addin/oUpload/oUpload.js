@@ -732,7 +732,7 @@ var oUpload = (function () {
                     this.accept = '.' + value.replace(/;/g, ',.');
                 }
             //读取队列数
-            } else if (name === 'queueSize')  {
+            } else if (name === 'queueSize') {
                 return L.count(index.files);
             //读取配置
             } else {
@@ -753,7 +753,7 @@ var oUpload = (function () {
             var file = index.files[fileId], form = new FormData, temp, time, ajax;
 
             //已经开始上传
-            if( file.ajax ) return ;
+            if (file.ajax) return ;
             //创建ajax对象
             file.ajax = ajax = window.XMLHttpRequest ? new window.XMLHttpRequest : ActiveXObject('Msxml12.XMLHTTP');
             //触发 单文件开始上传 回调
