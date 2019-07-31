@@ -14,16 +14,28 @@ class of_base_extension_manager {
         static $constants = null;
 
         if ($constants === null) {
-            $extensionDir = of::config('_of.extension.path', OF_DATA . '/extensions');
+            $temp = of::config(
+                '_of.extension.path',
+                OF_DATA . '/include/extensions'
+            );
             $constants = array(
                 //扩展基类名
-                'baseClassName' => substr(strtr($extensionDir, '/', '_'), 1) . '_',
+                'baseClassName' => strtr(substr($temp, 1), '/', '_') . '_',
                 //扩展根目录
-                'extensionDir'  => ROOT_DIR . $extensionDir
+                'extensionDir'  => ROOT_DIR . $temp,
+                //扩展存储路径
+                'extensionSave' => ROOT_DIR . of::config(
+                    '_of.extension.save',
+                    OF_DATA . '/_of/of_base_extension/save'
+                ),
             );
 
             //创建扩展根目录
-            is_dir($constants['extensionDir']) || mkdir($constants['extensionDir'], 0777, true);
+            is_dir($constants['extensionDir']) ||
+                mkdir($constants['extensionDir'], 0777, true);
+            //创建扩展存储路径
+            is_dir($constants['extensionSave']) ||
+                mkdir($constants['extensionSave'], 0777, true);
         }
 
         return isset($constants[$key]) ? $constants[$key] : false;
@@ -399,6 +411,8 @@ class of_base_extension_manager {
         static $fopenIndex = null;
         //扩展路径
         $extensionDir = self::getConstant('extensionDir');
+        //执行路径
+        $extensionRun = self::getConstant('extensionSave');
 
         //读取配置文件
         if (is_string($dir)) {
@@ -407,13 +421,15 @@ class of_base_extension_manager {
                 $config : false;
         //读取扩展列表
         } else {
+            is_dir($extensionRun) || @mkdir($extensionRun, 0777, true);
+
             if ($fopenIndex === null) {
                 //兼容 php<5.2.6 代码
-                $fopenIndex = fopen($filePath = "{$extensionDir}/extensions.php", is_file($filePath) ? 'r+' : 'x+');
+                $fopenIndex = fopen($filePath = "{$extensionRun}/extensions.php", is_file($filePath) ? 'r+' : 'x+');
             }
             //无权限
             if ($fopenIndex === false) {
-                trigger_error("'{$extensionDir}/extensions.php' Permission denied"); return array();
+                trigger_error("'{$extensionRun}/extensions.php' Permission denied"); return array();
             }
 
             //已加锁或不加锁方式读取扩展列表
@@ -547,72 +563,109 @@ class of_base_extension_manager {
      * 作者 : Edgar.lee
      */
     private static function databaseUpdate($name, $type = null, $dirname = null, $callMsg = null, $extra = array()) {
+        //最终结果
+        $returnBool = true;
         //扩展_info根目录
         $infoPath = self::getConstant('extensionDir') . "/{$name}/_info";
+        //扩展执行路径
+        $execPath = self::getConstant('extensionSave') . "/{$name}/_info";
+        is_dir($execPath) || @mkdir($execPath, 0777, true);
+        //读取扩展备份数据库
+        $eDbList = self::loadConfig($name);
+        $eDbList = isset($eDbList['database']) ? $eDbList['database'] : array(
+            'default' => array()
+        );
 
-        if ($returnBool = of_base_tool_mysqlSync::init(array(
-            'adjustSqlParam' => array('name' => strtolower($name)),
-            'callAdjustSql'  => 'of_base_extension_manager::callAdjustSql',
-            'callDb'         => 'of_db::sql',
-            'callMsg'        => $callMsg,
-            'sqlMark'        => true,
-            //匹配项默认值
-            'matches'        => array(
-                'table'      => array(
-                    'include' => array("@^e_{$name}_@i")
+        //遍历备份
+        foreach ($eDbList as $kd => &$vd) {
+            if ($returnBool && $returnBool = of_base_tool_mysqlSync::init(array(
+                'adjustSqlParam' => array('name' => strtolower($name)),
+                'callAdjustSql'  => 'of_base_extension_manager::callAdjustSql',
+                'callDb'         => array(
+                    'asCall' => 'of_db::sql',
+                    'params' => array('_' => 1, $kd)
                 ),
-                'view'       => false,
-                'procedure'  => false,
-                'function'   => false,
-            )
-        ))) {
-            //备份
-            if ($type === true) {
-                $backupPath = "{$infoPath}/backupData/" . ($dirname === null ? date('YmdHis', $_SERVER['REQUEST_TIME']) : $dirname);    //初始文件夹名
-                //删除路径
-                self::deletePath($backupPath);
-                //备份结构
-                if ($returnBool = of_base_tool_mysqlSync::backupBase($backupPath . '/structure.sql')) {
-                    $returnBool = of_base_tool_mysqlSync::backupData(
-                        $backupPath . '/backupData.sql',
-                        array('type' => $dirname === null ? 'INSERT' : 'REPLACE')
-                    );
-
-                    //备份数据
-                    if ($returnBool) {
-                        self::copyPath("{$infoPath}/sharedData/data.php", "{$backupPath}/sharedData.php");
+                'callMsg'        => $callMsg,
+                'sqlMark'        => true,
+                //匹配项默认值
+                'matches'        => array(
+                    'table'      => array(
+                        'include' => array("@^e_{$name}_@i")
+                    ),
+                    'view'       => false,
+                    'procedure'  => false,
+                    'function'   => false,
+                )
+            ))) {
+                //备份
+                if ($type === true) {
+                    //初始文件夹名
+                    if ($dirname === 'installData') {
+                        $backupPath = $infoPath . '/backupData/installData/' . $kd;
+                    } else {
+                        $backupPath = $execPath . '/backupData/' .
+                            date('YmdHis/', $_SERVER['REQUEST_TIME']) . $kd;
                     }
-                }
+                    //删除路径
+                    self::deletePath($backupPath);
+                    //备份结构
+                    if ($returnBool = of_base_tool_mysqlSync::backupBase($backupPath . '/structure.sql')) {
+                        $returnBool = of_base_tool_mysqlSync::backupData(
+                            $backupPath . '/backupData.sql',
+                            array('type' => $dirname === null ? 'INSERT' : 'REPLACE')
+                        );
 
-                //备份失败删除路径
-                $returnBool || self::deletePath($backupPath);
-            //恢复
-            } else if ($type === false) {
-                //默认恢复数据
-                $extra += array('revertData' => true);
-                if (is_dir($dirname = "{$infoPath}/backupData/{$dirname}")) {
-                    //恢复结构
+                        //备份数据
+                        if ($returnBool) {
+                            self::copyPath(
+                                "{$execPath}/sharedData/data.php",
+                                dirname($backupPath) . '/sharedData.php'
+                            );
+                        }
+                    }
+
+                    //备份失败删除路径
+                    $returnBool || self::deletePath(dirname($backupPath));
+                //恢复
+                } else if ($type === false) {
+                    //默认恢复数据
+                    $extra += array('revertData' => true);
+                    //恢复磁盘路径
+                    $ePath = $dirname === 'installData' ? $infoPath : $execPath;
+                    $ePath .= '/backupData/' . $dirname;
+                    //恢复文件路径
+                    $rPath = $ePath . '/' . $kd;
+
                     if (
-                        ($returnBool = of_base_tool_mysqlSync::revertBase($dirname . '/structure.sql')) &&
-                        $extra['revertData']
+                        is_dir($rPath) ||
+                        //兼容不支持多数据库版本的模式
+                        $kd === 'default' &&
+                        is_dir($rPath = $ePath)
                     ) {
-                        //恢复数据
-                        $returnBool = of_base_tool_mysqlSync::revertData($dirname . '/backupData.sql');
+                        //恢复结构
+                        if (
+                            ($returnBool = of_base_tool_mysqlSync::revertBase($rPath . '/structure.sql')) &&
+                            $extra['revertData']
+                        ) {
+                            //恢复数据
+                            $returnBool = of_base_tool_mysqlSync::revertData($rPath . '/backupData.sql');
+                        }
                     }
-                }
 
-                //恢复共享数据
-                if ($extra['revertData']) {
-                    self::copyPath("{$dirname}/sharedData.php", "{$infoPath}/sharedData/data.php");
+                    //恢复共享数据
+                    $extra['revertData'] && self::copyPath(
+                        "{$ePath}/sharedData.php",
+                        "{$execPath}/sharedData/data.php"
+                    );
+                //卸载(创建临时文件)
+                } else if ($returnBool = tempnam(sys_get_temp_dir(), '')) {
+                    //删除匹配数据
+                    $returnBool = of_base_tool_mysqlSync::revertBase($temp = $returnBool);
+                    //删除共享数据
+                    self::deletePath($execPath . '/sharedData');
+                    //删除临时文件
+                    unlink($temp);
                 }
-            //卸载(创建临时文件)
-            } else if ($returnBool = tempnam(sys_get_temp_dir(), '')) {
-                //删除匹配数据
-                $returnBool = of_base_tool_mysqlSync::revertBase($temp = $returnBool);
-                //删除共享数据
-                self::deletePath($infoPath . '/sharedData');
-                //删除临时文件
-                unlink($temp);
             }
         }
 

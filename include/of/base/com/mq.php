@@ -72,7 +72,9 @@ abstract class of_base_com_mq {
         //未释放的内存(默认1M)
         'memory'   => 1048576,
         //时区
-        'timezone' => null
+        'timezone' => null,
+        //当前消息数据
+        'mqData'   => null
     );
 
     /**
@@ -343,7 +345,7 @@ abstract class of_base_com_mq {
             //检查内存占用峰值
             $memory = $config['memory'] * 1048576;
             //重新加载提示
-            $isTip = $data['this']['cCid'] === 1;
+            $eTip = $data['this']['cCid'] === 1 ? 'MQ auto reload' : '';
             //可以垃圾回收
             ($isGc = function_exists('gc_enable')) && gc_enable();
             //接收环境变化路径
@@ -364,8 +366,8 @@ abstract class of_base_com_mq {
                 if (
                     //有效任务ID && 为当前任务
                     $cmd['taskPid'] && $cmd['taskPid'] === $tPid &&
-                    //不验证文件 || 验证通过
-                    (!$check || self::isFileNew($check, $isTip))
+                    //!(验证文件 && 文件变动)
+                    !($check && of_base_com_timer::renew($check, $eTip))
                 ) {
                     //存在消息
                     if ($temp = $mqObj->_fire($call, $data)) {
@@ -542,7 +544,7 @@ abstract class of_base_com_mq {
             } else if ($name === 'protected') {
                 //打开连接
                 $fp = fopen(self::$tPath . '/queueLock', 'a');
-                //连接加锁(阻塞) 兼容 glusterfs 网络磁盘
+                //连接加锁(非阻塞) 兼容 glusterfs 网络磁盘
                 while (!flock($fp, LOCK_EX | LOCK_NB)) {
                     usleep(200);
                 }
@@ -625,6 +627,11 @@ abstract class of_base_com_mq {
     public static function ofHalt() {
         //有新的队列 && 启动监听
         self::$waitMq && self::listion('queueLock');
+        //回调函数意外退出
+        self::$fireEnv['mqData'] === null || trigger_error(
+            'MQ auto reload: (Q)Callback function "exit" unexpectedly. - ' .
+            print_r(self::$fireEnv['mqData'], true)
+        );
     }
 
     /**
@@ -638,6 +645,7 @@ abstract class of_base_com_mq {
      *              "cMd5" : 回调唯一值
      *              "cCid" : 当前并发值
      *          }
+     *          "msgId" : 消息ID
      *          "count" : 调用计数, 首次为 1
      *          "data"  : 消息数据
      *      }
@@ -646,14 +654,18 @@ abstract class of_base_com_mq {
     protected static function &callback(&$call, &$data) {
         //运行次数
         static $count = 0;
+        //引用环境
+        $fireEnv = &self::$fireEnv;
 
+        //记录消息数据
+        $fireEnv['mqData'] = &$data;
         //生成并发日志
         $cLog = array(
             'msgId'     => &$data['msgId'],
             'startTime' => date('Y-m-d H:i:s', time()),
             'doneTime'  => '',
             'runCount'  => ++$count,
-            'minMemory' => &self::$fireEnv['memory']
+            'minMemory' => &$fireEnv['memory']
         );
         //记录监听数据
         of_base_com_timer::data(array('_mq' => &$cLog));
@@ -669,7 +681,9 @@ abstract class of_base_com_mq {
         //恢复永不超时
         ini_set('max_execution_time', 0);
         //恢复默认时区
-        date_default_timezone_set(self::$fireEnv['timezone']);
+        date_default_timezone_set($fireEnv['timezone']);
+        //清空消息数据
+        $fireEnv['mqData'] = &$null;
         //修改并发日志
         $cLog['doneTime'] = date('Y-m-d H:i:s', time());
         //记录当前内存
@@ -837,50 +851,6 @@ abstract class of_base_com_mq {
             //{队列池:{队列名:{}, ...}} 转成 {队列名:{}, ...}
             $config = $config[$pool];
         }
-    }
-
-    /**
-     * 描述 : 校验文件是
-     * 参数 :
-     *     &preg  : 忽略校验的正则, true=全校验, 字符串=以"@"开头的正则忽略路径
-     *      isTip : 验证失败是否抛出错误, ture=是, false=否
-     * 返回 :
-     *      true=最新的, false=有变动
-     * 作者 : Edgar.lee
-     */
-    private static function isFileNew(&$preg, $isTip) {
-        //已加载路径{完整路径:修改时间}
-        static $load = array();
-        //当前加载的文件
-        $list = get_included_files();
-
-        foreach ($list as &$v) {
-            //统一磁盘路径
-            $v = strtr($v, '\\', '/');
-            //在校验范围内
-            if ($preg === true || !preg_match($preg, $v)) {
-                //文件存在, 继续验证修改时间
-                if (is_file($v)) {
-                    //读取文件修改时间
-                    $mTime = filemtime($v);
-
-                    //新加载的文件
-                    if (empty($load[$v])) {
-                        $load[$v] = $mTime;
-                    //文件被修改过
-                    } else if ($load[$v] !== $mTime) {
-                        $isTip && trigger_error('MQ auto reload: (U)' . $v);
-                        return false;
-                    }
-                //文件删除
-                } else {
-                    $isTip && trigger_error('MQ auto reload: (D)' . $v);
-                    return false;
-                }
-            }
-        }
-
-        return true;
     }
 
     /**

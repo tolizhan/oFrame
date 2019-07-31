@@ -15,7 +15,7 @@ class of_accy_db_mysqlPdo extends of_db {
         $params = &$this->params;
 
         try {
-            $connection = new PDO(
+            $this->connection = new PDO(
                 "mysql:host={$params['host']};port={$params['port']};dbname={$params['database']}",
                 $params['user'],
                 $params['password'],
@@ -23,20 +23,20 @@ class of_accy_db_mysqlPdo extends of_db {
                 array(PDO::ATTR_PERSISTENT => !!$params['persistent'])
             );
 
-            if (!$connection || $connection->getAttribute(PDO::ATTR_SERVER_INFO) === 'MySQL server has gone away') {
-                return false;
-            } else {
-                $this->connection = $connection;
+            if ($this->_linkIdentifier(false)) {
                 //设置字体, GROUP_CONCAT最大长度
                 $temp = "SET NAMES '{$params['charset']}', GROUP_CONCAT_MAX_LEN = 4294967295";
                 //设置严格模式
                 OF_DEBUG === false || $temp .= ', SQL_MODE = "STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ZERO_DATE,NO_ZERO_IN_DATE,NO_ENGINE_SUBSTITUTION"';
                 //设置时区
                 $params['timezone'] && $temp .= ", TIME_ZONE = '{$params['timezone']}'";
-                $connection->query($temp);
+                $this->connection->query($temp);
                 return true;
+            } else {
+                $this->connection = null;
+                return false;
             }
-        } catch (PDOException $e) {
+        } catch (Exception $e) {
             trigger_error($e->getMessage());
             return false;
         }
@@ -103,6 +103,8 @@ class of_accy_db_mysqlPdo extends of_db {
 
             //mysql版本>=5.7回滚事务后需手动重启事务
             $rollback['enable'] &&
+            //处于开启事务中
+            $this->transState &&
             //(超时回滚事务 || 死锁回滚事务)
             ($rollback['outBack'] || $error[1] === 1213) &&
             //重新开始事务
@@ -133,6 +135,7 @@ class of_accy_db_mysqlPdo extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _begin() {
+        $this->_linkIdentifier();
         $this->transState = $this->connection->beginTransaction();
         return $this->transState;
     }
@@ -210,8 +213,9 @@ class of_accy_db_mysqlPdo extends of_db {
         if (
             //事务状态下不重新检查
             $this->transState ||
-            $this->connection->getAttribute(PDO::ATTR_SERVER_INFO) !== 'MySQL server has gone away' ||
-            ($restLink && $this->_connect())
+            ($temp = @$this->connection->getAttribute(PDO::ATTR_SERVER_INFO)) &&
+            $temp !== 'MySQL server has gone away' ||
+            $restLink && $this->_connect()
         ) {
             return true;
         } else {

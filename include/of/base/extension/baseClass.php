@@ -16,6 +16,14 @@ class of_base_extension_baseClass {
         $temp = '/' . $constants['eKey'];
         $this->constants = &$constants;
 
+        //存储路径
+        $constants['sDir'] = of_base_extension_manager::getConstant('extensionSave') . $temp;
+        //存储url
+        $constants['sUrl'] = of::config(
+            '_of.extension.save',
+            OF_DATA . '/_of/of_base_extension/save',
+            'url'
+        ) . $temp;
         //扩展路径
         $constants['eDir'] = of_base_extension_manager::getConstant('extensionDir') . $temp;
         //扩展url
@@ -299,7 +307,7 @@ class of_base_extension_baseClass {
 
         //全局初始化
         if ($extensionDir === null) {
-            $extensionDir = of_base_extension_manager::getConstant('extensionDir');
+            $extensionDir = of_base_extension_manager::getConstant('extensionSave');
         }
 
         //局部初始化

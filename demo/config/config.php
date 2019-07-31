@@ -17,7 +17,8 @@ return array(
         ),
         //修改扩展路径
         'extension' => array(
-            'path' => '/demo/extend'
+            'path' => '/demo/extend',
+            'save' => '/demo/extend',
         ),
         'com' => array(
             //计划任务

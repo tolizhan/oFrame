@@ -1,9 +1,79 @@
+版本: 234
+作者: Edgar
+日期: 2019年7月31日 13:55:51
+信息:
+说明: + of_base_com_net::request 可以配置 context, 默认关闭ssl证书验证
+      + 配置 _of.error.repeat 大于0时, 相同错误最多记录次数, 默认999
+      + 开放 of_base_com_timer::renew 判断已加载文件是否有更新
+      + 通过 of_base_com_str::uniqid 第二参数可设置更短的唯一值
+      + 通过 of_base_com_disk::lock 方法为并发流程创建独占通道
+      + 通过 _of.extension.save 设置扩展数据独立存储路径
+      + 通过 扩展配置文件.database 支持多数据库安装扩展表
+      + 扩展程序使用 _getConst 方法获取 sDir, sUrl 存储磁盘及网络路径
+      - 框架升级需设置_of.extension的"save"与"path"相同或重新安装扩展
+      * 优化 of_base_com_com::arraySort 数组按深层属性值排序执行效率
+      * 优化 of_base_com_disk 的delete与copy方法执行效率
+      * 优化 of_base_com_disk::each 按磁盘路径排序后返回
+      * 优化 MySQL server has gone away 重连逻辑
+      * 加强 of_base_com_net::request 对反向代理的兼容性
+      * 加强错误日志对框架内部SQL报错文件的定位
+      * 消息队列触发回调函数内exit退出时将抛出错误提示
+      * 解决消息队列触发回调内事务未结束导致并发锁超时问题
+      * 解决网络延迟导致单点登录失败问题
+      * 解决 mysql >= 5.7 未开启事务锁超时后自动开启事务问题
+      * 解决 kv 模式的 session 因长期被占用而报错的问题
+      * 解决无网环境下框架不断检查更新的问题
+      * 重新编译 /demo/file/jquery-1.12.4.js, 修复XSS及原型污染漏洞
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/config/config.php
+已修改 : /trunk/demo/ctrl/index.php
+已删除 : /trunk/demo/extend/ssoSyncLdap/_info/backupData/installData/backupData.sql
+已增加 : /trunk/demo/extend/ssoSyncLdap/_info/backupData/installData/default
+已增加 : /trunk/demo/extend/ssoSyncLdap/_info/backupData/installData/default/backupData.sql
+已增加 : /trunk/demo/extend/ssoSyncLdap/_info/backupData/installData/default/structure.sql
+已删除 : /trunk/demo/extend/ssoSyncLdap/_info/backupData/installData/structure.sql
+已删除 : /trunk/demo/extend/test/_info/backupData/installData/backupData.sql
+已增加 : /trunk/demo/extend/test/_info/backupData/installData/default
+已增加 : /trunk/demo/extend/test/_info/backupData/installData/default/backupData.sql
+已增加 : /trunk/demo/extend/test/_info/backupData/installData/default/structure.sql
+已删除 : /trunk/demo/extend/test/_info/backupData/installData/structure.sql
+已修改 : /trunk/demo/extend/test/config.php
+已增加 : /trunk/demo/file
+已增加 : /trunk/demo/file/jquery-1.12.4.js
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqlPdo.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/session/kv.php
+已修改 : /trunk/include/of/addin/oFileManager/js/oDialogDiv.js
+已修改 : /trunk/include/of/att/link/jquery.js
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已修改 : /trunk/include/of/base/extension/tool.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/base/version/check.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+
 版本: 232
 作者: Edgar
 日期: 2019年5月27日 21:49:54
 信息:
 说明: + 消息队列在分布系统上会自动开启相同的消费并发数
       + 支持自定义错误 of::event('of::error', true, 异常对象或错误数组)
+      + 扩展方法 _loadFile 加载php文件时返回php文件的返回值
+      + of_base_com_timer::data 返回值增加 info.sort, 在info列表中的位置, 从0开始
       * 解决消息队列回调方法抛出异常时队列进程重启的问题
       * 解决glusterfs网络磁盘下异步保护进程无法kill掉问题
       * 解决linux与windows下异步操作含特殊字符时调用失败的问题

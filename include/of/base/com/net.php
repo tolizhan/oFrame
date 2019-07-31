@@ -28,16 +28,32 @@ class of_base_com_net {
      * 作者 : Edgar.lee
      */
     public static function init() {
-        $temp = empty($_SERVER['HTTP_HOST']) ? array('127.0.0.1') : explode(':', $_SERVER['HTTP_HOST']);
-        //当前路径解析地址
-        self::$params = array(
-            'scheme' => $temp[2] = empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off' ? 'http' : 'https',
-            'host'   => &$temp[0],
-            'port'   => isset($temp[1]) ? (int)$temp[1] : ($temp[2] === 'https' ? 443 : 80),
+        //当前请求参数
+        $params = &self::$params;
+
+        //反向代理
+        if (isset($_SERVER['HTTP_ORIGIN'])) {
+            $params = parse_url($_SERVER['HTTP_ORIGIN']);
+        //常规请求
+        } else {
+            $temp = empty($_SERVER['HTTP_HOST']) ?
+                array('127.0.0.1') : explode(':', $_SERVER['HTTP_HOST']);
+            $params = array(
+                'scheme' => empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off' ?
+                    'http' : 'https',
+                'host'   => &$temp[0]
+            );
+            isset($temp[1]) && $params['port'] = $temp[1];
+        }
+
+        //添加端口, 路径, 参数
+        $params += array(
+            'port'   => $params['scheme'] === 'http' ? 80 : 443,
             'path'   => $_SERVER['SCRIPT_NAME'],
             'query'  => ''
         );
 
+        //读取网络请求配置
         $temp = of::config('_of.com.net', array()) + array(
             'async'  => '',
             'kvPool' => 'default'
@@ -45,7 +61,7 @@ class of_base_com_net {
         //校验模式
         $temp['asUrl'] = strpos($temp['async'], '://') ?
             //异步请求地址
-            parse_url($temp['async']) + array('port' => 80) : self::$params;
+            parse_url($temp['async']) + array('port' => 80) : $params;
         //配置信息
         self::$config = $temp;
     }
@@ -71,7 +87,12 @@ class of_base_com_net {
      *          }, ...]
      *          "timeout" : 超时时间(10s),
      *              数字=连接超时
-     *              数组=[连接超时(10), 响应超时(default_socket_timeout)]
+     *              数组=[连接超时(10), 响应超时(default_socket_timeout)],
+     *          "context" : 配置上下文, 默认={
+     *              "ssl" : 关闭 ssl 证书验证 {
+     *                  "verify_peer_name" : false
+     *              }
+     *          }
      *      }
      *      mode : 提交模式,
      *          false(默认) = 同步提交,
@@ -172,23 +193,26 @@ class of_base_com_net {
             is_array($data['header']) && $data['header'] = join("\r\n", $data['header']);
 
             //解析目标网址
-            $data['url'] = parse_url($url);
+            $index = &$data['url'];
+            $index = parse_url($url);
             //解析到域名
-            if (isset($data['url']['host'])) {
+            if (isset($index['host'])) {
                 //初始路径
-                isset($data['url']['path']) || $data['url']['path'] = '/';
-                //外网地址
-                if ($data['url']['host'] !== self::$params['host']) {
-                    //格式化协议
-                    $data['url']['scheme'] = isset($data['url']['scheme']) ? strtolower($data['url']['scheme']) : 'http';
-                    //初始化接口
-                    isset($data['url']['port']) || $data['url']['port'] = $data['url']['scheme'] === 'https' ? 443 : 80;
-                }
+                isset($index['path']) || $index['path'] = '/';
+                //格式化协议
+                $index['scheme'] = isset($index['scheme']) ?
+                    strtolower($index['scheme']) : (
+                        $index['host'] === self::$params['host'] ?
+                            self::$params['scheme'] : 'http'
+                    );
+                //初始化接口
+                isset($index['port']) ||
+                    $index['port'] = $index['scheme'] === 'https' ? 443 : 80;
             }
             //补全参数
-            $data['url'] += self::$params;
+            $index += self::$params;
             //合并get参数
-            $data['url']['query'] .= ($data['url']['query'] === '' || $data['get'] === '' ? '' : '&') . $data['get'];
+            $index['query'] .= ($index['query'] === '' || $data['get'] === '' ? '' : '&') . $data['get'];
 
             //cookie整合
             if ($data['cookie']) {
@@ -197,7 +221,7 @@ class of_base_com_net {
                 foreach ($data['cookie'] as &$v) {
                     $temp = explode('=', $v, 2);
                     self::cookie(array(
-                        'domain' => &$data['url']['host'],
+                        'domain' => &$index['host'],
                         //直传的cookie设置为"/"
                         'path'   => '/',
                         'name'   => &$temp[0],
@@ -208,8 +232,8 @@ class of_base_com_net {
             }
             //读取cookie
             $data['cookie'] = self::cookie(array(
-                'domain' => &$data['url']['host'],
-                'path'   => of_base_com_str::realpath('/' . $data['url']['path'] . 'a/../')
+                'domain' => &$index['host'],
+                'path'   => of_base_com_str::realpath('/' . $index['path'] . 'a/../')
             ));
         //准备二次请求
         } else {
@@ -328,9 +352,20 @@ class of_base_com_net {
         }
 
         //创建连接
-        $fp = fsockopen(
-            ($data['url']['scheme'] === 'https' ? 'ssl://' : '') . $data['url']['host'], 
-            $index = &$data['url']['port'], $errno, $errstr, $data['timeout'][0]
+        $fp = stream_socket_client(
+            //请求路径
+            ($data['url']['scheme'] === 'https' ? 'ssl://' : '') .
+                $data['url']['host'] . ':' . ($index = &$data['url']['port']),
+            //基础参数
+            $errno, $errstr, $data['timeout'][0], STREAM_CLIENT_CONNECT,
+            //配置上下文
+            stream_context_create(
+                (isset($data['context']) ? $data['context'] : array()) + array(
+                    'ssl' => array(
+                        'verify_peer_name' => false
+                    )
+                )
+            )
         );
         //连接成功
         if ($fp) {

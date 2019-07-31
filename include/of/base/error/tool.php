@@ -42,7 +42,7 @@ class of_base_error_tool {
             }
 
             foreach ($pageList as $k => &$v) {
-                $data[$k]['_time'] = date('/Y/m/d H:i:m', $v['time']);
+                $data[$k]['_time'] = date('/Y/m/d H:i:s', $v['time']);
                 $data[$k]['_code'] = isset($v['environment']['type']) ? $v['environment']['type'] : $v['errorType'];
                 $data[$k]['_file'] = $v['environment']['file'];
                 $data[$k]['_line'] = $v['environment']['line'];

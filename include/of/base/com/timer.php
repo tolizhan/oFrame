@@ -105,7 +105,7 @@ class of_base_com_timer {
             $fp = fopen($path . '/taskLock', 'a');
 
             do {
-                //连接加锁(阻塞) 兼容 glusterfs 网络磁盘
+                //连接加锁(非阻塞) 兼容 glusterfs 网络磁盘
                 while (!flock($fp, LOCK_EX | LOCK_NB)) {
                     usleep(200);
                 }
@@ -419,6 +419,50 @@ class of_base_com_timer {
         }
 
         return $result;
+    }
+
+    /**
+     * 描述 : 判断已加载文件是否有更新
+     * 参数 :
+     *      preg : 忽略校验的正则, true=全校验, 字符串=以"@"开头的正则忽略路径
+     *      eTip : 有更新时抛出错误, ""=不抛出, 字符串=抛出的错误信息
+     * 返回 :
+     *      true=有变动, false=未变动
+     * 作者 : Edgar.lee
+     */
+    public static function renew($preg = true, $eTip = '') {
+        //已加载路径{完整路径:修改时间}
+        static $load = array();
+        //当前加载的文件
+        $list = get_included_files();
+
+        foreach ($list as &$v) {
+            //统一磁盘路径
+            $v = strtr($v, '\\', '/');
+            //在校验范围内
+            if ($preg === true || !preg_match($preg, $v)) {
+                //文件存在, 继续验证修改时间
+                if (is_file($v)) {
+                    //读取文件修改时间
+                    $mTime = filemtime($v);
+
+                    //新加载的文件
+                    if (empty($load[$v])) {
+                        $load[$v] = $mTime;
+                    //文件被修改过
+                    } else if ($load[$v] !== $mTime) {
+                        $eTip && trigger_error($eTip . ': (U)' . $v);
+                        return true;
+                    }
+                //文件删除
+                } else {
+                    $eTip && trigger_error($eTip . ': (D)' . $v);
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -761,7 +805,7 @@ class of_base_com_timer {
                         $lock = $tKey . '~lock~';
 
                         //加锁直到成功
-                        if (of_base_com_kv::add($lock, '', 60, $config['kvPool'], 1)) {
+                        if (of_base_com_disk::lock($lock)) {
                             //读取当前任务最后执行时间戳
                             $temp = of_base_com_kv::get($tKey, 0, $config['kvPool']);
 
@@ -774,7 +818,7 @@ class of_base_com_timer {
                             }
 
                             //解锁
-                            of_base_com_kv::del($lock, $config['kvPool']);
+                            of_base_com_disk::lock($lock, LOCK_UN);
                         }
                     }
                 }

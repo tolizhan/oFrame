@@ -697,11 +697,20 @@ class of_base_com_com {
     }
 
     /**
-     * 描述 : 数组排序
+     * 描述 : 数组按深层属性值排序
      * 参数 :
-     *     &arrayData : 需要排序的数组
-     *      sortArray : 排序参数,{指向排序值的字符串'.'为层次区分'`'为转义字符 : ASC(默认),DESC(排序方式)与REGULAR(默认),NUMERIC,STRING(比对方式)两组人选各一, ...}
-     *      sortType  : sortArray参数排序类型,0(默认)=指定arrayData值排序,'ASC与REGULAR两组组合'=指定arrayData键顺序排序
+     *     &data : 需排序的数组
+     *      sort : 排序规则参数
+     *          type未空时, 按照sort键在data定位的值排序 {
+     *              定位属性值'.'为分层'`'为转义符 : 去SORT_的array_multisort排序常量, 默认"ASC,REGULAR",
+     *              ...
+     *          }
+     *          type不为时, 按照data键对应sort键的值排序 {
+     *              data键名 : 被排序数据
+     *          }
+     *      type : 控制sort排序方式
+     *          ""(默认)=按照sort键在data定位的值排序
+     *          去SORT_的array_multisort排序常量组合=按照data键对应sort键的值排序
      * 演示 :
      *      $data[] = array('volume' => 67, 'volu.me1' => 67, 'edition' => 2 );
      *      $data['a'] = array('volume' => 86, 'volu.me1' => 85, 'edition' => 86);
@@ -713,82 +722,63 @@ class of_base_com_com {
      *      arraySort($data, array("volu`.me1" => 'ASC,REGULAR', 'edition' => 'DESC'));
      *      此时$data键值为[0,m,a,3,1,2]
      *      arraySort($data, array('0' => 1, 'a' => 2, '2' => 3, '1' => 7, 'm' => 5, '3' => 6), 'asc,NUMERIC');
-     *      此时$data键值为[0,a,2,m,3,1]
+     *      此时$data键值为[1,3,m,2,a,0]
      * 作者 : Edgar.lee
      */
-    public static function arraySort(array &$arrayData, array $sortArray, $sortType = 0) {
-        $evalSortStr = '';    //生成的执行排序代码
-        $associateDataArr = array();    //排序所使用保持关联的数据
-        $accordingSortArr = array();    //排序依据数据,当$sortType === 0时{$sortArray的键 : {'value' : [$sortArray解析后的排序方式,比对方式], 'evalKey' : 重新编码的$sortArray键, 'dataArr' : {$arrayData的键 : 根据排序索引值, ...}}}
+    public function arraySort(&$data, $sort, $type = '') {
+        //执行参数列表
+        $argv = array();
+        //排序数据列表
+        $list = array();
 
-        //根据指定值排序
-        if ($sortType === 0) {
-            foreach ($sortArray as $k => &$v) {
-                //排序比对参数分析
-                self::arraySortOrder($accordingSortArr[$k]['value'], $v);
+        //格式化数据键值对照(否则排序后数字键会被重置)
+        foreach ($data as $k => &$v) {
+            $list['_' . $k] = &$v;
+        }
 
-                //分析排序索引
-                $arr = explode('.', $k);
-                for ($i = count($arr) - 2; $i >= 0; --$i) {
-                    //去掉转义字符后的字符串
-                    $trimV = rtrim($arr[$i], '`');
-                    //转义字符长度
-                    $escapeCharLen = strlen($arr[$i]) - strlen($trimV);
-                    //转义`字符
-                    $arr[$i] = $trimV . str_repeat('`', floor($escapeCharLen / 2));
-                    if ($escapeCharLen % 2 === 1) {
-                        $arr[$i] .= '.' . $arr[$i + 1];
-                        unset($arr[$i + 1]);
-                    }
-                }
-
-                //重新编码排序索引
-                $accordingSortArr[$k]['evalKey'] = '';
-                foreach ($arr as &$v) {
-                    $accordingSortArr[$k]['evalKey'] .= '[\'' .addslashes($v). '\']';
-                }
+        //按照data键对应sort键的值排序
+        if ($type) {
+            //格式化键值对照
+            $temp = array();
+            foreach ($data as $k => &$v) {
+                $temp[] = &$sort[$k];
             }
-        //根据指定顺序排序
+
+            //添加到执行参数表
+            $argv[] = $temp;
+            array_splice($argv, 1, 0, array_map(
+                'constant',
+                //转成大写->添加"SORT_"前缀->切成数组->读取对应常量
+                explode(',', 'SORT_' . str_replace(',', ',SORT_', strtoupper($type)))
+            ));
+        //按照sort键在data定位的值排序
         } else {
-            self::arraySortOrder($accordingSortArr[0]['value'], $sortType);
-        }
-
-        //处理原始排序数据,保持索引关系
-        foreach ($arrayData as $k => &$v) {
-            //生成保持关联的索引数据
-            $associateDataArr[' ' . $k] = &$v;
-            //根据指定值排序
-            if ($sortType === 0) {
-                foreach ($sortArray as $kc => &$vc) {
-                    eval('$accordingSortArr[\'' .addslashes($kc). '\'][\'dataArr\'][\' \' . $k] = &$v' . $accordingSortArr[$kc]['evalKey'] . ';');
+            foreach ($sort as $ks => &$vs) {
+                //提取data对应定位的值
+                $temp = array();
+                foreach ($data as &$vd) {
+                    $temp[] = &of::getArrData($ks, $vd, null, 1);
                 }
-            } else {
-                $accordingSortArr[0]['dataArr'][' ' . $k] = &$sortArray[$k];
+
+                //添加到执行参数表
+                $argv[] = $temp;
+                array_splice($argv, count($argv), 0, array_map(
+                    'constant',
+                    //转成大写->添加"SORT_"前缀->切成数组->读取对应常量
+                    explode(',', 'SORT_' . str_replace(',', ',SORT_', strtoupper($vs)))
+                ));
             }
         }
 
-        //根据分析数据排序保持关联的数据
-        foreach ($accordingSortArr as $k => &$v) {
-            $evalSortStr .= '$accordingSortArr[\'' .addslashes($k). '\'][\'dataArr\'], ' . "{$v['value'][0]}, {$v['value'][1]}, ";
-        }
-        eval('array_multisort(' . $evalSortStr . '$associateDataArr);');
+        //开始排序
+        $argv[] = &$list;
+        call_user_func_array('array_multisort', $argv);
 
-        //整理原始数据
-        $arrayData = array();
-        foreach ($associateDataArr as $k => &$v) {
-            $arrayData[substr($k, 1)] = &$v;
+        //恢复数据键值对照
+        $data = array();
+        foreach ($list as $k => &$v) {
+            $data[substr($k, 1)] = &$v;
         }
-    }
-
-    /**
-     * 描述 : arraySort 辅助函数
-     * 作者 : Edgar.lee
-     */
-    private static function arraySortOrder(&$memoryArr, &$extractStr) {
-        $arr = explode(',', strtoupper($extractStr));
-        $memoryArr[0] = 'SORT_' . (in_array('DESC', $arr) ? 'DESC' : 'ASC');
-        $memoryArr[1] = 'SORT_' . (in_array('NUMERIC', $arr) ? 
-            'NUMERIC' : (in_array('STRING', $arr) ? 'STRING' : 'REGULAR'));
     }
 }
 return true;

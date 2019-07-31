@@ -2,9 +2,10 @@
 
 框架本身是套解决方案, 兼容全浏览器及php5.2~7.x<br>
 它基于MVCS, 同时[支持多种设计模式](http://doc.phpof.net/?oFrame/FAQ/architect.html,oFrame/navigation.html)<br>
-它兼容IE6 php5.2, 也可[由需求决定工作环境](http://doc.phpof.net/?oFrame/FAQ/namespace.html,oFrame/navigation.html)<br>
-它拥有强大的[模板引擎](http://doc.phpof.net/?oFrame/helpManual/htmlTpl.html,oFrame/navigation.html), 原生的[并发支持](http://doc.phpof.net/?oFrame/components/timer.html,oFrame/navigation.html)<br>
-它包含完整的[错误日志功能](http://doc.phpof.net/?oFrame/helpManual/error.html,oFrame/navigation.html), 灵活的[二次开发接口](http://doc.phpof.net/?oFrame/FAQ/baseExtends.html,oFrame/navigation.html)<br>
+它兼容IE6 php5.2, 也可用[高版本特性](http://doc.phpof.net/?oFrame/FAQ/namespace.html,oFrame/navigation.html)<br>
+它拥有灵活的[html解析](http://doc.phpof.net/?oFrame/components/hParse.html,oFrame/navigation.html), 巧思的[模板引擎](http://doc.phpof.net/?oFrame/helpManual/htmlTpl.html,oFrame/navigation.html)<br>
+它支持原生的[并发操作](http://doc.phpof.net/?oFrame/components/timer.html,oFrame/navigation.html), 分布式[消息队列](http://doc.phpof.net/?oFrame/components/mq.html,oFrame/navigation.html)<br>
+它包含完整的[错误日志](http://doc.phpof.net/?oFrame/helpManual/error.html,oFrame/navigation.html), 丰富的[开发接口](http://doc.phpof.net/?oFrame/FAQ/baseExtends.html,oFrame/navigation.html)<br>
 它的思想是工种无缝衔接, 硬件无缝扩展<br>
 它的标签是易部署, 易分布, 易迁移
 
@@ -32,7 +33,7 @@
 ### 系统访问
 1. URL格式可以通过系统入口定制<br>
     如: /index.php?c=控制类&a=方法名 或 /index.php/控制类/方法名 等
-2. CLI模式可以通过"$GLOBALS键值:url编码"来设置超全局变量<br>
+2. CLI模式可以通过"$GLOBALS键值:url编码"来设置超全局变量,可通过 _TZ指定时区, _IP指定IP, _RL指定ROOT_URL<br>
     如: php /index.php "get:c=demo_index&a=index" "post:test=demo" 设置$GLOBALS['_GET'] 和 $GLOBALS['_POST']值
 
 ### 框架升级

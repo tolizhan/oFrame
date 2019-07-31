@@ -52,8 +52,6 @@ class of_base_sso_tool extends of_base_sso_api {
                 $tool['ticket'] = $_COOKIE['of_base_sso']['ticket'][$space];
                 //删除票据
                 setcookie(rawurlencode('of_base_sso[ticket][' .$space. ']'), null, null, null);
-                //校验登入状态
-                self::login(null, $space);
             } else {
                 echo "<script>var callback = function (json) {
                     if (json.state === 200) {
@@ -68,6 +66,10 @@ class of_base_sso_tool extends of_base_sso_api {
                 exit;
             }
         }
+
+        //票据存在 && 未登录状态 && 校验登入状态
+        isset($tool['ticket']) && empty($tool['online'][$space]['user']) &&
+            self::login(null, $space);
 
         //没登入
         if (empty($tool['online'][$space]['user'])) {

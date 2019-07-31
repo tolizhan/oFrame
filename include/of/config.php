@@ -78,23 +78,23 @@ return array(
     ),
     //预先装载类
     'preloaded'   => array(
-        //快捷集成,语言包,扩展都依赖此包
+        //快捷集成
         'of_base_link_setup',
-        //错误日志,依赖快捷集成
+        //错误日志
         'of_base_error_writeLog',
         //session块
         'of_base_session_base',
-        //语言包支持,依赖快捷集成
+        //语言包支持
         //'of_base_language_packs',
         //xss 防御
         'of_base_xssFilter_main',
-        //扩展支持,依赖语言包,快捷集成
+        //扩展支持,依赖快捷集成
         //'of_base_extension_match',
         //html模板引擎,实现UI,开发人员分离
         'of_base_htmlTpl_engine',
         //加载兼容IE6+ bootstrap v3
         //'of_addin_bsui_setup',
-        //检查最新版本
+        //非生产环境检查最新版本
         'of_base_version_check',
         //加载 composer
         //'include_composer_vendor_autoload'
@@ -114,6 +114,8 @@ return array(
     'error'       => array(
         //日志有效时间(天),0=不清理
         'gcTime' => 30,
+        //相同错误最多记录次数, 大于0时起用
+        'repeat' => 999,
         //sql日志路径,false=关闭
         'sqlLog' => '/data/error/sqlLog',
         //php日志路径,false=关闭
@@ -161,8 +163,10 @@ return array(
     ),
     //扩展管理
     'extension'   => array(
-        //可写的扩展路径
-        'path'      => '/data/extensions',
+        //扩展程序存储路径
+        'path'      => '/include/extensions',
+        //扩展执行存储路径
+        'save'      => '/data/_of/of_base_extension/save',
         //设置独享页的类名
         'exclusive' => 'of_ex'
     ),
@@ -203,7 +207,7 @@ return array(
         ),
         //网络请求
         'net' => array(
-            //异步请求方案, ""=当前网址, url=指定网址
+            //异步请求方案, ""=当前网址, url=带端口的网址
             'async'  => '',
             //k-v 池, 异步请求时用于安全校验
             'kvPool' => 'default'

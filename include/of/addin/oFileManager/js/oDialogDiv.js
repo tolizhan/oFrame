@@ -310,7 +310,7 @@ function oDialogDiv(title, content, width, height, type, topNum, effect) {
                 $("> .title > a:eq(0)", callBackObj.oDialogDivObj).show();    //显示关闭按钮
                 $("> .operating", callBackObj.oDialogDivObj).css('visibility', 'hidden');    //隐藏其它按钮
 
-                $('#oDialogDiv_iframe_' + dateTime, callBackObj.oDialogDivObj).load(function(){
+                $('#oDialogDiv_iframe_' + dateTime, callBackObj.oDialogDivObj).bind('load', function(){
                     var thisObj = $(this).unbind('load', arguments.callee);
                     temp = $("> .title > a:eq(0)", callBackObj.oDialogDivObj);
                     if(temp.attr('notExist') === '')
@@ -327,14 +327,14 @@ function oDialogDiv(title, content, width, height, type, topNum, effect) {
                         $(temp).keyup(oDialogDiv.escClose);                                                             //esc关闭弹出层
                         oDialogDiv.skinLayout(callBackObj.oDialogDivObj, config.width, config.height, config.topNum, config.effect, layoutFun);
                     } catch(e) {}    //跨站加载
-                })
+                });
                 if(postIframeForm !== '')    //需要post方式请求iframe
                 {
                     $(postIframeForm).insertAfter("#oDialogDiv_iframe_" +dateTime, callBackObj.oDialogDivObj)
                                      .submit()
                                      .remove();
-                } else if(!$.browser.msie && content === 'about:blank') {
-                    $('#oDialogDiv_iframe_' + dateTime, callBackObj.oDialogDivObj).load();
+                } else if($.browser.msie === $.browser.mozilla && content === 'about:blank') {
+                    $('#oDialogDiv_iframe_' + dateTime, callBackObj.oDialogDivObj).trigger('load');
                 }
                 break;
             case "text":

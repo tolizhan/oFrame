@@ -88,7 +88,10 @@ class of_base_extension_tool {
      */
     public function dataList() {
         if (isset($_GET['eKey'])) {
-            if (is_dir($temp = of_base_extension_manager::getConstant('extensionDir') . "/{$_GET['eKey']}/_info/backupData")) {
+            if (is_dir(
+                $temp = of_base_extension_manager::getConstant('extensionSave') .
+                    "/{$_GET['eKey']}/_info/backupData"
+            )) {
                 $temp = array_flip(scandir($temp, 1));
             } else {
                 $temp = array();

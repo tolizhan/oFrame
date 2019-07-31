@@ -186,7 +186,10 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                     `type` = '{$data['key']}'
                 AND `mark` = '{$msgs['mark']}'
                 AND `lockTime` = '{$msgs['lockTime']}'";
-                $loop = !of_db::sql($sql, $this->dbPool);
+                $loop = of_db::sql($sql, $this->dbPool);
+
+                //执行出错 ? 跳出执行 : 响应行数决定有效或重试
+                $loop === false ? $msgs = null : $loop = !$loop;
             }
         } while ($loop);
 
@@ -198,6 +201,16 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
 
             //回调结果
             $return = self::callback($call, $data);
+
+            //回调后事务未关闭
+            if ($temp = of_db::pool($this->dbPool, 'level')) {
+                //若消费成功 && 改成消费失败
+                $return === true && $return = false;
+                //嵌套回滚
+                for ($i = 0; $i < $temp; ++$i) {
+                    of_db::sql(false, $this->dbPool);
+                }
+            }
 
             //执行成功
             if ($return === true) {

@@ -96,6 +96,65 @@ class of_base_com_disk {
     }
 
     /**
+     * 描述 : 为并发流程创建独占通道
+     * 参数 :
+     *      name : 锁通道标识
+     *      lock : 文件加锁方式 LOCK_EX, LOCK_SH, LOCK_UN, LOCK_NB
+     * 返回 :
+     *      true=成功, false=失败
+     * 作者 : Edgar.lee
+     */
+    public static function lock($name, $lock = LOCK_EX) {
+        static $data = null;
+
+        //加锁文件名
+        $file = md5($name);
+        //初始化结构
+        if ($data === null) {
+            //通道路径
+            $data['path'] = ROOT_DIR . OF_DATA . '/_of/of_base_com_disk/lock';
+            //创建路径
+            is_dir($data['path']) || @mkdir($data['path'], 0777, true);
+        }
+
+        //垃圾回收
+        if (rand(0, 99) === 1) {
+            //一分钟前时间戳
+            $timestamp = time() - 60;
+
+            //打开加锁文件
+            $lfp = fopen($path = $data['path'] . '/lock.gc', 'w');
+            //加锁成功
+            if (flock($lfp, LOCK_EX | LOCK_NB)) {
+                of_base_com_disk::each($data['path'], $list, null);
+                foreach ($list as $path => &$isDir) {
+                    if (
+                        !$isDir && 
+                        filemtime($path) < $timestamp &&
+                        flock(fopen($path, 'a'), LOCK_EX | LOCK_NB)
+                    ) {
+                        //清除过期锁通道
+                        @unlink($path);
+                    }
+                }
+                //连接解锁
+                flock($lfp, LOCK_UN);
+            }
+            //关闭连接
+            fclose($lfp);
+        }
+
+        //初始化连接
+        ($index = &$data['flie'][$file]) || $index = fopen(
+            $data['path'] . '/' . $file, 'w'
+        );
+        //解锁操作
+        if ($lock === LOCK_UN) unset($data['flie'][$file]);
+        //加锁操作
+        return flock($index, $lock);
+    }
+
+    /**
      * 描述 : 遍历目录结构
      * 参数 :
      *     &dir    : 字符串=指定遍历的目录
@@ -157,6 +216,8 @@ class of_base_com_disk {
         ($fail = $data === false) && $data = array();
         //(操作结束 || 深度遍历) && 清除缓存
         if ($fail || $single === false) unset($cahceDir[$dir]);
+        //按文件顺序排序
+        ksort($data);
         //返回结束信息
         return !$fail;
     }
@@ -193,33 +254,71 @@ class of_base_com_disk {
     /**
      * 描述 : 删除指定文件或文件夹
      * 参数 :
-     *      path  : 指定删除路径
+     *      sPath : 指定删除路径
      *      clear : 清除父层空文件夹, 默认=false
      * 返回 :
      *      成功返回true,失败返回false
      * 作者 : Edgar.lee
      */
-    public static function delete($path, $clear = false) {
-        $result = false;
+    public static function delete($sPath, $clear = false) {
+        //最终结果
+        $result = true;
 
-        if (is_file($path)) {
-            $result = unlink($path);
-        } else if (is_dir($path)) {
-            if ($dp = opendir($path)) {
-                while (($file=readdir($dp)) !== false) {
-                    if ($file !== '.' && $file !== '..') {
-                        self::delete($path .'/'. $file);
+        //目录拷贝
+        if (is_dir($sPath)) {
+            //待处理列表
+            $wList = array(array(
+                'sPath' => $sPath,
+                'opDir' => opendir($sPath),
+            ));
+            //待处理最大角标
+            $count = 0;
+
+            do {
+                //读取最后一个数据
+                $index = &$wList[$count];
+
+                //遍历源路径
+                while ($name = readdir($index['opDir'])) {
+                    //不是内置目录
+                    if ($name !== '.' && $name !== '..') {
+                        //是目录
+                        if (is_dir($oPath = "{$index['sPath']}/{$name}")) {
+                            //待处理脚本加一
+                            $count += 1;
+                            //追加到待处理列表
+                            $wList[] = array(
+                                'sPath' => $oPath,
+                                'opDir' => opendir($oPath),
+                            );
+                            //更换引用为当前目录
+                            $index = &$wList[$count];
+                        //是文件
+                        } else {
+                            //删除文件
+                            unlink($oPath) || $result = false;
+                        }
                     }
                 }
-                closedir($dp);
-            }
-            $result = rmdir($path);
+
+                //删除遍历完成的目录
+                array_pop($wList);
+                closedir($index['opDir']);
+                //待处理脚本减一
+                $count -= 1;
+                //删除空文件夹
+                rmdir($index['sPath']) || $result = false;
+            } while ($count > -1);
+        //文件拷贝
+        } else if (is_file($sPath)) {
+            //删除文件
+            unlink($sPath) || $result = false;
         }
 
-        if ($clear) {
+        if ($result && $clear) {
             //移除空文件夹
-            while (!glob(($path = dirname($path)) . '/*')) {
-                $result = rmdir($path);
+            while (!glob(($sPath = dirname($sPath)) . '/*')) {
+                rmdir($sPath) || $result = false;
             }
         }
 
@@ -229,30 +328,86 @@ class of_base_com_disk {
     /**
      * 描述 : 复制指定文件或文件夹
      * 参数 :
-     *      source  : 指定源路径
-     *      dest    : 指定目标路径
-     *      exclude : 排除路径
+     *      sPath : 指定源路径
+     *      dPath : 指定目标路径
+     *      ePath : 排除路径 {
+     *          排除路径 => 0,
+     *          ...
+     *      }
      * 返回 :
      *      成功返回true,失败返回false
      * 作者 : Edgar.lee
      */
-    public static function copy($source, $dest, &$exclude = array()) {
-        if (is_file($source)) {
-            is_dir($isDir = dirname($dest)) || mkdir($isDir, 0777, true);    //创建目录
-            return copy($source, $dest);
-        } else if (is_dir($source)) {
-            is_dir($dest) || mkdir($dest, 0777, true);    //创建目录
-            if ($dp = opendir($source)) {
-                while (($file=readdir($dp)) != false) {
-                    if ($file !== '.' && $file !== '..') {
-                        if (!isset($exclude[$temp = "{$source}/{$file}"])) {
-                            self::copy("{$source}/{$file}", "{$dest}/{$file}", $exclude);
+    public static function copy($sPath, $dPath, $ePath = array()) {
+        //最终结果
+        $result = true;
+
+        //目录拷贝
+        if (is_dir($sPath)) {
+            //待处理列表
+            $wList = array(array(
+                'sPath' => $sPath,
+                'dPath' => $dPath,
+                'opDir' => opendir($sPath),
+                'isDir' => false,
+            ));
+            //待处理最大角标
+            $count = 0;
+
+            do {
+                //读取最后一个数据
+                $index = &$wList[$count];
+
+                //遍历源路径
+                while ($name = readdir($index['opDir'])) {
+                    if (
+                        //不是内置目录
+                        $name !== '.' && $name !== '..' &&
+                        //不在排除列表
+                        !isset($ePath[$oPath = "{$index['sPath']}/{$name}"])
+                    ) {
+                        //是目录
+                        if (is_dir($oPath)) {
+                            //待处理脚本加一
+                            $count += 1;
+                            //目录无效检查创建
+                            $index['isDir'] = true;
+                            //追加到待处理列表
+                            $wList[] = array(
+                                'sPath' => $oPath,
+                                'dPath' => "{$index['dPath']}/{$name}",
+                                'opDir' => opendir($oPath),
+                                'isDir' => false,
+                            );
+                            //更换引用为当前目录
+                            $index = &$wList[$count];
+                        //是文件
+                        } else {
+                            //初始化目录
+                            if (!$index['isDir']) {
+                                $index['isDir'] = true;
+                                is_dir($index['dPath']) || @mkdir($index['dPath'], 0777, true);
+                            }
+                            //拷贝文件
+                            copy($oPath, "{$index['dPath']}/{$name}") || $result = false;
                         }
                     }
                 }
-                closedir($dp);
-            }
-            return true;
+
+                //删除遍历完成的目录
+                array_pop($wList);
+                //待处理脚本减一
+                $count -= 1;
+                //拷贝空目录
+                $index['isDir'] ||
+                    is_dir($index['dPath']) || @mkdir($index['dPath'], 0777, true);
+            } while ($count > -1);
+        //文件拷贝
+        } else if (is_file($sPath)) {
+            is_dir($temp = dirname($dPath)) || @mkdir($temp, 0777, true);
+            copy($sPath, $dPath) || $result = false;
         }
+
+        return $result;
     }
 }

@@ -111,14 +111,14 @@ $("div").click(function () {
      * 作者 : Edgar.lee
      */
     public function arraySort() {
-        $data[] = array('volume' => 67, 'volu.me1' => 67, 'edition' => 2 );
-        $data['a'] = array('volume' => 86, 'volu.me1' => 85, 'edition' => 86);
-        $data[] = array('volume' => 85, 'volu.me1' => 86, 'edition' => 6 );
-        $data[] = array('volume' => 98, 'volu.me1' => 98, 'edition' => 6 );
-        $data[] = array('volume' => 86, 'volu.me1' => 86, 'edition' => 98);
-        $data['m'] = array('volume' => 67, 'volu.me1' => 67, 'edition' => 0 );
+        $data[] = array('volume' => array('abc' => 4), 'volu.me1' => 67, 'edition' => 2 );
+        $data['a'] = array('volume' => array('abc' => 2), 'volu.me1' => 67, 'edition' => 86);
+        $data[] = array('volume' => array('abc' => 13), 'volu.me1' => 86, 'edition' => 6 );
+        $data[] = array('volume' => array('abc' => 6), 'volu.me1' => 98, 'edition' => 6 );
+        $data[] = array('volume' => array('abc' => 555), 'volu.me1' => 86, 'edition' => 98);
+        $data['m'] = array('volume' => array('abc' => 2), 'volu.me1' => 85, 'edition' => 100);
         print_r($data);
-        $this->_com->arraySort($data, array('0' => 1, 'a' => 2, '2' => 3, '1' => 7, 'm' => 5, '3' => 6), 'desc');
+        $this->_com->arraySort($data, array("volume.abc" => 'ASC,REGULAR', 'volu`.me1' => 'DESC'));
         print_r($data);
     }
 

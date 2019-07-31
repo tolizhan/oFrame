@@ -202,7 +202,7 @@ class of_base_sso_api {
             AND `state` <> '0'";
 
             //系统账号可用
-            if ($temp = L::sql($sql, self::$config['dbPool'])) {
+            if ($temp = of_db::sql($sql, self::$config['dbPool'])) {
                 //保存密码和后台授权
                 $index['realm'][$_GET['name']] = &$temp[0];
                 //对接权限转整型
@@ -357,7 +357,7 @@ class of_base_sso_api {
                     AND (
                             `_of_sso_user_pack`.`id` IS NOT NULL
                         OR `_of_sso_bale_pack`.`id` IS NOT NULL)";
-                    $range = L::sql($sql, self::$config['dbPool']);
+                    $range = of_db::sql($sql, self::$config['dbPool']);
 
                     //获取拥有的权限
                     $role & 1 && $json['role']['allow'] = &self::getRole($range[0], '');
@@ -438,7 +438,7 @@ class of_base_sso_api {
                         WHERE
                             `name` = '{$_GET['user']}'";
 
-                        if ($temp = L::sql($sql, self::$config['dbPool'])) {
+                        if ($temp = of_db::sql($sql, self::$config['dbPool'])) {
                             $json = array('state' => 200) + $temp[0];
                         }
                     }
@@ -478,7 +478,7 @@ class of_base_sso_api {
                             `name` = '{$_GET['user']}'
                         AND (" .join(' OR ', $where). ")";
 
-                        L::sql($sql, self::$config['dbPool']) && $json = array('state' => 200, 'msg' => '操作成功');
+                        of_db::sql($sql, self::$config['dbPool']) && $json = array('state' => 200, 'msg' => '操作成功');
                     }
                     break;
             }
@@ -505,7 +505,7 @@ class of_base_sso_api {
             '{$name}', '{$site}', NOW(), '{$_SERVER['REMOTE_ADDR']}'
         )";
         //插入订单日志
-        L::sql($sql, self::$config['dbPool']);
+        of_db::sql($sql, self::$config['dbPool']);
 
         if (true || rand(0, 10) === 1) {
             //90 天有效期
@@ -515,7 +515,7 @@ class of_base_sso_api {
             WHERE 
                 `time` < '{$sql}'";
             //删除过期日志
-            L::sql($sql, self::$config['dbPool']);
+            of_db::sql($sql, self::$config['dbPool']);
         }
     }
 
@@ -547,7 +547,7 @@ class of_base_sso_api {
         AND `state` <> '0'";
 
         if (
-            ($temp = L::sql($sql, self::$config['dbPool'])) &&
+            ($temp = of_db::sql($sql, self::$config['dbPool'])) &&
             //不限制有效时间
             $config['expiry'] > 0 &&
             //信息未过期
@@ -648,7 +648,7 @@ class of_base_sso_api {
             `realmId` = '{$realm['realmId']}'
         AND `id` {$type} IN (\"{$sql}\")
         AND `state` <> '0'";
-        $temp = L::sql($sql, self::$config['dbPool']);
+        $temp = of_db::sql($sql, self::$config['dbPool']);
 
         //格式化数据
         foreach ($temp as $k => &$v) {
@@ -672,7 +672,7 @@ class of_base_sso_api {
         AND `_of_sso_realm_pack`.`id` {$type} IN (\"{$sql}\")
         GROUP BY
             `_of_sso_realm_pack`.`id`";
-        $temp = L::sql($sql, self::$config['dbPool']);
+        $temp = of_db::sql($sql, self::$config['dbPool']);
 
         foreach ($temp as &$v) {
             if ($v['name'] !== null) {

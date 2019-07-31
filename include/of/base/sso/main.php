@@ -59,7 +59,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `id` IN ({$inStr})";
                     break;
             }
-            $params['tip'] = empty($sql) || L::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
+            $params['tip'] = empty($sql) || of_db::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
         }
         //保存变动
         if (!empty($params['save'])) {
@@ -95,7 +95,7 @@ class of_base_sso_main extends of_base_sso_api {
             }
 
             //操作失败
-            if (($temp = L::sql($sql, self::$config['dbPool'])) === false) {
+            if (($temp = of_db::sql($sql, self::$config['dbPool'])) === false) {
                 $params['tip'] = '用户名冲突';
             //操作成功
             } else {
@@ -113,7 +113,7 @@ class of_base_sso_main extends of_base_sso_api {
                     AND `realmId` = '{$params['keys']['realm']}'
                     AND `packId` NOT IN (\"{$temp}\")";
                     //删除无效关联
-                    L::sql($sql, self::$config['dbPool']);
+                    of_db::sql($sql, self::$config['dbPool']);
 
                     $sql = "INSERT IGNORE INTO `_of_sso_user_pack` (
                         `realmId`, `packId`, `userId`
@@ -124,7 +124,7 @@ class of_base_sso_main extends of_base_sso_api {
                     WHERE
                         `id` IN (\"{$temp}\")";
                     //添加缺失关联
-                    L::sql($sql, self::$config['dbPool']);
+                    of_db::sql($sql, self::$config['dbPool']);
                 }
 
                 //更改所属封装
@@ -136,7 +136,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `userId`  = '{$id}'
                     AND `baleId` NOT IN (\"{$temp}\")";
                     //删除无效关联
-                    L::sql($sql, self::$config['dbPool']);
+                    of_db::sql($sql, self::$config['dbPool']);
 
                     $sql = "INSERT IGNORE INTO `_of_sso_user_bale` (
                         `baleId`, `userId`
@@ -147,7 +147,7 @@ class of_base_sso_main extends of_base_sso_api {
                     WHERE
                         `id` IN (\"{$temp}\")";
                     //添加缺失关联
-                    L::sql($sql, self::$config['dbPool']);
+                    of_db::sql($sql, self::$config['dbPool']);
                 }
             }
         }
@@ -216,7 +216,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `id` IN ({$inStr})";
                     break;
             }
-            $params['tip'] = empty($sql) || L::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
+            $params['tip'] = empty($sql) || of_db::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
         }
         //保存变动
         if (!empty($params['save'])) {
@@ -243,7 +243,7 @@ class of_base_sso_main extends of_base_sso_api {
             }
 
             //操作失败
-            if (($temp = L::sql($sql, self::$config['dbPool'])) === false) {
+            if (($temp = of_db::sql($sql, self::$config['dbPool'])) === false) {
                 $params['tip'] = '用户名冲突';
             //操作成功
             } else {
@@ -262,7 +262,7 @@ class of_base_sso_main extends of_base_sso_api {
                     AND `realmId` = '{$params['keys']['realm']}'
                     AND `packId` NOT IN (\"{$temp}\")";
                     //删除无效关联
-                    L::sql($sql, self::$config['dbPool']);
+                    of_db::sql($sql, self::$config['dbPool']);
 
                     $sql = "INSERT IGNORE INTO `_of_sso_bale_pack` (
                         `realmId`, `baleId`, `packId`
@@ -273,7 +273,7 @@ class of_base_sso_main extends of_base_sso_api {
                     WHERE
                         `id` IN (\"{$temp}\")";
                     //添加缺失关联
-                    L::sql($sql, self::$config['dbPool']);
+                    of_db::sql($sql, self::$config['dbPool']);
                 }
             }
         }
@@ -291,7 +291,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `_of_sso_bale_attr`.`id` = `_of_sso_user_bale`.`baleId`
             WHERE
                 `_of_sso_user_bale`.`userId` = '{$params['linkage']['user']}'";
-            $temp = L::sql($sql, self::$config['dbPool']);
+            $temp = of_db::sql($sql, self::$config['dbPool']);
 
             foreach ($temp as &$v) {
                 //选中用户关联包
@@ -363,7 +363,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `id` IN ({$inStr})";
                     break;
             }
-            $params['tip'] = empty($sql) || L::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
+            $params['tip'] = empty($sql) || of_db::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
         }
         //保存变动
         if (!empty($params['save'])) {
@@ -390,7 +390,7 @@ class of_base_sso_main extends of_base_sso_api {
             }
 
             //操作失败
-            $params['tip'] = L::sql($sql, self::$config['dbPool']) === false ? '用户名冲突' : '保存成功';
+            $params['tip'] = of_db::sql($sql, self::$config['dbPool']) === false ? '用户名冲突' : '保存成功';
         }
         //一次性使用
         unset($params['action'], $params['save']);
@@ -430,7 +430,7 @@ class of_base_sso_main extends of_base_sso_api {
                     `_of_sso_bale_pack`.`realmId`";
             }
 
-            $temp = L::sql($sql, self::$config['dbPool']);
+            $temp = of_db::sql($sql, self::$config['dbPool']);
 
             foreach ($temp as &$v) {
                 //选中用户关联包
@@ -502,7 +502,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `id` IN ({$inStr})";
                     break;
             }
-            $params['tip'] = empty($sql) || L::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
+            $params['tip'] = empty($sql) || of_db::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
         }
         //保存变动
         if (!empty($params['save']) && !empty($params['linkage']['realm'])) {
@@ -530,7 +530,7 @@ class of_base_sso_main extends of_base_sso_api {
             }
 
             //操作失败
-            if (($temp = L::sql($sql, self::$config['dbPool'])) === false) {
+            if (($temp = of_db::sql($sql, self::$config['dbPool'])) === false) {
                 $params['tip'] = '键名冲突';
             //保存成功
             } else {
@@ -547,7 +547,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `packId` = '{$id}'
                     AND `funcId` NOT IN (\"{$temp}\")";
                     //删除无效关联
-                    L::sql($sql, self::$config['dbPool']);
+                    of_db::sql($sql, self::$config['dbPool']);
 
                     $sql = "INSERT IGNORE INTO `_of_sso_pack_func` (
                         `realmId`, `packId`, `funcId`
@@ -558,7 +558,7 @@ class of_base_sso_main extends of_base_sso_api {
                     WHERE
                         `id` IN (\"{$temp}\")";
                     //添加缺失关联
-                    L::sql($sql, self::$config['dbPool']);
+                    of_db::sql($sql, self::$config['dbPool']);
                 }
             }
         }
@@ -602,7 +602,7 @@ class of_base_sso_main extends of_base_sso_api {
                     AND `_of_sso_bale_pack`.`baleId` = '{$params['linkage']['bale']}'";
                 }
 
-                $temp = L::sql($sql, self::$config['dbPool']);
+                $temp = of_db::sql($sql, self::$config['dbPool']);
 
                 foreach ($temp as &$v) {
                     //选中用户关联包
@@ -677,7 +677,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `id` IN ({$inStr})";
                     break;
             }
-            $params['tip'] = empty($sql) || L::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
+            $params['tip'] = empty($sql) || of_db::sql($sql, self::$config['dbPool']) === false ? '操作失败' : '操作成功';
         }
         //保存变动
         if (!empty($params['save']) && !empty($params['linkage']['realm'])) {
@@ -705,7 +705,7 @@ class of_base_sso_main extends of_base_sso_api {
             }
 
 
-            $params['tip'] = L::sql($sql, self::$config['dbPool']) === false ? '键名冲突' : '保存成功';                 //操作失败
+            $params['tip'] = of_db::sql($sql, self::$config['dbPool']) === false ? '键名冲突' : '保存成功';                 //操作失败
         }
         //一次性使用
         unset($params['action'], $params['save']);
@@ -725,7 +725,7 @@ class of_base_sso_main extends of_base_sso_api {
                 WHERE
                     `_of_sso_pack_func`.`realmId` = '{$params['linkage']['realm']}'
                 AND `_of_sso_pack_func`.`packId` = '{$params['linkage']['pack']}'";
-                $temp = L::sql($sql, self::$config['dbPool']);
+                $temp = of_db::sql($sql, self::$config['dbPool']);
 
                 foreach ($temp as &$v) {
                     //选中用户关联包
@@ -786,7 +786,7 @@ class of_base_sso_main extends of_base_sso_api {
                 `_of_sso_user_attr`
             WHERE
                 `_of_sso_user_attr`.`name` = '{$_POST['name']}'";
-            $temp = L::sql($sql, self::$config['dbPool']);
+            $temp = of_db::sql($sql, self::$config['dbPool']);
         }
 
         echo isset($temp[0]) ? of_base_com_data::json($temp[0]) : "\0";
@@ -810,7 +810,7 @@ class of_base_sso_main extends of_base_sso_api {
             //清空错误日志
             of_base_error_writeLog::lastError(true);
             //开启事务
-            L::sql(null, self::$config['dbPool']);
+            of_db::sql(null, self::$config['dbPool']);
 
             //解析CSV
             while ($data = &of_base_com_csv::parse($path)) {
@@ -830,7 +830,7 @@ class of_base_sso_main extends of_base_sso_api {
                             `lable` = VALUES(`lable`),
                             `trust` = VALUES(`trust`),
                             `notes` = VALUES(`notes`)";
-                        L::sql($sql, self::$config['dbPool']);
+                        of_db::sql($sql, self::$config['dbPool']);
                         break;
                     //导入角色
                     case 'pack':
@@ -847,7 +847,7 @@ class of_base_sso_main extends of_base_sso_api {
                             `state` = VALUES(`state`),
                             `lable` = VALUES(`lable`),
                             `data` = VALUES(`data`)";
-                        L::sql($sql, self::$config['dbPool']);
+                        of_db::sql($sql, self::$config['dbPool']);
                         break;
                     //导入功能
                     case 'func':
@@ -864,7 +864,7 @@ class of_base_sso_main extends of_base_sso_api {
                             `state` = VALUES(`state`),
                             `lable` = VALUES(`lable`),
                             `data` = VALUES(`data`)";
-                        L::sql($sql, self::$config['dbPool']);
+                        of_db::sql($sql, self::$config['dbPool']);
                         break;
                     //导入用户
                     case 'user':
@@ -881,7 +881,7 @@ class of_base_sso_main extends of_base_sso_api {
                             `nike` = VALUES(`nike`),
                             `find` = VALUES(`find`),
                             `notes` = VALUES(`notes`)";
-                        L::sql($sql, self::$config['dbPool']);
+                        of_db::sql($sql, self::$config['dbPool']);
                         break;
                     //角色关系
                     case 'bind':
@@ -897,7 +897,7 @@ class of_base_sso_main extends of_base_sso_api {
                         AND `_of_sso_realm_pack`.`name` = '{$data[2]}'
                         AND `_of_sso_realm_func`.`realmId` = `_of_sso_realm_attr`.`id`
                         AND `_of_sso_realm_func`.`name` = '{$data[3]}'";
-                        L::sql($sql, self::$config['dbPool']);
+                        of_db::sql($sql, self::$config['dbPool']);
                         break;
                     //权限关系
                     case 'role':
@@ -912,7 +912,7 @@ class of_base_sso_main extends of_base_sso_api {
                         AND `_of_sso_realm_pack`.`realmId` = `_of_sso_realm_attr`.`id`
                         AND `_of_sso_realm_pack`.`name` = '{$data[2]}'
                         AND `_of_sso_user_attr`.`name` = '{$data[3]}'";
-                        L::sql($sql, self::$config['dbPool']);
+                        of_db::sql($sql, self::$config['dbPool']);
                         break;
                 }
             }
@@ -920,11 +920,11 @@ class of_base_sso_main extends of_base_sso_api {
             //有错误";
             if (of_base_error_writeLog::lastError()) {
                 //回滚事务
-                L::sql(false, self::$config['dbPool']);
+                of_db::sql(false, self::$config['dbPool']);
                 echo '导入产生错误';
             } else {
                 //提交事务
-                L::sql(true, self::$config['dbPool']);
+                of_db::sql(true, self::$config['dbPool']);
                 echo 'done';
             }
             //删除模版
@@ -985,7 +985,7 @@ class of_base_sso_main extends of_base_sso_api {
 
                         //旧版升级到200222版
                         foreach ($temp as $k => &$v) {
-                            L::sql("ALTER TABLE `{$k}` RENAME `{$v}`", self::$config['dbPool']);
+                            of_db::sql("ALTER TABLE `{$k}` RENAME `{$v}`", self::$config['dbPool']);
                         }
 
                         $sql = 'UPDATE
@@ -996,7 +996,7 @@ class of_base_sso_main extends of_base_sso_api {
                             `id` > "18"
                         ORDER BY `id` DESC';
                         //系统功能数据迁移
-                        L::sql($sql, self::$config['dbPool']);
+                        of_db::sql($sql, self::$config['dbPool']);
 
                         $sql = 'UPDATE
                             `_of_sso_pack_func`
@@ -1006,12 +1006,12 @@ class of_base_sso_main extends of_base_sso_api {
                             `id` > "18"
                         ORDER BY `id` DESC';
                         //角色功能数据迁移
-                        L::sql($sql, self::$config['dbPool']);
+                        of_db::sql($sql, self::$config['dbPool']);
                     }
 
                     $temp = of_base_tool_mysqlSync::init(array(
                         'callDb'  => array(
-                            'asCall' => 'L::sql', 
+                            'asCall' => 'of_db::sql', 
                             'params' => array('_' => null, self::$config['dbPool'])
                         ),
                         'matches' => array(
@@ -1063,7 +1063,7 @@ class of_base_sso_main extends of_base_sso_api {
                             `pwd` = MD5('{$_POST['pwd']}')
                         OR  `find` = '" . str_pad($temp, 255, "\0") . "')";
 
-                    L::sql($sql, self::$config['dbPool']) || $result = array('state' => 'error', 'msg' => '密码或回答错误');
+                    of_db::sql($sql, self::$config['dbPool']) || $result = array('state' => 'error', 'msg' => '密码或回答错误');
                 //插入操作
                 } else {
                     $sql = "INSERT IGNORE INTO
@@ -1075,7 +1075,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `nike`  = '{$_POST['nike']}',
                         `state` = '1'";
 
-                    L::sql($sql, self::$config['dbPool']) || $result = array('state' => 'error', 'msg' => '账号冲突');
+                    of_db::sql($sql, self::$config['dbPool']) || $result = array('state' => 'error', 'msg' => '账号冲突');
                 }
             }
 
@@ -1109,7 +1109,7 @@ class of_base_sso_main extends of_base_sso_api {
         GROUP BY
             `_of_sso_realm_pack`.`id`";
 
-        $temp = L::sql($sql, self::$config['dbPool']);
+        $temp = of_db::sql($sql, self::$config['dbPool']);
         foreach ($temp as &$v) {
             //添加默认权限
             $index += array_combine(
@@ -1135,7 +1135,7 @@ class of_base_sso_main extends of_base_sso_api {
             `_of_sso_realm_attr`
         WHERE
             `id` = '1'";
-        $temp = L::sql($sql, self::$config['dbPool']);
+        $temp = of_db::sql($sql, self::$config['dbPool']);
         of_base_sso_api::logingLog($user['name'], $temp[0]['name']);
     }
 }

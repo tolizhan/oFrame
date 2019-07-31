@@ -10,7 +10,7 @@ class of_base_version_check {
      */
     public static function init() {
         if (
-            //非生成环境
+            //非生产环境
             OF_DEBUG !== false &&
             //非框架路径
             strncmp(
@@ -24,6 +24,7 @@ class of_base_version_check {
 
             //读取失败
             if (!$version) {
+                of_base_com_kv::set('of_base_version_check::version', 1, 86400);
                 of_base_com_net::request(OF_URL, array(), 'of_base_version_check::version');
             //读取成功 && 有最新版本
             } else if ($version > OF_VERSION) {
@@ -55,7 +56,7 @@ class of_base_version_check {
         );
 
         foreach ($temp as &$v) {
-            $params = of_base_com_net::request($v);
+            $params = @of_base_com_net::request($v);
             //请求成功
             if ($params['state']) {
                 preg_match('@\bOF_VERSION[^\d]+(\d+)@', $params['response'], $temp);

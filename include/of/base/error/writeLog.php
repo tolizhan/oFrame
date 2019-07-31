@@ -30,6 +30,8 @@ class of_base_error_writeLog {
         self::$config = of::config('_of.error', array()) + array(
             //日志有效时间(天),0=不清理
             'gcTime' => 30,
+            //相同错误最多记录次数, 大于0时起用
+            'repeat' => 999,
             //sql日志路径
             'sqlLog' => OF_DATA . '/error/sqlLog',
             //php日志路径
@@ -247,12 +249,12 @@ class of_base_error_writeLog {
             $logPath = ROOT_DIR . $index . date('/Y/m/d', $logData['time']) . $logType;
             //追加方式打开日志
             $handle = &of_base_com_disk::file($logPath . 'Data.php', null, null);
-            //日志文本数据
-            $logText = strtr(serialize($logData), array(
-                "\r\n" => " +\1+",
-                "\r"   => "+\1+",
-                "\n"   => "+\1+"
-            )) . "\n";
+
+            //错误分组标识
+            $index = &$logData['environment'];
+            $eMd5 = md5($index['file'] . '::' . $index['line'] . '::' . $index['code']);
+            //错误的分组明细路径
+            $ePath = $logPath . 'Attr/group/' . $eMd5 . '.bin';
 
             //已写入日志
             if ($temp = ftell($handle)) {
@@ -272,23 +274,35 @@ class of_base_error_writeLog {
                 $logSize = '0000000f';
             }
 
-            //写入日志成功
-            if (of_base_com_disk::file($handle, $logText, null)) {
-                //记录索引日志
-                of_base_com_disk::file($logPath . 'Attr/index.bin', $logSize, null);
-
-                //错误分组标识
-                $index = &$logData['environment'];
-                $eMd5 = md5($index['file'] . '::' . $index['line'] . '::' . $index['code']);
-                //错误分组标识路径
-                $ePath = $logPath . 'Attr/group/' . $eMd5 . '.bin';
-
-                //分组明细日志不存在 && 添加到分组概要日志
-                is_file($ePath) || of_base_com_disk::file(
+            //分组明细日志不存在
+            if ($isWrite = !is_file($ePath)) {
+                //添加到分组概要日志
+                of_base_com_disk::file(
                     $logPath . 'Attr/group.bin', $logSize . $eMd5, null
                 );
-                //记录分组明细日志
-                of_base_com_disk::file($ePath, $logSize, null);
+            //分组明细日志存在
+            } else {
+                //不限制相同错误最大条数 || 在限制范围内
+                $isWrite = $config['repeat'] <= 0 ||
+                    $config['repeat'] > filesize($ePath) / 8;
+            }
+
+            //需要记录日志
+            if ($isWrite) {
+                //日志文本数据
+                $logText = strtr(serialize($logData), array(
+                    "\r\n" => " +\1+",
+                    "\r"   => "+\1+",
+                    "\n"   => "+\1+"
+                )) . "\n";
+
+                //写入日志成功
+                if (of_base_com_disk::file($handle, $logText, null)) {
+                    //记录索引日志
+                    of_base_com_disk::file($logPath . 'Attr/index.bin', $logSize, null);
+                    //记录分组明细日志
+                    of_base_com_disk::file($ePath, $logSize, null);
+                }
             }
 
             //释放连接源
@@ -357,6 +371,19 @@ class of_base_error_writeLog {
         //debug运行追踪
         if (strpos($logData['environment']['file'], '(') !== false) {
             foreach ($backtrace as $k => &$v) {
+                if (
+                    $logData['errorType'] === 'sqlError' &&
+                    $logData['environment']['file'] === '(' &&
+                    isset($v['class']) && isset($v['function']) &&
+                    isset($v['file']) && isset($v['line']) &&
+                    $v['class'] === 'of_db' &&
+                    $v['function'] === 'sql'
+                ) {
+                    //纯框架内部错误使用第一个调用of_db::sql的路径
+                    $logData['environment']['file'] = $v['file'];
+                    $logData['environment']['line'] = $v['line'];
+                }
+
                 //通过类名找到文件
                 if (
                     //存在类

@@ -349,11 +349,14 @@ class of_base_com_str {
      * 描述 : 获取更具唯一性的ID
      * 参数 :
      *      prefix : 编码前缀, 不同前缀并发互不影响, ''=生成32位小写字母唯一编码, 其它=短小有意义可排序的编码
-     *      isShow : 是否显示前缀, true=显示前缀, false=隐藏前缀, 数字=代替minLen
+     *      isShow : 功能操作,
+     *          数字   = 代替minLen参数,
+     *          布尔   = 显示前缀, true=显示, false=隐藏
+     *          字符串 = 时间结构, 用"\"转义, 默认"ymdHis", 如: "\y\m\dymd-"
      *      minLen : 自增值最小长度, prefix不为空时有效, 默认3
      * 返回 : 
      *      prefix 为假时返回 32位小写字母
-     *      prefix 为真时返回 大写prefix + 两位年月日时分秒12位 + minLen计数
+     *      prefix 为真时返回 大写prefix + 两位年月日时分秒时间结构 + minLen计数
      * 作者 : Edgar.lee
      */
     public static function uniqid($prefix = '', $isShow = true, $minLen = 3) {
@@ -363,6 +366,8 @@ class of_base_com_str {
         if ($prefix) {
             //快速设置参数
             is_int($isShow) && $minLen = $isShow;
+            //时间结构格式
+            is_string($format = $isShow) ? $isShow = false : $format = 'ymdHis';
             //大小前缀
             $prefix = strtoupper($prefix);
             //依赖磁盘路径
@@ -371,28 +376,33 @@ class of_base_com_str {
             $fp = of_base_com_disk::file($path, null, null);
             //获取计数数据
             $data = &of_base_com_disk::file($fp, true, true);
-            //当前时间
-            $time = time();
+            //当前日期时间
+            $date = date($format, $time = time());
+            //兼容旧版数据
+            !isset($data['date']) && isset($data['time']) && $data += array(
+                'date'   => date('ymdHis', $data['time']),
+                'format' => 'ymdHis'
+            );
 
-            //重置数据
-            if (!$data || $time > $data['time']) {
-                $data = array('time' => &$time, 'count' => 1);
             //自增计数
-            } else {
+            if ($data && $data['format'] === $format && $date <= $data['date']) {
                 $data['count'] += 1;
+            //重置数据
+            } else {
+                $data = array(
+                    'time' => &$time, 'date' => &$date,
+                    'count' => 1, 'format' => &$format
+                );
             }
 
             //写回数据
             of_base_com_disk::file($fp, $data, true);
-
-            //生成唯一值
-            $result = $isShow ? $prefix : '';
-            $result .= date('ymdHis', $data['time']);
-            $result .= str_pad($data['count'], $minLen, '0', STR_PAD_LEFT);
-
             //关闭连接
             flock($fp, LOCK_UN) && fclose($fp);
-            return $result;
+
+            //生成唯一值
+            return ($isShow ? $prefix : '') . $data['date'] .
+                str_pad($data['count'], $minLen, '0', STR_PAD_LEFT);
         //生成32位编码
         } else {
             $lable === null &&

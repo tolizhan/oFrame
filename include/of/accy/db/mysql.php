@@ -98,6 +98,8 @@ class of_accy_db_mysql extends of_db {
 
             //mysql版本>=5.7回滚事务后需手动重启事务
             $rollback['enable'] &&
+            //处于开启事务中
+            $this->transState &&
             //(超时回滚事务 || 死锁回滚事务)
             ($rollback['outBack'] || $errno === 1213) &&
             //重新开始事务
@@ -128,6 +130,7 @@ class of_accy_db_mysql extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _begin() {
+        $this->_linkIdentifier();
         $this->transState = mysql_query('START TRANSACTION', $this->connection);
         return $this->transState;
     }
@@ -289,7 +292,7 @@ class of_accy_db_mysql extends of_db {
         if (
             //事务状态下不重新检查
             $this->transState ||
-            (is_resource($this->connection) && mysql_ping($this->connection)) ||
+            @mysql_ping($this->connection) ||
             ($restLink && $this->_connect())
         ) {
             return true;
