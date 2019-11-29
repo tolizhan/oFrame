@@ -1,9 +1,40 @@
+版本: 236
+作者: Edgar
+日期: 2019年11月30日 0:41:25
+信息:
+说明: + 通过 of_db::pool(连接键, 'clean') 可以关闭并删除指定连接池
+      + 配置 _of.com.mq.队列池.queues 支持数组方式
+      + of_view::head 可以指定防重判断键
+      * 加强对消息队列配置文件两种写法的识别能力
+      * sso管理界面登录权限支持"角色集合"授权
+      * 优化 htmlLoad 来兼容性 vue 的节点属性
+      * of_view::head('head', {"jQuery":script标签}) 可修改默认加载的jq
+      * 修复 of_base_com_disk 的delete与copy方法无法操作"0"文件的问题
+      * 修复模版引擎对link非样式标签的错误解析
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/ctrl/index.php
+已修改 : /trunk/demo/tool/htmlLoad/code/load.js
+已修改 : /trunk/demo/view/tpl/ctrl/index/viewTest.tpl.php
+已修改 : /trunk/include/of/accy/com/kv/memcache.php
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/link/setup.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+
 版本: 234
 作者: Edgar
 日期: 2019年7月31日 13:55:51
 信息:
 说明: + of_base_com_net::request 可以配置 context, 默认关闭ssl证书验证
-      + 配置 _of.error.repeat 大于0时, 相同错误最多记录次数, 默认999
+      + 配置 _of.error.repeat 大于0时, 限制相同错误最多记录次数, 默认999
       + 开放 of_base_com_timer::renew 判断已加载文件是否有更新
       + 通过 of_base_com_str::uniqid 第二参数可设置更短的唯一值
       + 通过 of_base_com_disk::lock 方法为并发流程创建独占通道

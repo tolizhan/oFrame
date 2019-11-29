@@ -28,11 +28,11 @@
  *      }
  *      消息队列列表($mqList) : {
  *          事务数据库连接池名 : {
- *              "leval" : 当前数据库池等级, 0=不在事务里, 1=根事务, n=n层事务里
+ *              "level" : 当前数据库池等级, 0=不在事务里, 1=根事务, n=n层事务里
  *              "state" : 当前事务最终状态, true=提交, false=回滚
  *              "pools" : {
  *                  消息队列池名 : {
- *                      "leval" : 内部事务层级, 0=不在事务里, 1=根事务, n=n层事务里
+ *                      "level" : 内部事务层级, 0=不在事务里, 1=根事务, n=n层事务里
  *                      "state" : 内部事务最终提交状态, true=提交, false=回滚
  *                      "inst"  : 初始化的对象
  *                      "keys"  : 队列与键对应的配置路径 {
@@ -195,7 +195,7 @@ abstract class of_base_com_mq {
         }
 
         //需要开启 && 尝试开启
-        $start && self::listion('queueLock');
+        $start && self::listen('queueLock');
         return $result;
     }
 
@@ -214,6 +214,8 @@ abstract class of_base_com_mq {
      *      bind : 事务数据库
      *          事务操作:  被 pool 代替, null=默认绑定, ""=内部事务
      *          生产消息: ""=绑定到内部事务, 字符串=绑定数据池同步事务
+     * 返回 :
+     *      成功=true, 失败=false
      * 作者 : Edgar.lee
      */
     public static function set($keys, $data = null, $pool = 'default', $bind = null) {
@@ -235,14 +237,14 @@ abstract class of_base_com_mq {
                 //开启事务
                 if ($keys === null) {
                     //开启失败
-                    if ($mqArr['leval'] === 0 && !$mqArr['inst']->_begin()) {
+                    if ($mqArr['level'] === 0 && !$mqArr['inst']->_begin()) {
                         return false;
                     //开启成功
                     } else {
-                        $mqArr['leval'] += 1;
+                        $mqArr['level'] += 1;
                     }
                 //真实提交或回滚事务
-                } else if($mqArr['leval'] === 1) {
+                } else if ($mqArr['level'] === 1) {
                     //true ? 提交事务 : 回滚事务
                     $temp = $keys && $mqArr['state'] ? '_commit' : '_rollBack';
                     $mqArr['inst']->$temp('before');
@@ -251,13 +253,13 @@ abstract class of_base_com_mq {
                     //执行回滚 || 事务操作成功 && 最终提交
                     $result = $keys === false || $temp && $mqArr['state'];
                     //重置事务层级
-                    $mqArr['leval'] = 0;
+                    $mqArr['level'] = 0;
                     //重置最终提交状态
                     $mqArr['state'] = true;
 
                     return $result;
-                } else if ($mqArr['leval']) {
-                    $mqArr['leval'] -= 1;
+                } else if ($mqArr['level']) {
+                    $mqArr['level'] -= 1;
                     //嵌套事务回滚 || 最终回滚
                     $keys || $mqArr['state'] = false;
                 } else {
@@ -399,7 +401,7 @@ abstract class of_base_com_mq {
      * 描述 : 消息队列监听, 负责启动调度消息
      * 作者 : Edgar.lee
      */
-    public static function listion($name = 'queueLock', $type = null) {
+    public static function listen($name = 'queueLock', $type = null) {
         //开始监听
         if ($type === true && $name === 'queueLock') {
             //打开监听触发锁
@@ -407,7 +409,7 @@ abstract class of_base_com_mq {
             //加锁监听触发锁
             if (flock($tLock, LOCK_EX)) {
                 //监听加锁成功
-                if ($lock = self::lockListion($name)) {
+                if ($lock = self::lockListen($name)) {
                     //已绑定的监听ID
                     $tNum = array(0);
                     //命令配置路径
@@ -477,7 +479,7 @@ abstract class of_base_com_mq {
                                             //并发起始进程ID
                                             $temp = ($tNum - 1) * $vk['cNum'] + 1;
                                             //待回调列表
-                                            $waitCall[] = array(
+                                            $vk['cNum'] > 0 && $waitCall[] = array(
                                                 'time' => 0,
                                                 'cNum' => range(
                                                     $temp,
@@ -514,7 +516,7 @@ abstract class of_base_com_mq {
 
                             sleep(60);
                             //启动保护监听
-                            self::listion('protected');
+                            self::listen('protected');
                         //关闭监听器
                         } else {
                             //停止在运行的消息进程
@@ -533,12 +535,12 @@ abstract class of_base_com_mq {
             flock($tLock, LOCK_UN);
             fclose($tLock);
         //成功占用监听
-        } else if ($lock = self::lockListion($name)) {
+        } else if ($lock = self::lockListen($name)) {
             if ($type === null) {
                 flock($lock, LOCK_UN);
                 //加载定时器
                 of_base_com_net::request(OF_URL, array(), array(
-                    'asCall' => 'of_base_com_mq::listion',
+                    'asCall' => 'of_base_com_mq::listen',
                     'params' => array($name, true)
                 ));
             } else if ($name === 'protected') {
@@ -554,7 +556,7 @@ abstract class of_base_com_mq {
                 fclose($fp);
 
                 //启动监听
-                self::listion('queueLock');
+                self::listen('queueLock');
             }
 
             //关闭锁
@@ -578,29 +580,29 @@ abstract class of_base_com_mq {
         ) {
             $nowMqList = &self::$mqList[$params['pool']];
             //同步事务等级
-            $nowLeval = &$nowMqList['leval'];
+            $nowLevel = &$nowMqList['level'];
             $nowState = &$nowMqList['state'];
-            $preLeval = $nowLeval;
-            $nowLeval = of_db::pool($params['pool'], 'level');
+            $preLevel = $nowLevel;
+            $nowLevel = of_db::pool($params['pool'], 'level');
 
             if ($type === 'after') {
                 //最后提交或回滚
-                if (is_bool($params['sql']) && $preLeval === 1 && $nowLeval === 0) {
+                if (is_bool($params['sql']) && $preLevel === 1 && $nowLevel === 0) {
                     //提交事务 && 提交成功 ? 提交适配器 : 回滚适配器
                     $tFunc = $params['sql'] && $params['result'] ?
                         '_commit' : '_rollBack';
                 //开启事务
                 } else if (
                     $params['sql'] === null &&
-                    $preLeval === 0 &&
-                    $nowLeval === 1
+                    $preLevel === 0 &&
+                    $nowLevel === 1
                 ) {
                     $tFunc = '_begin';
                     $nowState = true;
                 } else {
                     return ;
                 }
-            } else if ($nowLeval === 1 && is_bool($params['sql'])) {
+            } else if ($nowLevel === 1 && is_bool($params['sql'])) {
                 $tFunc = $params['sql'] ? '_commit' : '_rollBack';
             } else {
                 return ;
@@ -626,7 +628,7 @@ abstract class of_base_com_mq {
      */
     public static function ofHalt() {
         //有新的队列 && 启动监听
-        self::$waitMq && self::listion('queueLock');
+        self::$waitMq && self::listen('queueLock');
         //回调函数意外退出
         self::$fireEnv['mqData'] === null || trigger_error(
             'MQ auto reload: (Q)Callback function "exit" unexpectedly. - ' .
@@ -747,8 +749,8 @@ abstract class of_base_com_mq {
             $mqArr = &$mqList[$bind]['pools'][$pool];
 
             //绑定事务初始化
-            if (!isset($mqList[$bind]['leval'])) {
-                $mqList[$bind]['leval'] = of_db::pool($bind, 'level');
+            if (!isset($mqList[$bind]['level'])) {
+                $mqList[$bind]['level'] = of_db::pool($bind, 'level');
                 $mqList[$bind]['state'] = of_db::pool($bind, 'state');
                 of::event('of_db::before', array(
                     'asCall' => 'of_base_com_mq::dbEvent',
@@ -780,7 +782,7 @@ abstract class of_base_com_mq {
                 }
 
                 //内部事务层级
-                $mqArr['leval'] = 0;
+                $mqArr['level'] = 0;
                 //最终提交状态
                 $mqArr['state'] = true;
 
@@ -794,7 +796,7 @@ abstract class of_base_com_mq {
                 ));
 
                 //绑定事务已开启
-                if ($mqList[$bind]['leval']) {
+                if ($mqList[$bind]['level']) {
                     //开始适配器事务
                     $temp = $mqArr['inst']->_begin();
                     //最终提交 && 赋值消息队列开始事务结果
@@ -816,7 +818,7 @@ abstract class of_base_com_mq {
      *      成功返回IO流, 失败返回false
      * 作者 : Edgar.lee
      */
-    private static function lockListion(&$name = 'queueLock') {
+    private static function lockListen(&$name = 'queueLock') {
         $fp = fopen(self::$tPath . "/{$name}", 'a+');
 
         //成功加锁
@@ -838,15 +840,15 @@ abstract class of_base_com_mq {
      */
     private static function getQueueConfig(&$config, &$pool) {
         //加载最新队列配置
-        $config = include ROOT_DIR . $config;
+        is_string($config) && $config = include ROOT_DIR . $config;
 
         if (
             //可能是 {队列池:{队列名:{}, ...}} 方式
             isset($config[$pool]) &&
             //获取第一个队列成功
-            ($temp = current($config[$pool])) &&
-            //队列中 mode 为 null 或 bool
-            (!isset($temp['mode']) || is_bool($temp['mode']))
+            is_array($temp = current($config[$pool])) &&
+            //回调中cNum必须存在, 并且是数字
+            (!isset($temp['keys']['cNum']) || is_array($temp['keys']['cNum']))
         ) {
             //{队列池:{队列名:{}, ...}} 转成 {队列名:{}, ...}
             $config = $config[$pool];

@@ -65,6 +65,7 @@ abstract class of_db {
      *          数组    : 连接参数,初始化后便不再起作用,默认_of.db, 支持读写分离配置方式
      *          "level" : 查询当前事务层次
      *          "state" : 读写当前事务提交状态, 当SQL执行失败, 改值会变为false
+     *          "clean" : 关闭并删除指定连接池
      *      value : 设置pool参数值
      *          "state" : false=强制事务最终回滚
      * 返回 :
@@ -91,6 +92,9 @@ abstract class of_db {
             } else if (!$value && isset($instList[$key]['inst'])) {
                 $instList[$key]['inst']['state'] = false;
             }
+        //关闭并删除指定连接池
+        } else if ($pool === 'clean') {
+            unset($instList[$key]);
         } else {
             if (empty($instList[$key])) {
                 //初始配置

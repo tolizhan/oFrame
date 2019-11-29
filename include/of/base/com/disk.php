@@ -4,7 +4,6 @@
  * 作者 : Edgar.lee
  */
 class of_base_com_disk {
-
     /**
      * 描述 : 从一个文件读取或写入数据
      * 参数 :
@@ -279,7 +278,7 @@ class of_base_com_disk {
                 $index = &$wList[$count];
 
                 //遍历源路径
-                while ($name = readdir($index['opDir'])) {
+                while (is_string($name = readdir($index['opDir']))) {
                     //不是内置目录
                     if ($name !== '.' && $name !== '..') {
                         //是目录
@@ -359,7 +358,7 @@ class of_base_com_disk {
                 $index = &$wList[$count];
 
                 //遍历源路径
-                while ($name = readdir($index['opDir'])) {
+                while (is_string($name = readdir($index['opDir']))) {
                     if (
                         //不是内置目录
                         $name !== '.' && $name !== '..' &&

@@ -186,7 +186,7 @@ class of_base_htmlTpl_engine {
                 //读取标签名
                 $tagName = $nodeObj->attr('tagName');
                 //获取连接属性名
-                $attrName = $nodeObj->attr('tagName') === 'link' ? 'href' : 'src';
+                $attrName = $tagName === 'link' ? 'href' : 'src';
 
                 //脚本移动到最先执行
                 if ($tagName === '!--') {
@@ -194,8 +194,14 @@ class of_base_htmlTpl_engine {
                     if (preg_match($config['tagKey'][3], $nodeObj->attr(''))) {
                         $beforeNode->before($nodeObj);
                     }
-                //meta标签 原样输出
-                } else if ($tagName === 'meta') {
+                //meta标签 及 非引用样式 原样输出
+                } else if (
+                    $tagName === 'meta' ||
+                    $tagName === 'link' && strtolower($nodeObj->attr('rel')) !== 'stylesheet'
+                ) {
+                    //link 的 href 属性格式化为绝对网络路径
+                    $tagName === 'link' && ($temp = $nodeObj->attr('href')) &&
+                        $nodeObj->attr('href', self::formatUrl(0, $temp, null));
                     $temp = '"' . addslashes($nodeObj->html(true)) . '"';
                     stripos($temp, 'charset') || $printHeadArr['head'][] = $temp;
                 //移动到 body 标签中
@@ -437,7 +443,6 @@ class of_base_htmlTpl_engine {
      *      line    : 属性所在行数
      *      code    : 指定转换的代码
      *      isPrint : true(默认)=返回带打印的代码, false=返回可赋值的代码
-     *     &tagName : 标签名,已/开头时使用
      * 返回 :
      *      成功返回格式化的字符串,失败 异常
      * 作者 : Edgar.lee
@@ -474,7 +479,7 @@ class of_base_htmlTpl_engine {
      * 参数 :
      *      line    : 属性所在行数
      *     &url     : 指定转换的代码
-     *      isPrint : true(默认)=返回带打印的代码, false=返回可赋值的代码
+     *      isPrint : true(默认)=返回带打印的代码, false=返回可赋值的代码, null=静态绝对路径
      * 返回 :
      *      成功返回格式化的字符串, 失败 异常
      * 作者 : Edgar.lee
@@ -487,7 +492,14 @@ class of_base_htmlTpl_engine {
         if (isset($format[0]) && !strpos($format, ':')) {
             //非'/'开始的定位到 模板路径 下
             $format[0] === '/' || $format = of_base_com_str::realpath(self::$config['tplRoot'] . '/' . $format);
-            $format = $isPrint ? "<?php {$line} echo ROOT_URL; ?>" . $format : $line . ' ROOT_URL . \'' . $format . '\'';
+
+            if ($isPrint === null) {
+                $format = ROOT_URL . $format;
+            } else {
+                $format = $isPrint ?
+                    "<?php {$line} echo ROOT_URL; ?>" . $format :
+                    $line . ' ROOT_URL . \'' . $format . '\'';
+            }
         } else if (!$isPrint) {
             $format = $line . ' \'' .$format. '\'';
         }

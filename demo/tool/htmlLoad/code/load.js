@@ -1,7 +1,7 @@
 /**
  * 描述 : 使 js 可以实现 include 功能
  *      示例 <script src="tool.js" include="head.html"></script>
- *      src 定位到该脚本, include 是相对该脚本的.html文件
+ *      src 定位到该脚本, include 是相对该脚本路径的.html文件
  * 注明 :
  *      本脚本仅做UI开发使用
  *      为了方便后端语言整合, 不要使用在js中
@@ -73,9 +73,10 @@
                 path = path.substr(0, path.lastIndexOf('/') + 1);
 
                 //计算文档路径
-                temp = /\b(src\s*=|href\s*=|url\s*\()\s*(\'|\"|)([^ "'>]*)\2(\)?)/ig;
+                temp = /(["'\s])(src\s*=|href\s*=|url\s*\()\s*('|"|)([^ "'>]*)\3(\)?)/ig;
                 temp = ajax.responseText.replace(temp, function () {
-                    return arguments[1] + arguments[2] + path + arguments[3] + arguments[2] + arguments[4];
+                    return arguments[1] + arguments[2] + arguments[3] + path +
+                        arguments[4] + arguments[3] + arguments[5];
                 });
 
                 isIe ? isIe(temp) : document.write(temp);

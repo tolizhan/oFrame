@@ -4,8 +4,9 @@ $this->head( array(
     'css'   => array(
         //'/main.css',
         //'/components/paging/paging.css'
-    )
-    //,'js' => array('/paging.js')    //加载js,注:js都将在页面底部加载,默认将加载'jquery.js'
+    ),
+    //加载js,注:js都将在页面底部加载,默认将加载'jquery.js'
+    'js' => array('/paging.js')
 ));
 ?>
 <pre>

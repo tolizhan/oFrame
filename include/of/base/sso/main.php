@@ -1094,18 +1094,30 @@ class of_base_sso_main extends of_base_sso_api {
         $index = array();
 
         $sql = "SELECT
-            `_of_sso_realm_pack`.`data`, GROUP_CONCAT(`_of_sso_realm_func`.`name`) `func`
+            `_of_sso_realm_pack`.`data`, GROUP_CONCAT(DISTINCT `_of_sso_realm_func`.`name`) `func`
         FROM
-            `_of_sso_user_pack`
+            `_of_sso_realm_pack`
+                LEFT JOIN `_of_sso_user_pack` ON
+                    `_of_sso_user_pack`.`realmId` = '1'
+                AND `_of_sso_user_pack`.`userId` = '{$user['user']}'
+                AND `_of_sso_user_pack`.`packId` = `_of_sso_realm_pack`.`id`
+                LEFT JOIN `_of_sso_user_bale` ON
+                    `_of_sso_user_bale`.`userId` = '{$user['user']}'
+                LEFT JOIN `_of_sso_bale_pack` ON
+                    `_of_sso_bale_pack`.`realmId` = '1'
+                AND `_of_sso_bale_pack`.`baleId` = `_of_sso_user_bale`.`baleId`
+                AND `_of_sso_bale_pack`.`packId` = `_of_sso_realm_pack`.`id`
                 LEFT JOIN `_of_sso_pack_func` ON
-                    `_of_sso_pack_func`.`packId` = `_of_sso_user_pack`.`packId`
-                LEFT JOIN `_of_sso_realm_pack` ON
-                    `_of_sso_realm_pack`.`id` = `_of_sso_pack_func`.`packId`
+                    `_of_sso_pack_func`.`realmId` = '1'
+                AND `_of_sso_pack_func`.`packId` = `_of_sso_realm_pack`.`id`
                 LEFT JOIN `_of_sso_realm_func` ON
                     `_of_sso_realm_func`.`id` = `_of_sso_pack_func`.`funcId`
         WHERE
-            `_of_sso_user_pack`.`realmId` = '1'
-        AND `_of_sso_user_pack`.`userId`  = '{$user['user']}'
+            `_of_sso_realm_pack`.`realmId` = '1'
+        AND `_of_sso_realm_pack`.`state` <> '0'
+        AND (
+                `_of_sso_user_pack`.`id` IS NOT NULL
+            OR `_of_sso_bale_pack`.`id` IS NOT NULL)
         GROUP BY
             `_of_sso_realm_pack`.`id`";
 

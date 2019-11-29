@@ -201,10 +201,10 @@ $("div").click(function () {
         $excelObj->getActiveSheet()->setTitle('标签名');
 
         // IE 与 ssl 需要的信息
-        header ('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
-        header ('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT');
-        header ('Cache-Control: cache, must-revalidate');
-        header ('Pragma: public');
+        header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+        header('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT');
+        header('Cache-Control: cache, must-revalidate');
+        header('Pragma: public');
 
         //下载 xls
         header('Content-Disposition: attachment;filename="01simple.xls"');
@@ -262,10 +262,10 @@ $("div").click(function () {
         header('Content-Disposition: attachment;filename="01simple.docx"');
 
         // IE 与 ssl 需要的信息
-        header ('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
-        header ('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT');
-        header ('Cache-Control: cache, must-revalidate');
-        header ('Pragma: public');
+        header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+        header('Last-Modified: '.gmdate('D, d M Y H:i:s').' GMT');
+        header('Cache-Control: cache, must-revalidate');
+        header('Pragma: public');
 
         $objWriter = PHPWord_IOFactory::createWriter($PHPWord, 'Word2007');
         $objWriter->save('php://output');
@@ -275,10 +275,10 @@ $("div").click(function () {
      * 描述 : 新分页演示
      * 作者 : Edgar.lee
      */
-    function &paging($params = array('width' => 100)) {
+    public function &paging($params = array('width' => 100)) {
         //模拟sql语句数据
-        if( $this->get('c') === 'of_base_com_com' ) {
-            for($i = 0; $i < $_POST['size']; $i++) {
+        if ($this->get('c') === 'of_base_com_com') {
+            for ($i = 0; $i < $_POST['size']; $i++) {
                 $data[] = array('t1' => $_POST['page'] * $_POST['size'] + $i + 1, 'value' => 'data ' . $i, 'id' => $i);
             }
         }
@@ -325,7 +325,7 @@ $("div").click(function () {
     }
 
     //验证码校验
-    function captcha() {
+    public function captcha() {
         echo $this->_com->captcha($this->post('captcha'));
     }
 }

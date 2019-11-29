@@ -18,7 +18,7 @@
  *          PRIMARY KEY (`type`,`mark`) USING BTREE,
  *          KEY `常规排序搜索` (`type`,`lockTime`,`queue`) USING BTREE
  *      ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='消息队列表'
- *      /*!50100 PARTITION BY KEY (`type`) PARTITIONS 250 * /;
+ *      /*!50100 PARTITION BY KEY (`type`) PARTITIONS 251 * /;
  * 作者 : Edgar.lee
  */
 class of_accy_com_mq_mysql extends of_base_com_mq {

@@ -13,14 +13,14 @@ $addin['jConfig'] = isset($addin['jConfig']) ?
 //输出控制监听
 of::event('of::halt', array('asCall' => 'L::buffer', 'params' => array(true, true)));
 //为前端集成 jquery, L 封装 及 框架常量
-of_view::head('head', 
+of_view::head('head', array(
     //初始化路径
-    '<script>var ROOT_URL="' .ROOT_URL. '", OF_URL="' .OF_URL. '", VIEW_URL="' .of_view::path(true). '";</script>' .
+    '<script>var ROOT_URL="' .ROOT_URL. '", OF_URL="' .OF_URL. '", VIEW_URL="' .of_view::path(true). '";</script>',
     //加载 jquery.js
-    '<script src="' .OF_URL. '/att/link/jquery.js" ></script>' .
+    'jQuery' => '<script src="' .OF_URL. '/att/link/jquery.js" ></script>',
     //加载 L.js
     '<script src="' .OF_URL. '/att/link/L.js" addin="' .$addin['jConfig']. '" ></script>'
-);
+));
 
 /**
  * 描述 : 魔术方法, 获取com组件及view对象

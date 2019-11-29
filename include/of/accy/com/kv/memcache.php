@@ -12,7 +12,7 @@ class of_accy_com_kv_memcache extends of_base_com_kv {
         isset($this->params[0]) || $this->params = array($this->params);
 
         $this->memcache = $memcache = new Memcache;
-        foreach($this->params as &$v) {
+        foreach ($this->params as &$v) {
             $memcache->addServer($v['host'], $v['port']);
         }
     }

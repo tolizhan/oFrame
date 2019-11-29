@@ -100,13 +100,20 @@ class of_view {
      * 描述 : 打印通用HTML头
      * 参数 :
      *      params : [array]一个打印的相关信息,如果=false则打印HTML尾信息 {
-     *          'title'  : 网页的标题
-     *          'js'     : ['/../...js', '/../...js'] 加载的js,默认加载jquery.js,已站点的/js文件夹为根目录,除了jquery.js外的其他js文件都将在尾部加载
-     *          'css'    : ['/../...css', '/../...css'] 加载的css,已站点的/css文件夹为根目录
-     *          'head'   : 向网页<head>中写入文本
-     *          'before' : 向网页<body>后写入文本
-     *          'after'  : 向网页</body>前写入文本
+     *          "title"  : 网页的标题
+     *          "js"     : 在网页</body>前加载js路径, 以/view/js为根目录
+     *              string = 相当 [string]
+     *              array = {
+     *                  指定防重判断键, 不指定用值做判断 : js路径,
+     *                  ...
+     *              },
+     *          "css"    : 在网页"head"后加载css路径, 以/view/css为根目录, 同"js"结构
+     *          "head"   : 在网页<head>中写入文本, "_/"开头通过include加载, 同"js"结构
+     *          "body"   : 在网页<body>中写入属性, 同"js"结构
+     *          "before" : 在网页<body>后写入文本, 同"js"结构
+     *          "after"  : 在网页</body>前写入文本, 同"js"结构
      *      }
+     *      data : 当 params 为数组键时(title, js, ...), 单独添加对应类型数据结构
      * 返回 :
      *      echo 头部或尾部信息
      * 作者 : Edgar.lee
@@ -119,10 +126,12 @@ class of_view {
         if (empty($_['init']) && is_array($params)) {
             $_['init'] = self::inst();
             //注册结束尾输出
-            of::event('of::halt', array('asCall' => 'of_view::head', 'params' => array(false)));
-
-            foreach ($params as &$v) is_array($v) && $v && $v = array_combine($v, $v);
-            of::arrayReplaceRecursive($_, $params);
+            of::event('of::halt', array(
+                'asCall' => 'of_view::head',
+                'params' => array(false)
+            ));
+            //合并html注入数据
+            foreach ($params as $k => &$v) self::mergeHtmlData($_[$k], $k, $v);
 
             echo '<!DOCTYPE html>',
                 '<html>',
@@ -132,26 +141,51 @@ class of_view {
                 //of.php已发送头,同时IE6 p3p隐私共享会因utf-8导致js cookie不可写
                 //'<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />',
             //开始注入html[head]
-            empty($_['head']) || $_['init']->objInclude($_['head']);
+            $_['init']->objInclude($_['head']);
             //输出css引用样式
-            empty($_['css']) || self::eachPrintJsOrCss($_['css'], 'css');
+            self::eachPrintJsOrCss($_['css'], 'css');
             //输出body属性
             echo '</head><body ', join(' ', $_['body']), '>';
 
             //开始注入html[before]
-            empty($_['before']) || self::eachPrintJsOrCss($_['before']);
+            self::eachPrintJsOrCss($_['before']);
         //输出尾信息
         } else if ($params === false && isset($_['init'])) {
             //开始注入html[head]
-            empty($_['head']) || $_['init']->objInclude($_['head']);
+            $_['init']->objInclude($_['head']);
             //开始注入html[after]
-            empty($_['after']) || self::eachPrintJsOrCss($_['after']);
-            empty($_['css']) || self::eachPrintJsOrCss($_['css'], 'css');
-            empty($_['js']) || self::eachPrintJsOrCss($_['js'], 'js');
+            self::eachPrintJsOrCss($_['after']);
+            self::eachPrintJsOrCss($_['css'], 'css');
+            self::eachPrintJsOrCss($_['js'], 'js');
 
             echo '</body></html>';
-        } else if (is_string($params) && !isset($_[$params][$data])) {
-            $_[$params][$data] = &$data;
+        } else if (is_string($params)) {
+            self::mergeHtmlData($_[$params], $params, $data);
+        }
+    }
+
+    /**
+     * 描述 : 合并HTML注入信息
+     * 参数 :
+     *     &save : 对应注入内容存储数据
+     *     &type : 存储数据类型(title, js, css, head, body, before, after)
+     *     &data : 需要存储的数据, string=相当[string], array=存储数据 {
+     *          数据键, 如果是数字为对应值 : 注入字符串,
+     *          ...
+     *      }
+     * 作者 : Edgar.lee
+     */
+    private static function mergeHtmlData(&$save, &$type, &$data) {
+        if ($type === 'title') {
+            $save = $data;
+        } else {
+            //字符串转换成数组
+            is_string($data) && $data = array($data);
+
+            //遍历存储参数
+            foreach ($data as $k => &$v) {
+                $save[is_int($k) ? $v : $k] = $v;
+            }
         }
     }
 
@@ -168,13 +202,21 @@ class of_view {
             'js'  => array('<script src="', '" ></script>'),
             'css' => array('<link type="text/css" rel="stylesheet" href="', '" />')
         );
-        $type && $url = self::path(true) .'/'. $type;
 
-        foreach ($list as &$v) {
-            echo $head[$type][0], $type ? of::formatPath($v, $url) : $v, $head[$type][1];
+        //数组不为空
+        if ($list) {
+            $type && $url = self::path(true) .'/'. $type;
+
+            foreach ($list as &$v) {
+                if ($v) {
+                    echo $head[$type][0],
+                        $type ? of::formatPath($v, $url) : $v,
+                        $head[$type][1];
+                }
+            }
+
+            $list = null;
         }
-
-        $list = null;
     }
 
     /**
@@ -186,19 +228,19 @@ class of_view {
     private function objInclude(&$_l) {
         $_p =  self::path(false);
 
-        do {
+        while ($_l) {
             $_k = key($_l);
             $_v = &$_l[$_k];
             unset($_l[$_k]);
 
             //加载路径
-            if ($_v[0] === '_' || $_v[0] === '/') {
+            if (isset($_v[0]) && trim($_v[0], '_/') === '') {
                 include of::formatPath($_v, $_p);
             //打印标签
             } else {
                 echo $_v;
             }
-        } while ($_l);
+        };
     }
 
     /**
