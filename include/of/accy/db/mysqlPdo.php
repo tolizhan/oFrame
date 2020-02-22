@@ -23,7 +23,7 @@ class of_accy_db_mysqlPdo extends of_db {
                 array(PDO::ATTR_PERSISTENT => !!$params['persistent'])
             );
 
-            if ($this->_linkIdentifier(false)) {
+            if ($this->_ping(false)) {
                 //设置字体, GROUP_CONCAT最大长度
                 $temp = "SET NAMES '{$params['charset']}', GROUP_CONCAT_MAX_LEN = 4294967295";
                 //设置严格模式
@@ -54,7 +54,7 @@ class of_accy_db_mysqlPdo extends of_db {
      * 描述 : 读取当前错误
      * 作者 : Edgar.lee
      */
-    protected function _error(&$node) {
+    protected function _error() {
         //事务回滚动作
         static $rollback = null;
         $error = $this->connection->errorInfo() + array(2 => '');
@@ -98,7 +98,7 @@ class of_accy_db_mysqlPdo extends of_db {
                 $this->_query($temp);
                 $temp = &$this->_fetch();
                 //记录死锁日志
-                $node = $temp['Status'];
+                $note = $temp['Status'];
             }
 
             //mysql版本>=5.7回滚事务后需手动重启事务
@@ -111,7 +111,7 @@ class of_accy_db_mysqlPdo extends of_db {
             $this->_begin();
         }
 
-        return $error[1] . ':' . $error[2];
+        return array('code' => $error[1], 'info' => $error[2], 'note' => &$note);
     }
 
     /**
@@ -135,7 +135,7 @@ class of_accy_db_mysqlPdo extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _begin() {
-        $this->_linkIdentifier();
+        $this->_ping();
         $this->transState = $this->connection->beginTransaction();
         return $this->transState;
     }
@@ -196,7 +196,7 @@ class of_accy_db_mysqlPdo extends of_db {
      */
     protected function _query(&$sql) {
         $this->query = false;
-        if ($this->_linkIdentifier() && $this->query = $this->connection->query($sql, PDO::FETCH_ASSOC)) {
+        if ($this->_ping() && $this->query = $this->connection->query($sql, PDO::FETCH_ASSOC)) {
             return true;
         } else {
             return false;
@@ -209,7 +209,7 @@ class of_accy_db_mysqlPdo extends of_db {
      *      restLink : 是否重新连接,true(默认)=是,false=否
      * 作者 : Edgar.lee
      */
-    private function _linkIdentifier($restLink = true) {
+    protected function _ping($restLink = true) {
         if (
             //事务状态下不重新检查
             $this->transState ||

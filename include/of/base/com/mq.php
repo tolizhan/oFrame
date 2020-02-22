@@ -566,19 +566,29 @@ abstract class of_base_com_mq {
     }
 
     /**
-     * 描述 : 数据库of_db::afeter事件回调
+     * 描述 : 数据库of_db事件回调
      * 作者 : Edgar.lee
      */
     public static function dbEvent($type, $params) {
+        //引用消息队列列表
+        $mqList = &self::$mqList;
+
+        //改名操作
+        if ($type === 'rename') {
+            //不是内部事务(""定义为内部事务) && 列表存在
+            if ($params['oName'] && isset($mqList[$params['oName']])) {
+                $mqList[$params['nName']] = &$mqList[$params['oName']];
+                unset($mqList[$params['oName']]);
+            }
         //事务操作
-        if (
+        } else if (
             $params['pool'] &&
-            isset(self::$mqList[$params['pool']]) && (
+            isset($mqList[$params['pool']]) && (
                 $params['sql'] === null || 
                 is_bool($params['sql'])
             )
         ) {
-            $nowMqList = &self::$mqList[$params['pool']];
+            $nowMqList = &$mqList[$params['pool']];
             //同步事务等级
             $nowLevel = &$nowMqList['level'];
             $nowState = &$nowMqList['state'];
@@ -752,6 +762,10 @@ abstract class of_base_com_mq {
             if (!isset($mqList[$bind]['level'])) {
                 $mqList[$bind]['level'] = of_db::pool($bind, 'level');
                 $mqList[$bind]['state'] = of_db::pool($bind, 'state');
+                of::event('of_db::rename', array(
+                    'asCall' => 'of_base_com_mq::dbEvent',
+                    'params' => array('rename')
+                ));
                 of::event('of_db::before', array(
                     'asCall' => 'of_base_com_mq::dbEvent',
                     'params' => array('before')

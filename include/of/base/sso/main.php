@@ -4,7 +4,6 @@
  * 作者 : Edgar.lee
  */
 class of_base_sso_main extends of_base_sso_api {
-
     /**
      * 描述 : 展示控制界面
      * 作者 : Edgar.lee
@@ -369,6 +368,7 @@ class of_base_sso_main extends of_base_sso_api {
         if (!empty($params['save'])) {
             $id = &$params['save']['id'];
             unset($params['save']['id']);
+            $params['save']['trust'] || $params['save']['trust'] = '1';
 
             foreach ($params['save'] as $k => &$v) {
                 $v = "`{$k}` = '{$v}'";
@@ -808,7 +808,7 @@ class of_base_sso_main extends of_base_sso_api {
     public static function tplImport() {
         if (is_file($path = ROOT_DIR . OF_DATA . $_POST['path'])) {
             //清空错误日志
-            of_base_error_writeLog::lastError(true);
+            of::work('error', false);
             //开启事务
             of_db::sql(null, self::$config['dbPool']);
 
@@ -918,7 +918,7 @@ class of_base_sso_main extends of_base_sso_api {
             }
 
             //有错误";
-            if (of_base_error_writeLog::lastError()) {
+            if (of::work('error')) {
                 //回滚事务
                 of_db::sql(false, self::$config['dbPool']);
                 echo '导入产生错误';

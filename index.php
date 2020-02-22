@@ -10,7 +10,7 @@ require dirname(__FILE__) . '/include/of/of.php';
 if (isset($_GET['c'])) {
     //类名, 动作, 安全校验
     $result = of::dispatch(
-        $_GET['c'],
+        stripslashes($_GET['c']),
         isset($_GET['a']) ? $_GET['a'] : 'index',
         PHP_SAPI === 'cli' ? null : true
     );

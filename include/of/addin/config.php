@@ -22,9 +22,9 @@ switch ($name) {
         break;
     //phprpc
     case 'phprpc' :
-        class_exists('PHPRPC_Client', false) || 
-        class_exists('PHPRPC_Server', false) || 
-        class_exists('PHPRPC_Date', false) || 
+        class_exists('PHPRPC_Client', false) ||
+        class_exists('PHPRPC_Server', false) ||
+        class_exists('PHPRPC_Date', false) ||
         of::event('of::loadClass', array(
             'classPre' => 'PHPRPC_', 'mapping' => substr(OF_DIR, strlen(ROOT_DIR)) . '/addin/phprpc/PHPRPC_'
         ));

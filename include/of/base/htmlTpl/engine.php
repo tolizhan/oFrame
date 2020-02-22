@@ -591,7 +591,7 @@ class of_base_htmlTpl_engine {
             }
             $check['tip'] = join("\n", $check['tip']);
             //未通过检查
-            throw new Exception("File '{$check['file']}' {$check['message']} :\n" . $check['tip']);
+            throw new Exception("File '{$check['file']}' {$check['info']} :\n" . $check['tip']);
         } else {
             return true;
         }

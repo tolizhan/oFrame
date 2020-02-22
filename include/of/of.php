@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200236);
+define('OF_VERSION', 200238);
 
 /**
  * 描述 : 控制层核心
@@ -10,9 +10,23 @@ class of {
     //站点配置文件
     private static $config = null;
     //注册的 L 类方法
-    private static $links = array();
+    private static $links = array(
+        /**
+         * 描述 : 获取翻译文本
+         * 参数 :
+         *      s : 翻译文本
+         *      o : 翻译参数 {
+         *          "key"   :o翻译区分标识符, 默认=""
+         *          "trace" :o调用跟踪文件定位(默认0=调用此方法文件, 1=0的父方法, ...)
+         *          "file"  :o指定调用磁盘路径, 绝对路径
+         *      }
+         */
+        'getText' => 'public static function &getText($s) {return $s;}'
+    );
     //是否支持命名空间
     private static $isSpace = false;
+    //工作流程错误队列 [{"code" : 编码, "info" : 错误, "file" : 路径, "line" : 行数, ...}, ...]
+    private static $workErr = array(null);
 
     /**
      * 描述 : 初始化框架
@@ -21,8 +35,6 @@ class of {
     public static function init() {
         //支持命名空间
         self::$isSpace = version_compare(PHP_VERSION, '5.3.0', '>=');
-        //过期函数不会报错
-        error_reporting(error_reporting() & ~8192);
         //注册spl
         spl_autoload_register('of::loadClass');
         //加载系统配置文件
@@ -40,7 +52,7 @@ class of {
         //生成 L 类
         $temp = 'class L {' . join(self::$links) . "\n}";
         if ($temp = self::syntax($temp, true, true)) {
-            throw new Exception("{$temp['message']} on line {$temp['line']}\n----\n{$temp['tips']}");
+            throw new Exception("{$temp['info']} on line {$temp['line']}\n----\n{$temp['tips']}");
         }
         self::$links = null;
     }
@@ -176,7 +188,7 @@ class of {
     /**
      * 描述 : 为类提供回调事件
      * 参数 :
-     *      key    : 事件类型
+     *      type   : 事件类型
      *      event  : true=触发事件,false=删除事件,null=管理事件,其它=添加事件(符合回调结构)
      *      params : 触发时=自定义参数[_]键的值,删除时=指定删除的回调,添加时=true为特殊结构(不在触发事件范围内),默认null
      * 返回 :
@@ -194,43 +206,77 @@ class of {
      *      }
      * 作者 : Edgar.lee
      */
-    public static function &event($key, $event, $params = null) {
+    public static function &event($type, $event, $params = null) {
+        //事件列表
         static $eventList = null;
+        //执行列表
+        static $waitExec = array();
 
         //初始化事件列表
-        isset($eventList[$key]) || $eventList[$key] = array(
+        isset($eventList[$type]) || $eventList[$type] = array(
             'change' => false,
             'list'   => array()
         );
-        //引用当前列表
-        $nList = &$eventList[$key]['list'];
 
         //触发事件
         if ($event === true) {
-            //返回结果集
-            $result = array();
-            //重置指针
-            reset($nList);
+            //待执行列表
+            $waitExec[] = array(
+                'type'   => $type,
+                'offset' => -1,
+                'params' => &$params,
+                'result' => array()
+            );
 
-            while (($k = key($nList)) !== null) {
-                next($nList);
-                $v = &$nList[$k];
-                //是回调 && 回调
-                $v['isCall'] && $result[$k] = &self::callFunc($v['event'], $params);
-            }
+            do {
+                //创建事件数组引用参数
+                extract($waitExec[0], EXTR_REFS);
+                $nList = &$eventList[$type]['list'];
+
+                while ($k = array_slice($nList, ++$offset, 1, true)) {
+                    //提取引用数据
+                    $k = key($k);
+                    $v = &$nList[$k];
+                    //标准回调 && 可以回调
+                    if ($v['isCall'] && $v['isExec']) {
+                        //防止循环回调
+                        $v['isExec'] = false;
+                        try {
+                            //保存嵌套事件结果位置
+                            $result[$k] = null;
+                            $result[$k] = &self::callFunc($v['event'], $params);
+                        } catch (Exception $e) {
+                            of::event('of::error', true, $e);
+                        }
+                        $v['isExec'] = true;
+                    }
+                }
+
+                array_shift($waitExec);
+            } while (isset($waitExec[0]));
         //管理事件
         } else if ($event === null) {
-            $result = &$eventList[$key];
+            $result = &$eventList[$type];
         //增删改事件
         } else {
+            //引用当前列表
+            $nList = &$eventList[$type]['list'];
             //引用事件
             $event === false ? $index = &$params : $index = &$event;
-            //创建临时副本,防止打乱触发内循环
-            $temp = $nList;
             //删除事件
-            foreach ($temp as $k => &$v) {
+            foreach ($nList as $k => &$v) {
                 if ($v['event'] == $index) {
-                    $eventList[$key]['change'] = true;
+                    if (
+                        //正在执行事件 && 执行事件为删除事件
+                        isset($waitExec[0]) && $waitExec[0]['type'] === $type &&
+                        //执行事件在删除的事件之后
+                        key(array_slice($nList, $waitExec[0]['offset'], 1, true)) >= $k
+                    ) {
+                        //执行偏移减一
+                        $waitExec[0]['offset'] -= 1;
+                    }
+
+                    $eventList[$type]['change'] = true;
                     unset($nList[$k]);
                     break;
                 }
@@ -238,9 +284,12 @@ class of {
 
             //添加事件
             if ($event !== false) {
-                $eventList[$key]['change'] = true;
+                $eventList[$type]['change'] = true;
                 $nList[] = array(
+                    //标准回调
                     'isCall' => !$params,
+                    //可以回调
+                    'isExec' => true,
                     'event'  => &$event,
                     'change' => true
                 );
@@ -273,12 +322,406 @@ class of {
     }
 
     /**
+     * 描述 : 管理工作流程, 独立的 时间 队列 错误及事务, 让代码更简洁
+     *      工作可以嵌套, 产生任何错误, 事务都会回滚
+     *      可以使用 try catch 或 回调方式 开始一个工作
+     *      可以获取 当前工作开始时间 与 产生的错误
+     *      可以抛出 工作异常 并通过捕获简化代码逻辑
+     * 参数 :
+     *     #开启工作(数组, null)
+     *      code : 监听数据库连接, 产生问题会自动回滚, 数组=[连接池, ...], null=["default"]
+     *      info : 功能参数
+     *          int=增加数据监控, 0为当前工作, 1=父层工作..., 指定工作不存在便使用当前工作
+     *          框架回调结构=回调模式创建工作, 不需要 try catch
+     *              回调返回 false 时, 则回滚工作, 接收参数 {
+     *                  "result" : &标准结果集
+     *                  "data"   : &标准结果集中的data数据
+     *              }
+
+     *     #结束工作(布尔)
+     *      code : 完结事务, true=提交, false=回滚
+
+     *     #抛出异常(数字)
+     *      code : 问题编码, [400, 600)之间的数字
+     *      info : 提示信息
+     *      data : 扩展参数, 一个数组
+
+     *     #捕捉异常(对象)
+     *      code : 异常对象, 通过 try catch 捕获的异常
+
+     *     #获取时间(文本)
+     *      code : 固定"time"
+     *      info : 返回时间格式, 默认2=格式化时间, 1=时间戳, 3=[时间戳, 格式化]
+
+     *     #操作错误(文本)
+     *      code : 固定"error"
+     *      info : 默认true=获取错误, false=清除错误
+
+     *     #工作信息(文本)
+     *      code : 固定"info"
+     * 返回 :
+     *     #开启工作(数组)
+     *      失败抛出异常, 成功 {"code" : 200, "info" : "Successful", "data" : []}
+
+     *     #结束工作(布尔)
+     *      失败抛出异常
+
+     *     #抛出异常(数字)
+     *      抛出工作异常
+
+     *     #捕捉异常(对象)
+     *      其它异常继续抛出, 为工作异常返回 {
+     *          "code" : 异常状态码
+     *          "info" : 提示信息
+     *          "data" : 问题数据
+     *      }
+
+     *     #获取时间("time")
+     *      返回当前工作的开始时间, 未在工作中抛出异常
+
+     *     #操作错误("error")
+     *      未在工作中依然生效, 没错误返回null, 有错误返回 {
+     *          "code" : 编码,
+     *          "info" : 错误,
+     *          "file" : 路径,
+     *          "line" : 行数,
+     *          ...
+     *      }
+
+     *     #工作信息("info")
+     *      不在工作中返回 null, 反之返回 {"list" : [监听连接池, ...]}
+     * 注明 :
+     *      返回的状态码一览表
+     *          500 : 发生内部错误(代码报错)
+     * 作者 : Edgar.lee
+     */
+    public static function work($code, $info = '', $data = array()) {
+        //问题异常类名
+        static $class = null;
+        //监听栈列表 [{"time" : [时间戳, 格式化], "list" : {数据池 : 被克隆数据池, ...}}, ...]
+        static $sList = array();
+        //监听默认连接池
+        $code === null && $code = array('default');
+
+        //数组=开启工作
+        if (is_array($code)) {
+            //引用指定工作
+            if (is_int($info) && isset($sList[0])) {
+                //指定工作不存在 && 使用当前工作
+                $index = &$sList[isset($sList[$info]) ? $info : 0]['list'];
+            //添加新工作流
+            } else {
+                //压入工作问题栈表
+                array_unshift(self::$workErr, null);
+                //压入栈列表
+                array_unshift($sList, array(
+                    'time' => array($time = time(), date('Y-m-d H:i:s', $time)),
+                    'list' => array()
+                ));
+                $index = &$sList[0]['list'];
+            }
+
+            //遍历开启事务
+            foreach ($code as &$v) {
+                //去重数据库连接池
+                if (empty($index[$v])) {
+                    //连接池在事务中 ? 克隆连接池, 返回原连接池新名称 : null
+                    $temp = of_db::pool($v, 'level') ? of_db::pool($v, 'clone', $v) : null;
+                    //克隆名不冲突 && 记录默认连接源
+                    $temp === null && $temp = $v;
+
+                    //记录成功事务
+                    if (of_db::sql(null, $v)) {
+                        //保存原连接池
+                        $index[$v] = $temp;
+                    //事务开启失败
+                    } else {
+                        //恢复原连接池 && 清除克隆连接池
+                        of_db::pool($temp, 'rename', $v);
+                        //事务开启失败
+                        throw new Exception('Failed to open transaction: ' . $v);
+                    }
+                }
+            }
+
+            //初始化返回结构
+            $result = array('code' => 200, 'info' => 'Successful', 'data' => array());
+
+            //快速回调模式, data为回调方法
+            if (!is_int($info) && $info) {
+                try {
+                    //返回 false 回滚工作
+                    self::work(self::callFunc($info, array(
+                        'result' => &$result, 'data' => &$result['data']
+                    )) !== false);
+                } catch (Exception $e) {
+                    $result = self::work($e);
+                }
+            }
+
+            //返回结果集
+            return $result;
+        //布尔=结束工作
+        } else if (is_bool($code)) {
+            //未开启工作
+            if (!$sList) throw new Exception('Did not start work');
+            //是否没有错误, true=没有, false=存在
+            $isOk = !self::$workErr[0];
+            //是否提交事务, true=提交, false=回滚
+            $isOn = $code === true && $isOk;
+            $index = &$sList[0];
+            $index['pool'] = false;
+            //为多个连接池
+            $temp = count($index['list']) > 1;
+
+            //连接池有效检查
+            foreach ($index['list'] as $k => &$v) {
+                //多个连接池 && 连接池已断开
+                if ($temp && !of_db::pool($k, 'ping')) {
+                    throw new Exception('Can not connect to database: ' . $k);
+                //连接池事务层级错误
+                } else if (of_db::pool($k, 'level') !== 1) {
+                    throw new Exception('Database transaction level error: ' . $k);
+                }
+            }
+
+            //提交或回滚事务
+            foreach ($index['list'] as $k => &$v) {
+                //事务提交失败 && 接下的事务回滚
+                !of_db::sql($isOn, $k) && $isOn && $isOn = !$index['pool'] = $k;
+                //恢复原连接池 && 清除克隆连接池
+                of_db::pool($v, 'rename', $k);
+            }
+            $index['list'] = array();
+
+            //提交事务 && 存在错误, 发生内部错误
+            if ($code === true && !$isOk) {
+                self::work(500, 'An internal error occurred');
+            //提交失败的连接池
+            } else if ($index['pool'] !== false) {
+                throw new Exception('Failed to commit transaction: ' . $index['pool']);
+            //一切正常移除栈列
+            } else {
+                array_shift(self::$workErr);
+                array_shift($sList);
+            }
+        //文本=功能操作
+        } else if (is_string($code)) {
+            switch ($code) {
+                //time=获取时间
+                case 'time':
+                    //返回时间
+                    if (isset($sList[0])) {
+                        //引用当前工作时间
+                        $index = &$sList[0]['time'];
+                        //参数为3 ? [时间戳, 格式化] : (默认1为格式时间, 2为时间戳)
+                        return $info === 3 ? $index : $index[$info !== 1];
+                    //未在工作流程中
+                    } else {
+                        throw new Exception('Did not start work');
+                    }
+                    break;
+                //error=操作错误
+                case 'error':
+                    $info === false && self::$workErr[0] = null;
+                    return self::$workErr[0];
+                    break;
+                //info=工作信息
+                case 'info':
+                    return isset($sList[0]) ? array(
+                        'list' => array_keys($sList[0]['list'])
+                    ) : null;
+                    break;
+            }
+        //对象=捕捉异常, 数字=抛出异常
+        } else {
+            //创建内置异常类
+            if ($class === null) {
+                $class = '_' . uniqid();
+                eval("class {$class} extends Exception {}");
+            }
+
+            //处理捕获的异常
+            if (is_object($code)) {
+                //已开启工作
+                if ($sList) {
+                    //回滚所有开启事务 && 恢复原连接池
+                    foreach ($sList[0]['list'] as $k => &$v) {
+                        $k === $v ? of_db::pool($v, 'clean', 1) : of_db::pool($v, 'rename', $k);
+                    }
+                    //移除工作与监听栈列
+                    array_shift(self::$workErr);
+                    array_shift($sList);
+                }
+
+                //是内置异常类
+                if (get_class($code) === $class) {
+                    return array(
+                        'code' => $code->getCode(),
+                        'info' => $code->getMessage(),
+                        'data' => &$code->data
+                    );
+                //其它常规异常
+                } else {
+                    of::event('of::error', true, $code);
+                    return array(
+                        'code' => 500,
+                        'info' => L::getText('An internal error occurred', array('key' => __METHOD__)),
+                        'data' => array()
+                    );
+                }
+            //抛出异常
+            } else {
+                $info = L::getText($info, array('key' => __METHOD__, 'trace' => 1));
+                $code = new $class($info, $code);
+                $code->data = &$data;
+                throw $code;
+            }
+        }
+    }
+
+    /**
+     * 描述 : 记录最后一次错误
+     * 参数 :
+     *     &code : 错误编码, 接收"异常对象,数组格式,错误编码,null"格式
+     *      info : 错误信息, 为false时直接存储code数组格式
+     *      file : 文件路径
+     *      line : 文件行数
+     * 作者 : Edgar.lee
+     */
+    public static function saveError($code = null, $info = null, $file = null, $line = null) {
+        //直接存储
+        if ($info === false) {
+            self::$workErr[0] = &$code;
+        //致命错误
+        } else if ($code === null) {
+            //非 trigger_error('')
+            if (($temp = error_get_last()) && $temp['message']) {
+                $error = array(
+                    'code' => &$temp['type'],
+                    'info' => ini_get('error_prepend_string') .
+                        $temp['message'] .
+                        ini_get('error_append_string'),
+                    'file' => &$temp['file'],
+                    'line' => &$temp['line']
+                );
+            }
+        //系统异常
+        } else if (is_object($code)) {
+            $error = array(
+                //异常代码
+                'code' => $code->getCode(),
+                //异常消息
+                'info' => $code->getMessage(),
+                //异常文件
+                'file' => $code->getFile(),
+                //异常行
+                'line' => $code->getLine(),
+            );
+        //系统错误 && 不是过期函数
+        } else if (error_reporting() && $code !== 8192) {
+            //代码错误 ? 补全信息 : 系统错误
+            $error = is_array($code) ? $code + array(
+                'code' => E_USER_NOTICE, 'info' => 'Unknown error', 'file' => '', 'line' => 0
+            ) : array(
+                'code' => &$code, 'info' => &$info, 'file' => &$file, 'line' => &$line
+            );
+        //否则 "@"错误 || 过期函数
+        }
+
+        if (isset($error)) {
+            //格式化文件路径
+            $error['file'] = strtr(substr($error['file'], strlen(ROOT_DIR)), '\\', '/');
+            //记录最后一次错误
+            self::$workErr[0] = &$error;
+            //debug模式打印日志
+            if (OF_DEBUG) {
+                $info = htmlentities($error['info'], ENT_QUOTES, 'UTF-8');
+                echo '<pre style="color:#F00; font-weight:bold; margin: 0px;">',
+                    "[{$error['code']}] : \"{$info}\" in {$error['file']} on line {$error['line']}",
+                    '. Timestamp : ', time(), '</pre>';
+            }
+        }
+    }
+
+    /**
+     * 描述 : 动态加载类
+     * 参数 :
+     *      className : 需要加载的类名
+     * 返回 :
+     *      成功类返回的值,默认1,失败返回false
+     * 注明 :
+     *      of::loadClass事件 : 类路径映射,指定前缀的类将按照其它前缀的类加载
+     *          第二参结构 : {
+     *              classPre : 类前缀
+     *              mapping  : 映射前缀,字符串=指定的前缀替换该字符串
+     *              asCall   : 函数回调,不能与mapping共存
+     *              params   : 回调参数,用[_]键指定类名位置
+     *          }
+     * 作者 : Edgar.lee
+     */
+    private static function loadClass($className) {
+        //读取of::loadClass事件
+        $event = &self::event('of::loadClass', null);
+        //修改过重新排序
+        if ($event['change']) {
+            $event['change'] = false;
+            //至少有of_这条数据
+            foreach ($event['list'] as $k => &$v) {
+                $sortList[$k] = &$v['event']['classPre'];
+                if ($v['change']) {
+                    $v['change'] = false;
+                    $v['classPreLen'] = strlen($v['event']['classPre']);
+                }
+            }
+            //重新排序
+            array_multisort($sortList, SORT_DESC, SORT_STRING, $event['list']);
+        }
+
+        //框架类转命名空间方式
+        $isAlias = self::$isSpace && rtrim(substr($className, 0, 3), '\_') === 'of';
+        $isAlias && $isAlias = $className = strtr($className, '\\', '_');
+
+        //加载回调, 不用判断一定有数据
+        foreach ($event['list'] as &$v) {
+            $k = $v['classPreLen'];
+            $v = &$v['event'];
+            if (strncmp($v['classPre'], $className, $k) === 0) {
+                if (isset($v['asCall'])) {
+                    $v['params']['_']['className'] = $className;
+                    $temp = call_user_func_array($v['asCall'], $v['params']);
+                    if ($temp !== false) return $temp;
+                } else {
+                    $className = substr_replace($className, $v['mapping'], 0, $k);
+                    break;
+                }
+            }
+        }
+
+        if ($className) {
+            //指定路径 || 转换路径
+            $className[0] === '/' || $className = '/' . strtr($className, '_', '/');
+            //生成绝对路径
+            $className = ROOT_DIR . strtr($className, '\\', '/') . '.php';
+            //加载文件
+            $className = is_file($className) ? include $className : false;
+            //为框架类设置空间别名
+            if ($isAlias && class_exists($isAlias, false)) {
+                class_alias($isAlias, strtr($isAlias, '_', '\\'));
+            }
+            return $className;
+        }
+    }
+
+    /**
      * 描述 : 加载系统环境
      * 作者 : Edgar.lee
      */
     private static function loadSystemEnv() {
         //默认编码
         ini_set('default_charset', 'UTF-8');
+        //输出框架信息
+        ini_get('expose_php') && header('X-Powered-By: OF/' . OF_VERSION);
         //of磁盘路径
         define('OF_DIR', strtr(dirname(__FILE__), '\\', '/'));
 
@@ -337,7 +780,7 @@ class of {
         //防注入处理的超全局变量
         $temp = array(&$_GET, &$_POST, &$_COOKIE);
         //防注入脚本
-        get_magic_quotes_gpc() || self::slashesDeep($temp);
+        ini_get('magic_quotes_gpc') || self::slashesDeep($temp);
         //固定顺序整合到 request 中, 防止被 php.ini 中 request_order 影响
         $_REQUEST = $_GET + $_POST + $_COOKIE;
 
@@ -415,14 +858,23 @@ class of {
             );
         }
 
-        //输出框架信息
-        $temp = OF_DEBUG === false ? '' : ' ' . OF_VERSION;
-        ini_get('expose_php') && header('X-Powered-By: OF' . $temp);
-
         //of_类映射
         self::event('of::loadClass', array(
             'classPre' => 'of_', 'mapping' => substr(OF_DIR, strlen(ROOT_DIR) + 1) . '/'
         ), true);
+
+        //隐藏原生错误
+        ini_set('display_errors', false);
+        //监听系统错误
+        set_error_handler('of::saveError');
+        //监听系统异常
+        set_exception_handler('of::saveError');
+        //监听代码错误
+        of::event('of::error', 'of::saveError');
+        //监听致命错误
+        of::event('of::halt', 'of::saveError');
+        //监听 SQL错误
+        of::event('of_db::error', 'of::saveError');
     }
 
     /**
@@ -437,75 +889,6 @@ class of {
     private static function safeLoad($path, $argv = array()) {
         extract($argv, EXTR_REFS);
         return include $path;
-    }
-
-    /**
-     * 描述 : 动态加载类
-     * 参数 :
-     *      className : 需要加载的类名
-     * 返回 :
-     *      成功类返回的值,默认1,失败返回false
-     * 注明 :
-     *      of::loadClass事件 : 类路径映射,指定前缀的类将按照其它前缀的类加载
-     *          第二参结构 : {
-     *              classPre : 类前缀
-     *              mapping  : 映射前缀,字符串=指定的前缀替换该字符串
-     *              asCall   : 函数回调,不能与mapping共存
-     *              params   : 回调参数,用[_]键指定类名位置
-     *          }
-     * 作者 : Edgar.lee
-     */
-    private static function loadClass($className) {
-        //读取of::loadClass事件
-        $event = &self::event('of::loadClass', null);
-        //修改过重新排序
-        if ($event['change']) {
-            $event['change'] = false;
-            //至少有of_这条数据
-            foreach ($event['list'] as $k => &$v) {
-                $sortList[$k] = &$v['event']['classPre'];
-                if ($v['change']) {
-                    $v['change'] = false;
-                    $v['classPreLen'] = strlen($v['event']['classPre']);
-                }
-            }
-            //重新排序
-            array_multisort($sortList, SORT_DESC, SORT_STRING, $event['list']);
-        }
-
-        //框架类转命名空间方式
-        $isAlias = self::$isSpace && rtrim(substr($className, 0, 3), '\_') === 'of';
-        $isAlias && $isAlias = $className = strtr($className, '\\', '_');
-
-        //加载回调, 不用判断一定有数据
-        foreach ($event['list'] as &$v) {
-            $k = $v['classPreLen'];
-            $v = &$v['event'];
-            if (strncmp($v['classPre'], $className, $k) === 0) {
-                if (isset($v['asCall'])) {
-                    $v['params']['_']['className'] = $className;
-                    $temp = call_user_func_array($v['asCall'], $v['params']);
-                    if ($temp !== false) return $temp;
-                } else {
-                    $className = substr_replace($className, $v['mapping'], 0, $k);
-                    break;
-                }
-            }
-        }
-
-        if ($className) {
-            //指定路径 || 转换路径
-            $className[0] === '/' || $className = '/' . str_replace(array('_', '\\'), '/', $className);
-            //生成绝对路径
-            $className = ROOT_DIR . $className . '.php';
-            //加载文件
-            $className = is_file($className) ? include $className : false;
-            //为框架类设置空间别名
-            if ($isAlias && class_exists($isAlias, false)) {
-                class_alias($isAlias, strtr($isAlias, '_', '\\'));
-            }
-            return $className;
-        }
     }
 
     /*********************************************************************工具类
@@ -675,9 +1058,9 @@ class of {
      * 返回 :
      *      语法通过返回 null
      *      语法失败返回 {
-     *          "message" : 错误信息
-     *          "line"    : 错误行数
-     *          "tips"    : 按 tips 参数显示的代码
+     *          "info" : 错误信息
+     *          "line" : 错误行数
+     *          "tips" : 按 tips 参数显示的代码
      *      }
      * 作者 : Edgar.lee
      */
@@ -689,7 +1072,8 @@ class of {
             $exec ? $exec = &$code : $exec = 'if (0) {' . str_replace('__halt_compiler', 'c', $code) . "//<?php\n}";
             if (@eval($exec) === false) {
                 $result = error_get_last();
-                unset($result['type'], $result['file']);
+                $result['info'] = &$result['message'];
+                unset($result['message'], $result['type'], $result['file']);
                 //清除错误
                 @trigger_error('');
             }
@@ -699,9 +1083,9 @@ class of {
         } catch (Error $e) {
             $result = array(
                 //异常消息
-                'message' => $e->getMessage(),
+                'info' => $e->getMessage(),
                 //异常行
-                'line'    => $e->getLine()
+                'line' => $e->getLine()
             );
         }
 

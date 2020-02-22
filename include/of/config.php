@@ -303,7 +303,7 @@ return array(
         'oUpload' => array(
             //禁止上传的扩展文件, 白名单写法 "@^(?!(exe|php|html|htm|js|css)$)@"
             'filtExt' => '@^(?:exe|php|html|htm|js|css|)$@',
-            //允许上传的文件夹(仅可匹配文件夹), 正则结果[1]可以指定根目录
+            //允许上传的文件夹(仅可匹配文件夹), 正则结果[1]指定根目录(前端无法重定向)
             'folder'  => '@^(/data)/upload/@'
         )
     )

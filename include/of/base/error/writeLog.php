@@ -1,23 +1,9 @@
 <?php
-//系统错误
-set_error_handler('of_base_error_writeLog::phpLog');
-//系统异常
-set_exception_handler('of_base_error_writeLog::phpLog');
-//代码错误
-of::event('of::error', 'of_base_error_writeLog::phpLog');
-//致命错误
-of::event('of::halt', 'of_base_error_writeLog::phpLog');
-//SQL 错误
-of::event('of_db::error', 'of_base_error_writeLog::sqlLog');
-
-//隐藏原生错误
-ini_set('display_errors', false);
-//防止禁用错误
-error_reporting(E_ALL);
-
+/**
+ * 描述 : 存储错误日志
+ * 作者 : Edgar.lee
+ */
 class of_base_error_writeLog {
-    //最后一次错误
-    private static $lastError = array('error' => null);
     //错误配置文件
     private static $config = null;
 
@@ -40,6 +26,23 @@ class of_base_error_writeLog {
             'jsLog'  => OF_DATA . '/error/jsLog'
         );
         self::$config['jsLog'] && of_view::head('head', '<script src="' .OF_URL. '/index.php?a=jsErrScript&c=of_base_error_jsLog"></script>');
+
+        //删除代码错误
+        of::event('of::error', false, 'of::saveError');
+        //删除致命错误
+        of::event('of::halt', false, 'of::saveError');
+        //删除 SQL错误
+        of::event('of_db::error', false, 'of::saveError');
+        //监听系统错误
+        set_error_handler('of_base_error_writeLog::phpLog');
+        //监听系统异常
+        set_exception_handler('of_base_error_writeLog::phpLog');
+        //监听代码错误
+        of::event('of::error', 'of_base_error_writeLog::phpLog');
+        //监听致命错误
+        of::event('of::halt', 'of_base_error_writeLog::phpLog');
+        //监听 SQL错误
+        of::event('of_db::error', 'of_base_error_writeLog::sqlLog');
     }
 
     /**
@@ -47,8 +50,7 @@ class of_base_error_writeLog {
      * 作者 : Edgar.lee
      */
     public static function lastError($clean = false) {
-        $clean && self::$lastError['error'] = null;
-        return self::$lastError['error'];
+        return of::work('error', !$clean);
     }
 
     /**
@@ -87,14 +89,15 @@ class of_base_error_writeLog {
             }
             //非 trigger_error('')
             if (($backtrace = error_get_last()) && $backtrace['message']) {
-                $backtrace['message'] = ini_get('error_prepend_string') . 
-                    $backtrace['message'] . 
+                $backtrace['info'] = ini_get('error_prepend_string') .
+                    $backtrace['message'] .
                     ini_get('error_append_string');
                 $backtrace['backtrace'] = array();
                 $backtrace = array(
                     'errorType'   => 'phpError',
                     'environment' => $backtrace
                 );
+                unset($backtrace['message']);
             } else {
                 return ;
             }
@@ -104,13 +107,13 @@ class of_base_error_writeLog {
                 'errorType'     => 'exception',
                 'environment'   => array(
                     //异常代码
-                    'type'      => $errno->getCode(),
+                    'type' => $errno->getCode(),
                     //异常消息
-                    'message'   => $errno->getMessage(),
+                    'info' => $errno->getMessage(),
                     //异常文件
-                    'file'      => $errno->getFile(),
+                    'file' => $errno->getFile(),
                     //异常行
-                    'line'      => $errno->getLine(),
+                    'line' => $errno->getLine(),
                     //异常追踪
                     'backtrace' => $errno->getTrace()
                 )
@@ -141,7 +144,7 @@ class of_base_error_writeLog {
                 'errorType'     =>'phpError',
                 'environment'   => array(
                     'type'      => $errno,
-                    'message'   => $errstr,
+                    'info'      => $errstr,
                     'file'      => $errfile,
                     'line'      => $errline,
                     'backtrace' => &$errTrace
@@ -163,10 +166,10 @@ class of_base_error_writeLog {
         //错误类型
         $backtrace['errorType'] === 'phpError' && $index['type'] = $errorLevel[$index['type']];
         //移除无效字符
-        $index['message'] = iconv('UTF-8', 'UTF-8//IGNORE', $index['message']);
+        $index['info'] = iconv('UTF-8', 'UTF-8//IGNORE', $index['info']);
 
         //输出错误日志
-        $temp = htmlentities($index['message'], ENT_QUOTES, 'UTF-8');
+        $temp = htmlentities($index['info'], ENT_QUOTES, 'UTF-8');
         self::writeLog(
             $backtrace, 'php',
             "{$index['type']} : \"{$temp}\" in {$index['file']} on line {$index['line']}"
@@ -195,8 +198,9 @@ class of_base_error_writeLog {
         $backtrace = array(
             'errorType'     => 'sqlError',
             'environment'   => array(
-                'type'      => $params['pool'] . ':' . $params['type'],
-                'message'   => &$params['sql'],
+                'type'      => $params['pool'] . ':' . $params['code'] . ':' . $params['info'],
+                'info'      => &$params['sql'],
+                'code'      => &$params['code'],
                 'file'      => '(',
                 'line'      => 0,
                 'note'      => &$params['note'],
@@ -209,11 +213,8 @@ class of_base_error_writeLog {
 
         //错误日志
         $index = &$backtrace['environment'];
-        //错误编码
-        $index['code'] = substr($params['type'], 0, strpos($params['type'], ':'));
-
         //输出错误日志
-        $temp = htmlentities($index['message'], ENT_QUOTES, 'UTF-8');
+        $temp = htmlentities($index['info'], ENT_QUOTES, 'UTF-8');
         self::writeLog(
             $backtrace, 'sql',
             "[{$index['type']}] : \"{$temp}\" in {$index['file']} on line {$index['line']}"
@@ -225,11 +226,12 @@ class of_base_error_writeLog {
      * 参数 :
      *     &logData  : 日志数据
      *      logType  : 日志内容[js, php, sql]
-     *      printStr : 显示错误内容,会根据相关配置绝对是否显示
+     *      printStr : 显示错误内容,会根据相关配置绝定是否显示
      * 作者 : Edgar.lee
      */
     protected static function writeLog(&$logData, $logType, $printStr) {
-        self::$lastError['error'] = &$logData;
+        //记录错误
+        of::saveError($logData['environment'], false);
         //配置引用
         $config = &self::$config;
         //当前时间戳
@@ -346,7 +348,7 @@ class of_base_error_writeLog {
      *      'errorType'   : 错误类型(jsError, sqlError, phpError, exception)
      *      'environment' : 错误体,包括环境,错误细节,回溯 {
      *          'type'    : php=错误级别, sql=错误码及说明
-     *          'message' : php=错误描述, sql=错误sql
+     *          'info'    : php=错误描述, sql=错误sql
      *          'file'    : 定位->路径
      *          'line'    : 定位->行数
      *          'envVar'  : 环境变量 {

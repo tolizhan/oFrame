@@ -1,3 +1,55 @@
+版本: 238
+作者: Edgar
+日期: 2020年2月22日 10:42:08
+信息:
+说明: + 增加工作流程 of::work 独立的 时间 队列 错误及事务, 让代码更简洁
+      + 框架开始兼容 php 7.4
+      + 框架控制台增加运行环境信息
+      + of_db::pool 增加"rename"连接池更名, 更名会触发"of_db::rename"事件
+      + of_db::pool 增加"clone"连接池克隆, 克隆名称冲突时, 原连接会触发更名成唯一值
+      + of_db::pool 增加"ping"检查连接池是否连接, 已连接返回true, 未连接返回false
+      + 错误格式标准化 {"code" : 编码, "info" : 错误, "file" : 路径, "line" : 行数, ...}
+      - 数据库错误接口 of_accy_db_xxx::_error 返回结构变更
+      - 数据库添加接口 of_accy_db_xxx::_ping 检查连接是否正常
+      - 事件 of_base_error_writeLog::error 触发参数符合错误格式
+      - 事件 of_db::error 触发参数 type 分解为 code 和 info
+      - of::syntax 返回参数 message 变更为 info
+      * 用 of::work('error') 更好的代替 of_base_error_writeLog::lastError()
+      * 解决 of_base_com_com::arraySort 对 $data[""] 排序后变为 $data[0] 的问题
+      * 解决事件 of::loadClass 通过 mapping 加载命名空间类寻址错误问题
+      * 更有序的嵌套事件监听触发顺序, 同时解决由相同嵌套事件回调导致的死循环
+      * of_db::pool 销毁连接时, 触发相同事务层数的回滚操作
+      * 方法 L::getText 改为 L 默认方法
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/ctrl/index.php
+已修改 : /trunk/demo/extend/sqlProfiling/main/main.php
+已修改 : /trunk/demo/model/list.php
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqlPdo.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Shared/OLE.php
+已修改 : /trunk/include/of/addin/config.php
+已修改 : /trunk/include/of/addin/tcpdf/tcpdf.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/hParse.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/error/jsLog.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/link/setup.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/version/check.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/index.php
+已修改 : /trunk/license.txt
+
 版本: 236
 作者: Edgar
 日期: 2019年11月30日 0:41:25
@@ -1013,9 +1065,9 @@
 作者: Edgar
 日期: 2016年12月1日 12:42:49
 信息:
-说明: oUpload 优化跨站上传, 加强对扩展名的限制, 更准确的上传限制, 优化样式
-      添加 OF_VERSION 框架版本号常量, 一位大版本号+若干位发布版本号
-      修正错误日志一处定位问题
+说明: + 添加 OF_VERSION 框架版本号常量, 一位大版本号+若干位发布版本号
+      * oUpload 优化跨站上传, 加强对扩展名的限制, 更准确的上传限制, 优化样式
+      * 修正错误日志一处定位问题
 ----
 已增加 : /trunk/demo/tool
 已增加 : /trunk/demo/tool/proxy.php
@@ -1046,14 +1098,14 @@
 作者: Edgar
 日期: 2016年11月25日 17:55:49
 信息:
-说明: hParse 可通过 >attrQuote::属性名 查询属性值在源文件的引号类型(双引,单引,空字符)
-      hParse >tagline::start 更名 >tagLine::start, >attrline::属性名 更名 >attrLine::属性名
-      更详细的js错误日志, 更完善的错误查询
-      扩展基类方法 _sharedData 改为 _shareData
-      扩展基类方法 _getConst('__FILE__') 改为 _getConst('file')
-      添加简单扩展 sqlProfiling MYSQL 性能监控
-      更新上传组件 oUpload 样式
-      网络请求及数据库核心bug修正
+说明: + hParse 可通过 >attrQuote::属性名 查询属性值在源文件的引号类型(双引,单引,空字符)
+      - hParse >tagline::start 更名 >tagLine::start, >attrline::属性名 更名 >attrLine::属性名
+      - 扩展基类方法 _sharedData 改为 _shareData
+      - 扩展基类方法 _getConst('__FILE__') 改为 _getConst('file')
+      + 添加简单扩展 sqlProfiling MYSQL 性能监控
+      * 更详细的js错误日志, 更完善的错误查询
+      * 更新上传组件 oUpload 样式
+      * 网络请求及数据库核心bug修正
 ----
 已增加 : /trunk/demo/extensions/sqlProfiling
 已增加 : /trunk/demo/extensions/sqlProfiling/_info
@@ -1098,10 +1150,10 @@
 作者: Edgar
 日期: 2016年11月18日 16:05:00
 信息:
-说明: oUpload html5 版的 扩展名 优化
-      csv 解析优化
-      修复 net 模块 ssl 默认端口 bug
-      修复 计划任务 监听多开的bug
+说明: * oUpload html5 版的 扩展名 优化
+      * csv 解析优化
+      * 修复 net 模块 ssl 默认端口 bug
+      * 修复 计划任务 监听多开的bug
 ----
 已修改 : /trunk/include/of/addin/oUpload/oUpload.js
 已修改 : /trunk/include/of/base/com/csv.php
@@ -1112,9 +1164,9 @@
 作者: Edgar
 日期: 2016年11月11日 22:32:08
 信息:
-说明: of_base_com_com::eachSql 默认结果集从 100 增至 1000
-      of_base_com_hParse 增加节点回收, 释放无用节点内存
-      细节优化
+说明: * of_base_com_com::eachSql 默认结果集从 100 增至 1000
+      * of_base_com_hParse 增加节点回收, 释放无用节点内存
+      * 细节优化
 ----
 已修改 : /trunk/include/of/base/com/hParse.php
 已修改 : /trunk/include/of/base/sso/api.php
@@ -1126,12 +1178,12 @@
 作者: Edgar
 日期: 2016年11月7日 1:02:41
 信息:
-说明: of_base_com_str:syntax 移动到 of::syntax
-      完善错误日志
-      L 类成为 框架默认类, 预加载时可以通过 of::link 方法注册 L 类方法
-      框架配置 preLoaded 更名为 preloaded
-      of_base_link_L 类更名为 of_base_link_setup
-      注释优化
+说明: - of_base_com_str:syntax 移动到 of::syntax
+      - L 类成为 框架默认类, 预加载时可以通过 of::link 方法注册 L 类方法
+      - 框架配置 preLoaded 更名为 preloaded
+      - of_base_link_L 类更名为 of_base_link_setup
+      * 完善错误日志
+      * 注释优化
 ----
 已增加 : /trunk/demo/list.php
 已修改 : /trunk/include/of/addin/oUpload/oUpload.js
@@ -1159,7 +1211,7 @@
 作者: Edgar
 日期: 2016年11月1日 0:27:12
 信息:
-说明: 切换注释方式
+说明: * 切换注释方式
 ----
 已修改 : /trunk/demo/extensions/test/main/demo.php
 已修改 : /trunk/include/of/accy/db/mysqli.php
@@ -1221,10 +1273,10 @@
 作者: Edgar
 日期: 2016年10月29日 14:30:03
 信息:
-说明: 框架向 php7 兼容
-      csv下载自动加扩展名
-      添加 of_base_com_str::syntax 校验php语法
-      积累性代码优化
+说明: + 框架向 php7 兼容
+      + 添加 of_base_com_str::syntax 校验php语法
+      - csv下载自动加扩展名
+      * 积累性代码优化
 ----
 已修改 : /trunk/include/of/base/com/csv.php
 已修改 : /trunk/include/of/base/com/hParse.php
@@ -1246,11 +1298,11 @@
 作者: Edgar
 日期: 2016年10月12日 17:17:55
 信息:
-说明: 演示部署优化
-      分页初始优化
-      csv 导入自动识别 UTF8, _of.charset 或 指定 编码, 导出可以指定编码(默认 UTF8)
-      计划任务支持静态任务, 符合 lunux crontab 语法
-      系统配置文件 sysEncode 替换为 charset
+说明: + csv 导入自动识别 UTF8, _of.charset 或 指定 编码, 导出可以指定编码(默认 UTF8)
+      + 计划任务支持静态任务, 符合 lunux crontab 语法
+      - 系统配置文件 sysEncode 替换为 charset
+      * 演示部署优化
+      * 分页初始优化
 ----
 已删除 : /trunk/config.php
 已增加 : /trunk/demo/config.php
@@ -1271,9 +1323,9 @@
 作者: Edgar
 日期: 2016年10月9日 15:36:02
 信息:
-说明: 完善JS错误日志
-      单点登录添加票据失效状态
-      代码优化
+说明: * 完善JS错误日志
+      * 单点登录添加票据失效状态
+      * 代码优化
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/include/of/base/com/com.php
@@ -1290,7 +1342,7 @@
 作者: Edgar
 日期: 2016年9月23日 12:53:08
 信息:
-说明: 日志现在可以捕捉致命错误
+说明: + 日志现在可以捕捉致命错误
 ----
 已修改 : /trunk/include/of/base/error/tool.php
 已修改 : /trunk/include/of/base/error/writeLog.php
@@ -1301,9 +1353,9 @@
 作者: Edgar
 日期: 2016年9月20日 11:53:43
 信息:
-说明: 导出的CSV中,非字符串的数字可以使用office的统计功能
-      添加 of_base_com_str::uniqid 获取更具唯一性的ID
-      优化 JS 版的错误日志 和 上传文件的唯一文件名
+说明: + 添加 of_base_com_str::uniqid 获取更具唯一性的ID
+      + 导出的CSV中,非字符串的数字可以使用office的统计功能
+      * 优化 JS 版的错误日志 和 上传文件的唯一文件名
 ----
 已修改 : /trunk/include/of/addin/oUpload/oUpload.php
 已修改 : /trunk/include/of/base/com/csv.php
@@ -1315,7 +1367,7 @@
 作者: Edgar
 日期: 2016年9月7日 9:51:37
 信息:
-说明: 更快的 phprpc 加载速度
+说明: * 更快的 phprpc 加载速度
 ----
 已修改 : /trunk/include/of/addin/config.php
 已增加 : /trunk/include/of/addin/phprpc/PHPRPC_Client.php (从路径复制: /trunk/include/of/addin/phprpc/phprpc_client.php, 版本, 185)
@@ -1332,7 +1384,7 @@
 作者: Edgar
 日期: 2016年8月30日 11:46:47
 信息:
-说明: 修改phprpc自身若干bug
+说明: * 修改phprpc自身若干bug
 ----
 已修改 : /trunk/include/of/addin/config.php
 已修改 : /trunk/include/of/addin/phprpc/phprpc_client.php
@@ -1349,11 +1401,11 @@
 作者: Edgar
 日期: 2016年8月26日 1:39:05
 信息:
-说明: hParse支持outerHTML读写
-      集成 phprpc 插件
-      单点登录支持密码过期
-      of::loadClass 支持自定义路径
-      k-v 缓存 files 代码优化
+说明: + hParse支持outerHTML读写
+      + 集成 phprpc 插件
+      + 单点登录支持密码过期
+      + of::loadClass 支持自定义路径
+      * k-v 缓存 files 代码优化
 ----
 已修改 : /trunk/demo/extensions/ssoSyncLdap/config.php
 已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
@@ -1388,8 +1440,8 @@
 作者: Edgar
 日期: 2016年8月23日 4:39:20
 信息:
-说明: 单点登录添加登录日志`_of_sso_log`
-      单点登录支持帐号有效期 _of.sso.expiry
+说明: + 单点登录添加登录日志`_of_sso_log`
+      + 单点登录支持帐号有效期 _of.sso.expiry
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
@@ -1404,7 +1456,7 @@
 作者: Edgar
 日期: 2016年8月21日 23:19:09
 信息:
-说明: of_base_com_net 支持内网地址 或 设置传输密码, 来支持分布式下异步请求
+说明: * of_base_com_net 支持内网地址 或 设置传输密码, 来支持分布式下异步请求
 ----
 已修改 : /trunk/include/of/base/com/net.php
 已修改 : /trunk/include/of/base/sso/tool.php
@@ -1414,8 +1466,8 @@
 作者: Edgar
 日期: 2016年8月13日 16:39:30
 信息:
-说明: 单点登录扩展升级
-      错误日志使用实时时间
+说明: * 单点登录扩展升级
+      * 错误日志使用实时时间
 ----
 已修改 : /trunk/demo/extensions/ssoSyncLdap/main/main.php
 已修改 : /trunk/include/of/att/sso/css/login.css
@@ -1426,8 +1478,8 @@
 作者: Edgar
 日期: 2016年8月6日 22:10:58
 信息:
-说明: 单点登录支持导入(暂时无权限限制)
-      验证码支持自定义长宽高
+说明: + 验证码支持自定义长宽高
+      * 单点登录支持导入(暂时无权限限制)
 ----
 已修改 : /trunk/include/of/att/sso/css/main.css
 已修改 : /trunk/include/of/att/sso/js/main.js
@@ -1445,10 +1497,10 @@
 作者: Edgar
 日期: 2016年7月29日 8:52:03
 信息:
-说明: mysql 死锁时尝试读取死锁日志(需要 mysql PROCESS 权限)
-      分页组件优化, js paging() 获取参数时自动转换为对象
-      单点登录体验性优化
-      xssFilter 模块 不在对 数字型字符串进行编码
+说明: * mysql 死锁时尝试读取死锁日志(需要 mysql PROCESS 权限)
+      * 分页组件优化, js paging() 获取参数时自动转换为对象
+      * 单点登录体验性优化
+      * xssFilter 模块 不在对 数字型字符串进行编码
 ----
 已修改 : /trunk/include/of/accy/db/mysql.php
 已修改 : /trunk/include/of/accy/db/mysqli.php
@@ -1463,7 +1515,7 @@
 作者: Edgar
 日期: 2016年7月21日 17:11:59
 信息:
-说明: 完善单点登录
+说明: * 完善单点登录
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/include/of/base/sso/api.php
@@ -1472,7 +1524,7 @@
 作者: Edgar
 日期: 2016年7月21日 13:15:08
 信息:
-说明: 完善单点登录
+说明: * 完善单点登录
 ----
 已删除 : /trunk/include/of/att/sso/js/tool.js
 已修改 : /trunk/include/of/base/com/net.php
@@ -1485,7 +1537,7 @@
 作者: Edgar
 日期: 2016年7月11日 2:57:58
 信息:
-说明: 完善单点登录 URL 登录方式
+说明: * 完善单点登录 URL 登录方式
 ----
 已修改 : /trunk/include/of/att/sso/js/login.js
 已修改 : /trunk/include/of/base/sso/api.php
@@ -1495,8 +1547,8 @@
 作者: Edgar
 日期: 2016年7月10日 18:01:41
 信息:
-说明: 代码优化
-      添加一个单点登录连接LDAP的扩展示例
+说明: * 数据库支持死锁日志的输出
+      * 添加一个单点登录连接LDAP的扩展示例
 ----
 已增加 : /trunk/demo/extensions/ssoSyncLdap
 已增加 : /trunk/demo/extensions/ssoSyncLdap/config.php
@@ -1517,7 +1569,7 @@
 作者: Edgar
 日期: 2016年7月4日 3:16:34
 信息:
-说明: 单点登录代码优化, 跳转登录方式返回 data 快捷状态展示
+说明: * 单点登录代码优化, 跳转登录方式返回 data 快捷状态展示
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/include/of/base/extension/tool.php
@@ -1531,7 +1583,7 @@
 作者: Edgar
 日期: 2016年6月25日 12:55:45
 信息:
-说明: K-V 组件优化
+说明: + K-V 组件增加link方法获取原始资源
 ----
 已修改 : /trunk/include/of/accy/com/kv/files.php
 已修改 : /trunk/include/of/accy/com/kv/memcache.php
@@ -1542,7 +1594,7 @@
 作者: Edgar
 日期: 2016年6月24日 14:46:45
 信息:
-说明: 单点登录升级
+说明: * 单点登录升级
 ----
 已修改 : /trunk/include/of/att/sso/js/tool.js
 已修改 : /trunk/include/of/base/sso/tool.php
@@ -1551,7 +1603,7 @@
 作者: Edgar
 日期: 2016年6月23日 23:55:36
 信息:
-说明: 数据库封装优化
+说明: * 数据库封装优化
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/include/of/accy/db/mysqli.php
@@ -1561,7 +1613,7 @@
 作者: Edgar
 日期: 2016年6月23日 2:48:44
 信息:
-说明: 支持调用存储过程, 并返回三维数组
+说明: + 支持调用存储过程, 并返回三维数组
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/include/of/accy/db/mysql.php
@@ -1573,9 +1625,9 @@
 作者: Edgar
 日期: 2016年6月18日 5:39:32
 信息:
-说明: 优化L::buffer 输出控制函数
-      jquery 升级到 1.12.4
-      修复分页一处 bug
+说明: * 优化L::buffer 输出控制函数
+      * jquery 升级到 1.12.4
+      * 修复分页一处 bug
 ----
 已修改 : /trunk/include/of/att/link/jquery.js
 已修改 : /trunk/include/of/base/com/com.php
@@ -1587,9 +1639,9 @@
 作者: Edgar
 日期: 2016年6月6日 18:01:39
 信息:
-说明: 加强 xss 防御
-      优化分页SQL分析
-      代码优化
+说明: * 加强 xss 防御
+      * 优化分页SQL分析
+      * 代码优化
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/demo/view/tpl/demo/index/viewTest.tpl.php
@@ -1604,8 +1656,8 @@
 作者: Edgar
 日期: 2016年5月29日 18:30:52
 信息:
-说明: 分页.paging(null) 可以获取 {"method":分页方法,"items":总条目数,"size":每页条数,"page":当前页数,"sort":排序状态{字段名:ASC / DESC, ...}}
-      升级 echarts 图表到 2.2.7
+说明: + 分页.paging(null) 可以获取 {"method":分页方法,"items":总条目数,"size":每页条数,"page":当前页数,"sort":排序状态{字段名:ASC / DESC, ...}}
+      * 升级 echarts 图表到 2.2.7
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/include/of/addin/echarts/echarts.js
@@ -1615,7 +1667,7 @@
 作者: Edgar
 日期: 2016年5月20日 12:15:35
 信息:
-说明: of_base_com_kv::get(key, default, pool) 添加了默认值 default
+说明: - of_base_com_kv::get(key, default, pool) 添加了默认值 default
 ----
 已修改 : /trunk/include/of/accy/com/kv/files.php
 已修改 : /trunk/include/of/base/com/kv.php
@@ -1624,7 +1676,7 @@
 作者: Edgar
 日期: 2016年5月19日 2:10:24
 信息:
-说明: csv 组件优化, 加强 of_base_com_csv::download 用法
+说明: * csv 组件优化, 加强 of_base_com_csv::download 用法
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/include/of/att/com/com/paging/main.css
@@ -1639,7 +1691,7 @@
 作者: Edgar
 日期: 2016年5月8日 0:42:26
 信息:
-说明: 代码优化
+说明: * 代码优化
 ----
 已修改 : /trunk/include/of/att/sso/js/main.js
 已修改 : /trunk/include/of/base/session/base.php
@@ -1650,7 +1702,7 @@
 作者: Edgar
 日期: 2016年4月28日 1:19:07
 信息:
-说明: 单点登录支持对添加与修改数据的权限控制
+说明: + 单点登录支持对添加与修改数据的权限控制
 ----
 已修改 : /trunk/include/of/att/sso/js/main.js
 已修改 : /trunk/include/of/base/sso/api.php
@@ -1665,7 +1717,7 @@
 作者: Edgar
 日期: 2016年4月26日 15:08:59
 信息:
-说明: 单点登录支持跳转式对接
+说明: + 单点登录支持跳转式对接
 ----
 已修改 : /trunk/include/of/base/sso/api.php
 已修改 : /trunk/include/of/base/sso/main.php
@@ -1675,8 +1727,8 @@
 作者: Edgar
 日期: 2016年4月26日 2:21:59
 信息:
-说明: 单点登录整体功能加强
-      提高SESSION一处兼容性
+说明: - 单点登录通信使用状态码
+      * 提高SESSION一处兼容性
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/include/of/att/sso/js/tool.js
@@ -1690,7 +1742,7 @@
 作者: Edgar
 日期: 2016年4月14日 16:38:14
 信息:
-说明: 语言包相关功能优化
+说明: * 语言包相关功能优化
 ----
 已修改 : /trunk/include/of/base/language/packs.php
 已修改 : /trunk/include/of/base/language/tool.php
@@ -1699,7 +1751,7 @@
 作者: Edgar
 日期: 2016年4月14日 10:20:46
 信息:
-说明: 语言包除OF_DEBUG模式外, 默认语言为 base 时也会启用语言收集
+说明: + 语言包除OF_DEBUG模式外, 默认语言为 base 时也会启用语言收集
 ----
 已修改 : /trunk/include/of/base/com/hParse.php
 已修改 : /trunk/include/of/base/error/tool.php
@@ -1711,7 +1763,7 @@
 作者: Edgar
 日期: 2016年4月1日 14:42:47
 信息:
-说明: html 模版解析回调事件添加 tplDir 模版路径
+说明: + html 模版解析回调事件添加 tplDir 模版路径
 ----
 已修改 : /trunk/include/of/base/htmlTpl/engine.php
 
@@ -1719,7 +1771,7 @@
 作者: Edgar
 日期: 2016年3月21日 17:48:57
 信息:
-说明: 解决 net::request 部分服务器无响应时 feof 失效问题
+说明: * 解决 net::request 部分服务器无响应时 feof 失效问题
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/include/of/base/com/net.php
@@ -1729,7 +1781,7 @@
 作者: Edgar
 日期: 2016年3月9日 17:00:53
 信息:
-说明: session 可以正则匹配自动开始
+说明: + session 可以正则匹配自动开始
 ----
 已修改 : /trunk/include/of/base/session/base.php
 已修改 : /trunk/include/of/config.php
@@ -1739,7 +1791,7 @@
 作者: Edgar
 日期: 2016年3月3日 1:33:43
 信息:
-说明: tcpdf 优化,删除无用字体
+说明: * tcpdf 优化,删除无用字体
 ----
 已增加 : /trunk/changelog.txt
 已修改 : /trunk/include/of/addin/tcpdf/config/tcpdf_config.php
@@ -1911,7 +1963,7 @@
 作者: Edgar
 日期: 2016年2月17日 14:54:37
 信息:
-说明: 集成pdf生成工具 L::open('pdf');
+说明: + 集成pdf生成工具 L::open('pdf');
 ----
 已修改 : /trunk/include/of/addin/config.php
 已增加 : /trunk/include/of/addin/tcpdf
@@ -2132,8 +2184,8 @@
 作者: Edgar
 日期: 2016年2月15日 14:18:19
 信息:
-说明: 数据库回调中 key 变更为 &pool
-    增加 key-value 存储结构 of_base_com_kv
+说明: + 增加 key-value 存储结构 of_base_com_kv
+      - 数据库回调中 key 变更为 &pool
 ----
 已增加 : /trunk/include/of/accy/com/kv
 已增加 : /trunk/include/of/accy/com/kv/files.php
@@ -2147,7 +2199,7 @@
 作者: Edgar
 日期: 2016年2月9日 23:48:41
 信息:
-说明: 变更回调结构 callback 为 asCall
+说明: - 变更回调结构 callback 为 asCall
 ----
 已修改 : /trunk/include/of/base/tool/mysqlSync.php
 已修改 : /trunk/include/of/of.php
@@ -2163,7 +2215,7 @@
 作者: Edgar
 日期: 2016年2月9日 23:26:18
 信息:
-说明: of::event 符合标准回调结构
+说明: * of::event 符合标准回调结构
 ----
 已修改 : /trunk/include/of/of.php
 已修改 : /trunk/include/of/view.php
@@ -2176,7 +2228,7 @@
 作者: Edgar
 日期: 2016年1月25日 19:51:38
 信息:
-说明: 正式应用OF_DATA
+说明: + 正式应用OF_DATA
 ----
 已修改 : /trunk/include/of/accy/session/files.php
 已修改 : /trunk/include/of/of.php
@@ -2191,8 +2243,8 @@
 作者: Edgar
 日期: 2016年1月25日 10:37:57
 信息:
-说明: of::callFunc 支持更多的调用规则
-       view模版文件夹变更 {'/img' : 图片, '/js' : 脚本, '/css' : 样式, '/tpl' : 模板}
+说明: + of::callFunc 支持更多的调用规则
+      - view模版文件夹变更 {'/img' : 图片, '/js' : 脚本, '/css' : 样式, '/tpl' : 模板}
 ----
 已修改 : /trunk/include/of/of.php
 已修改 : /trunk/include/of/view.php
@@ -2203,7 +2255,7 @@
 作者: Edgar
 日期: 2016年1月23日 16:23:53
 信息:
-说明: htmlTpl 引擎支持源html的解析行数
+说明: * htmlTpl 引擎支持源html的解析行数
 ----
 已修改 : /trunk/include/of/base/htmlTpl/engine.php
 已修改 : /trunk/include/of/base/com/hParse.php
@@ -2212,8 +2264,8 @@
 作者: Edgar
 日期: 2016年1月23日 14:46:13
 信息:
-说明: 分页连接池 dbkey->dbPool
-       hParse 添加 >tagline::start(标签行数) 和 >attrline::属性名(属性行数)
+说明: + hParse 添加 >tagline::start(标签行数) 和 >attrline::属性名(属性行数)
+      - 分页连接池改名 dbkey->dbPool
 ----
 已修改 : /trunk/include/of/base/sso/main.php
 已修改 : /trunk/include/of/base/htmlTpl/engine.php
@@ -2224,7 +2276,7 @@
 作者: Edgar
 日期: 2016年1月23日 1:01:32
 信息:
-说明: 增加单点登录管理界面增加翻页等待界面
+说明: * 增加单点登录管理界面增加翻页等待界面
 ----
 已修改 : /trunk/include/of/att/sso/css/main.css
 已增加 : /trunk/include/of/att/sso/img/main/loadLock.gif
@@ -2234,8 +2286,8 @@
 作者: Edgar
 日期: 2016年1月21日 19:23:17
 信息:
-说明: 增加单点登录管理界面用户体验
-       修改单点登录小bug
+说明: * 增强单点登录管理界面用户体验
+      * 修改单点登录小bug
 ----
 已修改 : /trunk/include/of/att/sso/js/main.js
 已修改 : /trunk/include/of/base/sso/main.php
@@ -2245,7 +2297,7 @@
 作者: Edgar
 日期: 2016年1月19日 18:56:41
 信息:
-说明: 计划任务可修改下次回调方式
+说明: + 计划任务可修改下次回调方式
 ----
 已修改 : /trunk/include/of/base/com/timer.php
 
@@ -2253,7 +2305,7 @@
 作者: Edgar
 日期: 2016年1月19日 11:36:36
 信息:
-说明: mysqlSync callDb 可指定参数
+说明: + mysqlSync callDb 可指定参数
 ----
 已修改 : /trunk/include/of/base/tool/mysqlSync.php
 已修改 : /trunk/include/of/base/sso/main.php
@@ -2263,7 +2315,7 @@
 作者: Edgar
 日期: 2016年1月18日 11:39:54
 信息:
-说明: 数据库层优化
+说明: * 数据库层优化
 ----
 已修改 : /trunk/include/of/db.php
 
@@ -2271,7 +2323,7 @@
 作者: Edgar
 日期: 2016年1月15日 16:53:48
 信息:
-说明: 代码优化
+说明: * 代码优化
 ----
 已修改 : /trunk/include/of/accy/session/files.php
 已修改 : /trunk/include/of/att/htmlTpl/sysErrUi.js
@@ -2283,7 +2335,7 @@
 作者: Edgar
 日期: 2016年1月14日 0:09:55
 信息:
-说明: session mysql 连接数据库固定结构
+说明: - session mysql 连接数据库固定结构
 ----
 已修改 : /trunk/include/of/base/extension/baseClass.php
 已修改 : /trunk/include/of/config.php
@@ -2294,7 +2346,7 @@
 作者: Edgar
 日期: 2016年1月13日 20:28:24
 信息:
-说明: 各模块不依赖配置文件
+说明: + 各模块未配置赋为初始值
 ----
 已修改 : /trunk/include/of/accy/session/files.php
 已修改 : /trunk/include/of/of.php
@@ -2317,7 +2369,8 @@
 作者: Edgar
 日期: 2016年1月12日 16:27:08
 信息:
-说明: SSO 系统工具包(权限验证)
+说明: - of_base_tool_mysqlUpdate 更名 of_base_tool_mysqlSync
+      * SSO 系统工具包(权限验证)
 ----
 已增加 : /trunk/include/of/base/tool/mysqlSync.php (从路径复制: /trunk/include/of/base/tool/mysqlUpdate.php, 版本, 118)
 已修改 : /trunk/include/of/base/com/timer.php
@@ -2333,7 +2386,7 @@
 作者: Edgar
 日期: 2016年1月10日 22:40:56
 信息:
-说明: SSO 系统工具包(登入完成)
+说明: + SSO 系统工具包(登入完成)
 ----
 已修改 : /trunk/include/of/accy/session/files.php
 已修改 : /trunk/include/of/base/com/net.php
@@ -2351,7 +2404,7 @@
 作者: Edgar
 日期: 2016年1月6日 18:03:14
 信息:
-说明: 优化 计划任务
+说明: * 优化 计划任务
 ----
 已修改 : /trunk/include/of/base/com/timer.php
 
@@ -2359,8 +2412,8 @@
 作者: Edgar
 日期: 2016年1月6日 10:14:20
 信息:
-说明: 计划任务支持 mysql 存储
-       计划任务支持失败重试
+说明: + 计划任务支持 mysql 存储
+      + 计划任务支持失败重试
 ----
 已修改 : /trunk/include/of/accy/db/mysql.php
 已修改 : /trunk/include/of/accy/db/mysqli.php
@@ -2373,7 +2426,7 @@
 作者: Edgar
 日期: 2016年1月4日 1:40:33
 信息:
-说明: sql 错误添加 mysql 死锁日志
+说明: + sql 错误添加 mysql 死锁日志
 ----
 已修改 : /trunk/include/of/accy/db/mysql.php
 已修改 : /trunk/include/of/accy/db/mysqli.php
@@ -2385,7 +2438,7 @@
 作者: Edgar
 日期: 2016年1月3日 13:39:57
 信息:
-说明: 优化 session files 模式
+说明: - of_base_session_abstract 更名 of_base_session_base
 ----
 已修改 : /trunk/include/of/accy/session/files.php
 已修改 : /trunk/include/of/accy/session/memcache.php
@@ -2400,66 +2453,17 @@
 作者: Edgar
 日期: 2015年12月17日 4:08:15
 信息:
-说明: 数据库升级对外接口名调整
+说明: - 数据库升级对外接口名调整
 ----
 已修改 : /trunk/include/of/base/sso/main.php
 已修改 : /trunk/include/of/base/extension/manager.php
 已修改 : /trunk/include/of/base/tool/mysqlUpdate.php
 
-版本: 110
-作者: Edgar
-日期: 2015年12月17日 3:52:56
-信息:
-说明: lang 文件夹更名 language
-----
-已增加 : /trunk/include/of/att/language
-已增加 : /trunk/include/of/att/language/language.js
-已修改 : /trunk/include/of/base/extension/baseClass.php
-已修改 : /trunk/include/of/config.php
-已修改 : /trunk/include/of/base/extension/manager.php
-已增加 : /trunk/include/of/base/language
-已增加 : /trunk/include/of/base/language/packs.php
-已增加 : /trunk/include/of/base/language/tool.php
-已增加 : /trunk/include/of/base/language/toolBaseClass.php
-已修改 : /trunk/demo/PageExtension.php
-已删除 : /trunk/demo/extensions/test/_info/lang
-已增加 : /trunk/demo/extensions/test/_info/language
-已修改 : /trunk/demo/说明.txt
-已删除 : /trunk/include/of/att/lang
-已修改 : /trunk/include/of/base/extension/tool.php
-已删除 : /trunk/include/of/base/lang
-已修改 : /trunk/include/of/base/link/L.php
-
-版本: 109
-作者: Edgar
-日期: 2015年12月17日 3:39:42
-信息:
-说明: language 文件夹更名 lang
-----
-已删除 : /trunk/include/of/att/language
-已修改 : /trunk/include/of/base/extension/baseClass.php
-已修改 : /trunk/include/of/config.php
-已修改 : /trunk/include/of/base/extension/manager.php
-已删除 : /trunk/include/of/base/language
-已修改 : /trunk/demo/PageExtension.php
-已增加 : /trunk/demo/extensions/test/_info/lang (从路径复制: /trunk/demo/extensions/test/_info/language, 版本, 106)
-已删除 : /trunk/demo/extensions/test/_info/language
-已修改 : /trunk/demo/说明.txt
-已增加 : /trunk/include/of/att/lang (从路径复制: /trunk/include/of/att/language, 版本, 106)
-已修改 : /trunk/include/of/base/extension/tool.php
-已增加 : /trunk/include/of/base/lang (从路径复制: /trunk/include/of/base/language, 版本, 106)
-已修改 : /trunk/include/of/base/link/L.php
-已增加 : /trunk/include/of/att/lang/lang.js (从路径复制: /trunk/include/of/att/language/language.js, 版本, 106)
-已删除 : /trunk/include/of/att/lang/language.js
-已修改 : /trunk/include/of/base/lang/packs.php
-已修改 : /trunk/include/of/base/lang/tool.php
-已修改 : /trunk/include/of/base/lang/toolBaseClass.php
-
 版本: 108
 作者: Edgar
 日期: 2015年12月17日 3:28:15
 信息:
-说明: shortcuts 文件夹更名 link
+说明: - shortcuts 文件夹更名 link
 ----
 已增加 : /trunk/include/of/att/link (从路径复制: /trunk/include/of/att/shortcuts, 版本, 106)
 已修改 : /trunk/include/of/base/htmlTpl/engine.php
@@ -2471,11 +2475,11 @@
 已修改 : /trunk/include/of/base/link/request.php
 已修改 : /trunk/include/of/base/link/response.php
 
-版本: 107
+版本: 99~107
 作者: Edgar
 日期: 2015年12月17日 2:38:28
 信息:
-说明: 单点登录系统(自动安装)
+说明: + 添加单点登录系统
 ----
 已增加 : /trunk/include/of/att/sso
 已增加 : /trunk/include/of/att/sso/js
@@ -2509,128 +2513,12 @@
 已增加 : /trunk/include/of/att/sso/img/main/select2.png
 已增加 : /trunk/include/of/att/sso/img/main/upload1.png
 已增加 : /trunk/include/of/att/sso/img/main/upload2.png
-已删除 : /trunk/include/of/base/sso/css
-已删除 : /trunk/include/of/base/sso/img
-已删除 : /trunk/include/of/base/sso/js
-已删除 : /trunk/include/of/base/sso/tpl
-
-版本: 106
-作者: Edgar
-日期: 2015年12月17日 0:40:45
-信息:
-说明: 单点登录系统(代码优化)
-----
-已修改 : /trunk/include/of/base/sso/main.php
-已修改 : /trunk/include/of/base/sso/api.php
-已修改 : /trunk/include/of/base/sso/js/login.js
-已修改 : /trunk/include/of/base/sso/tpl/main.tpl.php
-
-版本: 105
-作者: Edgar
-日期: 2015年12月16日 20:25:55
-信息:
-说明: 单点登录系统(用户修改)
-----
-已修改 : /trunk/include/of/base/sso/main.php
-已修改 : /trunk/include/of/base/sso/api.php
-
-版本: 104
-作者: Edgar
-日期: 2015年12月15日 2:58:15
-信息:
-说明: 单点登录系统(用户加密)
-----
-已修改 : /trunk/include/of/base/sso/main.php
-已修改 : /trunk/include/of/base/sso/api.php
-已修改 : /trunk/include/of/base/sso/js/login.js
-
-版本: 103
-作者: Edgar
-日期: 2015年12月14日 20:16:15
-信息:
-说明: 单点登录系统(退出接口)
-----
-已修改 : /trunk/include/of/base/sso/main.php
-已修改 : /trunk/include/of/base/sso/api.php
-
-版本: 102
-作者: Edgar
-日期: 2015年12月14日 12:54:34
-信息:
-说明: 单点登录系统(登录校验)
-----
-已修改 : /trunk/include/of/accy/session/files.php
-已修改 : /trunk/include/of/base/sso/api.php
-已修改 : /trunk/include/of/config.php
-
-版本: 101
-作者: Edgar
-日期: 2015年12月13日 5:36:11
-信息:
-说明: 单点登录系统(票据接口)
-----
-已修改 : /trunk/include/of/base/sso/main.php
-已修改 : /trunk/include/of/base/sso/api.php
-已修改 : /trunk/include/of/base/sso/js/login.js
-已修改 : /trunk/include/of/base/sso/tpl/login.tpl.php
-
-版本: 100
-作者: Edgar
-日期: 2015年12月13日 3:47:46
-信息:
-说明: 单点登录系统(权限界面)
-----
-已修改 : /trunk/include/of/index.php
-已修改 : /trunk/include/of/base/sso/main.php
-已修改 : /trunk/include/of/base/sso/api.php
-已修改 : /trunk/include/of/base/sso/js/login.js
-已修改 : /trunk/include/of/base/sso/tpl/main.tpl.php
-已修改 : /trunk/include/of/base/sso/tpl/login.tpl.php
-已修改 : /trunk/demo/extensions/extensions.php
-
-版本: 99
-作者: Edgar
-日期: 2015年12月7日 1:13:43
-信息:
-说明: 单点登录系统(临时)
-----
-已增加 : /trunk/include/of/base/sso
-已增加 : /trunk/include/of/base/sso/main.php
-已增加 : /trunk/include/of/base/sso/api.php
-已增加 : /trunk/include/of/base/sso/css
-已增加 : /trunk/include/of/base/sso/img
-已增加 : /trunk/include/of/base/sso/js
-已增加 : /trunk/include/of/base/sso/tpl
-已增加 : /trunk/include/of/base/sso/js/login.js
-已增加 : /trunk/include/of/base/sso/tpl/main.tpl.php
-已增加 : /trunk/include/of/base/sso/tpl/login.tpl.php
-已增加 : /trunk/include/of/base/sso/css/login.css
-已增加 : /trunk/include/of/base/sso/css/main.css
-已增加 : /trunk/include/of/base/sso/img/main
-已增加 : /trunk/include/of/base/sso/img/main/add1.png
-已增加 : /trunk/include/of/base/sso/img/main/add2.png
-已增加 : /trunk/include/of/base/sso/img/main/del1.png
-已增加 : /trunk/include/of/base/sso/img/main/del2.png
-已增加 : /trunk/include/of/base/sso/img/main/download1.png
-已增加 : /trunk/include/of/base/sso/img/main/download2.png
-已增加 : /trunk/include/of/base/sso/img/main/ice1.png
-已增加 : /trunk/include/of/base/sso/img/main/ice2.png
-已增加 : /trunk/include/of/base/sso/img/main/iceState.png
-已增加 : /trunk/include/of/base/sso/img/main/login_backgroud.png
-已增加 : /trunk/include/of/base/sso/img/main/login_error.png
-已增加 : /trunk/include/of/base/sso/img/main/search.png
-已增加 : /trunk/include/of/base/sso/img/main/select1.png
-已增加 : /trunk/include/of/base/sso/img/main/select2.png
-已增加 : /trunk/include/of/base/sso/img/main/upload1.png
-已增加 : /trunk/include/of/base/sso/img/main/upload2.png
-已增加 : /trunk/include/of/base/sso/js/main.js
 
 版本: 97
 作者: Edgar
 日期: 2015年11月20日 10:34:41
 信息:
-说明: 增加框架分页放行
-       组件 common 变更为 com
+说明: - 组件 common 变更为 com
 ----
 已增加 : /trunk/include/of/att/com/com (从路径复制: /trunk/include/of/att/com/common, 版本, 90)
 已修改 : /trunk/include/of/att/com/com/paging/main.js
@@ -2650,7 +2538,7 @@
 作者: Edgar
 日期: 2015年10月30日 10:58:30
 信息:
-说明: 代码格式化
+说明: * 代码格式化
 ----
 已修改 : /trunk/include/of/base/com/hParse.php
 
@@ -2658,10 +2546,10 @@
 作者: Edgar
 日期: 2015年10月30日 9:01:59
 信息:
-说明: 代码格式化
-       session 兼容 5.3
-       language 代码兼容 safari
-       hParse 解析数度提升 1/3
+说明: * 代码格式化
+      * session 兼容 5.3
+      * language 代码兼容 safari
+      * hParse 解析数度提升 1/3
 ----
 已修改 : /trunk/include/of/att/language/language.js
 已修改 : /trunk/include/of/of.php
@@ -2673,7 +2561,7 @@
 作者: Edgar
 日期: 2015年10月22日 13:37:44
 信息:
-说明: 代码格式化
+说明: * 代码格式化
 ----
 已修改 : /trunk/include/of/base/tool/test.php
 已修改 : /trunk/include/of/view.php
@@ -2686,7 +2574,7 @@
 作者: Edgar
 日期: 2015年10月3日 1:01:53
 信息:
-说明: 集成phpMailer 5.2.13
+说明: + 集成phpMailer 5.2.13
 ----
 已修改 : /trunk/include/of/addin/config.php
 已增加 : /trunk/include/of/addin/PHPMailer
@@ -2761,8 +2649,8 @@
 作者: Edgar
 日期: 2015年10月3日 0:02:54
 信息:
-说明: 格式化语法规范
-       L::outputControl更名L::buffer
+说明: - L::outputControl更名L::buffer
+      * 格式化语法规范
 ----
 已修改 : /trunk/include/of/accy/db/pdoMysql.php
 已修改 : /trunk/include/of/base/extension/baseClass.php
@@ -2780,7 +2668,7 @@
 作者: Edgar
 日期: 2015年9月19日 16:14:04
 信息:
-说明: 配置文件configPath更改为config
+说明: - 配置文件configPath更改为config
 ----
 已修改 : /trunk/include/of/of.php
 已修改 : /trunk/include/of/config.php
@@ -2789,7 +2677,7 @@
 作者: Edgar
 日期: 2015年9月19日 3:03:44
 信息:
-说明: 配置文件写路径配置更改为dataDir
+说明: - 配置文件写路径配置更改为dataDir
 ----
 已修改 : /trunk/include/of/accy/session/files.php
 已修改 : /trunk/demo/index.php
@@ -2804,7 +2692,7 @@
 作者: Edgar
 日期: 2015年9月19日 2:40:58
 信息:
-说明: 上传组件支持init回调
+说明: * 上传组件支持init回调
 ----
 已修改 : /trunk/include/of/addin/oUpload/oUpload.js
 
@@ -2812,7 +2700,7 @@
 作者: Edgar
 日期: 2015年9月19日 1:42:06
 信息:
-说明: 上传组件oUplaod整合
+说明: + 上传组件oUplaod整合
 ----
 已修改 : /trunk/include/of/accy/session/files.php
 已修改 : /trunk/include/of/addin/config.js
@@ -2846,7 +2734,7 @@
 作者: Edgar
 日期: 2015年9月14日 22:10:58
 信息:
-说明: 网络请求代码优化
+说明: * 网络请求代码优化
 ----
 已修改 : /trunk/include/of/base/com/net.php
 
@@ -2854,9 +2742,8 @@
 作者: Edgar
 日期: 2015年9月11日 12:57:28
 信息:
-说明: 代码格式化
-     session/files.php 取消空文件夹清空
-     L.event 支持事件批量操作
+说明: + L.event 支持事件批量操作
+      * session/files.php 取消空文件夹清空
 ----
 已修改 : /trunk/include/of/accy/session/files.php
 已修改 : /trunk/include/of/base/extension/baseClass.php
@@ -2868,7 +2755,7 @@
 作者: Edgar
 日期: 2015年9月7日 15:59:23
 信息:
-说明: 代码格式化
+说明: * 代码格式化
 ----
 已修改 : /trunk/include/of/base/error/writeLog.php
 已修改 : /trunk/include/of/att/shortcuts/L.js
@@ -2877,7 +2764,7 @@
 作者: Edgar
 日期: 2015年9月2日 23:10:19
 信息:
-说明: 代码格式化
+说明: * 代码格式化
 ----
 已修改 : /trunk/include/of/accy/db/mysql.php
 已修改 : /trunk/include/of/accy/db/mysqli.php
@@ -2889,7 +2776,7 @@
 作者: Edgar
 日期: 2015年8月28日 21:44:59
 信息:
-说明: 修正 of_base_com_net::request https bug
+说明: * 修正 of_base_com_net::request https bug
 ----
 已修改 : /trunk/include/of/base/com/net.php
 
@@ -2897,7 +2784,7 @@
 作者: Edgar
 日期: 2015年8月27日 21:37:12
 信息:
-说明: 调整SESSION配置结构
+说明: - 调整SESSION配置结构
 ----
 已修改 : /trunk/include/of/accy/session/files.php
 已修改 : /trunk/include/of/accy/session/memcache.php
@@ -2908,7 +2795,7 @@
 作者: Edgar
 日期: 2015年8月27日 17:00:08
 信息:
-说明: mysqlUpdate.php 支持水平分区备份恢复
+说明: + mysqlUpdate.php 支持水平分区备份恢复
 ----
 已修改 : /trunk/include/of/base/tool/mysqlUpdate.php
 
@@ -2916,7 +2803,7 @@
 作者: Edgar
 日期: 2015年8月21日 18:05:13
 信息:
-说明: mysqlUpdate.php 恢复备份结构支持 setInc 设置自增
+说明: + mysqlUpdate.php 恢复备份结构支持 setInc 设置自增
 ----
 已修改 : /trunk/include/of/base/tool/mysqlUpdate.php
 
@@ -2924,7 +2811,7 @@
 作者: Edgar
 日期: 2015年8月21日 15:05:33
 信息:
-说明: of_base_tool_mysqlUpdate 代码格式化
+说明: * of_base_tool_mysqlUpdate 代码格式化
 ----
 已修改 : /trunk/include/of/base/tool/mysqlUpdate.php
 已修改 : /trunk/include/of/base/com/str.php
@@ -2933,8 +2820,8 @@
 作者: Edgar
 日期: 2015年8月20日 16:04:58
 信息:
-说明: of_db::transaction 和 of_db::sql 方法合并(优化)
-     开始事务后,读连接切换到主连接
+说明: + 开始事务后,读连接切换到主连接
+      * of_db::transaction 和 of_db::sql 方法合并(优化)
 ----
 已修改 : /trunk/include/of/db.php
 已修改 : /trunk/include/of/accy/session/mysql.php
@@ -2943,7 +2830,7 @@
 作者: Edgar
 日期: 2015年8月20日 0:47:39
 信息:
-说明: of_db::transaction 和 of_db::sql 方法合并
+说明: - of_db::transaction 和 of_db::sql 方法合并
 ----
 已修改 : /trunk/include/of/db.php
 已修改 : /trunk/include/of/base/extension/baseClass.php
@@ -2954,7 +2841,7 @@
 作者: Edgar
 日期: 2015年8月19日 11:59:19
 信息:
-说明: 完善错误日志支持@符错误屏蔽
+说明: * 完善错误日志支持@符错误屏蔽
 ----
 已修改 : /trunk/include/of/base/error/writeLog.php
 
@@ -2962,9 +2849,8 @@
 作者: Edgar
 日期: 2015年8月19日 2:03:33
 信息:
-说明: 代码格式化
-     错误日志支持@符错误屏蔽
-     完善 of_base_com_disk::file
+说明: + 错误日志支持@符错误屏蔽
+      * 完善 of_base_com_disk::file
 ----
 已修改 : /trunk/include/of/base/com/net.php
 已修改 : /trunk/include/of/base/error/writeLog.php
@@ -2974,7 +2860,7 @@
 作者: Edgar
 日期: 2015年8月15日 10:33:13
 信息:
-说明: 网络请求函数优化
+说明: * 网络请求函数优化
 ----
 已修改 : /trunk/include/of/base/com/net.php
 已修改 : /trunk/include/of/base/com/common.php
@@ -2983,7 +2869,7 @@
 作者: Edgar
 日期: 2015年8月14日 17:25:36
 信息:
-说明: 代码格式化
+说明: * 代码格式化
 ----
 已修改 : /trunk/include/of/index.php
 已修改 : /trunk/include/of/view.php
@@ -2994,7 +2880,7 @@
 作者: Edgar
 日期: 2015年8月11日 19:36:21
 信息:
-说明: 代码优化
+说明: * 代码优化
 ----
 已修改 : /trunk/include/of/of.php
 已修改 : /trunk/include/of/view.php
@@ -3005,7 +2891,7 @@
 作者: Edgar
 日期: 2015年8月10日 20:35:50
 信息:
-说明: 代码优化
+说明: * 代码优化
 ----
 已修改 : /trunk/include/of/accy/session/memcache.php
 已修改 : /trunk/include/of/base/error/writeLog.php
@@ -3014,7 +2900,7 @@
 作者: Edgar
 日期: 2015年8月7日 23:24:00
 信息:
-说明: 精简 of_base_com_disk 方法名
+说明: - 精简 of_base_com_disk 六个方法名
 ----
 已修改 : /trunk/include/of/accy/session/files.php
 已修改 : /trunk/include/of/base/htmlTpl/engine.php
@@ -3030,7 +2916,7 @@
 作者: Edgar
 日期: 2015年8月7日 23:00:01
 信息:
-说明: 降低SESSION清理的出错概率
+说明: * 降低SESSION清理的出错概率
 ----
 已修改 : /trunk/include/of/accy/session/files.php
 
@@ -3038,8 +2924,8 @@
 作者: Edgar
 日期: 2015年8月7日 10:46:33
 信息:
-说明: 优化网络请求
-     优化错误日志
+说明: * 优化网络请求
+      * 优化错误日志
 ----
 已修改 : /trunk/include/of/base/com/net.php
 已修改 : /trunk/include/of/base/error/writeLog.php
@@ -3048,7 +2934,7 @@
 作者: Edgar
 日期: 2015年8月4日 0:29:21
 信息:
-说明: SESSION 高版本 支持加锁
+说明: * SESSION 高版本 支持加锁
 ----
 已修改 : /trunk/include/of/accy/session/files.php
 已修改 : /trunk/include/of/accy/session/memcache.php
@@ -3060,7 +2946,7 @@
 作者: Edgar
 日期: 2015年8月3日 22:13:59
 信息:
-说明: 计划任务精确到5秒
+说明: * 计划任务精确到5秒
 ----
 已修改 : /trunk/include/of/db.php
 已修改 : /trunk/include/of/base/com/net.php
@@ -3071,7 +2957,7 @@
 作者: Edgar
 日期: 2015年7月19日 23:47:35
 信息:
-说明: 分页支持连续数字翻页
+说明: + 分页支持连续数字翻页
 ----
 已修改 : /trunk/include/of/base/extension/match.php
 已修改 : /trunk/include/of/att/com/common/paging/main.js
@@ -3080,7 +2966,7 @@
 作者: Edgar
 日期: 2015年7月14日 11:36:42
 信息:
-说明: 代码格式化
+说明: * 代码格式化
 ----
 已修改 : /trunk/include/of/addin/config.php
 已修改 : /trunk/include/of/db.php
@@ -3091,7 +2977,7 @@
 作者: Edgar
 日期: 2015年7月8日 12:35:31
 信息:
-说明: of_base_com_net::request 开始支持 OPTIONS,GET,HEAD,POST,PUT,DELETE,TRACE 模式
+说明: + of_base_com_net::request 开始支持 OPTIONS,GET,HEAD,POST,PUT,DELETE,TRACE 模式
 ----
 已修改 : /trunk/include/of/base/com/net.php
 已修改 : /trunk/include/of/config.php
@@ -3101,7 +2987,7 @@
 作者: Edgar
 日期: 2015年7月1日 23:06:15
 信息:
-说明: 分页添加命名空间功能,可以分页中嵌套分页
+说明: + 分页添加命名空间功能,可以分页中嵌套分页
 ----
 已修改 : /trunk/include/of/base/com/common.php
 已修改 : /trunk/include/of/att/com/common/paging/main.js
@@ -3110,7 +2996,7 @@
 作者: Edgar
 日期: 2015年6月20日 21:25:50
 信息:
-说明: mcrypt 加解密封装
+说明: + mcrypt 加解密封装
 ----
 已修改 : /trunk/include/of/base/com/str.php
 
@@ -3118,7 +3004,7 @@
 作者: Edgar
 日期: 2015年6月18日 2:57:26
 信息:
-说明: 集成 nusoap 开始支持 webService
+说明: + 集成 nusoap 开始支持 webService
 ----
 已修改 : /trunk/include/of/addin/config.php
 已增加 : /trunk/include/of/addin/nusoap
@@ -3140,8 +3026,8 @@
 作者: Edgar
 日期: 2015年5月17日 23:21:31
 信息:
-说明: 标准化 of_base_com_disk::getTempPath 返回值
-     优化 session 一处代码
+说明: * 标准化 of_base_com_disk::getTempPath 返回值
+      * 优化 session 一处代码
 ----
 已修改 : /trunk/include/of/base/session/abstract.php
 已修改 : /trunk/include/of/base/com/disk.php
@@ -3150,7 +3036,7 @@
 作者: Edgar
 日期: 2015年5月8日 12:29:26
 信息:
-说明: 图表组件升级
+说明: * 图表组件升级
 ----
 已修改 : /trunk/include/of/addin/echarts/echarts.js
 已删除 : /trunk/include/of/addin/echarts/esl.js
@@ -3159,7 +3045,7 @@
 作者: Edgar
 日期: 2015年5月6日 10:45:40
 信息:
-说明: 优化图表集成的返回值
+说明: * 优化图表集成的返回值
 ----
 已修改 : /trunk/include/of/addin/config.js
 
@@ -3167,7 +3053,7 @@
 作者: Edgar
 日期: 2015年5月5日 21:57:27
 信息:
-说明: 添加 OF_DEBUG 状态常量
+说明: + 添加 OF_DEBUG 状态常量
 ----
 已修改 : /trunk/include/of/of.php
 已修改 : /trunk/include/of/base/htmlTpl/engine.php
@@ -3178,7 +3064,7 @@
 作者: Edgar
 日期: 2015年5月5日 13:35:09
 信息:
-说明: 模版引擎现在可以显示系统错误
+说明: + 模版引擎现在可以显示系统错误
 ----
 已增加 : /trunk/include/of/att/htmlTpl
 已增加 : /trunk/include/of/att/htmlTpl/sysErrUi.js
@@ -3188,7 +3074,7 @@
 作者: Edgar
 日期: 2015年5月5日 0:01:18
 信息:
-说明: 分页可以选择数据库连接池
+说明: * 分页可以选择数据库连接池
 ----
 已修改 : /trunk/include/of/base/com/common.php
 
@@ -3196,7 +3082,7 @@
 作者: Edgar
 日期: 2015年5月4日 23:58:05
 信息:
-说明: 分页可以选择数据库连接池
+说明: + 分页可以选择数据库连接池
 ----
 已修改 : /trunk/include/of/base/com/common.php
 
@@ -3204,7 +3090,7 @@
 作者: Edgar
 日期: 2015年5月4日 23:45:40
 信息:
-说明: 强化错误提示
+说明: * 强化错误提示
 ----
 已修改 : /trunk/include/of/base/htmlTpl/engine.php
 已修改 : /trunk/include/of/base/error/writeLog.php
@@ -3213,7 +3099,7 @@
 作者: Edgar
 日期: 2015年5月3日 18:21:04
 信息:
-说明: hParse 一处代码优化
+说明: * hParse 一处代码优化
 ----
 已修改 : /trunk/include/of/base/com/hParse.php
 
@@ -3221,7 +3107,8 @@
 作者: Edgar
 日期: 2015年5月2日 13:44:50
 信息:
-说明: 精简 of_db 事件名
+说明: - 框架事件 of_db::sql::xxx 改名 of_db::xxx
+      - 扩展事件 ::sql::xxx 改名 ::sqlXxx
 ----
 已修改 : /trunk/include/of/db.php
 已修改 : /trunk/include/of/base/extension/match.php
@@ -3230,7 +3117,7 @@
 作者: Edgar
 日期: 2015年5月2日 13:05:57
 信息:
-说明: 增加 of_base_htmlTpl_engine::compile 模版编译事件
+说明: + 增加 of_base_htmlTpl_engine::compile 模版编译事件
 ----
 已修改 : /trunk/include/of/base/htmlTpl/engine.php
 
@@ -3238,7 +3125,7 @@
 作者: Edgar
 日期: 2015年4月13日 15:19:55
 信息:
-说明: 增加 分页.data 引用上次请求数据
+说明: + 增加 分页.data 引用上次请求数据
 ----
 已修改 : /trunk/include/of/att/com/common/paging/main.js
 
@@ -3246,7 +3133,7 @@
 作者: Edgar
 日期: 2015年4月3日 2:35:26
 信息:
-说明: 优化分页统计总长速度
+说明: * 优化分页统计总长速度
 ----
 已修改 : /trunk/include/of/base/com/common.php
 
@@ -3254,7 +3141,7 @@
 作者: Edgar
 日期: 2015年4月2日 15:50:04
 信息:
-说明: 优化分页统计总长速度
+说明: * 优化分页统计总长速度
 ----
 已修改 : /trunk/include/of/base/com/common.php
 
@@ -3262,7 +3149,7 @@
 作者: Edgar
 日期: 2015年3月30日 22:01:33
 信息:
-说明: 纠正分页LIMIT负数问题
+说明: * 纠正分页LIMIT负数问题
 ----
 已修改 : /trunk/include/of/base/com/common.php
 
@@ -3270,8 +3157,8 @@
 作者: Edgar
 日期: 2015年3月30日 20:36:19
 信息:
-说明: 强化L::sql封装方法
-     精简of_view::head输出的头
+说明: * 强化L::sql封装方法
+      * 精简of_view::head输出的头
 ----
 已修改 : /trunk/include/of/db.php
 已修改 : /trunk/include/of/view.php
@@ -3282,7 +3169,7 @@
 作者: Edgar
 日期: 2015年3月27日 10:50:07
 信息:
-说明: 优化模版引擎路径解析
+说明: * 优化模版引擎路径解析
 ----
 已修改 : /trunk/include/of/base/htmlTpl/engine.php
 
@@ -3290,7 +3177,7 @@
 作者: Edgar
 日期: 2015年3月26日 9:08:13
 信息:
-说明: sql错误日志优化
+说明: * sql错误日志优化
 ----
 已修改 : /trunk/include/of/db.php
 已修改 : /trunk/include/of/base/error/writeLog.php
@@ -3299,7 +3186,7 @@
 作者: Edgar
 日期: 2015年3月25日 23:08:11
 信息:
-说明: 数据库多连接优化
+说明: * 数据库多连接优化
 ----
 已修改 : /trunk/include/of/db.php
 已修改 : /trunk/include/of/base/extension/match.php
@@ -3309,7 +3196,7 @@
 作者: Edgar
 日期: 2015年3月25日 20:09:00
 信息:
-说明: 更好的支持数据库多连接
+说明: * 更好的支持数据库多连接
 ----
 已修改 : /trunk/include/of/base/com/common.php
 
@@ -3317,7 +3204,7 @@
 作者: Edgar
 日期: 2015年3月25日 18:35:35
 信息:
-说明: 更好的支持数据库多连接
+说明: + 更好的支持数据库多连接
 ----
 已修改 : /trunk/include/of/db.php
 已修改 : /trunk/include/of/base/extension/baseClass.php
@@ -3327,7 +3214,7 @@
 作者: Edgar
 日期: 2015年3月25日 9:19:29
 信息:
-说明: 完善rc4加密算法
+说明: * 完善rc4加密算法
 ----
 已修改 : /trunk/include/of/base/com/str.php
 
@@ -3335,9 +3222,9 @@
 作者: Edgar
 日期: 2015年3月24日 23:47:48
 信息:
-说明: 文本加密算法换成RC4
-     调整 _common::txtEncrypt 到 _str::rc4
-     调整 _common::strsub 到 _str::strsub
+说明: - 文本加密算法换成RC4
+      - 调整 _common::txtEncrypt 到 _str::rc4
+      - 调整 _common::strsub 到 _str::strsub
 ----
 已修改 : /trunk/demo/index.php
 已修改 : /trunk/include/of/base/extension/match.php
@@ -3349,7 +3236,7 @@
 作者: Edgar
 日期: 2015年3月17日 13:06:17
 信息:
-说明: 修正错误日志列表乱码问题
+说明: * 修正错误日志列表乱码问题
 ----
 已修改 : /trunk/include/of/of.php
 已修改 : /trunk/include/of/base/error/tool.php

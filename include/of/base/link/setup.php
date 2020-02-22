@@ -133,9 +133,3 @@ of::link('rule', '&$rule, $exit = true', 'return of_base_link_request::rule($rul
  * 作者 : Edgar.lee
  */
 of::link('open', '$name', "return include '{$addin['pConfig']}';");
-
-/**                                  预留接口******************************
- * 描述 : 获取翻译文本,映射 of_base_language_packs::getText
- * 作者 : Edgar.lee
- */
-of::link('&getText', '$string', 'return $string;');

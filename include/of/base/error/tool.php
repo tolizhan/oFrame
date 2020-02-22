@@ -42,13 +42,15 @@ class of_base_error_tool {
             }
 
             foreach ($pageList as $k => &$v) {
+                $index = &$v['environment'];
+                //旧版 message 迁移到 info 字段
+                isset($index['info']) || $index['info'] = &$index['message'];
+
                 $data[$k]['_time'] = date('/Y/m/d H:i:s', $v['time']);
-                $data[$k]['_code'] = isset($v['environment']['type']) ? $v['environment']['type'] : $v['errorType'];
-                $data[$k]['_file'] = $v['environment']['file'];
-                $data[$k]['_line'] = $v['environment']['line'];
-                $data[$k]['_message'] = '<pre>' .
-                    htmlentities($v['environment']['message'], ENT_QUOTES, 'UTF-8') .
-                '</pre>';
+                $data[$k]['_code'] = isset($index['type']) ? $index['type'] : $v['errorType'];
+                $data[$k]['_file'] = $index['file'];
+                $data[$k]['_line'] = $index['line'];
+                $data[$k]['_info'] = '<pre>' . htmlentities($index['info'], ENT_QUOTES, 'UTF-8') . '</pre>';
                 //格式化详细信息
                 $data[$k]['_detaile'] = str_replace(
                     //兼容IE6 7 8
@@ -56,7 +58,7 @@ class of_base_error_tool {
                     //防止非UTF8不显示
                     iconv(
                         'UTF-8', 'UTF-8//IGNORE',
-                        htmlspecialchars(print_r($v['environment'], true))
+                        htmlspecialchars(print_r($index, true))
                     )
                 );
 
@@ -98,7 +100,7 @@ class of_base_error_tool {
             '文件' => '{`_file`}',
             '行数' => '{`_line`}',
             '类型' => '{`_code`}',
-            '信息' => '{`_message`}',
+            '信息' => '{`_info`}',
             '_attr' => array(
                 'attr'   => &$attr,
                 'data'   => $data,

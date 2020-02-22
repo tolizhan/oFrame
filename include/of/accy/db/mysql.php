@@ -48,7 +48,7 @@ class of_accy_db_mysql extends of_db {
      * 描述 : 读取当前错误
      * 作者 : Edgar.lee
      */
-    protected function _error(&$node) {
+    protected function _error() {
         //事务回滚动作
         static $rollback = null;
         $errno = mysql_errno();
@@ -93,7 +93,7 @@ class of_accy_db_mysql extends of_db {
                 $this->_query($temp);
                 $temp = &$this->_fetch();
                 //记录死锁日志
-                $node = $temp['Status'];
+                $note = $temp['Status'];
             }
 
             //mysql版本>=5.7回滚事务后需手动重启事务
@@ -106,7 +106,7 @@ class of_accy_db_mysql extends of_db {
             $this->_begin();
         }
 
-        return $errno . ':' . $error;
+        return array('code' => $errno, 'info' => $error, 'note' => &$note);
     }
 
     /**
@@ -130,7 +130,7 @@ class of_accy_db_mysql extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _begin() {
-        $this->_linkIdentifier();
+        $this->_ping();
         $this->transState = mysql_query('START TRANSACTION', $this->connection);
         return $this->transState;
     }
@@ -263,7 +263,7 @@ class of_accy_db_mysql extends of_db {
             $sqlList[] = $sql;
         }
 
-        if ($this->_linkIdentifier()) {
+        if ($this->_ping()) {
             foreach ($sqlList as &$v) {
                 //执行成功
                 if ($temp = mysql_query($v, $this->connection)) {
@@ -288,7 +288,7 @@ class of_accy_db_mysql extends of_db {
      *      restLink : 是否重新连接,true(默认)=是,false=否
      * 作者 : Edgar.lee
      */
-    private function _linkIdentifier($restLink = true) {
+    protected function _ping($restLink = true) {
         if (
             //事务状态下不重新检查
             $this->transState ||

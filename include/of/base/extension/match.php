@@ -103,7 +103,7 @@ class of_base_extension_match {
                         }
                     }
                 } catch (Exception $e) {
-                    of_base_error_writeLog::phpLog($e);
+                    of::event('of::error', true, $e);
                 }
             }
         }
@@ -148,7 +148,7 @@ class of_base_extension_match {
 
                 //解析错误
                 if ($temp = &of::syntax($temp, true)) {
-                    throw new Exception("{$temp['message']} in " . substr($parseFile, strlen(ROOT_DIR)) . " on line {$temp['line']}");
+                    throw new Exception("{$temp['info']} in " . substr($parseFile, strlen(ROOT_DIR)) . " on line {$temp['line']}");
                 //标记类创建成功,但没有生成对象(false)
                 } else {
                     $classObj[$mergeClassName] = false;
@@ -216,7 +216,7 @@ class of_base_extension_match {
                             self::callExtension($eKey, $v['asCall'], array(&$params, &$v['params']));
                         }
                     } catch (Exception $e) {
-                        of_base_error_writeLog::phpLog($e);
+                        of::event('of::error', true, $e);
                     }
                 }
             }

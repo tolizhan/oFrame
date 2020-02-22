@@ -60,41 +60,116 @@ abstract class of_db {
     /**
      * 描述 : 读取/设置连接池
      * 参数 :
-     *      key   : 使用的连接类,如果同一连接类不同的连接推荐使用::分割,如'mysql::我的区分符'
-     *      pool  : key连接池的操作参数
-     *          数组    : 连接参数,初始化后便不再起作用,默认_of.db, 支持读写分离配置方式
-     *          "level" : 查询当前事务层次
-     *          "state" : 读写当前事务提交状态, 当SQL执行失败, 改值会变为false
-     *          "clean" : 关闭并删除指定连接池
-     *      value : 设置pool参数值
-     *          "state" : false=强制事务最终回滚
+     *     #创建连接池(数组)
+     *      key  : 连接池名称
+     *      pool : 连接参数, 若key已创建过, 便不起作用, 与_of.db 配置结构相同
+
+     *     #读取连接池(null)
+     *      key  : 连接池名称
+
+     *     #查询事务层次(文本), 每开启事务会加一, 完结事务会减一
+     *      key  : 连接池名称
+     *      pool : 固定"level"
+
+     *     #检查连接是否正常(文本)
+     *      key  : 连接池名称
+     *      pool : 固定"ping"
+
+     *     #查询事务最终提交状态(文本), 当SQL执行失败, 状态自动改false
+     *      key  : 连接池名称
+     *      pool : 固定"state"
+     *      val  : 默认null=读取状态, false=强制最终回滚
+
+     *     #重命名指定连接池(文本)
+     *      key  : 连接池名称
+     *      pool : 固定"rename"
+     *      val  : 新连接池名, 若新名已存在, 则会替换
+
+     *     #克隆连接池(文本)
+     *      key  : 连接池名称
+     *      pool : 固定"clone"
+     *      val  : 克隆连接池名, 若名称已存在, 会将原连接改名唯一值
+
+     *     #关闭并删除指定连接池(文本)
+     *      key  : 连接池名称
+     *      pool : 固定"clean"
+     *      val  : 清理方式, 默认null=全部清理, 1=仅清理事务
      * 返回 :
-     *      pool 为 null 或 数组: 返回 连接池配置
-     *      pool 为 "level" 读取: 返回 整数, 0=不在事务里, 1=根事务, n=n层事务里
-     *      pool 为 "state" 读取: 返回 null=不在事务里, true=提交事务, false=回滚事务
+     *     #创建连接池(数组)
+     *     #读取连接池(null)
+     *      返回连接池结构, 如果失败则报错并结束脚本
+
+     *     #查询事务层次("level")
+     *      不在事务中返回0, 一层事务返回1, ...
+
+     *     #检查连接是否正常("ping")
+     *      连接正常返回true, 反之false
+
+     *     #查询事务最终提交状态("state")
+     *      最终提交事务true, 反之false
+
+     *     #克隆连接池("clone")
+     *      若克隆名已存在, 返回原连接改名的唯一值
      * 作者 : Edgar.lee
      */
-    final public static function pool($key, $pool = null, $value = null) {
+    final public static function &pool($key, $pool = null, $val = null) {
         //引用实例列表
         $instList = &self::$instList;
 
-        //查询当前事务层次
-        if ($pool === 'level') {
-            return isset($instList[$key]['inst']['level']) ?
-                $instList[$key]['inst']['level'] : 0;
-        //查写当前提交状态
-        } else if ($pool === 'state') {
-            //读取
-            if ($value === null) {
-                return isset($instList[$key]['inst']['level']) ?
-                    $instList[$key]['inst']['state'] : null;
-            //设置
-            } else if (!$value && isset($instList[$key]['inst'])) {
-                $instList[$key]['inst']['state'] = false;
+        //功能操作
+        if (is_string($pool)) {
+            switch ($pool) {
+                //查询当前事务层次
+                case 'level':
+                    $result = isset($instList[$key]['inst']['level']) ?
+                        $instList[$key]['inst']['level'] : 0;
+                    break;
+                //检查连接是否正常
+                case 'ping':
+                    if ($result = isset($instList[$key]['inst']) && $index = &$instList[$key]['inst']) {
+                        $result = isset($index['write']) ?
+                            $index['write']->_ping() : $index['read']->_ping();
+                    }
+                    break;
+                //查询当前提交状态
+                case 'state':
+                    //读取
+                    if ($val === null) {
+                        $result = isset($instList[$key]['inst']['level']) ?
+                            $instList[$key]['inst']['state'] : null;
+                    //设置
+                    } else if (!$val && isset($instList[$key]['inst'])) {
+                        $instList[$key]['inst']['state'] = false;
+                    }
+                    break;
+                //重命名指定连接池
+                case 'rename':
+                    //连接池存在
+                    if (isset($instList[$key]) && $key !== $val) {
+                        //关闭替换连接池
+                        isset($instList[$val]) && self::pool($val, 'clean');
+                        //重命名连接池
+                        $instList[$val] = &$instList[$key];
+                        unset($instList[$key]);
+                        //触发重命名事件 {"oName" : 旧名称, "nName" : 新名称}
+                        of::event('of_db::rename', true, array('oName' => $key, 'nName' => $val));
+                    }
+                    break;
+                //克隆连接池
+                case 'clone':
+                    $clone = self::pool($key);
+                    //克隆名冲突 && 重命名克隆名
+                    isset($instList[$val]) && self::pool($val, 'rename', $result = uniqid());
+                    self::pool($val, $clone);
+                    break;
+                //关闭并删除指定连接池
+                case 'clean':
+                    //嵌套回滚到指定层数
+                    for ($i = self::pool($key, 'level') + 1; --$i;) self::sql(false, $key);
+                    //销毁连接池
+                    if (!$val) unset($instList[$key]);
+                    break;
             }
-        //关闭并删除指定连接池
-        } else if ($pool === 'clean') {
-            unset($instList[$key]);
         } else {
             if (empty($instList[$key])) {
                 //初始配置
@@ -133,8 +208,10 @@ abstract class of_db {
 
             //设置当期连接池
             self::$nowDbKey = $key;
-            return $instList[$key]['pool'];
+            $result = $instList[$key]['pool'];
         }
+
+        return $result;
     }
 
     /**
@@ -246,8 +323,7 @@ abstract class of_db {
         }
 
         //SQL 执行错误
-        $isDone || of::event('of_db::error', true, array(
-            'note' => &$note, 'type' => $dbObj->_error($note),
+        $isDone || of::event('of_db::error', true, $dbObj->_error() + array(
             'sql' => &$sql, 'pool' => &$pool
         ));
 
@@ -316,6 +392,11 @@ abstract class of_db {
             } while (isset($pool[0]));
         }
 
+        //数据库连接失败
+        if ($dbLink === false) {
+            unset($config['inst']);
+            throw new Exception('Can not connect to database: '. self::$nowDbKey);
+        }
         return $dbLink;
     }
 
@@ -326,8 +407,11 @@ abstract class of_db {
     //关闭连接源
     abstract protected function _close();
 
-    //读取当前错误,返回 错误号:错误信息
-    abstract protected function _error(&$node);
+    //检查连接是否正常, true=已连接, false=未连接
+    abstract protected function _ping();
+
+    //读取当前错误,返回 {"code" : 错误编码, "info" : 错误信息, "note" : 详细日志)
+    abstract protected function _error();
 
     //查看影响行数
     abstract protected function _affectedRows();

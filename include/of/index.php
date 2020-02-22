@@ -33,6 +33,7 @@ if (isset($_GET['c'])) {
         return $list;
     }
 
+    //输出模块
     if (is_dir($path = OF_DIR . '/base') && $handle = opendir($path)) {
         while (is_string($v = readdir($handle))) {
             //寻找 of/base/xxx/_meta.php 文件
@@ -55,5 +56,28 @@ if (isset($_GET['c'])) {
             }
         }
         closedir($handle);
+    }
+
+    //输出探针
+    if (OF_DEBUG !== false) {
+        //磁盘空间路径
+        is_dir($path = ROOT_DIR . OF_DATA) || $path = ROOT_DIR;
+        //读取扩展版本
+        $list = get_loaded_extensions();
+        natcasesort($list);
+        foreach ($list as &$v) $v = $v . '(' . phpversion($v) . ')';
+
+        echo "<hr>\n",
+            'OF: ', OF_VERSION, "<br>\n",
+            'PHP: ', PHP_VERSION,  "<br>\n",
+            'Server: ', $_SERVER['SERVER_SOFTWARE'], "<br>\n",
+            'System: ', php_uname(), "<br>\n",
+            'Time: ',
+                date('Y-m-d H:i:s P ', $_SERVER['REQUEST_TIME']),
+                $_SERVER['REQUEST_TIME'], "<br>\n",
+            'DiskSpace: ',
+                round(disk_free_space($path) / 1073741824, 1), '/',
+                round(disk_total_space($path) / 1073741824, 1), "G ({$path})<br>\n",
+            'Extensions: <span style="font: caption;">', join(', ', $list), '</span>';
     }
 }

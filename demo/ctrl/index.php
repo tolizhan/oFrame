@@ -10,6 +10,44 @@ class ctrl_index extends L {
     }
 
     /**
+     * 描述 : 开启工作演示
+     * 作者 : Edgar.lee
+     */
+    public static function work() {
+        try {
+            //开始工作, 会启动"default"事务, 返回 {"code" : 200, "info" : "Successful", "data" : []}
+            $result = of::work(array('default'));
+
+            //生成一个演示错误
+            trigger_error('产生一个错误');
+            //无错误返回 null, 否则返回 {"code" : 编码, "info" : 错误, "file" : 路径, "line" : 行数, ...}
+            echo '是否产生错误: ', of::work('error') ? '是' : '否', "<br>\n";
+            //清除当前工作错误
+            of::work('error', false);
+
+            //不在工作中返回 null, 反之返回 {"list" : [监听连接池, ...]}
+            echo '是否在工作中: ', of::work('info') ? '是' : '否', "<br>\n";
+
+            //查询工作时间
+            echo '工作开始时间: ', of::work('time'), "<br>\n";
+            echo '工作开始时间戳: ', of::work('time', 1), "<br>\n";
+
+            //演示两种不同异常
+            of::work(401, '工作异常不会抛错', array(1, 2, 3));
+            throw new Exception('常规异常会被记录');
+
+            //完结工作, true=提交事务, false=回滚事务, 失败会抛出常规异常
+            of::work(true);
+        } catch (Exception $e) {
+            //捕获异常, 常规异常记录日志, 返回"接口响应结构"
+            $result = of::work($e);
+        }
+
+        //打印结果集
+        print_r($result);
+    }
+
+    /**
      * 描述 : 常规开发演示
      * 作者 : Edgar.lee
      */
@@ -82,24 +120,20 @@ class ctrl_index extends L {
         $hParseObj = $this->_hParse->html('<!DOCTYPE html>
 <html>
 <head>
-  <style>
-div { width:60px; height:60px; margin:5px; float:left; }
-  </style>
-  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+    <style>
+        div { width:60px; height:60px; margin:5px; float:left; }
+    </style>
 </head>
 <body>
-
 <span id="result">按照 jquery 的规则读取这段文本</span>
 <div style="background-color:blue;"></div>
 <div style="background-color:rgb(15,99,30);"></div>
-
 <div style="background-color:#123456;"></div>
 <div style="background-color:#f11;"></div>
 <script>
-$("div").click(function () {
-  var color = $(this).css("background-color");
-});
-
+    $("div").click(function () {
+      var color = $(this).css("background-color");
+    });
 </script>
 </body>
 </html>');
@@ -272,7 +306,7 @@ $("div").click(function () {
     }
 
     /**
-     * 描述 : 新分页演示
+     * 描述 :x新分页演示
      * 作者 : Edgar.lee
      */
     public function &paging($params = array('width' => 100)) {

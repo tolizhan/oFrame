@@ -30,11 +30,11 @@ class of_base_version_check {
             } else if ($version > OF_VERSION) {
                 $temp = '<a ' .
                     'href="https://github.com/tolizhan/oFrame"' .
-                    'style="position: absolute; background-color: red; z-index: 100000;" ' .
+                    'style="position: absolute; background-color: red;" ' .
                     'target="_blank"' .
                 '>' .
                     'Framework Update : ' . OF_VERSION . ' -> ' .$version .
-                '<a>';
+                '</a>';
                 of_view::head('before', $temp);
             }
         }

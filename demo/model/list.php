@@ -7,21 +7,21 @@ class ctrl_list {
     public static function init() {
         //ctrl_类映射
         of::event('of::loadClass', array(
-            'classPre' => 'ctrl_', 'mapping' => 'demo_ctrl_'
+            'classPre' => 'ctrl', 'mapping' => 'demo_ctrl'
         ), true);
         //model_类映射
         of::event('of::loadClass', array(
-            'classPre' => 'model_', 'mapping' => 'demo_model_'
+            'classPre' => 'model', 'mapping' => 'demo_model'
         ), true);
         //serv_类映射
         of::event('of::loadClass', array(
-            'classPre' => 'serv_', 'mapping' => 'demo_serv_'
+            'classPre' => 'serv', 'mapping' => 'demo_serv'
         ), true);
 
         //非框架入口
         if ($_SERVER['SCRIPT_NAME'] === rawurldecode(ROOT_URL) . '/index.php') {
             //具体演示
-            if( isset($_GET['c']) ) {
+            if (isset($_GET['c'])) {
                 //页面输出完成后打印源码
                 empty($_POST) && strncmp('of_', $_GET['c'], 3) && of::event('of::halt', 'printCode');
             //打印演示列表
@@ -32,7 +32,7 @@ class ctrl_list {
 
                 //打印html头
                 of_view::head();
-                foreach($match as &$v) {
+                foreach ($match as &$v) {
                     //打印演示列表
                     echo "<a href='?c=ctrl_index&a={$v[2]}' target=_blank >{$v[1]}</a><br>\n";
                 }
@@ -47,9 +47,14 @@ class ctrl_list {
             function printCode() {
                 //提取方法体
                 $matchFunc = '@^( +)public +(?:\w+ +)?function +' .(isset($_GET['a']) ? $_GET['a'] : 'index'). '.*?^\\1}@ms';
-                preg_match($matchFunc, file_get_contents(ROOT_DIR . '/demo/ctrl/index.php'), $match);
-                echo '<br><br><hr>';
-                highlight_string("<?php    源码如下 : \n" . $match[0] . "\n?>");
+                $path = ROOT_DIR . '/demo/' . str_replace(array('\\', '_'), '/', of::dispatch('class')) . '.php';
+
+                //解析文件存在
+                if (is_file($path)) {
+                    preg_match($matchFunc, file_get_contents($path), $match);
+                    echo '<br><br><hr>';
+                    highlight_string("<?php    源码如下 : \n" . $match[0] . "\n?>");
+                }
             }
         }
     }

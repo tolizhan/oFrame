@@ -1,6 +1,5 @@
 <?php
 class of_base_error_jsLog extends of_base_error_writeLog {
-
     /**
      * 描述 : 写入错误日志
      * 注明 :
@@ -18,10 +17,10 @@ class of_base_error_jsLog extends of_base_error_writeLog {
         ignore_user_abort(true);
         ini_set('max_execution_time', 0);
 
-        if (isset($_POST['message']) && isset($_POST['file']) && isset($_POST['line'])) {
+        if (isset($_POST['info']) && isset($_POST['file']) && isset($_POST['line'])) {
             if ($logPath = of::config('_of.error.jsLog', OF_DATA. '/error/jsLog')) {
                 $logPath = ROOT_DIR . $logPath . date('/Y/m', $_SERVER['REQUEST_TIME']);
-                preg_match('@\w+Error@', $_POST['message'], $match);
+                preg_match('@\w+Error@', $_POST['info'], $match);
                 $data = array(
                     'errorType'   => 'jsError',
                     'environment' => &$_POST,
@@ -83,13 +82,13 @@ window.L.extension.jsErrorLog || !function () {
     });
 <?php } ?>
 
-    window.onerror = function (message ,file ,line) {
+    window.onerror = function (info ,file ,line) {
         var temp;
 <?php if (OF_DEBUG) { ?>
         temp = document.createElement("span");
         temp.innerHTML = '<span><input type="text" value="' +line+ '" style="width:30px;" readonly="readonly" />' + 
             '<input type="text" value="' +window.L.entity(file, true)+ '" style="width:435px;" readonly="readonly" /></span><span>' + 
-            '<input type="text" value="' +window.L.entity(message, true)+ '" style="width:475px;" readonly="readonly" /></span>';
+            '<input type="text" value="' +window.L.entity(info, true)+ '" style="width:475px;" readonly="readonly" /></span>';
         nodes[0].appendChild(temp);
         count += 1;
 
@@ -98,16 +97,16 @@ window.L.extension.jsErrorLog || !function () {
         if (arguments[4]) {
             //[需查找的信息, 被查找的信息]
             temp = [
-                message.substr(message.indexOf(':') + 1),
+                info.substr(info.indexOf(':') + 1),
                 arguments[4].stack
             ];
             //js回溯中包含错误信息 ? 使用回溯信息 : 使用错误信息 + 回溯信息
-            message = temp[1].indexOf(temp[0]) > -1 ? temp[1] : message + '\n' + temp[1];
+            info = temp[1].indexOf(temp[0]) > -1 ? temp[1] : info + '\n' + temp[1];
         }
         window.L.ajax({
             "url"   : OF_URL + '/index.php?a=writeJsErr&c=of_base_error_jsLog',
             "async" : true,
-            "data"  : window.L.param({'message' : message, 'file' : file, 'line' : line})
+            "data"  : window.L.param({'info' : info, 'file' : file, 'line' : line})
         });
     }
 }(window.L.extension.jsErrorLog = true);

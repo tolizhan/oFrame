@@ -725,7 +725,7 @@ class of_base_com_com {
      *      此时$data键值为[1,3,m,2,a,0]
      * 作者 : Edgar.lee
      */
-    public function arraySort(&$data, $sort, $type = '') {
+    public static function arraySort(&$data, $sort, $type = '') {
         //执行参数列表
         $argv = array();
         //排序数据列表
@@ -777,7 +777,8 @@ class of_base_com_com {
         //恢复数据键值对照
         $data = array();
         foreach ($list as $k => &$v) {
-            $data[substr($k, 1)] = &$v;
+            //php < 7.0, substr截取"_"返回false
+            $data[isset($k[1]) ? substr($k, 1) : ''] = &$v;
         }
     }
 }

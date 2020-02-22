@@ -3642,7 +3642,7 @@ class of_base_com_hParse {
                                 self::setTempNodeAttr($env, $parseStr);
                             }
                             //存入正式节点
-                            $temp = self::tempToFormalNode($env);
+                            $temp = $parseNode[self::tempToFormalNode($env)]['tagName'];
 
                             //不是单节点 && 已"/"结尾的标签,如:<mm xx />
                             if (
@@ -3650,7 +3650,7 @@ class of_base_com_hParse {
                                 $htmlStr[$matchPos['position'] - 1] === '/'
                             ) {
                                 //作为单节点关闭
-                                self::planNode($env, $parseNode[$temp]['tagName']);
+                                self::planNode($env, $temp);
                             }
                         //正在分析有效标签名或结束标签'/'
                         } else {

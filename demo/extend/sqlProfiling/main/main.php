@@ -58,7 +58,7 @@ function afterSql($params) {
             'time'          => time(),
             'environment'   => array(
                 'type'      => $subTime . 'ms::' . $params['pool'],
-                'message'   => &$params['sql'],
+                'info'      => &$params['sql'],
                 'file'      => '(',
                 'line'      => 0,
                 'backtrace' => &$backtrace,
@@ -229,7 +229,7 @@ function logPaging($params = array()) {
             $data[$k]['_code'] = isset($v['environment']['type']) ? $v['environment']['type'] : $v['logType'];
             $data[$k]['_file'] = $v['environment']['file'];
             $data[$k]['_line'] = $v['environment']['line'];
-            $data[$k]['_message'] = '<pre>' . strtr(htmlentities($v['environment']['message'], ENT_QUOTES, 'UTF-8'), array("\0" => "\n", "\n" => '<br>', ' ' => '&nbsp;')) . '</pre>';
+            $data[$k]['_info'] = '<pre>' . strtr(htmlentities($v['environment']['info'], ENT_QUOTES, 'UTF-8'), array("\0" => "\n", "\n" => '<br>', ' ' => '&nbsp;')) . '</pre>';
             //防止非UTF8不显示
             $data[$k]['_detaile'] = iconv('UTF-8', 'UTF-8//IGNORE',
                 strtr(
@@ -254,7 +254,7 @@ function logPaging($params = array()) {
         '文件' => '{`_file`}',
         '行数' => '{`_line`}',
         '类型' => '{`_code`}',
-        '信息' => '{`_message`}',
+        '信息' => '{`_info`}',
         '_attr' => array(
             'data'   => $data,
             'params' => $params,
