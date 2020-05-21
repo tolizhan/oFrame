@@ -30,6 +30,10 @@ class of_accy_db_mysql extends of_db {
             //设置时区
             $params['timezone'] && $temp .= ", TIME_ZONE = '{$params['timezone']}'";
             mysql_query($temp, $this->connection);
+            //设置事务隔离级别
+            empty($params['isolation']) || mysql_query(
+                'SET SESSION TRANSACTION ISOLATION LEVEL ' . $params['isolation'], $this->connection
+            );
             return true;
         } else {
             return false;
@@ -131,8 +135,12 @@ class of_accy_db_mysql extends of_db {
      */
     protected function _begin() {
         $this->_ping();
-        $this->transState = mysql_query('START TRANSACTION', $this->connection);
-        return $this->transState;
+
+        if ($this->transState = mysql_query('START TRANSACTION', $this->connection)) {
+            return true;
+        } else {
+            throw new Exception('Failed to open transaction.');
+        }
     }
 
     /**

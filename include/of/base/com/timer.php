@@ -522,7 +522,7 @@ class of_base_com_timer {
         if (isset($cAvg['cMd5'])) {
             //定时器根路径
             $cDir = self::$config['path'] . '/concurrent/' . $cAvg['cMd5'];
-            is_dir($cDir) || mkdir($cDir, 0777, true);
+            is_dir($cDir) || @mkdir($cDir, 0777, true);
 
             //开启共享锁
             of_base_com_disk::file($cDir . '.php', null);

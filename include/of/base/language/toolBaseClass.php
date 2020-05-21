@@ -378,18 +378,20 @@ class of_base_language_toolBaseClass {
             $data += array('jsPack' => array(), 'phpPack' => array());
             $goal = &self::pack('_' . $path);
 
-            $index = $type ? array(&$data, &$goal) : array(&$goal, &$data);
-            foreach ($index[0] as $kp => &$vp) {
-                foreach ($vp as $ks => &$vs) {
-                    foreach ($vs as $k => &$v) {
-                        empty($index[1][$kp][$ks][$k]) || $v = trim($index[1][$kp][$ks][$k]);
+            if ($type) {
+                foreach ($data as $kp => &$vp) {
+                    foreach ($vp as $ks => &$vs) {
+                        foreach ($vs as $k => &$v) {
+                            empty($goal[$kp][$ks][$k]) || $v = trim($goal[$kp][$ks][$k]);
+                        }
                     }
                 }
+            } else {
+                $data = &of::arrayReplaceRecursive($goal, $data);
             }
 
-            of_base_com_disk::file($path . '/js.txt', json_encode($index[0]['jsPack']));
-            of_base_com_disk::file($path . '/php.txt', $index[0]['phpPack']);
-            $data = &$index[0];
+            of_base_com_disk::file($path . '/js.txt', json_encode($data['jsPack']));
+            of_base_com_disk::file($path . '/php.txt', $data['phpPack']);
         }
 
         return $data;
@@ -408,7 +410,7 @@ class of_base_language_toolBaseClass {
         //导入
         if ($csv) {
             while ($index = &of_base_com_csv::parse($csv)) {
-                if ($index[0] === 'jsPack' || $index[0] === 'phpPack') {
+                if ($index[0] === 'jsPack' || $index[0] === 'phpPack' && $index[3] !== '') {
                     $data[$index[0]][$index[1]][$index[2]] = $index[3];
                 }
             }

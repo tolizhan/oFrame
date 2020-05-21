@@ -31,6 +31,11 @@ class of_base_error_tool {
                 );
             //加载分组概要或明细
             } else {
+                //清除分组明细错误
+                if (isset($params['empty'])) {
+                    of_base_error_toolBaseClass::emptyGroupDetails($params['path'], $params['md5Key']);
+                    unset($params['empty'], $params['md5Key']);
+                }
                 //存在分组明细键 ? 读取分组明细 : 读取分组概要
                 $temp = isset($params['md5Key']) ? $params['md5Key'] : '';
                 //读取对应日志数据
@@ -70,7 +75,9 @@ class of_base_error_tool {
             }
         } else {
             //分组概要时, 时间改数量
-            $params['mode'] === 'groupMain' && $title = array('次数', '{`_count`}');
+            $params['mode'] === 'groupMain' && $title = array(
+                '次数', '<input type="button" value="Empty ({`_count`})">'
+            );
             $totalItems = -1;
         }
 
@@ -105,7 +112,7 @@ class of_base_error_tool {
                 'attr'   => &$attr,
                 'data'   => $data,
                 'params' => $params,
-                'items'  => $totalItems,
+                'items'  => (int)$totalItems,
                 'action' => '',
                 'method' => __METHOD__,
             )
@@ -564,6 +571,25 @@ var toolObj = {
         }
     },
 
+    //清空分组明细
+    'emptyGroup' : function () {
+        //当前操作界面
+        var showPageObj = $('#' + $('.nav input:checked').val());
+        //分组明细列表(js对象)
+        var groupTable = $('table[mode=groupMain]', showPageObj).get(0);
+        //分组明细列表(js对象)
+        var listNode = $('table[mode=groupList]', showPageObj).get(0);
+        //分组明细唯一键
+        var md5key = $(this).parents('tr').find('td:first input').attr('md5key');
+
+        if (window.confirm('Do you want to empty the error?')) {
+            groupTable.paging({'empty' : true, 'md5Key' : md5key});
+            listNode.paging('+0');
+        }
+
+        return false;
+    },
+
     //隐藏浮动层
     'hidePre' : function(){
         $('#' + $('.nav input:checked').val() + ' .floatPre').hide();
@@ -599,7 +625,10 @@ L.data('paging.after[]', function () {
         .css('cursor', 'pointer');
 
     //分组概述列表加双击事件
-    this.paging().mode === 'groupMain' && trObj.dblclick(toolObj.dbClickTr);
+    this.paging().mode === 'groupMain' && trObj
+        .dblclick(toolObj.dbClickTr)
+        .find('input:button')
+        .click(toolObj.emptyGroup);
 });
 </script>
 <?php

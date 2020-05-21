@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200238);
+define('OF_VERSION', 200240);
 
 /**
  * 描述 : 控制层核心
@@ -127,8 +127,7 @@ class of {
             $cache = $claim = null;
             //加载最新配置文件
             $of = self::safeLoad(OF_DIR . '/config.php');
-            $of['config'] = isset($of['config']) ?
-                (array)$of['config'] : array();
+            $of['config'] = isset($of['config']) ? (array)$of['config'] : array();
             empty($of['config'][0]) || $config = self::safeLoad(
                 ROOT_DIR . $of['config'][0],
                 array('of' => &$of)
@@ -400,6 +399,8 @@ class of {
         static $class = null;
         //监听栈列表 [{"time" : [时间戳, 格式化], "list" : {数据池 : 被克隆数据池, ...}}, ...]
         static $sList = array();
+        //数组传参模式
+        $code === 'extr' && extract($info, EXTR_REFS);
         //监听默认连接池
         $code === null && $code = array('default');
 
@@ -429,18 +430,10 @@ class of {
                     $temp = of_db::pool($v, 'level') ? of_db::pool($v, 'clone', $v) : null;
                     //克隆名不冲突 && 记录默认连接源
                     $temp === null && $temp = $v;
-
-                    //记录成功事务
-                    if (of_db::sql(null, $v)) {
-                        //保存原连接池
-                        $index[$v] = $temp;
-                    //事务开启失败
-                    } else {
-                        //恢复原连接池 && 清除克隆连接池
-                        of_db::pool($temp, 'rename', $v);
-                        //事务开启失败
-                        throw new Exception('Failed to open transaction: ' . $v);
-                    }
+                    //保存原连接池
+                    $index[$v] = $temp;
+                    //事务开启成功(开启失败连接层会抛出异常)
+                    of_db::sql(null, $v);
                 }
             }
 
@@ -450,10 +443,16 @@ class of {
             //快速回调模式, data为回调方法
             if (!is_int($info) && $info) {
                 try {
-                    //返回 false 回滚工作
-                    self::work(self::callFunc($info, array(
+                    //返回false回滚工作 || 有错误提交工作
+                    self::work($temp = self::callFunc($info, array(
                         'result' => &$result, 'data' => &$result['data']
-                    )) !== false);
+                    )) !== false || self::$workErr[0] !== null);
+
+                    //回滚工作 && 状态成功 && 添加回滚提示
+                    if ($temp === false && $result['code'] < 400) {
+                        $result['info'] .= strpos($result['info'], ': ') ?
+                            ' (Rollback)' : ': (Rollback)';
+                    }
                 } catch (Exception $e) {
                     $result = self::work($e);
                 }
@@ -532,6 +531,8 @@ class of {
                         'list' => array_keys($sList[0]['list'])
                     ) : null;
                     break;
+                default :
+                    throw new Exception('Invalid work command: ' . $code);
             }
         //对象=捕捉异常, 数字=抛出异常
         } else {
@@ -572,8 +573,9 @@ class of {
                 }
             //抛出异常
             } else {
-                $info = L::getText($info, array('key' => __METHOD__, 'trace' => 1));
-                $code = new $class($info, $code);
+                $code = new $class(L::getText($info, array(
+                    'key' => __METHOD__, 'trace' => isset($trace) ? $trace : 1)
+                ), $code);
                 $code->data = &$data;
                 throw $code;
             }
@@ -967,22 +969,36 @@ class of {
      *              "asCall" : 符合上面两种规范
      *              "params" : call_user_func_array 格式的参数,用[_]键指定类名位置
      *          }
+     *          4.含"."的字符串, 会从of::config中读取对应配置后按上述格式解析
      *      params : 传入到 [_] 位置的参数
+     *      return : 指定无法回调的返回值, 不指定调用失败时报错
      * 返回 :
      *      返回 调用函数 返回的数据
      * 作者 : Edgar.lee
      */
-    public static function &callFunc($call, $params = null) {
+    public static function &callFunc($call, $params = null, $return = -1584930453) {
+        //带"."的字符串从配置文件中读取回调
+        is_string($call) && strpos($call, '.') && $call = self::config($call);
+
         //标准调用格式转换
         if (!is_array($call) || !isset($call['asCall'])) {
             $call = array('asCall' => $call);
         }
 
+        //{"asCall": [class, string]} => {"asCall": [new class, string]}
         if (is_array($call['asCall']) && is_string($call['asCall'][0])) {
             $call['asCall'][0] = new $call['asCall'][0];
         }
-        $call['params']['_'] = &$params;
-        $call = call_user_func_array($call['asCall'], $call['params']);
+
+        //有默认返回值 && 无法回调
+        if ($return !== -1584930453 && !is_callable($call['asCall'])) {
+            $call = &$return;
+        //正常调用
+        } else {
+            $call['params']['_'] = &$params;
+            $call = call_user_func_array($call['asCall'], $call['params']);
+        }
+
         return $call;
     }
 

@@ -124,9 +124,24 @@ class of_base_htmlTpl_engine {
         foreach ($parseObj->find('[' . $temp[0] . ']')->eq() as $nodeObj) {
             //删除属性
             if ($temp[1] = $nodeObj->attr($temp[0])) {
+                //移除__del属性
                 $nodeObj->removeAttr($temp[0]);
-                foreach (explode(' ', $temp[1]) as $temp[2]) {
-                    $nodeObj->removeAttr($temp[2]);
+
+                //静态删除属性
+                if (strpos($temp[1], '$__del') === false) {
+                    foreach (explode(' ', $temp[1]) as $temp[2]) {
+                        $nodeObj->removeAttr($temp[2]);
+                    }
+                //动态删除节点
+                } else {
+                    //动态判断删除语句
+                    $temp[1] = '$__del = \'\'; ' . $temp[1] . '; if ($__del) {';
+                    //插入语法 if
+                    $nodeObj->m("<!--{$config['tagKey'][0]} {$temp[1]} {$config['tagKey'][1]}-->\n")
+                        ->insertBefore($nodeObj);
+                    //结束语法 if
+                    $nodeObj->m("<!--{$config['tagKey'][0]} } {$config['tagKey'][1]}-->\n")
+                        ->insertAfter($nodeObj);
                 }
             //删除节点
             } else {
@@ -245,7 +260,7 @@ class of_base_htmlTpl_engine {
             if ($temp[1] = $temp[0]->attr($config['funcPre'] . 'html')) {
                 $printHeadArr[''][] = self::formatAttr($temp[0]->attr('>tagLine::start'), $temp[1], false);
             } else {
-                $printHeadArr[''][] = 'L::getText(\'' . addslashes($temp[0]->text()) . '\')';
+                $printHeadArr[''][] = 'L::getText(\'' . addslashes($temp[0]->text()) . '\', array(\'const\' => true))';
             }
             $printHeadArr[''][] = ",\n";
             $temp = str_repeat(' ', 8);
@@ -430,7 +445,7 @@ class of_base_htmlTpl_engine {
                 $tagName !== 'style' &&
                 preg_match('@^(\s*)([^<\s].*?)(\s*)$@s', $text, $temp)
             ) {
-                $temp[2] = "<?php{$line} echo L::getText('{$temp[2]}'); ?>\n";
+                $temp[2] = "<?php{$line} echo L::getText('{$temp[2]}', array('const' => true)); ?>\n";
                 //修改为php标签
                 of_base_com_hParse::nodeAttr($nodeKey, '', $temp[1] . $temp[2]. $temp[3]);
             }

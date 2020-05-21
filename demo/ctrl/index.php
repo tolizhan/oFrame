@@ -13,7 +13,7 @@ class ctrl_index extends L {
      * 描述 : 开启工作演示
      * 作者 : Edgar.lee
      */
-    public static function work() {
+    public static function workTest() {
         try {
             //开始工作, 会启动"default"事务, 返回 {"code" : 200, "info" : "Successful", "data" : []}
             $result = of::work(array('default'));
@@ -130,11 +130,6 @@ class ctrl_index extends L {
 <div style="background-color:rgb(15,99,30);"></div>
 <div style="background-color:#123456;"></div>
 <div style="background-color:#f11;"></div>
-<script>
-    $("div").click(function () {
-      var color = $(this).css("background-color");
-    });
-</script>
 </body>
 </html>');
         echo $hParseObj->find('#result')->text();

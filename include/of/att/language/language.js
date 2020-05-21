@@ -1,12 +1,16 @@
 (function(){
-    if( window.L.getText ) return ;
+    if (window.L.getText) return ;
 
     //当前语言包, 语言包参数, 回溯
     var pack = {}, args, getBacktrace;
     var temp = document.getElementsByTagName('script');
 
     temp = temp[temp.length - 1];
-    args = {'debug' : !!temp.getAttribute('debug'), 'isInit' : !!temp.getAttribute('init'), 'path' : ROOT_URL + temp.getAttribute('path')};
+    args = {
+        'debug'  : !!temp.getAttribute('debug'),
+        'isInit' : !!temp.getAttribute('init'),
+        'path'   : ROOT_URL + temp.getAttribute('path')
+    };
 
     args.isInit && window.L.ajax({
         'url'     : args.path + '/js.txt',
@@ -19,7 +23,7 @@
         }
     });
 
-    if( args.debug ) {
+    if (args.debug) {
         getBacktrace = function() {
             //连接:行号
             var lines = '';
@@ -32,7 +36,7 @@
                     lines = e.stack.split("\n");
 
                     //火狐
-                    if( window.L.browser.mozilla ) {
+                    if (window.L.browser.mozilla) {
                         lines = lines[2];
                     //L.browser.webkit || L.browser.msie
                     } else {
@@ -41,7 +45,10 @@
                         lines = lines.substr(0, lines.lastIndexOf(':'));
                     }
 
-                    if( lines = lines.substr(lines.indexOf(':')+3).match(/^[^\/\\?#]+([^\?#]*)\/([^\?#]*).*:(\d+)$/i) ) {
+                    if (lines = lines
+                        .substr(lines.indexOf(':')+3)
+                        .match(/^[^\/\\?#]+([^\?#]*)\/([^\?#]*).*:(\d+)$/i)
+                    ) {
                         //解析路径
                         lines[1] = lines[1].substr(ROOT_URL.length);
                         //解析文件
@@ -61,25 +68,33 @@
         params || (params = {});
         params.key || (params.key = '');
 
-        if( string && (string = string.replace(/(^\s*)|(\s*$)/g, "")) ) {
-            pack[string] || (pack[string] = {});
+        if (string && (string = string.replace(/(^\s*)|(\s*$)/g, ""))) {
+            //用": "分割为[翻译, 变量]
+            string = !params['const'] && (temp = string.indexOf(': ')) >= 0 ?
+                [string.substr(0, temp), string.substr(temp + 2)] : [string];
+            pack[string[0]] || (pack[string[0]] = {});
 
             //调试模式 && 语法定位
             args.debug && (temp = getBacktrace()) && window.L.ajax({
                 'url'     : OF_URL + '/index.php?c=of_base_language_packs&a=update&t=' + (new Date).getTime(),
                 'data'    : window.L.param({
-                    'string' : string, 
+                    'string' : string[0], 
                     'params' : {
                         'class'  : args['class'] || '',
                         'action' : args.action || '',
                         'key'    : params.key,
-                        'file'   : temp[0]
+                        'file'   : temp[0],
+                        'const'  : !!params['const']
                     }
                 })
             });
+
+            //合并为"翻译: 变量"
+            string[0] = pack[string[0]][params.key] || pack[string[0]][''] || string[0];
+            string = string.join(': ');
         }
 
-        return pack[string][params.key] || pack[string][''] || string;
+        return string;
     }
 
     window.L.getText.init = function (params) {

@@ -77,6 +77,8 @@ class of_base_com_csv {
             $result[] = '"' . join('"' . $delimiter . '"', $vs) . "\"\r\n";
         }
 
+        //重置纵列数组
+        $fileArr = array();
         $result = join($result);
         //编码转换
         $charset === 'UTF-8' || $result = iconv('UTF-8', $charset . '//IGNORE', $result);
@@ -128,10 +130,7 @@ class of_base_com_csv {
             if ($charset === 'UTF-16LE') echo chr(255) . chr(254);
         }
 
-        if (!empty($fileArr)) {
-            echo self::toString(null, $sendHead);
-            $fileArr = array();
-        }
+        if ($fileArr) echo self::toString(null, $sendHead);
     }
 
     /**

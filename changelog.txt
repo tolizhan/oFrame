@@ -1,3 +1,47 @@
+版本: 240
+作者: Edgar
+日期: 2020年5月21日 17:54:24
+信息:
+说明: + 错误日志增加清空分组明细功能
+      + 语言包文本中第一个": "之后默认不进行翻译, 参数const控制此特性
+      + of::work 已映射到 L::work 中
+      + of::callFunc 新增从配置文件中调用和无法调用时默认返回值
+      + 模版引擎可以通过__del="$__del=1"设置$__del"真假"动态"显隐"标签
+      + 框架配置 _of.db.xxx.isolation 可以设置隔离级别
+      + IDE编辑器可以跟踪"L类"和"of\xxx\yyy"写法的代码
+      - "数据库事务接口"开启失败时直接抛出异常
+      - /of/base/link/extends.php 改名 extend.php
+      * 语言包可以导入不存在的翻译内容
+      * 单点登录支持用户备注读取与设置
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/ctrl/index.php
+已增加 : /trunk/demo/tool/codeNav
+已增加 : /trunk/demo/tool/codeNav/index.php
+已修改 : /trunk/demo/view/tpl/ctrl/index/viewTest.tpl.php
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqlPdo.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/att/language/language.js
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/toolBaseClass.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/language/packs.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/language/toolBaseClass.php
+已增加 : /trunk/include/of/base/link/codeNav.php
+已增加 : /trunk/include/of/base/link/extend.php (从路径复制: /trunk/include/of/base/link/extends.php, 版本, 239)
+已删除 : /trunk/include/of/base/link/extends.php
+已修改 : /trunk/include/of/base/link/setup.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/of.php
+
 版本: 238
 作者: Edgar
 日期: 2020年2月22日 10:42:08

@@ -38,8 +38,11 @@ class of_base_sso_tool extends of_base_sso_api {
                 $data = json_decode($_POST['data'], true);
                 $tool['ticket'] = $data['ticket'];
                 unset($tool['check'], $data['state'], $data['ticket']);
-                //报错登录信息
+                //保存登录信息
                 $tool['online'][$space] = &$data;
+                //刷新当前页面
+                header('Refresh: 0');
+                exit;
             //校验失败
             } else {
                 //跳转登录
@@ -187,6 +190,7 @@ class of_base_sso_tool extends of_base_sso_api {
      *          "user"   : SSO中的用户ID
      *          "name"   : 用户帐号
      *          "nike"   : 用户昵称
+     *          "notes"  : 用户备注
      *          "role"   : 角色权限包, 如果登录了存在 {
      *              "allow" : 允许访问接口,当获取拥有权限时存在 {
      *                  "pack" : {

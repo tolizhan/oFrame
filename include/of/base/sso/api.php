@@ -19,6 +19,7 @@
  *                  "user"  : 已登陆的用户ID
  *                  "name"  : 已登录的用户名
  *                  "nike"  : 已登录的用户昵称
+ *                  "notes" : 已登录的用户备注
  *              }
  *          },
  *          "realm" : 已登陆的系统集合 {
@@ -44,10 +45,11 @@
  *              "ticket" : 使用的票据
  *              "online" : {
  *                  登录类型 : 在线用户 {
- *                      "user" : SSO中的用户ID
- *                      "name" : 用户名
- *                      "nike" : 昵称
- *                      "role" : 角色权限包, 如果登录了存在 {
+ *                      "user"  : SSO中的用户ID
+ *                      "name"  : 用户名
+ *                      "nike"  : 昵称
+ *                      "notes" : 已登录的用户备注
+ *                      "role"  : 角色权限包, 如果登录了存在 {
  *                          "allow" : 允许访问接口,当获取拥有权限时存在 {
  *                              "pack" : {
  *                                  角色名 : {
@@ -247,6 +249,7 @@ class of_base_sso_api {
      *          "user"   : 用户ID, 如果登录了存在
      *          "name"   : 用户名, 如果登录了存在
      *          "nike"   : 用户昵称
+     *          "notes"  : 用户备注
      *          "role"   : 角色包, 如果登录了存在 {
      *              "allow" : 允许访问接口,当获取拥有权限时存在 {
      *                  "pack" : {
@@ -326,9 +329,10 @@ class of_base_sso_api {
             if (isset($index['user'])) {
                 //登入成功返回值
                 $json += array(
-                    'user' => &$index['user'],
-                    'name' => &$index['name'],
-                    'nike' => &$index['nike']
+                    'user'  => &$index['user'],
+                    'name'  => &$index['name'],
+                    'nike'  => &$index['nike'],
+                    'notes' => &$index['notes']
                 );
 
                 //获取权限
@@ -414,6 +418,7 @@ class of_base_sso_api {
      *          "oAnswer"  : 按照回答修改数据
      *          "pwd"      : 密码
      *          "nike"     : 昵称
+     *          "notes"    : 用户备注
      *          "state"    : 可用状态,0=冻结,1=启用
      *          "question" : 问题
      *          "answer"   : 回答
@@ -432,7 +437,7 @@ class of_base_sso_api {
                         $sql = "SELECT
                             SUBSTR(
                                 `find`, POSITION('_' IN `find`) + 1, SUBSTR(`find`, 1, POSITION('_' IN `find`) - 1)
-                            ) `question`, `name`, `nike`
+                            ) `question`, `name`, `nike`, `notes`
                         FROM
                             `_of_sso_user_attr`
                         WHERE
@@ -447,6 +452,7 @@ class of_base_sso_api {
                     $sql = $where = array();
 
                     empty($_GET['nike']) || $sql[] = "`nike` = '{$_GET['nike']}'";
+                    empty($_GET['notes']) || $sql[] = "`notes` = '{$_GET['notes']}'";
                     empty($_GET['state']) || $sql[] = "`state` = '{$_GET['state']}'";
                     if (!empty($_GET['question']) && !empty($_GET['answer'])) {
                         $sql[] = '`find`=\'' . 
@@ -526,10 +532,11 @@ class of_base_sso_api {
      *     &pwd  : 用户密码
      * 返回 :
      *      验证失败返回 null, 否则返回 {
-     *          "user" : 用户ID, 
-     *          "name" : 用户名,
-     *          "nike" : 昵称, 如 昵称 不存在 用户名代替
-     *          "time" : 最后修改时间, false=已过期
+     *          "user"  : 用户ID, 
+     *          "name"  : 用户名,
+     *          "nike"  : 昵称, 如 昵称 不存在 用户名代替
+     *          "time"  : 最后修改时间, false=已过期
+     *          "notes" : 用户备注
      *      }
      * 作者 : Edgar.lee
      */
@@ -538,7 +545,7 @@ class of_base_sso_api {
         $config = &self::$config;
 
         $sql = "SELECT
-            `id` `user`, `name`, IF(`nike` = '', `name`, `nike`) `nike`, `time`
+            `id` `user`, `name`, IF(`nike` = '', `name`, `nike`) `nike`, `time`, `notes`
         FROM
             `_of_sso_user_attr`
         WHERE
@@ -564,9 +571,10 @@ class of_base_sso_api {
      * 参数 :
      *     &space : 登录空间
      *     &type  : false=退出当前登录, 数组=登入指定用户 {
-     *          "user" : 登入用户ID,
-     *          "name" : 登入用户帐号,
-     *          "nike" : 登入用户昵称
+     *          "user"  : 登入用户ID,
+     *          "name"  : 登入用户帐号,
+     *          "nike"  : 登入用户昵称,
+     *          "notes" : 用户备注
      *      }
      * 作者 : Edgar.lee
      */
@@ -608,7 +616,9 @@ class of_base_sso_api {
         parse_str($url['query'], $url['query']);
         $url['query'] = $get + $url['query'];
         $key && $url['query']['md5'] = md5(join($url['query']) . $key);
-        $url = "{$url['scheme']}://{$url['host']}{$url['port']}{$url['path']}?" . http_build_query($url['query']);
+        //拼接URL
+        $url['query'] = $url['query'] ? '?' . http_build_query($url['query']) : '';
+        $url = "{$url['scheme']}://{$url['host']}{$url['port']}{$url['path']}{$url['query']}";
         return $url;
     }
 

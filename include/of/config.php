@@ -8,7 +8,7 @@ return array(
     'config'      => '/demo/config/config.php',
     //系统时区, 设置php支持的时区(如: Europe/London 支持夏令时), 读取格式为 ±00:00
     'timezone'    => 'PRC',
-    //统一调试模式, true=开发环境, null=测试环境, false=生产环境, 字符串=切换调试环境密码
+    //统一调试模式, true=开发环境, null=测试环境, false=生产环境, 字符串=切换开发环境密码
     'debug'       => true,
     //可写目录,上传,缓存等路径都将写入该文件夹
     'dataDir'     => '/data',
@@ -40,6 +40,8 @@ return array(
             'charset'    => 'utf8',
             //数据库时区, 默认true=框架时区, false=数据库时区, "±00:00"=指定时区
             'timezone'   => true,
+            //设置隔离级别, ""=跟随系统, "READ UNCOMMITTED", "READ COMMITTED", "REPEATABLE READ", "SERIALIZABLE"
+            'isolation'  => 'READ COMMITTED',
             //是否长连接
             'persistent' => false
         )

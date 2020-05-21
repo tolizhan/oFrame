@@ -31,6 +31,10 @@ class of_accy_db_mysqlPdo extends of_db {
                 //设置时区
                 $params['timezone'] && $temp .= ", TIME_ZONE = '{$params['timezone']}'";
                 $this->connection->query($temp);
+                //设置事务隔离级别
+                empty($params['isolation']) || $this->connection->query(
+                    $this->connection, 'SET SESSION TRANSACTION ISOLATION LEVEL ' . $params['isolation']
+                );
                 return true;
             } else {
                 $this->connection = null;
@@ -136,8 +140,12 @@ class of_accy_db_mysqlPdo extends of_db {
      */
     protected function _begin() {
         $this->_ping();
-        $this->transState = $this->connection->beginTransaction();
-        return $this->transState;
+
+        if ($this->transState = $this->connection->beginTransaction()) {
+            return true;
+        } else {
+            throw new Exception('Failed to open transaction.');
+        }
     }
 
     /**

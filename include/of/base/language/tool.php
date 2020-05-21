@@ -255,7 +255,7 @@ _top:expression(eval(document.documentElement.scrollTop) + 200);
     <div class="tool">
         <span class="operating">
             <input id="mergerFiles" type="button" value="合并">
-            <input id="mergerGlobal" type="button" value="整理">
+            <input id="mergerGlobal" type="button" value="同步">
         </span>
         <span class="url">
             <label><input id="getDiscardState" type="checkbox" />显示忽略</label>
@@ -611,10 +611,11 @@ _top:expression(eval(document.documentElement.scrollTop) + 200);
 
     //合并源文本
     $('#mergerFiles').click(function () {
-        if( window.confirm('会将并列目录合并到当前当前目录, 如 :\n' +
-        '    /cc/base/source : 当前目录\n' +
-        '    /xx/base/source : 并列目录\n' +
-        '    /yy/base/source : 并列目录\n' +
+        if( window.confirm('将并列的基础语言包合并到当前语言包, 如 :\n' +
+        '   "/xx"与"/yy"会合并到"/cc"\n' +
+        '    /cc/base/source : 当前基础语言包目录\n' +
+        '    /xx/base/source : 并列基础语言包目录\n' +
+        '    /yy/base/source : 并列基础语言包目录\n' +
         '\n是否开始?') ) {
             window.L.open('tip')('开始合并,请等待...');
             toolObj.post({'type' : 'mergerFiles'}, function () {
@@ -625,12 +626,13 @@ _top:expression(eval(document.documentElement.scrollTop) + 200);
 
     //整理全局文件
     $('#mergerGlobal').click(function () {
-        if( window.confirm('将会生成基类包的全局文件并同步到并列目录中, 如 :\n' +
-        '    /cc/base : 基类目录\n' +
-        '    /cc/xx   : 并列目录\n' +
-        '    /cc/yy   : 并列目录\n' +
+        if( window.confirm('将基础语言包同步到其它语言包, 如 :\n' +
+        '   "/base"会同步到"/xx"与"/yy"\n' +
+        '    /cc/base : 基础语言包目录\n' +
+        '    /cc/xx   : 并列语言包目录\n' +
+        '    /cc/yy   : 并列语言包目录\n' +
         '\n是否开始?') ) {
-            window.L.open('tip')('开始整理,请等待...');
+            window.L.open('tip')('开始同步,请等待...');
             toolObj.post({'type' : 'mergerGlobal'}, function () {
                 window.L.open('tip')('操作成功');
             });

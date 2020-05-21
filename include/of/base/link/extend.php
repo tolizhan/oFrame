@@ -3,7 +3,7 @@
  * 描述 : 集成 L 类的扩展方法
  * 作者 : Edgar.lee
  */
-class of_base_link_extends {
+class of_base_link_extend {
     /**
      * 描述 : 魔术方法, 获取com组件及view对象
      * 参数 :

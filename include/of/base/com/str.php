@@ -360,7 +360,7 @@ class of_base_com_str {
      * 作者 : Edgar.lee
      */
     public static function uniqid($prefix = '', $isShow = true, $minLen = 3) {
-        static $lable = null;
+        static $label = null;
 
         //有意义的编码规则
         if ($prefix) {
@@ -405,14 +405,14 @@ class of_base_com_str {
                 str_pad($data['count'], $minLen, '0', STR_PAD_LEFT);
         //生成32位编码
         } else {
-            $lable === null &&
-            (!$lable = function_exists('com_create_guid')) &&
-            ($lable = json_encode($_SERVER));
+            $label === null &&
+            (!$label = function_exists('com_create_guid')) &&
+            ($label = json_encode($_SERVER));
 
-            if ($lable === true) {
+            if ($label === true) {
                 return strtolower(str_replace(array('{', '}', '-'), '', com_create_guid()));
             } else {
-                return md5(uniqid('', true) . $lable .  mt_rand());
+                return md5(uniqid('', true) . $label .  mt_rand());
             }
         }
     }

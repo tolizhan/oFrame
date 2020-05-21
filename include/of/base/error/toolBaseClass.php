@@ -256,6 +256,21 @@ class of_base_error_toolBaseClass {
     }
 
     /**
+     * 描述 : 清空分组明细列表
+     * 参数 :
+     *      path : 日志路径
+     *      md5  : 分组键值, 指定时获取对于的分组键的明细
+     * 作者 : Edgar.lee
+     */
+    public static function emptyGroupDetails($path, $md5) {
+        //分组明细列表
+        $mPath = self::$config[substr($path, -2) === 'js' ? 'js' : substr($path, -3)] .
+            $path . 'Attr/group/' . $md5 . '.bin';
+        //清空分组索引文件
+        of_base_com_disk::file($mPath, '');
+    }
+
+    /**
      * 描述 : 复制指定文件或文件夹
      * 参数 :
      *      text : 原始消息

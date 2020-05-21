@@ -91,7 +91,8 @@ class of_base_language_packs {
      * 参数 :
      *     &string : 指定翻译的字符串
      *     &params : 附加数组参数 {
-     *          "key" : 区分键,默认""
+     *          "key"   : 区分键,默认""
+     *          "const" : 是否完整翻译文本, 默认false=不翻译": "后内容, true=完整翻译文本
      *      }
      * 返回 :
      *      翻译的字符串
@@ -107,20 +108,25 @@ class of_base_language_packs {
 
         //去空白字符串
         if ($string = trim($string)) {
+            //分割成[翻译, 变量]
+            $string = empty($params['const']) ? explode(': ', $string, 2) : array($string);
             //debug时,给源语言定位
-            self::$debug && self::source($string, $params);
+            self::$debug && self::source($string[0], $params);
 
             //语言包初始化
             isset($envVar['pack'][$params['type']]) || self::load($params['type']);
             //引用语言块
-            $index = &$envVar['pack'][$params['type']][$string];
+            $index = &$envVar['pack'][$params['type']][$string[0]];
 
             if (empty($index[$params['key']])) {
                 $index[$params['key']] = '';
-                empty($index['']) || $string = $index[''];
+                empty($index['']) || $string[0] = $index[''];
             } else {
-                $string = $index[$params['key']];
+                $string[0] = $index[$params['key']];
             }
+
+            //合并为"翻译: 变量"
+            $string = join(': ', $string);
         }
 
         return $string;

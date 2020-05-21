@@ -28,7 +28,17 @@ of_view::head('head', array(
  *      key : 以"_"开头的变量会创建并返回 of_base_com_xxx 对象, "view"时会实例化 of_view
  * 作者 : Edgar.lee
  */
-of::link('__get', '$key', 'return of_base_link_extends::get($key);', false);
+of::link('__get', '$key', 'return of_base_link_extend::get($key);', false);
+
+/**
+ * 描述 : 工作流 of::work 映射方法
+ * 作者 : Edgar.lee
+ */
+of::link(
+    'work',
+    '$code, $info = \'\', $data = array()',
+    'return of::work(\'extr\', array(\'code\' => &$code, \'info\' => &$info, \'data\' => &$data, \'trace\' => 2));'
+);
 
 /**
  * 描述 : 输出页面 of_view::display 映射方法
