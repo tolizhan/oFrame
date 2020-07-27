@@ -2,7 +2,8 @@
  * 描述 : L.open 使用的配置文件
  * 结构 : {
  *      插件键 : {
- *          "list"  : 加载的js列表 {
+ *          "path"  : 插件根目录
+ *          "list"  : 加载的列表 {
  *              js或css地址 : false=不调用, 方法=加载后回调函数,
  *              ...
  *          },
@@ -15,7 +16,6 @@
  * 作者 : Edgar.lee
  */
 config = {
-
     /**
      * 描述 : 日期插件
      * 参数 : 可选 {
@@ -28,15 +28,16 @@ config = {
      * 作者 : Edgar.lee
      */
     'wDate' : {
+        'path'  : OF_URL + '/addin/WDatePicker',
         'list'  : {
-            '/WDatePicker/WdatePicker.js' : false
+            '/WdatePicker.js' : false
         },
         'ready' : function (p, c) {
             //已加载
-            if( !c.loaded ) {
+            if (!c.loaded) {
                 var script = document.createElement("script");
                 script.type = "text";
-                script.src = OF_URL + '/addin/WDatePicker/WdatePicker.js';
+                script.src = c.path + '/WdatePicker.js';
                 this.document.getElementsByTagName("head")[0].appendChild(script);
             }
         },
@@ -71,14 +72,15 @@ config = {
      * 作者 : Edgar.lee
      */
     'zTree' : {
+        'path'  : OF_URL + '/addin/zTree',
         'list'  : {
-            '/zTree/js/jquery.ztree.core.js' : false,
-            '/zTree/style/zTreeStyle.css'    : false
+            '/js/jquery.ztree.core.js' : false,
+            '/style/zTreeStyle.css'    : false
         },
         'ready' : function (p, c) {
-            if( p && p.expand ) {
+            if (p && p.expand) {
                 for(var i in p.expand) {
-                    c.list['/zTree/js/jquery.ztree.' +p.expand[i]+ '.js'] = false;
+                    c.list['/js/jquery.ztree.' +p.expand[i]+ '.js'] = false;
                 }
             }
         },
@@ -98,8 +100,9 @@ config = {
      * 作者 : Edgar.lee
      */
     'eCharts' : {
+        'path'  : OF_URL + '/addin/echarts',
         'list'  : {
-            '/echarts/echarts.js' : false
+            '/echarts.js' : false
         },
         'init'  : function (p) {
             if( p && p.obj ) {
@@ -121,9 +124,10 @@ config = {
      * 作者 : Edgar.lee
      */
     'oUpload' : {
+        'path'  : OF_URL + '/addin/oUpload',
         'list'  : {
-            '/oUpload/oUpload.css' : false,
-            '/oUpload/oUpload.js'  : false
+            '/oUpload.css' : false,
+            '/oUpload.js'  : false
         },
         'init'  : function (p) {
             if( p ) {
@@ -141,8 +145,9 @@ config = {
      * 作者 : Edgar.lee
      */
     'oFill' : {
+        'path'  : OF_URL + '/addin/oFill',
         'list'  : {
-            '/oFill/oFill.js'  : false
+            '/oFill.js'  : false
         },
         'init'  : function (p) {
             return this.oFill;
@@ -157,11 +162,12 @@ config = {
  * 作者 : Edgar.lee
  */
 config.oFM = config.oDialogDiv = config.tip = config.upload = config.oEditor = {
+    'path'  : OF_URL + '/addin/oFileManager',
     'list'  : {
-        '/oFileManager/js/mouseDrag.js'          : false,
-        '/oFileManager/js/oDialogDiv.js'         : false,
-        '/oFileManager/style/oDialogDiv.css'     : false,
-        '/oFileManager/js/jsCalloFileManager.js' : function () {
+        '/js/mouseDrag.js'          : false,
+        '/js/oDialogDiv.js'         : false,
+        '/style/oDialogDiv.css'     : false,
+        '/js/jsCalloFileManager.js' : function () {
             this.oFileManagerMainDir = OF_URL.substr(ROOT_URL.length) + '/addin/oFileManager';
             this.oFileManager.oFileManagerMainDir = OF_URL + '/addin/oFileManager';
         }
@@ -169,13 +175,13 @@ config.oFM = config.oDialogDiv = config.tip = config.upload = config.oEditor = {
     'ready' : function (p, c, n) {
         switch( n ) {
             case 'oEditor' :
-                c.list['/oFileManager/include/oEditor/oEditor.js'] = false;
+                c.list['/include/oEditor/oEditor.js'] = false;
                 break;
             case 'upload'  :
-                c.list['/oFileManager/include/uploadify/css/uploadify.css'] = false;
-                c.list['/oFileManager/include/uploadify/scripts/jsCalloEditorUploadify.js'] = false;
-                c.list['/oFileManager/include/uploadify/scripts/swfobject.js'] = false;
-                c.list['/oFileManager/include/uploadify/scripts/jqueryUploadify.js'] = false;
+                c.list['/include/uploadify/css/uploadify.css'] = false;
+                c.list['/include/uploadify/scripts/jsCalloEditorUploadify.js'] = false;
+                c.list['/include/uploadify/scripts/swfobject.js'] = false;
+                c.list['/include/uploadify/scripts/jqueryUploadify.js'] = false;
                 break;
         }
     },

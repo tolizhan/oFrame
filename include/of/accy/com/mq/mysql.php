@@ -115,15 +115,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
      *          }
      *      }
      * 返回 :
-     *      [{
-     *          "result" : 响应结果
-     *              true=成功, 删除队列
-     *              false=失败, 稍后重试
-     *              数字=指定秒数后重试
-     *              其它=抛出错误, 稍后重试
-     *          "count"  : 调用计数, result为 false, 数字时每5次报错一次
-     *          "params" : 调用参数
-     *      }, ...]
+     *      true=已匹配到消息, false=未匹配到消息
      * 作者 : Edgar.lee
      */
     protected function _fire(&$call, &$data) {
@@ -133,8 +125,6 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
         $nowTime = date('Y-m-d H:i:s', $time = time());
         //10分钟过期
         $expTime = date('Y-m-d H:i:s', $time + 600);
-        //结果集
-        $result = array();
 
         //通过先筛选主键后加锁的方式解决同时修改与筛选导致索引死锁的问题
         do {
@@ -202,21 +192,8 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             //回调结果
             $return = self::callback($call, $data);
 
-            //回调后事务未关闭
-            if ($temp = of_db::pool($this->dbPool, 'level')) {
-                //若消费成功 && 改成消费失败
-                $return === true && $return = false;
-                //嵌套回滚
-                for ($i = 0; $i < $temp; ++$i) {
-                    of_db::sql(false, $this->dbPool);
-                }
-            }
-
             //执行成功
             if ($return === true) {
-                //执行结果
-                $result[] = array('result' => true);
-
                 $sql = "DELETE FROM
                     `_of_com_mq`
                 WHERE
@@ -226,13 +203,6 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                 of_db::sql($sql, $this->dbPool);
             //执行失败
             } else {
-                //执行结果
-                $result[] = array(
-                    'result' => $return,
-                    'count'  => $msgs['syncLevel'] + 1,
-                    'params' => $data
-                );
-
                 //非指定时间的其它错误(包括 false), 计算下次执行时间(s)
                 is_int($return) || $return = $data['count'] * 300;
                 $expTime = date('Y-m-d H:i:s', time() + $return);
@@ -253,7 +223,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             }
         }
 
-        return $result;
+        return !!$msgs;
     }
 
     /**

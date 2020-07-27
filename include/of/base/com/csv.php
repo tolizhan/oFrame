@@ -49,7 +49,7 @@ class of_base_com_csv {
     /**
      * 描述 : 整理csv数组成字符串
      * 参数 :
-     *      path    : 字符串=保存到磁盘路径,默认=null
+     *      path    : null=仅返回csv字符串, 字符串=覆盖写入磁盘路径, 数据流=追加写入到数据流
      *      charset : 转化的字符集, 默认 "UTF-16LE"
      * 返回 :
      *      返回 生成的字符串
@@ -84,8 +84,12 @@ class of_base_com_csv {
         $charset === 'UTF-8' || $result = iconv('UTF-8', $charset . '//IGNORE', $result);
         //保存到文件
         if ($path) {
-            $temp = $charset = 'UTF-16LE' ? chr(255) . chr(254) : '';
-            of_base_com_disk::file($path, $temp . $result);
+            //(文本路径 || 资源为空) && 写入文件头
+            (is_string($path) || !ftell($path)) &&
+                of_base_com_disk::file($path, $charset === 'UTF-16LE' ? chr(255) . chr(254) : '');
+
+            //追加方式写入文件
+            of_base_com_disk::file($path, $result, null);
         }
 
         return $result;

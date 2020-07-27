@@ -19,21 +19,24 @@ class of_base_version_check {
                 strlen($temp)
             )
         ) {
-            //获取版本号
-            $version = of_base_com_kv::get('of_base_version_check::version');
+            //获取版本号(版本号|跳转地址)
+            $ver = explode('|', of_base_com_kv::get('of_base_version_check::version', ''));
 
             //读取失败
-            if (!$version) {
+            if (!$ver[0]) {
                 of_base_com_kv::set('of_base_version_check::version', 1, 86400);
                 of_base_com_net::request(OF_URL, array(), 'of_base_version_check::version');
             //读取成功 && 有最新版本
-            } else if ($version > OF_VERSION) {
+            } else if ($ver[0] > OF_VERSION) {
+                //默认升级路径
+                isset($ver[1]) || $ver[1] = 'https://github.com/tolizhan/oFrame';
+                //显示升级提示
                 $temp = '<a ' .
-                    'href="https://github.com/tolizhan/oFrame"' .
+                    'href="' . $ver[1] . '"' .
                     'style="position: absolute; background-color: red;" ' .
                     'target="_blank"' .
                 '>' .
-                    'Framework Update : ' . OF_VERSION . ' -> ' .$version .
+                    'Framework Update : ' . OF_VERSION . ' -> ' . $ver[0] .
                 '</a>';
                 of_view::head('before', $temp);
             }
@@ -50,17 +53,19 @@ class of_base_version_check {
         //尝试列表
         $temp = array(
             //github
-            'https://raw.githubusercontent.com/tolizhan/oFrame/master/include/of/of.php',
+            'https://raw.githubusercontent.com/tolizhan/oFrame/master/include/of/of.php'
+                => 'https://github.com/tolizhan/oFrame',
             //码云
             'https://gitee.com/tolizhan/oFrame/raw/master/include/of/of.php'
+                => 'https://gitee.com/tolizhan/oFrame'
         );
 
-        foreach ($temp as &$v) {
-            $params = @of_base_com_net::request($v);
+        foreach ($temp as $k => &$v) {
+            $params = @of_base_com_net::request($k);
             //请求成功
             if ($params['state']) {
                 preg_match('@\bOF_VERSION[^\d]+(\d+)@', $params['response'], $temp);
-                $temp = $temp ? (int)$temp[1] : 1;
+                $temp = ($temp ? (int)$temp[1] : 1) . '|' . $v;
                 of_base_com_kv::set('of_base_version_check::version', $temp, 86400);
                 break ;
             }

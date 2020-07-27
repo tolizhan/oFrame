@@ -503,8 +503,8 @@ class of_base_htmlTpl_engine {
         $format = htmlentities($url, ENT_QUOTES, 'UTF-8');
         $line = "#line : {$line}\n";
 
-        //有属性值 && 不是网络路径
-        if (isset($format[0]) && !strpos($format, ':')) {
+        //有属性值 && 非"#"开头 && 非网络路径
+        if (isset($format[0]) && $format[0] !== '#' && !strpos($format, ':')) {
             //非'/'开始的定位到 模板路径 下
             $format[0] === '/' || $format = of_base_com_str::realpath(self::$config['tplRoot'] . '/' . $format);
 

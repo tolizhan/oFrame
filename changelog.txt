@@ -1,3 +1,37 @@
+版本: 242
+作者: Edgar
+日期: 2020年7月27日 15:27:14
+信息:
+说明: + redis 支持集群和分布模式 (redis扩展 >= 4.3.0)
+      + of_base_com_csv::toString 支持数据流追加写入到文件
+      + of_db::pool(null) 读取当前所有连接信息
+      + L.js插件配置文件, 可以通过path指定插件根目录
+      + 框架手册同步到github的wiki中
+      + 消息队列回调支持返回"接口响应结构" (code < 400为true, 反之为false)
+      * 消息队列消费后会提示并回滚未关闭的事务
+      * 框架检查更新提醒会引导到合适的升级地址
+      * 模版引擎路径以"#"开头的不进行解析
+----
+已修改 : /trunk/changelog.txt
+已增加 : /trunk/demo/tool/docsToMd
+已增加 : /trunk/demo/tool/docsToMd/index.php
+已修改 : /trunk/demo/view/tpl/ctrl/index/viewTest.tpl.php
+已修改 : /trunk/include/of/accy/com/kv/redis.php
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/addin/config.js
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/att/link/L.js
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/version/check.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+
 版本: 240
 作者: Edgar
 日期: 2020年5月21日 17:54:24

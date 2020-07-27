@@ -30,9 +30,6 @@ class of_base_extension_manager {
                 ),
             );
 
-            //创建扩展根目录
-            is_dir($constants['extensionDir']) ||
-                mkdir($constants['extensionDir'], 0777, true);
             //创建扩展存储路径
             is_dir($constants['extensionSave']) ||
                 mkdir($constants['extensionSave'], 0777, true);

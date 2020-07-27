@@ -33,7 +33,7 @@ abstract class of_db {
     //当前与数据库交互的key
     private static $nowDbKey = null;
     //实例化对象{'key' : 实例化的对象}
-    private static $instList = null;
+    private static $instList = array();
     //全部数据库配置文件
     private static $dbConfig = null;
     //数据库连接参数(由of_db类出初始化)
@@ -88,12 +88,15 @@ abstract class of_db {
      *     #克隆连接池(文本)
      *      key  : 连接池名称
      *      pool : 固定"clone"
-     *      val  : 克隆连接池名, 若名称已存在, 会将原连接改名唯一值
+     *      val  : 新连接池名, 若名称已存在, 会将原连接改名唯一值
 
      *     #关闭并删除指定连接池(文本)
      *      key  : 连接池名称
      *      pool : 固定"clean"
      *      val  : 清理方式, 默认null=全部清理, 1=仅清理事务
+
+     *     #读取运行连接信息
+     *      key  : 固定null
      * 返回 :
      *     #创建连接池(数组)
      *     #读取连接池(null)
@@ -110,6 +113,13 @@ abstract class of_db {
 
      *     #克隆连接池("clone")
      *      若克隆名已存在, 返回原连接改名的唯一值
+
+     *     #读取运行连接信息(key为null时) {
+     *          连接名称 : {
+     *              "level" : 同查询事务层次("level"),
+     *              "state" : 同查询事务最终提交状态("state")
+     *          }, ...
+     *      }
      * 作者 : Edgar.lee
      */
     final public static function &pool($key, $pool = null, $val = null) {
@@ -170,7 +180,8 @@ abstract class of_db {
                     if (!$val) unset($instList[$key]);
                     break;
             }
-        } else {
+        //读取或设置配置
+        } else if (is_string($key)) {
             if (empty($instList[$key])) {
                 //初始配置
                 if ($pool === null) {
@@ -206,9 +217,18 @@ abstract class of_db {
                 $instList[$key] = array('pool' => &$pool);
             }
 
-            //设置当期连接池
+            //设置运行连接池信息
             self::$nowDbKey = $key;
             $result = $instList[$key]['pool'];
+        //读取运行连接信息
+        } else if ($key === null) {
+            $result = array();
+
+            foreach ($instList as $k => &$v) {
+                $result[$k] = isset($v['inst']['level']) ?
+                    array('level' => $v['inst']['level'], 'state' => $v['inst']['state']) :
+                    array('level' => 0, 'state' => null);
+            }
         }
 
         return $result;

@@ -689,7 +689,7 @@ L === undefined && (L = {
                 return false;
             //未加载过
             } else {
-                L.ajax({'url' : win ? OF_URL + '/addin' + url : url, 'async' : false, 'success' : function (code, ajax) {
+                L.ajax({'url' : url, 'async' : false, 'success' : function (code, ajax) {
                     //css
                     if (/.*css$/.test(url)) {
                         var div = win.document.createElement("div");
@@ -725,10 +725,12 @@ L === undefined && (L = {
 
             //插件存在
             if (run = config[name]) {
+                //初始化插件根目录
+                run.path === undefined && (run.path = OF_URL + '/addin');
                 //加载前调用
                 run.ready && run.ready.call(win, param, run, name);
                 for(var i in run.list) {
-                    sync(i, win) && run.list[i] && run.list[i].call(win, param, run, name);
+                    sync(run.path + i, win) && run.list[i] && run.list[i].call(win, param, run, name);
                 }
                 //初始化调用
                 return run.init.call(win, param, run, name);

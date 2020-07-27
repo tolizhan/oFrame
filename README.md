@@ -7,13 +7,13 @@
 它包含完整的[错误日志](http://doc.phpof.net/?oFrame/helpManual/error.html,oFrame/navigation.html), 丰富的[开发接口](http://doc.phpof.net/?oFrame/FAQ/baseExtends.html,oFrame/navigation.html)<br>
 它的思想是易部署, 易分布, 易迁移
 
-手册地址 http://doc.phpof.net/<br>
+手册地址 http://doc.phpof.net/ 或 wiki<br>
 问题反馈 tolizhan@qq.com
 
 ## 框架部署
 ### 测试部署
 1. 部署一个php >= 5.2的网络环境
-2. [下载 of 框架](https://github.com/tolizhan/oFrame/archive/master.zip)
+2. 下载框架代码 https://github.com/tolizhan/oFrame/ 或 https://gitee.com/tolizhan/oFrame/
 3. 解压到任意可访问的路径, 如果是 Linux 创建 /data 文件, 给 -R 可读写权限
 4. 访问框架根目录, 显示界面并且没有红色报错便部署成功
 
@@ -31,10 +31,10 @@
 ### 系统访问
 1. URL格式可以通过系统入口定制<br>
     如: /index.php?c=控制类&a=方法名 或 /index.php/控制类/方法名 等
-2. CLI模式可以通过"$GLOBALS键值:url编码"来设置超全局变量,可通过 _TZ指定时区, _IP指定IP, _RL指定ROOT_URL<br>
-    如: php /index.php "get:c=demo_index&a=index" "post:test=demo" 设置$GLOBALS['_GET'] 和 $GLOBALS['_POST']值
+2. CLI模式可以通过"`$GLOBALS键值:url编码`"来设置超全局变量,可通过 _TZ指定时区, _IP指定IP, _RL指定ROOT_URL<br>
+    如: `php /index.php "get:c=demo_index&a=index" "post:test=demo"` 设置`$GLOBALS['_GET']`和`$GLOBALS['_POST']`值
 
 ### 框架升级
 1. 用新版框架替换旧版不包含配置的全部文件 (注意新版中不存在的文件)
-2. 查看旧版到新版本号的 [变更日志](https://github.com/tolizhan/oFrame/blob/master/changelog.txt)
+2. 查看旧版到新版本号的 [变更日志](changelog.txt)
 3. 按照日志说明中"-"开头的变化从低到高版升级当前系统

@@ -238,36 +238,52 @@ return array(
                 'kvPool' => 'default'
             )
         ),
-        //key-value 数据存储 可分连接池
+        //key-value 数据存储 可像db分连接池, 'default'为默认连接池
         'kv' => array(
-            //适配文件 of_accy_com_kv_xxx
-            'adapter' => 'files',
-            //对应的配置
-            'params'  => array(
-                #files 模式
-                //*
-                //files 存储路径
-                'path' => '/data/_of/of_accy_com_kv_files'
-                // */
+            'default' => array(
+                //适配文件 of_accy_com_kv_xxx
+                'adapter' => 'files',
+                //对应的配置
+                'params'  => array(
+                    #files 模式
+                    //*
+                    //files 存储路径
+                    'path' => '/data/_of/of_accy_com_kv_files'
+                    // */
 
-                #memcache 对应的配置, 可以使用二维数组连接集群
-                /*
-                //地址
-                'host' => '127.0.0.1',
-                'port' => 11211,
-                // */
+                    #memcache 对应的配置, 可以使用二维数组连接集群
+                    /*
+                    //地址
+                    'host' => '127.0.0.1',
+                    'port' => 11211,
+                    // */
 
-                #redis 对应的配置, 二维数组连接主从, 0键为主, 其它为从
-                /*
-                //地址
-                'host' => '192.168.1.104',
-                //端口
-                'port' => 6379,
-                //授权
-                'auth' => '',
-                //数据库
-                'db'   => 0
-                // */
+                    #redis 单点模式
+                    /*
+                    //单点模式
+                    'type' => 'single',
+                    //地址
+                    'host' => '127.0.0.1:6379',
+                    //密码
+                    'auth' => '',
+                    //数据库
+                    'db'   => 0
+                    // */
+
+                    #redis 多点模式, redis扩展 >= 4.3.0
+                    /*
+                    //多点模式 "cluster"=集群模式, "distributed"=分布模式
+                    'type' => 'cluster',
+                    //地址
+                    'host' => array(
+                        '127.0.0.1:6379'
+                    ),
+                    //密码
+                    'auth' => '',
+                    //数据库, 集群不支持选择数据库
+                    'db'   => 0
+                    // */
+                )
             )
         ),
         //消息队列

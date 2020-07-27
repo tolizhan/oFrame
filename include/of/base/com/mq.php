@@ -372,7 +372,7 @@ abstract class of_base_com_mq {
                     !($check && of_base_com_timer::renew($check, $eTip))
                 ) {
                     //存在消息
-                    if ($temp = $mqObj->_fire($call, $data)) {
+                    if ($mqObj->_fire($call, $data)) {
                         //回收内存
                         $isGc && gc_collect_cycles();
                         //检查内存 && 未释放内存过高
@@ -690,12 +690,25 @@ abstract class of_base_com_mq {
             of::event('of::error', true, $e);
         }
 
+        //回滚未结束事务
+        $trxs = of_db::pool(null);
+        foreach ($trxs as $k => &$v) {
+            if ($v['level']) {
+                of_db::pool($k, 'clean', 1);
+            } else {
+                unset($trxs[$k]);
+            }
+        }
+
         //恢复永不超时
         ini_set('max_execution_time', 0);
         //恢复默认时区
         date_default_timezone_set($fireEnv['timezone']);
         //清空消息数据
         $fireEnv['mqData'] = &$null;
+        //计算返回数据
+        $return  = isset($result['code']) && is_int($result['code']) ?
+            $result['code'] < 400 : $result;
         //修改并发日志
         $cLog['doneTime'] = date('Y-m-d H:i:s', time());
         //记录当前内存
@@ -703,10 +716,11 @@ abstract class of_base_com_mq {
         //记录监听数据
         of_base_com_timer::data(array('_mq' => &$cLog));
 
-        //(执行结果为false && 每5次报错) || (非布尔 && 非数字)
+        //(返回false && 每5次报错) || (返回true && 事务未结束) || (非布尔 && 非数字)
         if (
-            $result === false && $data['count'] % 5 === 0 ||
-            !is_bool($result) && !is_int($result)
+            $return === false && $data['count'] % 5 === 1 ||
+            $return === true && $trxs ||
+            !is_bool($return) && !is_int($return)
         ) {
             //克隆回调数组
             $func = json_decode(json_encode($call), true);
@@ -724,15 +738,23 @@ abstract class of_base_com_mq {
             //对象转换成易读方式
             is_object($temp[1]) && $temp[0] = 'new ' . get_class($temp[1]);
 
+            //抛出错误提示
+            if ($return === true) {
+                $temp = 'The transaction is not closed: ' . join(', ', array_keys($trxs));
+            } else {
+                $temp = 'Failed to consume message from queue: ' . var_export($result, true);
+            }
             trigger_error(
-                'Failed to consume message from queue: ' .
-                var_export($result, true) . "\n\n" .
+                "{$temp}\n\n" .
                 'call--' . print_r($func, true) . "\n\n" .
                 'argv--' . print_r($data, true)
             );
+
+            //返回false
+            $return = false;
         }
 
-        return $result;
+        return $return;
     }
 
     /**
@@ -913,15 +935,7 @@ abstract class of_base_com_mq {
      *          }
      *      }
      * 返回 :
-     *      [{
-     *          "result" : 响应结果
-     *              true=成功, 删除队列
-     *              false=失败, 稍后重试
-     *              数字=指定秒数后重试
-     *              其它=抛出错误, 稍后重试
-     *          "count"  : 调用计数, result为 false, 数字时每5次报错一次
-     *          "params" : 调用参数
-     *      }, ...]
+     *      true=已匹配到消息, false=未匹配到消息
      * 作者 : Edgar.lee
      */
     abstract protected function _fire(&$calll, &$data);

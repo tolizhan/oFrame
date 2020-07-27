@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200240);
+define('OF_VERSION', 200242);
 
 /**
  * 描述 : 控制层核心
@@ -198,6 +198,7 @@ class of {
      *              "change" : 添加删除时会变true
      *              "list"   : [{
      *                  "isCall" : true=是回调类型,false=特殊结构
+     *                  "isExec" : true=可以执行, false=正在执行
      *                  "event"  : 回调事件
      *                  "change" : 新加时会为true
      *              }]

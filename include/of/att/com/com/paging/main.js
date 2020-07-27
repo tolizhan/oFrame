@@ -150,8 +150,8 @@ L.paging || (function () {
         if (tObj.d) {
             //操作数据
             data = L.json(data);
-            //引用数据
-            tObj.b.data = tObj.d.data;
+            //引用数据(分页数据有效 || [])
+            tObj.b.data = tObj.d.data || [];
 
             //设置回调
             tObj.b.setAttribute('method', data.method);

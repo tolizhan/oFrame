@@ -81,7 +81,7 @@ class of_base_com_net {
      *              "name" : 附件字段名
      *              "path" : 文件磁盘路径, 设置 data 不用设置此值
      *              "data" : 文件二进制数据, 设置 path 时不用设置此值
-     *              "mime" : 附件类型('application/octet-stream')
+     *              "mime" : 附件类型, 设置Content-Type('application/octet-stream')
      *              "head" : 自定义头信息(''), 可数组[不换行头, ...]
      *              "file" : 附件文件名, 默认使用 path 文件名或生成'xx.bin'
      *          }, ...]
@@ -441,10 +441,14 @@ class of_base_com_net {
             //支持的 MIME 类型
             preg_match('@^Accept *:@im', $data['header']) || $out[] = 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
             //默认报文类型
-            if (preg_match('@^Content-Type *:@im', $data['header']) === 0) {
-                $out[] = empty($data['file']) ? 
-                    'Content-Type: application/x-www-form-urlencoded' :
-                    'Content-Type: multipart/form-data; boundary=' . $line;
+            if (!empty($data['file'])) {
+                //删除参数中设置的Content-Type
+                $data['header'] = trim(
+                    preg_replace('@^Content-Type *:.*?(\r\n|$)@im', '', $data['header'])
+                );
+                $out[] = 'Content-Type: multipart/form-data; boundary=' . $line;
+            } else if (preg_match('@^Content-Type *:@im', $data['header']) === 0) {
+                $out[] = 'Content-Type: application/x-www-form-urlencoded';
             }
             //发送cookie
             $data['cookie'] && $out[] = 'Cookie: ' . $data['cookie'];

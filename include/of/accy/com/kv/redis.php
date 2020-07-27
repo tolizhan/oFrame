@@ -1,22 +1,47 @@
 <?php
 class of_accy_com_kv_redis extends of_base_com_kv {
-    //主库
-    private $master = null;
-    //从库
-    private $slave = null;
+    //redis对象
+    private $redis = null;
 
     /**
      * 描述 : 存储源连接
      * 作者 : Edgar.lee
      */
     protected function _connect() {
-        $params = &$this->params;
-        //格式化为二维
-        isset($params[0]) || $params = array($params);
-        $this->master = array_shift($params);
-        $params ? 
-            $this->slave = $params[array_rand($params)] : 
-            $this->slave = &$this->master;
+        $redis = &$this->redis;
+        $params = $this->params + array(
+            'type' => 'single'
+        );
+
+        switch ($params['type']) {
+            //单点模式
+            case 'single':
+                //解析地址与端口
+                $host = explode(':', $params['host']);
+                isset($host[1]) || $host[1] = (empty($params['port']) ? 6379 : $params['port']);
+
+                $redis = new Redis;
+                $redis->connect($host[0], $host[1]);
+                //授权
+                $redis->auth($params['auth']);
+                //选择数据库
+                $redis->select($params['db']);
+                break;
+            //集群模式
+            case 'cluster':
+                $redis = new RedisCluster(null, $params['host'], null, null, false, $params['auth']);
+                break;
+            //分布模式
+            case 'distributed':
+                $redis = new RedisArray($params['host'], array(
+                    //一致性hash分布
+                    'consistent' => true,
+                    'auth'       => $params['auth']
+                ));
+                //选择数据库 || 连接失败
+                if (!$redis->select($params['db'])) throw new Exception('Failed to connection.');
+                break;
+        }
     }
 
     /**
@@ -24,7 +49,7 @@ class of_accy_com_kv_redis extends of_base_com_kv {
      * 作者 : Edgar.lee
      */
     protected function _add(&$name, &$value, &$time) {
-        $redis = $this->_link('master');
+        $redis = $this->redis;
 
         if ($redis->setnx($name, $value)) {
             $redis->expireAt($name, $time);
@@ -39,7 +64,7 @@ class of_accy_com_kv_redis extends of_base_com_kv {
      * 作者 : Edgar.lee
      */
     protected function _del(&$name) {
-        return $this->_link('master')->del($name);
+        return $this->redis->del($name);
     }
 
     /**
@@ -47,7 +72,7 @@ class of_accy_com_kv_redis extends of_base_com_kv {
      * 作者 : Edgar.lee
      */
     protected function _set(&$name, &$value, &$time) {
-        return $this->_link('master')->setEx($name, $time - time(), $value);
+        return $this->redis->setEx($name, $time - time(), $value);
     }
 
     /**
@@ -55,30 +80,15 @@ class of_accy_com_kv_redis extends of_base_com_kv {
      * 作者 : Edgar.lee
      */
     protected function _get(&$name) {
-        return $this->_link('slave')->get($name);
+        return $this->redis->get($name);
     }
 
     /**
      * 描述 : 返回连接
      * 作者 : Edgar.lee
      */
-    protected function _link($type = 'master') {
-        //读主库 ?: 从库
-        $type === 'master' ? $type = &$this->master : $type = &$this->slave;
-
-        //未初始化
-        if (is_array($type)) {
-            $redis = new Redis;
-            $redis->connect($type['host'], $type['port']);
-            //授权
-            empty($type['auth']) || $redis->auth($type['auth']);
-            //选择数据库
-            empty($type['db']) || $redis->select($type['db']);
-            //存储资源
-            $type = $redis;
-        }
-
-        return $type;
+    protected function _link() {
+        return $this->redis;
     }
 
     /**
@@ -86,7 +96,6 @@ class of_accy_com_kv_redis extends of_base_com_kv {
      * 作者 : Edgar.lee
      */
     protected function _close() {
-        is_resource($this->master) && $this->master->close();
-        is_resource($this->slave) && $this->slave->close();
+        $this->redis->close();
     }
 }
