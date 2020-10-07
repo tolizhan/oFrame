@@ -151,8 +151,11 @@ class of_base_sso_tool extends of_base_sso_api {
                     $tool['online'][$space] = array(
                         'user' => &$data['user'],
                         'name' => &$data['name'],
-                        'nike' => &$data['nike'],
-                        'role' => &$data['role']
+                        'nick' => &$data['nick'],
+                        'role' => &$data['role'],
+                        'notes' => &$data['notes'],
+                        //兼容历史错误nike应为nick
+                        'nike' => &$data['nike']
                     );
                 }
 
@@ -189,7 +192,7 @@ class of_base_sso_tool extends of_base_sso_api {
      *      null=未登录, 数组=登录结构 {
      *          "user"   : SSO中的用户ID
      *          "name"   : 用户帐号
-     *          "nike"   : 用户昵称
+     *          "nick"   : 用户昵称
      *          "notes"  : 用户备注
      *          "role"   : 角色权限包, 如果登录了存在 {
      *              "allow" : 允许访问接口,当获取拥有权限时存在 {

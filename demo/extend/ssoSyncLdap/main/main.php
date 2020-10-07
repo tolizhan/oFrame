@@ -58,7 +58,7 @@ function login($params = null) {
 
                         //登录成功的SQL
                         $params['sql'] = "SELECT
-                            `id` `user`, `name`, IF(`nike` = '', `name`, `nike`) `nike`, `time`
+                            `id` `user`, `name`, IF(`nick` = '', `name`, `nick`) `nick`, `time`
                         FROM
                             `_of_sso_user_attr`
                         WHERE
@@ -391,11 +391,11 @@ function setUser(&$params) {
     (!$temp['pwd'] || strlen($params['pwd']) < 8) && $temp['time'] = '2000-01-01 00:00:00';
 
     $sql = "INSERT INTO `_of_sso_user_attr` (
-        `name`, `pwd`, `nike`, `notes`, `state`, `find`, `time`
+        `name`, `pwd`, `nick`, `notes`, `state`, `find`, `time`
     ) VALUES (
         '{$temp['user']}', '{$temp['pwd']}', '{$temp['name']}', '{$temp['dept']}::{$temp['post']}', '1', '', '{$temp['time']}'
     ) ON DUPLICATE KEY UPDATE 
-        `nike` = IF(VALUES(`nike`), VALUES(`nike`), `nike`),
+        `nick` = IF(VALUES(`nick`), VALUES(`nick`), `nick`),
         `notes` = IF(VALUES(`notes`) = '::', `notes`, VALUES(`notes`)),
         `state` = '1'";
 

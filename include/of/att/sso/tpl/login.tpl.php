@@ -46,7 +46,7 @@ echo '<script>var ofBaseSsoLogin = ' .of_base_com_data::json($_GET). '</script>'
                     <tr>
                         <td>昵称 </td>
                         <td>
-                            <input id="nike" name="nike">
+                            <input id="nick" name="nick">
                         </td>
                     </tr>
                 </tbody>

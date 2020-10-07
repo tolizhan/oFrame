@@ -42,6 +42,8 @@ return array(
             'timezone'   => true,
             //设置隔离级别, ""=跟随系统, "READ UNCOMMITTED", "READ COMMITTED", "REPEATABLE READ", "SERIALIZABLE"
             'isolation'  => 'READ COMMITTED',
+            //跟踪死锁与超时(需mysql >= 5.5, PROCESS权限), 默认n=0关闭, n>0记录前n条加锁SQL, n<0不记录SQL
+            'errorTrace' => 0,
             //是否长连接
             'persistent' => false
         )

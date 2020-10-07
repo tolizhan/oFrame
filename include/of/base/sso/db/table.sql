@@ -63,7 +63,7 @@ INSERT INTO `__COLUMNS` (`TABLE_NAME`,`COLUMN_NAME`,`ORDINAL_POSITION`,`COLUMN_D
 ('_of_sso_user_attr','id','1',NULL,'NO',NULL,NULL,'int(10) unsigned','auto_increment','主键'),
 ('_of_sso_user_attr','name','2','','NO','utf8','utf8_general_ci','char(255)','','登录帐号'),
 ('_of_sso_user_attr','pwd','3','','NO','utf8','utf8_general_ci','char(255)','','登录密码'),
-('_of_sso_user_attr','nike','4','','NO','utf8','utf8_general_ci','char(255)','','备注昵称,默认与name相同'),
+('_of_sso_user_attr','nick','4','','NO','utf8','utf8_general_ci','char(255)','','备注昵称,默认与name相同'),
 ('_of_sso_user_attr','notes','5',NULL,'NO','utf8','utf8_general_ci','mediumtext','','帐号备注'),
 ('_of_sso_user_attr','state','6','1','NO',NULL,NULL,'tinyint(1) unsigned','','可用状态,0=冻结,1=启用'),
 ('_of_sso_user_attr','find','7',NULL,'NO',NULL,NULL,'binary(255)','','找回问答,结构:问题字节长度_问题答案,如:10_你生日?不知道'),

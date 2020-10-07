@@ -8,17 +8,45 @@ class of_base_com_data {
     /**
      * 描述 : 安全的json
      * 参数 :
-     *     &data : 编码或解码的数据
-     *      isEn : true=编码, false=解码
+     *      data : 编码或解码的数据
+     *      mode : 位运算操作选项
+     *          0=解码
+     *              2=解码前去掉反斜杠
+     *          1=编码
+     *              2=编码后添加反斜杠
      * 返回 :
      *      编码解码后的数据
+     * 注明 :
+     *      JSON预定义常量 :
+     *          1   : JSON_HEX_TAG 所有的 < 和 > 转换成 \u003C 和 \u003E, PHP >= 5.3.0
+     *          256 : JSON_UNESCAPED_UNICODE 不使用"\uXXXX"方式, PHP >= 5.4.0
      * 作者 : Edgar.lee
      */
-    public static function &json(&$data, $isEn = true) {
-        if ($isEn) {
-            $result = json_encode($data);
-            $result = str_replace(array('<', '>'), array('\u003C', '\u003E'), $result);
+    public static function &json($data, $mode = 1) {
+        static $isUcs = null;
+
+        if ($mode & 1) {
+            $isUcs === null && $isUcs = version_compare(PHP_VERSION, '5.4', '>=');
+
+            //支持原生 unicode 解码
+            if ($isUcs) {
+                $result = json_encode($data, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE);
+            //代码实现 unicode 解码
+            } else {
+                $result = preg_replace_callback(
+                    '/(\\\\+)u([0-9a-f]{4})/i',
+                    'of_base_com_data::deUcs2',
+                    json_encode($data)
+                );
+                $result = str_replace(array('<', '>'), array('\u003C', '\u003E'), $result);
+            }
+
+            //额外添加反斜杠
+            $mode & 2 && $result = addslashes($result);
         } else {
+            //额外去掉反斜杠
+            $mode & 2 && $data = stripslashes($data);
+
             $result = json_decode($data, true);
         }
 
@@ -392,5 +420,22 @@ class of_base_com_data {
         if (self::$rule['return']) {
             return $error;
         }
+    }
+
+    /**
+     * 描述 : 辅助 json 的 unicode 字符解码
+     * 参数 :
+     *      match : 匹配"\uXXXX"格式 [全部匹配内容, 多个"\"部分, 四位十六进制]
+     * 返回 :
+     *      解码后的 unicode 字符
+     * 作者 : Edgar.lee
+     */
+    private static function deUcs2($match) {
+        if (($len = strlen($match[1])) % 2) {
+            $match[0] = iconv('UCS-2BE', 'UTF-8', pack('H*', $match[2]));
+            --$len && $match[0] = str_repeat('\\', $len) . $match[0];
+        }
+
+        return $match[0];
     }
 }

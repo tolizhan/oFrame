@@ -3,7 +3,11 @@ class of_accy_db_mysqli extends of_db {
     //连接源
     private $connection = null;
     //事务状态(true=已开启, false=未开启)
-    private $transState = false;
+    public $transState = false;
+    //数据库属性{"outBack" : 超时回滚, "timeout" : 加锁超时, "linkCid" : 连接ID, "version" : 版本号}
+    public $dbVar = null;
+    //超时SQL记录列表
+    public $sqlList = null;
 
     /**
      * 描述 : 连接到数据库
@@ -33,6 +37,19 @@ class of_accy_db_mysqli extends of_db {
             empty($params['isolation']) || mysqli_query(
                 $this->connection, 'SET SESSION TRANSACTION ISOLATION LEVEL ' . $params['isolation']
             );
+            //是否开启锁超时日志
+            isset($params['errorTrace']) || $params['errorTrace'] = 0;
+            //事务回滚模式
+            $temp = 'SELECT 
+                @@innodb_rollback_on_timeout outBack,
+                @@innodb_lock_wait_timeout timeout,
+                CONNECTION_ID() linkCid,
+                VERSION() version';
+            $this->_query($temp);
+            $this->dbVar = $this->_fetch();
+            //连接标识
+            $this->dbVar['linkMark'] = "{$this->dbVar['linkCid']}@{$params['host']}:{$params['port']}";
+            //读取数据库属性
             return true;
         } else {
             return false;
@@ -79,25 +96,26 @@ class of_accy_db_mysqli extends of_db {
                     )
                 AND `USER_PRIVILEGES`.PRIVILEGE_TYPE = "PROCESS"';
                 $this->_query($temp);
+                //事务进程权限
                 $rollback['lockLog'] = $this->_fetch();
 
                 //事务回滚模式
-                $temp = 'SELECT 
-                    @@innodb_rollback_on_timeout outBack,
-                    VERSION() version';
-                $this->_query($temp);
-                $temp = $this->_fetch();
-                $rollback['enable'] = version_compare($temp['version'], '5.7', '>=');
-                $rollback['outBack'] = $temp['outBack'] === '1';
+                $rollback['enable'] = version_compare($this->dbVar['version'], '5.7', '>=');
+                $rollback['outBack'] = $this->dbVar['outBack'] === '1';
             }
 
-            //读取死锁日志
+            //读取锁日志
             if ($rollback['lockLog']) {
-                $temp = 'SHOW ENGINE INNODB STATUS';
-                $this->_query($temp);
-                $temp = &$this->_fetch();
-                //记录死锁日志
-                $note = $temp['Status'];
+                //死锁日志
+                if ($errno === 1213) {
+                    $temp = 'SHOW ENGINE INNODB STATUS';
+                    $this->_query($temp);
+                    $temp = &$this->_fetch();
+                    ($note = &$temp['Status']) && of_accy_db_mysqli::getNote($this, $note);
+                //超时日志
+                } else {
+                    of_accy_db_mysqli::getNote($this, $note);
+                }
             }
 
             //mysql版本>=5.7回滚事务后需手动重启事务
@@ -137,6 +155,9 @@ class of_accy_db_mysqli extends of_db {
         $this->_ping();
 
         if ($this->transState = mysqli_query($this->connection, 'START TRANSACTION')) {
+            //记录逻辑回溯
+            of_accy_db_mysqli::setNote($this);
+
             return true;
         } else {
             throw new Exception('Failed to open transaction.');
@@ -148,6 +169,7 @@ class of_accy_db_mysqli extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _commit() {
+        $this->sqlList = null;
         $this->transState = false;
         return mysqli_query($this->connection, 'COMMIT');
     }
@@ -157,6 +179,7 @@ class of_accy_db_mysqli extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _rollBack() {
+        $this->sqlList = null;
         $this->transState = false;
         return mysqli_query($this->connection, 'ROLLBACK');
     }
@@ -210,8 +233,11 @@ class of_accy_db_mysqli extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _query(&$sql) {
-        if ($this->_ping() && mysqli_multi_query($this->connection, $sql)) {
-            return true;
+        if ($this->_ping()) {
+            //记录加锁SQL
+            of_accy_db_mysqli::setNote($this, $sql);
+
+            return mysqli_multi_query($this->connection, $sql);
         } else {
             return false;
         }
@@ -234,5 +260,276 @@ class of_accy_db_mysqli extends of_db {
         } else {
             return false;
         }
+    }
+
+    /**
+     * 描述 : 设置SQL锁备注信息
+     * 参数 :
+     *      obj : 连接对象
+     *     &sql : null=记录逻辑回溯, str=记录加锁SQL
+     * 作者 : Edgar.lee
+     */
+    public static function setNote($obj, &$sql = null) {
+        //开启锁超时日志
+        if ($obj->params['errorTrace']) {
+            try {
+                //记录逻辑回溯
+                if ($sql === null) {
+                    //清除SQL缓存
+                    $obj->sqlList = null;
+                    $temp = 'of_accy_db_mysql::sqls-' . $obj->dbVar['linkMark'];
+                    of_base_com_kv::del($temp);
+                    //记录事务追踪
+                    $temp = 'of_accy_db_mysql::trace-' . $obj->dbVar['linkMark'];
+                    of_base_com_kv::set($temp, array_slice(debug_backtrace(), 2), 3600);
+                    //开启超时监听
+                    $task = 'of_accy_db_mysqli::listenLockTimeout-' .
+                        "{$obj->params['user']}@{$obj->params['host']}:{$obj->params['port']}";
+                    if (of_base_com_disk::lock($task, LOCK_EX | LOCK_NB)) {
+                        of_base_com_timer::task(array(
+                            'time' => 0,
+                            'call' => array(
+                                'asCall' => 'of_accy_db_mysqli::listenLockTimeout',
+                                'params' => array(&$obj->params, 'mysqli')
+                            ),
+                            'cNum' => 1
+                        ));
+                        of_base_com_disk::lock($task, LOCK_UN);
+                    }
+                //记录加锁SQL
+                } else if (
+                    //事务已开启
+                    $obj->transState &&
+                    //开始锁超时记录
+                    ($index = &$obj->params['errorTrace']) > 0 &&
+                    //记录SQL列表未满
+                    !isset($obj->sqlList[$index]) &&
+                    //匹配加锁SQL语句
+                    preg_match('@\b(?:INSERT|UPDATE|DELETE|REPLACE|LOCK|ALTER)\b@i', $sql)
+                ) {
+                    //保存到加锁SQL列表
+                    $obj->sqlList[] = date('H:i:s > ', time()) . $sql;
+                    //写入k-v缓存
+                    $temp = 'of_accy_db_mysql::sqls-' . $obj->dbVar['linkMark'];
+                    of_base_com_kv::set($temp, $obj->sqlList, 3600);
+                }
+            } catch (Exception $e) {
+            }
+        }
+    }
+
+    /**
+     * 描述 : 读取SQL锁备注信息
+     * 参数 :
+     *      obj : 连接对象
+     *     &note : null=锁超时日志, str=死锁日志
+     * 作者 : Edgar.lee
+     */
+    public static function getNote($obj, &$note) {
+        //开启锁超时日志
+        if ($obj->params['errorTrace']) {
+            try {
+                //锁超时日志
+                if ($note === null) {
+                    $temp = array(
+                        'host' => "@{$obj->params['host']}:{$obj->params['port']}",
+                        'key'  => 'of_accy_db_mysql::waits-' . $obj->dbVar['linkMark']
+                    );
+
+                    //阻塞列表读取成功
+                    if ($temp['wait'] = of_base_com_kv::get($temp['key'])) {
+                        //记录超时客户端ID 与 阻塞信息
+                        $note = array(
+                            'requestId' => $obj->dbVar['linkCid'],
+                            'lockInfo' => &$temp['wait']['bInfo']
+                        );
+
+                        //生成超时追踪信息
+                        foreach ($temp['wait']['bCids'] as &$v) {
+                            //读取阻塞SQL
+                            $temp['key'] = 'of_accy_db_mysql::sqls-' . $v . $temp['host'];
+                            $note['lockSqls'][$v] = of_base_com_kv::get($temp['key']);
+                            //读取阻塞追踪
+                            $temp['key'] = 'of_accy_db_mysql::trace-' . $v . $temp['host'];
+                            $note['lockTrace'][$v] = of_base_com_kv::get($temp['key']);
+                        }
+
+                        $note = print_r($note, true);
+                    }
+                //死锁日志
+                } else {
+                    $note = array(
+                        'requestId' => $obj->dbVar['linkCid'],
+                        'lockSqls'  => array(),
+                        'lockTrace' => array(),
+                        'lockLogs'  => $note
+                    );
+
+                    //匹配死锁连接ID
+                    $temp = array(
+                        'preg' => '@MySQL thread id (\d+).*?MySQL thread id (\d+)@s',
+                        'host' => "@{$obj->params['host']}:{$obj->params['port']}"
+                    );
+                    preg_match($temp['preg'], $note['lockLogs'], $match);
+
+                    //记录死锁跟踪日志
+                    for ($i = 1; $i < 3; ++$i) {
+                        //死锁连接ID
+                        $index = &$match[$i];
+
+                        //自身连接ID
+                        if ($index === $note['requestId']) {
+                            $note['lockSqls'][$index] = $obj->sqlList;
+                        //死锁连接ID
+                        } else {
+                            //读取阻塞SQL
+                            $temp['key'] = 'of_accy_db_mysql::sqls-' . $index . $temp['host'];
+                            $note['lockSqls'][$index] = of_base_com_kv::get($temp['key']);
+                            //读取阻塞追踪
+                            $temp['key'] = 'of_accy_db_mysql::trace-' . $index . $temp['host'];
+                            $note['lockTrace'][$index] = of_base_com_kv::get($temp['key']);
+                        }
+                    }
+                }
+            } catch (Exception $e) {
+            }
+        }
+    }
+
+    /**
+     * 描述 : 记录MySql锁超时阻塞列表
+     * 参数 :
+     *      dbArgv : 数据库连接参数
+     *      dbName : 数据库连接对象
+     * 注明 :
+     *      被阻列表结构($bList) : {
+     *          被阻ID : {
+     *              "bCids" : 阻塞列表 {
+     *                  阻塞ID : 阻塞ID, ...
+     *              }
+     *              "bInfo" : 阻塞结构 {
+     *                  被阻时间@阻塞ID : {
+     *                      "rWait" : 被阻ID等待时间
+     *                      "bInfo" : 递归阻塞, 同阻塞结构
+     *                  }, ...
+     *              }
+     *          }, ...
+     *      }
+     * 作者 : Edgar.lee
+     */
+    public static function listenLockTimeout($dbArgv, $dbName) {
+        $task = 'of_accy_db_mysqli::listenLockTimeout-' .
+            "{$dbArgv['user']}@{$dbArgv['host']}:{$dbArgv['port']}";
+        //开启监控锁
+        of_base_com_disk::lock($task, LOCK_EX);
+        //配置连接池
+        of_db::pool($pool = uniqid(), array(
+            'adapter' => &$dbName,
+            'params'  => &$dbArgv
+        ));
+
+        //被阻列表
+        $bList = array();
+        //是否启动监听
+        $isOn = of_db::sql('SELECT VERSION() ver', $pool);
+        $isOn = version_compare($isOn[0]['ver'], '5.7', '>=');
+
+        //锁阻塞关系
+        $sql = 'SELECT
+            rTrx.trx_mysql_thread_id rCid,
+            rTrx.trx_wait_started rTime,
+            TIMESTAMPDIFF(SECOND, rTrx.trx_wait_started, NOW()) rWait,
+            GROUP_CONCAT(bTrx.trx_mysql_thread_id ORDER BY bTrx.trx_wait_started) bList
+        FROM
+            `information_schema`.`INNODB_LOCK_WAITS` wait
+                LEFT JOIN `information_schema`.`INNODB_TRX` rTrx ON
+                    rTrx.trx_id = wait.requesting_trx_id
+                LEFT JOIN `information_schema`.`INNODB_TRX` bTrx ON
+                    bTrx.trx_id = wait.blocking_trx_id
+        WHERE
+            TIMESTAMPDIFF(SECOND, rTrx.trx_wait_started, NOW()) > 2
+        GROUP BY
+            rCid';
+
+        //加载的文件未变动
+        while (!of_base_com_timer::renew()) {
+            //SQL执行成功
+            if ($isOn && ($temp = of_db::sql($sql, $pool)) !== false) {
+                //递归阻塞列表, 被阻数据
+                $wList = $bData = array();
+
+                //格式化被阻数据
+                foreach ($temp as &$vb) {
+                    $bData[$vb['rCid']] = &$vb;
+                }
+
+                //生成被阻列表
+                foreach ($bData as &$vb) {
+                    //被阻ID不存在 || 被阻时间不同(换了一阻塞SQL)
+                    if (!($index = &$bList[$vb['rCid']]) || $index['rTime'] !== $vb['rTime']) {
+                        $index = array(
+                            'rTime' => &$vb['rTime'],
+                            'bCids' => array(),
+                            'bInfo' => array()
+                        );
+                    }
+
+                    //递归阻塞ID, 生成阻塞结构
+                    $wList[] = array(
+                        'bCids' => &$index['bCids'],
+                        'bInfo' => &$index['bInfo'],
+                        'rTime' => &$vb['rTime'],
+                        'rWait' => &$vb['rWait'],
+                        'bList' => $vb['bList']
+                    );
+
+                    do {
+                        //弹出最后一条待处理信息
+                        $wait = array_pop($wList);
+                        //分割阻塞ID列表
+                        $wait['bList'] = explode(',', $wait['bList']);
+
+                        //生成阻塞结构
+                        foreach ($wait['bList'] as &$vw) {
+                            //"被阻时间@阻塞ID"
+                            $iKey = $wait['rTime'] .'@'. $vw;
+                            //记录到被阻ID的阻塞列表中
+                            $wait['bCids'][$vw] = &$vw;
+                            //记录到递归阻塞结构列表中
+                            $wait['bInfo'][$iKey]['rWait'] = &$wait['rWait'];
+
+                            //递归阻塞ID, 生成阻塞结构
+                            isset($bData[$vw]) && $wList[] = array(
+                                'bCids' => &$index['bCids'],
+                                'bInfo' => &$wait['bInfo'][$iKey]['bInfo'],
+                                'rTime' => &$bData[$vw]['rTime'],
+                                'rWait' => &$bData[$vw]['rWait'],
+                                'bList' => $bData[$vw]['bList']
+                            );
+                        }
+                    } while (isset($wList[0]));
+                }
+
+                //缓存被阻列表
+                foreach ($bList as $kb => &$vb) {
+                    //更新缓存
+                    if (isset($bData[$kb])) {
+                        //被阻列表缓存5分钟
+                        $temp = 'of_accy_db_mysql::waits-' .
+                            "{$kb}@{$dbArgv['host']}:{$dbArgv['port']}";
+                        of_base_com_kv::set($temp, $vb, 300);
+                    //释放无效内存
+                    } else {
+                        unset($bList[$kb]);
+                    }
+                }
+            }
+
+            //休眠5s重新缓存
+            sleep(5);
+        }
+
+        //关闭监控锁
+        of_base_com_disk::lock($task, LOCK_UN);
     }
 }

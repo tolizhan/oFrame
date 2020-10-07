@@ -1,3 +1,40 @@
+版本: 244
+作者: Edgar
+日期: 2020年10月7日 16:08:41
+信息:
+说明: + 跟踪 mysql 死锁与超时错误代码逻辑, 详见 手册-数据库连接-错误跟踪
+      + L.open 配置文件支持跨站插件
+      + L.ajax 支持自定义头信息 header
+      + of_base_com_data::json 第二参数增加"2"选项, 编解码前后增删反斜杠
+      - 单点登录用户属性及表 _of_sso_user_attr 字段更名 nike 改为 nick
+      * 优化 L::open('soap') 插件构造函数
+      * 修复 mysqlPdo 在 mysql >= 5.7 时锁回滚导致抛异常问题
+      * of_base_com_data::json 默认加上 JSON_UNESCAPED_UNICODE 参数
+      * 解决chrome >= 85, sso跳转登录因"Referrer-Policy"策略失效的问题
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/extend/ssoSyncLdap/main/main.php
+已修改 : /trunk/demo/tool/docsToMd/index.php
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqlPdo.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/addin/nusoap/nusoap.php
+已修改 : /trunk/include/of/att/link/L.js
+已修改 : /trunk/include/of/att/sso/js/login.js
+已修改 : /trunk/include/of/att/sso/tpl/login.tpl.php
+已修改 : /trunk/include/of/att/sso/tpl/main.tpl.php
+已修改 : /trunk/include/of/base/com/data.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/timer.php
+已增加 : /trunk/include/of/base/link/loadUrl.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/db/data.sql
+已修改 : /trunk/include/of/base/sso/db/table.sql
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+
 版本: 242
 作者: Edgar
 日期: 2020年7月27日 15:27:14

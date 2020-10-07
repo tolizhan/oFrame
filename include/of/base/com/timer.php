@@ -642,7 +642,8 @@ class of_base_com_timer {
                             unset($task[$safe['time']][$v]);
                         }
 
-                        if (!$task[$safe['time']]) unset($task[$safe['time']]);
+                        //可能是空数组也可能已被其它并发删掉
+                        if (empty($task[$safe['time']])) unset($task[$safe['time']]);
                         $callback = true;
                     }
 

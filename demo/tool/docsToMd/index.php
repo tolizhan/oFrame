@@ -20,6 +20,10 @@ $copys = array(
 $delete = array(
     '/navigation.md'
 );
+//创建文件内容
+$create = array(
+    '/_Footer.md' => '手册地址 http://phpof.net/'
+);
 
 //html输入路径长度
 $htmlInLen = strlen($htmlIn);
@@ -121,6 +125,8 @@ foreach ($dirs as $k => &$v) {
 foreach ($copys as $k => &$v) of_base_com_disk::copy($htmlOut . $v, $htmlOut . $k);
 //删除输出路径
 foreach ($delete as $k => &$v) of_base_com_disk::delete($htmlOut . $v);
+//创建文件内容
+foreach ($create as $k => &$v) of_base_com_disk::file($htmlOut . $k, $v);
 
 //更新完成
 echo '已更新 ', $htmlOut;

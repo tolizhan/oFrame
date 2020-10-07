@@ -9,6 +9,7 @@ L === undefined && (L = {
      *      value : 字符串=请求地址(data, func参数启用), 对象=请求参数 {
      *          "async"   : true(默认) = 异步请求,false = 同步请求
      *          "context" : 指定方法回调的this对象,默认window
+     *          "header"  : 设置请求头{键 : 值, ...}
      *          "data"    : 字符串=post数据,{'get':obj|str, 'post':obj|str}=综合数据
      *          "error"   : 错误时回调(请求对象)
      *          "success" : 成功时回调(请求的文本, 请求对象)
@@ -21,7 +22,7 @@ L === undefined && (L = {
      * 作者 : Edgar.lee
      */
     'ajax'          : function (value, data, func) {
-        var result = {
+        var temp = {}, result = {
             //ajax对象
             'ajax'   : new (window.ActiveXObject || window.XMLHttpRequest)('Microsoft.XMLHTTP'),
             'config' : {
@@ -29,6 +30,8 @@ L === undefined && (L = {
                 'url'     : window.location.href,
                 //true = 异步请求,false = 同步请求
                 'async'   : true,
+                //设置请求头
+                'header'  : {},
                 //字符串=post数据,{'get':{}, 'post':{}}=综合数据
                 'data'    : {},
                 //指定方法回调的this对象
@@ -78,10 +81,16 @@ L === undefined && (L = {
 
         //打开连接地址
         result.ajax.open(result.config.data.post ? 'post' : 'get', result.config.url, result.config.async);
+
+        //设置请求头
+        for (var i in result.config.header) {
+            temp[i.toUpperCase()] = true;
+            result.ajax.setRequestHeader(i, result.config.header[i]);
+        }
         //请求方式
-        result.ajax.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        temp['CONTENT-TYPE'] || result.ajax.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         //ajax标识
-        result.ajax.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        temp['X-REQUESTED-WITH'] || result.ajax.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 
         result.ajax.onreadystatechange = function() {
             if (result.ajax.readyState === 4) {
@@ -689,25 +698,30 @@ L === undefined && (L = {
                 return false;
             //未加载过
             } else {
-                L.ajax({'url' : url, 'async' : false, 'success' : function (code, ajax) {
-                    //css
-                    if (/.*css$/.test(url)) {
-                        var div = win.document.createElement("div");
-                        //提取url(xxx)
-                        code = code.replace(/url\((\'|\"|)([\w\/\.]*)\1\)/ig, function(){
-                            //计算出绝对路径
-                            return 'url("' + arguments[2].replace(/^(?:\.\/|\/)*((?:\.\.\/)+|(?!\w+:))/, function(){
-                                var regObj = new RegExp('(/[^/]+){' +(arguments[1].length/3 + 1)+ '}$');
-                                return ajax.config.url.replace(regObj, '') + '/';
-                            }) + '")';
-                        });
-                        div.innerHTML = 'div<div><style type="text/css">' +code+ '</style></div>';
-                        win.document.getElementsByTagName('head')[0].appendChild(div.getElementsByTagName('div')[0].firstChild);
-                    //js
-                    } else {
-                        win ? (win.execScript || win.eval)(code) : eval(code);
+                L.ajax({
+                    'url'     : url.indexOf('://') > -1 ?
+                        OF_URL + '/base/link/loadUrl.php?' + L.param({'url' : url}) : url,
+                    'async'   : false,
+                    'success' : function (code, ajax) {
+                        //css
+                        if (/.*css$/.test(url)) {
+                            var div = win.document.createElement("div");
+                            //提取url(xxx)
+                            code = code.replace(/url\((\'|\"|)([\w\/\.]*)\1\)/ig, function(){
+                                //计算出绝对路径
+                                return 'url("' + arguments[2].replace(/^(?:\.\/|\/)*((?:\.\.\/)+|(?!\w+:))/, function(){
+                                    var regObj = new RegExp('(/[^/]+){' +(arguments[1].length/3 + 1)+ '}$');
+                                    return url.replace(regObj, '') + '/';
+                                }) + '")';
+                            });
+                            div.innerHTML = 'div<div><style type="text/css">' +code+ '</style></div>';
+                            win.document.getElementsByTagName('head')[0].appendChild(div.getElementsByTagName('div')[0].firstChild);
+                        //js
+                        } else {
+                            win ? (win.execScript || win.eval)(code) : eval(code);
+                        }
                     }
-                }});
+                });
                 //标记已加载
                 return list[url] = true;
             }

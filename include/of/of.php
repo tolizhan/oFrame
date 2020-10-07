@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200242);
+define('OF_VERSION', 200244);
 
 /**
  * 描述 : 控制层核心
@@ -169,13 +169,9 @@ class of {
             //数组定位
             $vaule = of::getArrData(array(&$name, &$config, &$default, 2));
 
-            //格式成 磁盘 或 网络 路径
-            if ($action & 1 || $action & 2) {
-                if ($vaule !== null) {
-                    $vaule = self::formatPath(
-                        $vaule, $action & 1 ? ROOT_DIR : ROOT_URL
-                    );
-                }
+            //格式成 磁盘(1) 或 网络(2) 路径 && 值不为NULL
+            if ($action & 3 && $vaule !== null) {
+                $vaule = self::formatPath($vaule, $action & 1 ? ROOT_DIR : ROOT_URL);
             }
 
             $default = &$vaule;

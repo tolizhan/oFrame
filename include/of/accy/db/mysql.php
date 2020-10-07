@@ -2,10 +2,14 @@
 class of_accy_db_mysql extends of_db {
     //连接源
     private $connection = null;
-    //事务状态(true=已开启, false=未开启)
-    private $transState = false;
     //当前结果集
     private $query = null;
+    //事务状态(true=已开启, false=未开启)
+    public $transState = false;
+    //数据库属性{"outBack" : 超时回滚, "timeout" : 加锁超时, "linkCid" : 连接ID, "version" : 版本号}
+    public $dbVar = null;
+    //超时SQL记录列表
+    public $sqlList = null;
 
     /**
      * 描述 : 连接到数据库
@@ -34,6 +38,18 @@ class of_accy_db_mysql extends of_db {
             empty($params['isolation']) || mysql_query(
                 'SET SESSION TRANSACTION ISOLATION LEVEL ' . $params['isolation'], $this->connection
             );
+            //是否开启锁超时日志
+            isset($params['errorTrace']) || $params['errorTrace'] = 0;
+            //事务回滚模式
+            $temp = 'SELECT 
+                @@innodb_rollback_on_timeout outBack,
+                @@innodb_lock_wait_timeout timeout,
+                CONNECTION_ID() linkCid,
+                VERSION() version';
+            $this->_query($temp);
+            $this->dbVar = $this->_fetch();
+            //连接标识
+            $this->dbVar['linkMark'] = "{$this->dbVar['linkCid']}@{$params['host']}:{$params['port']}";
             return true;
         } else {
             return false;
@@ -80,24 +96,26 @@ class of_accy_db_mysql extends of_db {
                     )
                 AND `USER_PRIVILEGES`.PRIVILEGE_TYPE = "PROCESS"';
                 $this->_query($temp);
+                //事务进程权限
                 $rollback['lockLog'] = $this->_fetch();
 
                 //事务回滚模式
-                $temp = 'SELECT 
-                    @@innodb_rollback_on_timeout outBack,
-                    VERSION() version';
-                $this->_query($temp);
-                $temp = $this->_fetch();
-                $rollback['enable'] = version_compare($temp['version'], '5.7', '>=');
-                $rollback['outBack'] = $temp['outBack'] === '1';
+                $rollback['enable'] = version_compare($this->dbVar['version'], '5.7', '>=');
+                $rollback['outBack'] = $this->dbVar['outBack'] === '1';
             }
 
+            //读取锁日志
             if ($rollback['lockLog']) {
-                $temp = 'SHOW ENGINE INNODB STATUS';
-                $this->_query($temp);
-                $temp = &$this->_fetch();
-                //记录死锁日志
-                $note = $temp['Status'];
+                //死锁日志
+                if ($errno === 1213) {
+                    $temp = 'SHOW ENGINE INNODB STATUS';
+                    $this->_query($temp);
+                    $temp = &$this->_fetch();
+                    ($note = &$temp['Status']) && of_accy_db_mysqli::getNote($this, $note);
+                //超时日志
+                } else {
+                    of_accy_db_mysqli::getNote($this, $note);
+                }
             }
 
             //mysql版本>=5.7回滚事务后需手动重启事务
@@ -137,6 +155,9 @@ class of_accy_db_mysql extends of_db {
         $this->_ping();
 
         if ($this->transState = mysql_query('START TRANSACTION', $this->connection)) {
+            //记录逻辑回溯
+            of_accy_db_mysqli::setNote($this);
+
             return true;
         } else {
             throw new Exception('Failed to open transaction.');
@@ -148,6 +169,7 @@ class of_accy_db_mysql extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _commit() {
+        $this->sqlList = null;
         $this->transState = false;
         return mysql_query('COMMIT', $this->connection);
     }
@@ -157,6 +179,7 @@ class of_accy_db_mysql extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _rollBack() {
+        $this->sqlList = null;
         $this->transState = false;
         return mysql_query('ROLLBACK', $this->connection);
     }
@@ -272,6 +295,9 @@ class of_accy_db_mysql extends of_db {
         }
 
         if ($this->_ping()) {
+            //记录加锁SQL
+            of_accy_db_mysqli::setNote($this, $sql);
+
             foreach ($sqlList as &$v) {
                 //执行成功
                 if ($temp = mysql_query($v, $this->connection)) {

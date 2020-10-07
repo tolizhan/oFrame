@@ -18,7 +18,7 @@
  *              登录类型 : {
  *                  "user"  : 已登陆的用户ID
  *                  "name"  : 已登录的用户名
- *                  "nike"  : 已登录的用户昵称
+ *                  "nick"  : 已登录的用户昵称
  *                  "notes" : 已登录的用户备注
  *              }
  *          },
@@ -47,7 +47,7 @@
  *                  登录类型 : 在线用户 {
  *                      "user"  : SSO中的用户ID
  *                      "name"  : 用户名
- *                      "nike"  : 昵称
+ *                      "nick"  : 昵称
  *                      "notes" : 已登录的用户备注
  *                      "role"  : 角色权限包, 如果登录了存在 {
  *                          "allow" : 允许访问接口,当获取拥有权限时存在 {
@@ -181,7 +181,7 @@ class of_base_sso_api {
      *      否则返回票据整合到$_GET[url]后的网址 {
      *          "static" : "done"=成功, "error"=失败
      *          "ticket" : 一次性票据
-     *          "nike"   : null=没登录,字符串=已登录的用户昵称
+     *          "nick"   : null=没登录,字符串=已登录的用户昵称
      *      }
      * 注明 :
      *      GET参数结构 : {
@@ -248,7 +248,7 @@ class of_base_sso_api {
      *          "ticket" : 可用票据,
      *          "user"   : 用户ID, 如果登录了存在
      *          "name"   : 用户名, 如果登录了存在
-     *          "nike"   : 用户昵称
+     *          "nick"   : 用户昵称
      *          "notes"  : 用户备注
      *          "role"   : 角色包, 如果登录了存在 {
      *              "allow" : 允许访问接口,当获取拥有权限时存在 {
@@ -331,8 +331,10 @@ class of_base_sso_api {
                 $json += array(
                     'user'  => &$index['user'],
                     'name'  => &$index['name'],
-                    'nike'  => &$index['nike'],
-                    'notes' => &$index['notes']
+                    'nick'  => &$index['nick'],
+                    'notes' => &$index['notes'],
+                    //兼容历史错误nike应为nick
+                    'nike'  => &$index['nick'],
                 );
 
                 //获取权限
@@ -417,7 +419,7 @@ class of_base_sso_api {
      *          "oPwd"     : 按照密码修改数据
      *          "oAnswer"  : 按照回答修改数据
      *          "pwd"      : 密码
-     *          "nike"     : 昵称
+     *          "nick"     : 昵称
      *          "notes"    : 用户备注
      *          "state"    : 可用状态,0=冻结,1=启用
      *          "question" : 问题
@@ -437,7 +439,7 @@ class of_base_sso_api {
                         $sql = "SELECT
                             SUBSTR(
                                 `find`, POSITION('_' IN `find`) + 1, SUBSTR(`find`, 1, POSITION('_' IN `find`) - 1)
-                            ) `question`, `name`, `nike`, `notes`
+                            ) `question`, `name`, `nick`, `notes`
                         FROM
                             `_of_sso_user_attr`
                         WHERE
@@ -451,7 +453,7 @@ class of_base_sso_api {
                 case 'setUser':
                     $sql = $where = array();
 
-                    empty($_GET['nike']) || $sql[] = "`nike` = '{$_GET['nike']}'";
+                    empty($_GET['nick']) || $sql[] = "`nick` = '{$_GET['nick']}'";
                     empty($_GET['notes']) || $sql[] = "`notes` = '{$_GET['notes']}'";
                     empty($_GET['state']) || $sql[] = "`state` = '{$_GET['state']}'";
                     if (!empty($_GET['question']) && !empty($_GET['answer'])) {
@@ -534,7 +536,7 @@ class of_base_sso_api {
      *      验证失败返回 null, 否则返回 {
      *          "user"  : 用户ID, 
      *          "name"  : 用户名,
-     *          "nike"  : 昵称, 如 昵称 不存在 用户名代替
+     *          "nick"  : 昵称, 如 昵称 不存在 用户名代替
      *          "time"  : 最后修改时间, false=已过期
      *          "notes" : 用户备注
      *      }
@@ -545,7 +547,7 @@ class of_base_sso_api {
         $config = &self::$config;
 
         $sql = "SELECT
-            `id` `user`, `name`, IF(`nike` = '', `name`, `nike`) `nike`, `time`, `notes`
+            `id` `user`, `name`, IF(`nick` = '', `name`, `nick`) `nick`, `time`, `notes`
         FROM
             `_of_sso_user_attr`
         WHERE
@@ -573,7 +575,7 @@ class of_base_sso_api {
      *     &type  : false=退出当前登录, 数组=登入指定用户 {
      *          "user"  : 登入用户ID,
      *          "name"  : 登入用户帐号,
-     *          "nike"  : 登入用户昵称,
+     *          "nick"  : 登入用户昵称,
      *          "notes" : 用户备注
      *      }
      * 作者 : Edgar.lee

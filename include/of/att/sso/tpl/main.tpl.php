@@ -72,7 +72,7 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
                         <tbody>
                             <tr name="pagingItem" key="{`id`}" style="display: none;" onclick="ofBaseSsoMain.item('user', '{`id`}');">
                                 <td><input type="checkbox">{`_state`}</td>
-                                <td>{`nike`}</td>
+                                <td>{`nick`}</td>
                                 <td>{`name`}</td>
                             </tr>
                         </tbody>
@@ -215,7 +215,7 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
                     <input name="id" type="hidden">
                     <label>帐号 : <input name="name" type="text"></label>
                     <label>密码 : <input name="pwd" type="text"></label>
-                    <label>昵称 : <input name="nike" type="text"></label>
+                    <label>昵称 : <input name="nick" type="text"></label>
                     <label>问题 : <input name="question" type="text"></label>
                     <label>回答 : <input name="answer" type="text"></label>
                     <label>备注 : <textarea name="notes"></textarea></label>

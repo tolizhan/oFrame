@@ -125,7 +125,7 @@ var ofBaseSsoLogin = {
                 } else {
                     ofBaseSsoLogin.tipBar(tips[1]);
                     qObj.value = (data = L.json(data)).question;
-                    document.getElementById('nike').value = data.nike;
+                    document.getElementById('nick').value = data.nick;
                 }
             });
         }

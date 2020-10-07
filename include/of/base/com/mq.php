@@ -718,7 +718,7 @@ abstract class of_base_com_mq {
 
         //(返回false && 每5次报错) || (返回true && 事务未结束) || (非布尔 && 非数字)
         if (
-            $return === false && $data['count'] % 5 === 1 ||
+            $return === false && $data['count'] % 5 === 3 ||
             $return === true && $trxs ||
             !is_bool($return) && !is_int($return)
         ) {

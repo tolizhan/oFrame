@@ -19,6 +19,7 @@ class of_base_sso_main extends of_base_sso_api {
             self::loginMain();
         //已登录回跳
         } else if (isset($_GET['referer'])) {
+            header('Referrer-Policy: unsafe-url');
             $_GET['form'] = of_base_sso_api::ticket();
             of_view::display('_' . OF_DIR . '/att/sso/tpl/login.tpl.php');
         //初始化管理权限
@@ -154,7 +155,7 @@ class of_base_sso_main extends of_base_sso_api {
         unset($params['action'], $params['save'], $params['linksel']);
 
         $sql = "SELECT 
-            `id`, `name`, `nike`, `notes`, '' `pwd`, '' `answer`,
+            `id`, `name`, `nick`, `notes`, '' `pwd`, '' `answer`,
             SUBSTR(`find`, POSITION('_' IN `find`) + 1, SUBSTR(`find`, 1, POSITION('_' IN `find`) - 1)) `question`,
             IF(`state`, '', '<img src=\"" .OF_URL. "/att/sso/img/main/iceState.png\">') `_state`,
             IF(FIND_IN_SET(`id`, '{$inStr}'), 0, 1) `sort`
@@ -165,7 +166,7 @@ class of_base_sso_main extends of_base_sso_api {
         if (!empty($params['search'])) {
             $sql .= " WHERE 
                 INSTR(`name`, '{$params['search']}')
-            OR  INSTR(`nike`, '{$params['search']}')
+            OR  INSTR(`nick`, '{$params['search']}')
             OR  INSTR(`notes`, '{$params['search']}')";
 
             //添加选中项
@@ -780,7 +781,7 @@ class of_base_sso_main extends of_base_sso_api {
     public static function getUserInfo() {
         if (isset($_POST['name'])) {
             $sql = "SELECT
-                `nike`,
+                `nick`,
                 SUBSTR(`find`, POSITION('_' IN `find`) + 1, SUBSTR(`find`, 1, POSITION('_' IN `find`) - 1)) `question`
             FROM
                 `_of_sso_user_attr`
@@ -872,13 +873,13 @@ class of_base_sso_main extends of_base_sso_api {
                         preg_match('@^[a-z0-9]{32}$@', $data[6]) || $data[6] = md5($data[6]);
                         $temp = ($temp = strlen($data[5])) ? $temp . '_' . $data[5] . $data[6] : '';
                         $sql = "INSERT INTO `_of_sso_user_attr` (
-                            `name`, `pwd`, `state`, `nike`, `notes`, `find`
+                            `name`, `pwd`, `state`, `nick`, `notes`, `find`
                         ) VALUES (
                             '{$data[2]}', '{$data[3]}', '{$data[1]}', '{$data[4]}', '{$data[7]}', '{$temp}'
                         ) ON DUPLICATE KEY UPDATE
                             `pwd` = VALUES(`pwd`),
                             `state` = VALUES(`state`),
-                            `nike` = VALUES(`nike`),
+                            `nick` = VALUES(`nick`),
                             `find` = VALUES(`find`),
                             `notes` = VALUES(`notes`)";
                         of_db::sql($sql, self::$config['dbPool']);
@@ -1056,7 +1057,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `time` = IF(`pwd` = '{$md5}', `time`, NOW()),
                         `pwd`  = '{$md5}',
                         `find` = '{$temp}',
-                        `nike` = '{$_POST['nike']}'
+                        `nick` = '{$_POST['nick']}'
                     WHERE 
                         `name` = '{$_POST['name']}'
                     AND (
@@ -1072,7 +1073,7 @@ class of_base_sso_main extends of_base_sso_api {
                         `name`  = '{$_POST['name']}',
                         `pwd`   = MD5('{$_POST['pwd']}'),
                         `find`  = '{$temp}',
-                        `nike`  = '{$_POST['nike']}',
+                        `nick`  = '{$_POST['nick']}',
                         `state` = '1'";
 
                     of_db::sql($sql, self::$config['dbPool']) || $result = array('state' => 'error', 'msg' => '账号冲突');
