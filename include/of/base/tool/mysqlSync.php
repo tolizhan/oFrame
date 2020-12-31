@@ -558,6 +558,8 @@ class of_base_tool_mysqlSync {
             } else {
                 $index = &self::$config['callDb'];
                 $index['params']['_'] = &$sql;
+                //兼容 php >= 8 添加的命名参数
+                foreach ($index['params'] as &$v) $args[] = &$v;
                 $return = call_user_func_array($index['asCall'], $index['params']);
             }
 

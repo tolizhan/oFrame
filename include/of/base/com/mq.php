@@ -139,9 +139,9 @@ abstract class of_base_com_mq {
                             $vl['execInfo'] = of_base_com_timer::data(null, $kl, '/' . $k);
                             $vl['execInfo'] = &$vl['execInfo']['info'][$kl]['data']['_mq'];
 
-                            if (isset($vl['execInfo']['minMemory'])) {
-                                $vl['execInfo']['minMemory'] = round(
-                                    $vl['execInfo']['minMemory'] / 1048576, 2
+                            if (isset($vl['execInfo']['useMemory'])) {
+                                $vl['execInfo']['useMemory'] = round(
+                                    $vl['execInfo']['useMemory'] / 1048576, 2
                                 ) . 'M';
                             }
                         }
@@ -677,7 +677,7 @@ abstract class of_base_com_mq {
             'startTime' => date('Y-m-d H:i:s', time()),
             'doneTime'  => '',
             'runCount'  => ++$count,
-            'minMemory' => &$fireEnv['memory']
+            'useMemory' => &$fireEnv['memory']
         );
         //记录监听数据
         of_base_com_timer::data(array('_mq' => &$cLog));
@@ -712,7 +712,7 @@ abstract class of_base_com_mq {
         //修改并发日志
         $cLog['doneTime'] = date('Y-m-d H:i:s', time());
         //记录当前内存
-        $cLog['minMemory'] = memory_get_peak_usage();
+        $cLog['useMemory'] = memory_get_peak_usage();
         //记录监听数据
         of_base_com_timer::data(array('_mq' => &$cLog));
 

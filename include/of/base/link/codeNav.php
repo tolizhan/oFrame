@@ -128,6 +128,13 @@ namespace of\base\extension {
 
 }
 
+namespace of\base\firewall {
+
+    class main extends \of_base_firewall_main {
+    }
+
+}
+
 namespace of\base\htmlTpl {
 
     class engine extends \of_base_htmlTpl_engine {

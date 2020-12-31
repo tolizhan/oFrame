@@ -163,7 +163,7 @@ class _PHPRPC_Client {
         if (!isset($urlparts['path'])) {
             $urlparts['path'] = "/";
         }
-        else if (($urlparts['path']{0} != '/') && ($_SERVER["PHP_SELF"]{0} == '/')) {
+        else if (($urlparts['path'][0] != '/') && ($_SERVER["PHP_SELF"][0] == '/')) {
             $urlparts['path'] = substr($_SERVER["PHP_SELF"], 0, strrpos($_SERVER["PHP_SELF"], '/') + 1) . $urlparts['path'];
         }
 

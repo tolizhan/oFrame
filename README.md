@@ -1,6 +1,6 @@
 # orange-framework 模块化轻量级php框架
 
-框架本身是套解决方案, 兼容全浏览器及[php5.2~7.x](http://doc.phpof.net/?oFrame/FAQ/namespace.html,oFrame/navigation.html)<br>
+框架本身是套解决方案, 兼容全浏览器及[php5.2~8.x](http://doc.phpof.net/?oFrame/FAQ/namespace.html,oFrame/navigation.html)<br>
 它基于MVCS, 同时[支持多种设计模式](http://doc.phpof.net/?oFrame/FAQ/architect.html,oFrame/navigation.html)<br>
 它拥有简洁的[开发方式](http://doc.phpof.net/?oFrame/helpManual/controller.html,oFrame/navigation.html,work), 巧思的[模板引擎](http://doc.phpof.net/?oFrame/helpManual/htmlTpl.html,oFrame/navigation.html)<br>
 它支持原生的[并发操作](http://doc.phpof.net/?oFrame/components/timer.html,oFrame/navigation.html), 分布式[消息队列](http://doc.phpof.net/?oFrame/components/mq.html,oFrame/navigation.html)<br>
@@ -18,8 +18,9 @@
 4. 访问框架根目录, 显示界面并且没有红色报错便部署成功
 
 ### 正式部署
-1. 打开框架配置/include/of/config.php
-2. 修改config键值为null 目的是删除 demo 对框架的重写
+0. 打开框架配置/include/of/config.php
+1. 修改config键值为null 目的是删除 demo 对框架的重写
+2. 修改debug键值, 生产环境一个要改为"字符串"密码, 防止生产环境敏感信息泄漏
 3. 修改db键值连接一个数据库
 4. 根据实际需求开关 preloaded 中对应的模块
 5. 删除/demo文件夹

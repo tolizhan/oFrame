@@ -7,7 +7,7 @@ class of_accy_com_kv_files extends of_base_com_kv {
     protected function _connect() {
         //格式为磁盘路径
         $this->params['path'] = isset($this->params['path']) ?
-            of::formatPath($this->params['path'], ROOT_DIR) : 
+            of::formatPath($this->params['path'], ROOT_DIR) :
             ROOT_DIR . OF_DATA . '/_of/of_accy_com_kv_files';
 
         //垃圾回收
@@ -54,7 +54,7 @@ class of_accy_com_kv_files extends of_base_com_kv {
         fclose($fp);
 
         //垃圾回收
-        $this->_gc();
+        rand(0, 99) === 1 && $this->_gc();
         return true;
     }
 
@@ -86,12 +86,12 @@ class of_accy_com_kv_files extends of_base_com_kv {
         $path = $this->params['path'] . '/' . md5($name) . '.php';
         //当前时间戳
         $time = time();
-        //追加写入锁
-        $fp = of_base_com_disk::file($path, null, null);
+        //打开共享锁
+        $fp = of_base_com_disk::file($path, null, false);
 
         //存在 && 有效(兼容win php < 5.3.0)
         if (
-            $result = ftell($fp) && 
+            $result = filesize($path) && 
             (filemtime($path) >= $time || fileatime($path) >= $time)
         ) {
             $result = of_base_com_disk::file($fp, false, true);

@@ -14,6 +14,12 @@ return array(
             'd1' => 'of_base_extension_match',
             //初始化演示界面
             'd2' => 'demo_model_list',
+            //加载 bootstrap
+            'd3' => 'demo_file_bsui_setup',
+        ),
+        //防火墙
+        'firewall'    => array(
+            'network' => '/demo/config/network.php'
         ),
         //修改扩展路径
         'extension' => array(

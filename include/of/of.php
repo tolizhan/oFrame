@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200244);
+define('OF_VERSION', 200246);
 
 /**
  * 描述 : 控制层核心
@@ -319,7 +319,7 @@ class of {
 
     /**
      * 描述 : 管理工作流程, 独立的 时间 队列 错误及事务, 让代码更简洁
-     *      工作可以嵌套, 产生任何错误, 事务都会回滚
+     *      工作可以嵌套, 产生任何错误, 事务都会回滚, 嵌套工作会创建额外数据库连接
      *      可以使用 try catch 或 回调方式 开始一个工作
      *      可以获取 当前工作开始时间 与 产生的错误
      *      可以抛出 工作异常 并通过捕获简化代码逻辑
@@ -355,6 +355,23 @@ class of {
 
      *     #工作信息(文本)
      *      code : 固定"info"
+     *      info : 获取指定"info"信息, 默认=获取全部, 字符串=全部项里的键名
+
+     *     #延迟回调(文本) 在工作事务提交前按队列顺序执行
+     *      code : 固定"defer"
+     *      info : 回调方法接收参数结构 {"wuid" : 工作ID, "isOk" : true=最终提交 false=最终回滚}
+     *          false = 删除指定标识的回调
+     *          框架回调结构 = 不开启工作直接回调, 若报错将影响当前工作执行结果
+     *          {"onWork" : 监听数据库, "asCall" : 框架回调, "params" :o回调参数} = 在新工作中回调
+     *      data : 回调唯一标识, 默认=随机标识, 字符串=指定标识
+
+     *     #完成回调(文本) 在工作事务提交后(在父级工作中)按队列顺序执行
+     *      code : 固定"done"
+     *      info : 回调方法接收参数结构 {"wuid" : 工作ID, "isOk" : true=最终提交 false=最终回滚}
+     *          false = 删除指定标识的回调
+     *          框架回调结构 = 不开启工作直接回调, 若报错将影响父级工作执行结果
+     *          {"onWork" : 监听数据库, "asCall" : 框架回调, "params" :o回调参数} = 在新工作中回调
+     *      data : 回调唯一标识, 默认=随机标识, 字符串=指定标识
      * 返回 :
      *     #开启工作(数组)
      *      失败抛出异常, 成功 {"code" : 200, "info" : "Successful", "data" : []}
@@ -385,8 +402,26 @@ class of {
      *      }
 
      *     #工作信息("info")
-     *      不在工作中返回 null, 反之返回 {"list" : [监听连接池, ...]}
+     *      不在工作中返回 null
+     *      指定项存在, 返回项信息
+     *      否则返回全部项 {"wuid" : 工作ID, "list" : [监听连接池, ...]}
      * 注明 :
+     *      监听栈列表结构($sList) : [{
+     *          "wuid"  : 工作ID,
+     *          "time"  : [时间戳, 格式化],
+     *          "list"  : 监听的连接池 {
+     *              数据池 : 被克隆数据池,
+     *              ...
+     *          },
+     *          "defer" : 延迟执行回调 {
+     *              回调标识 : 框架回调结构,
+     *              ...
+     *          },
+     *          "done"  : 完成执行回调 {
+     *              回调标识 : 框架回调结构,
+     *              ...
+     *          }
+     *      }, ...]
      *      返回的状态码一览表
      *          500 : 发生内部错误(代码报错)
      * 作者 : Edgar.lee
@@ -394,7 +429,7 @@ class of {
     public static function work($code, $info = '', $data = array()) {
         //问题异常类名
         static $class = null;
-        //监听栈列表 [{"time" : [时间戳, 格式化], "list" : {数据池 : 被克隆数据池, ...}}, ...]
+        //监听栈列表
         static $sList = array();
         //数组传参模式
         $code === 'extr' && extract($info, EXTR_REFS);
@@ -413,8 +448,11 @@ class of {
                 array_unshift(self::$workErr, null);
                 //压入栈列表
                 array_unshift($sList, array(
-                    'time' => array($time = time(), date('Y-m-d H:i:s', $time)),
-                    'list' => array()
+                    'wuid'  => uniqid(),
+                    'time'  => array($time = time(), date('Y-m-d H:i:s', $time)),
+                    'list'  => array(),
+                    'defer' => array(),
+                    'done'  => array()
                 ));
                 $index = &$sList[0]['list'];
             }
@@ -443,7 +481,7 @@ class of {
                     //返回false回滚工作 || 有错误提交工作
                     self::work($temp = self::callFunc($info, array(
                         'result' => &$result, 'data' => &$result['data']
-                    )) !== false || self::$workErr[0] !== null);
+                    ) + $data) !== false || self::$workErr[0] !== null);
 
                     //回滚工作 && 状态成功 && 添加回滚提示
                     if ($temp === false && $result['code'] < 400) {
@@ -461,45 +499,93 @@ class of {
         } else if (is_bool($code)) {
             //未开启工作
             if (!$sList) throw new Exception('Did not start work');
-            //是否没有错误, true=没有, false=存在
-            $isOk = !self::$workErr[0];
-            //是否提交事务, true=提交, false=回滚
-            $isOn = $code === true && $isOk;
+            //引用工作错误
+            $iwErr = &self::$workErr;
+            //引用当前工作
             $index = &$sList[0];
-            $index['pool'] = false;
-            //为多个连接池
-            $temp = count($index['list']) > 1;
+            //提交失败的连接池
+            $ePool = false;
 
-            //连接池有效检查
-            foreach ($index['list'] as $k => &$v) {
-                //多个连接池 && 连接池已断开
-                if ($temp && !of_db::pool($k, 'ping')) {
-                    throw new Exception('Can not connect to database: ' . $k);
-                //连接池事务层级错误
-                } else if (of_db::pool($k, 'level') !== 1) {
-                    throw new Exception('Database transaction level error: ' . $k);
+            //最终提交事务时检查可提交性
+            if ($code && !$iwErr[0]) {
+                //为多个连接池
+                $temp = count($index['list']) > 1;
+
+                //连接池有效检查
+                foreach ($index['list'] as $k => &$v) {
+                    //多个连接池 && 连接池已断开
+                    if ($temp && !of_db::pool($k, 'ping')) {
+                        throw new Exception('Can not connect to database: ' . $k);
+                    //连接池事务层级错误
+                    } else if (of_db::pool($k, 'level') !== 1) {
+                        throw new Exception('Database transaction level error: ' . $k);
+                    }
                 }
             }
 
+            //执行延迟回调
+            while ($temp = array_shift($index['defer'])) {
+                //在新工作中回调
+                if (is_array($temp) && array_key_exists('onWork', $temp)) {
+                    of::work($temp['onWork'], $temp, array(
+                        'isOk' => $code && !$iwErr[0], 'wuid' => $index['wuid']
+                    ));
+                //不开工作直接回调
+                } else {
+                    try {
+                        //接受参数{"isOk" : true=最终提交 false=最终回滚, "wuid" : 工作ID}
+                        self::callFunc($temp, array('isOk' => $code && !$iwErr[0], 'wuid' => $index['wuid']));
+                    } catch (Exception $e) {
+                        //记录异常
+                        of::event('of::error', true, $e);
+                    }
+                }
+            }
+
+            //是否提交事务, true=提交, false=回滚
+            $isOk = $code && !$iwErr[0];
             //提交或回滚事务
             foreach ($index['list'] as $k => &$v) {
                 //事务提交失败 && 接下的事务回滚
-                !of_db::sql($isOn, $k) && $isOn && $isOn = !$index['pool'] = $k;
+                !of_db::sql($isOk, $k) && $isOk && $isOk = !$ePool = $k;
                 //恢复原连接池 && 清除克隆连接池
-                of_db::pool($v, 'rename', $k);
+                $k === $v ? of_db::pool($v, 'clean', 1) : of_db::pool($v, 'rename', $k);
             }
             $index['list'] = array();
 
-            //提交事务 && 存在错误, 发生内部错误
-            if ($code === true && !$isOk) {
-                self::work(500, 'An internal error occurred');
             //提交失败的连接池
-            } else if ($index['pool'] !== false) {
-                throw new Exception('Failed to commit transaction: ' . $index['pool']);
+            if ($ePool !== false) {
+                throw new Exception('Failed to commit transaction: ' . $ePool);
+            //提交事务 && 存在错误, 发生内部错误
+            } else if ($code && $iwErr[0]) {
+                self::work(500, 'An internal error occurred');
             //一切正常移除栈列
             } else {
-                array_shift(self::$workErr);
+                //是否提交事务, true=提交, false=回滚
+                $isOk = $code && !$iwErr[0];
+
+                //移除栈列
+                array_shift($iwErr);
                 array_shift($sList);
+
+                //执行完成回调
+                while ($temp = array_shift($index['done'])) {
+                    //在新工作中回调
+                    if (is_array($temp) && array_key_exists('onWork', $temp)) {
+                        of::work($temp['onWork'], $temp, array(
+                            'isOk' => $isOk, 'wuid' => $index['wuid']
+                        ));
+                    //不开工作直接回调
+                    } else {
+                        try {
+                            //接受参数{"isOk" : true=最终提交 false=最终回滚, "wuid" : 工作ID}
+                            self::callFunc($temp, array('isOk' => $isOk, 'wuid' => $index['wuid']));
+                        } catch (Exception $e) {
+                            //记录异常
+                            of::event('of::error', true, $e);
+                        }
+                    }
+                }
             }
         //文本=功能操作
         } else if (is_string($code)) {
@@ -524,9 +610,32 @@ class of {
                     break;
                 //info=工作信息
                 case 'info':
-                    return isset($sList[0]) ? array(
-                        'list' => array_keys($sList[0]['list'])
-                    ) : null;
+                    if (isset($sList[0])) {
+                        switch ($info) {
+                            case 'wuid':
+                                return $sList[0]['wuid'];
+                            case 'list':
+                                return array_keys($sList[0]['list']);
+                            default :
+                                return array(
+                                    'wuid' => $sList[0]['wuid'],
+                                    'list' => array_keys($sList[0]['list'])
+                                );
+                        }
+                    } else {
+                        return null;
+                    }
+                    break;
+                //defer=延迟回调
+                case 'defer':
+                //done=完成回调
+                case 'done':
+                    //已指定回调标识 || 生成随机值
+                    is_string($data) || $data = '_' . uniqid();
+                    //删除延迟回调
+                    unset($sList[0][$code][$data]);
+                    //添加延迟回调
+                    $info && $sList[0][$code][$data] = &$info;
                     break;
                 default :
                     throw new Exception('Invalid work command: ' . $code);
@@ -541,16 +650,8 @@ class of {
 
             //处理捕获的异常
             if (is_object($code)) {
-                //已开启工作
-                if ($sList) {
-                    //回滚所有开启事务 && 恢复原连接池
-                    foreach ($sList[0]['list'] as $k => &$v) {
-                        $k === $v ? of_db::pool($v, 'clean', 1) : of_db::pool($v, 'rename', $k);
-                    }
-                    //移除工作与监听栈列
-                    array_shift(self::$workErr);
-                    array_shift($sList);
-                }
+                //已开启工作 && 回滚当前工作
+                isset($sList[0]) && self::work(false);
 
                 //是内置异常类
                 if (get_class($code) === $class) {
@@ -583,7 +684,7 @@ class of {
      * 描述 : 记录最后一次错误
      * 参数 :
      *     &code : 错误编码, 接收"异常对象,数组格式,错误编码,null"格式
-     *      info : 错误信息, 为false时直接存储code数组格式
+     *      info : 错误信息, 为false时直接存储code数组格式(不显示错误信息)
      *      file : 文件路径
      *      line : 文件行数
      * 作者 : Edgar.lee
@@ -591,11 +692,14 @@ class of {
     public static function saveError($code = null, $info = null, $file = null, $line = null) {
         //直接存储
         if ($info === false) {
-            self::$workErr[0] = &$code;
+            $error = &$code;
         //致命错误
         } else if ($code === null) {
+            //开发显示原生错误, 防止 of::halt 回调中出现致命错误
+            OF_DEBUG && ini_set('display_errors', true);
+
             //非 trigger_error('')
-            if (($temp = error_get_last()) && $temp['message']) {
+            if (($temp = error_get_last()) && isset($temp['message'][0])) {
                 $error = array(
                     'code' => &$temp['type'],
                     'info' => ini_get('error_prepend_string') .
@@ -617,24 +721,33 @@ class of {
                 //异常行
                 'line' => $code->getLine(),
             );
-        //系统错误 && 不是过期函数
-        } else if (error_reporting() && $code !== 8192) {
+        //系统错误启动(php >= 8 "@"最大设置4437) && 不是过期函数
+        } else if (error_reporting() & ~4437 && $code !== 8192) {
             //代码错误 ? 补全信息 : 系统错误
             $error = is_array($code) ? $code + array(
                 'code' => E_USER_NOTICE, 'info' => 'Unknown error', 'file' => '', 'line' => 0
             ) : array(
                 'code' => &$code, 'info' => &$info, 'file' => &$file, 'line' => &$line
             );
-        //否则 "@"错误 || 过期函数
+        //"@"错误 || 过期函数
+        } else {
+            //@trigger_error('') 返回 false, php 标准错误处理会接收
+            return isset($info[0]);
         }
 
-        if (isset($error)) {
-            //格式化文件路径
-            $error['file'] = strtr(substr($error['file'], strlen(ROOT_DIR)), '\\', '/');
+        //发生错误 && 不是备忘录
+        if (isset($error) && empty($error['memo'])) {
             //记录最后一次错误
-            self::$workErr[0] = &$error;
-            //debug模式打印日志
-            if (OF_DEBUG) {
+            self::$workErr[0] = array(
+                'code' => &$error['code'], 'info' => &$error['info'],
+                'file' => &$error['file'], 'line' => &$error['line']
+            );
+
+            //开发模式 && 显示错误信息
+            if (OF_DEBUG && $info !== false) {
+                //格式化文件路径
+                $error['file'] = strtr(substr($error['file'], strlen(ROOT_DIR)), '\\', '/');
+                //打印日志
                 $info = htmlentities($error['info'], ENT_QUOTES, 'UTF-8');
                 echo '<pre style="color:#F00; font-weight:bold; margin: 0px;">',
                     "[{$error['code']}] : \"{$info}\" in {$error['file']} on line {$error['line']}",
@@ -687,8 +800,7 @@ class of {
             $v = &$v['event'];
             if (strncmp($v['classPre'], $className, $k) === 0) {
                 if (isset($v['asCall'])) {
-                    $v['params']['_']['className'] = $className;
-                    $temp = call_user_func_array($v['asCall'], $v['params']);
+                    $temp = self::callFunc($v, array('className' => $className));
                     if ($temp !== false) return $temp;
                 } else {
                     $className = substr_replace($className, $v['mapping'], 0, $k);
@@ -864,6 +976,8 @@ class of {
 
         //隐藏原生错误
         ini_set('display_errors', false);
+        //防止禁用错误
+        error_reporting(E_ALL);
         //监听系统错误
         set_error_handler('of::saveError');
         //监听系统异常
@@ -993,7 +1107,9 @@ class of {
         //正常调用
         } else {
             $call['params']['_'] = &$params;
-            $call = call_user_func_array($call['asCall'], $call['params']);
+            //兼容 php >= 8 添加的命名参数
+            foreach ($call['params'] as &$v) $args[] = &$v;
+            $call = call_user_func_array($call['asCall'], $args);
         }
 
         return $call;
@@ -1087,7 +1203,7 @@ class of {
                 $result = error_get_last();
                 $result['info'] = &$result['message'];
                 unset($result['message'], $result['type'], $result['file']);
-                //清除错误
+                //清除错误 (php < 7 时 eval 出错时返回 false, 同时没有 error_clear_last 方法)
                 @trigger_error('');
             }
 

@@ -81,14 +81,11 @@ class of_base_error_writeLog {
 
         //致命错误
         if ($errno === null) {
-            if (OF_DEBUG) {
-                //显示原生错误
-                ini_set('display_errors', true);
-                //防止禁用错误
-                error_reporting(E_ALL);
-            }
+            //开发显示原生错误, 防止 of::halt 回调中出现致命错误
+            OF_DEBUG && ini_set('display_errors', true);
+
             //非 trigger_error('')
-            if (($backtrace = error_get_last()) && $backtrace['message']) {
+            if (($backtrace = error_get_last()) && isset($backtrace['message'][0])) {
                 $backtrace['info'] = ini_get('error_prepend_string') .
                     $backtrace['message'] .
                     ini_get('error_append_string');
@@ -118,28 +115,29 @@ class of_base_error_writeLog {
                     'backtrace' => $errno->getTrace()
                 )
             );
-        //系统错误 && 不是过期函数
-        } else if (error_reporting() && $errno !== 8192) {
+        //系统错误(php >= 8 "@"最大设置4437) && 不是过期函数
+        } else if (error_reporting() & ~4437 && $errno !== 8192) {
             //错误回溯
             $errTrace = debug_backtrace();
             //代码错误
             if (is_array($errno)) {
                 array_splice($errTrace, 0, 2);
-                $errno += array(
+                $error = $errno + array(
                     'code' => E_USER_NOTICE,
                     'info' => 'Unknown error',
                     'file' => $errTrace[0]['file'],
                     'line' => $errTrace[0]['line']
                 );
-                $errstr = (string)$errno['info'];
-                $errfile = (string)$errno['file'];
-                $errline = (int)$errno['line'];
-                $errno = (int)$errno['code'];
+                $errstr = (string)$error['info'];
+                $errfile = (string)$error['file'];
+                $errline = (int)$error['line'];
+                $errno = (int)$error['code'];
             //系统错误
             } else {
                 array_splice($errTrace, 0, 1);
             }
 
+            //生成回溯结构
             $backtrace = array(
                 'errorType'     =>'phpError',
                 'environment'   => array(
@@ -150,10 +148,12 @@ class of_base_error_writeLog {
                     'backtrace' => &$errTrace
                 )
             );
+            //标记为备忘录
+            empty($error['memo']) || $backtrace['environment']['memo'] = true;
         //"@"错误 || 过期函数
         } else {
-            //@trigger_error('') 返回 false
-            return !!$errstr;
+            //@trigger_error('') 返回 false, php 标准错误处理会接收
+            return isset($errstr[0]);
         }
 
         //格式化日志
@@ -199,7 +199,7 @@ class of_base_error_writeLog {
             'errorType'     => 'sqlError',
             'environment'   => array(
                 'type'      => $params['pool'] . ':' . $params['code'] . ':' . $params['info'],
-                'info'      => &$params['sql'],
+                'info'      => is_string($params['sql']) ? $params['sql'] : var_export(null, true),
                 'code'      => &$params['code'],
                 'file'      => '(',
                 'line'      => 0,
@@ -231,14 +231,14 @@ class of_base_error_writeLog {
      */
     protected static function writeLog(&$logData, $logType, $printStr) {
         //记录错误
-        of::saveError($logData['environment'], false);
+        of::saveError($index = &$logData['environment'], false);
         //配置引用
         $config = &self::$config;
         //当前时间戳
         $logData['time'] = time();
 
-        //debug模式
-        if (OF_DEBUG && $printStr) {
+        //debug模式 && 不是备忘录 && 有打印信息
+        if (OF_DEBUG && empty($index['memo']) && $printStr) {
             //打印日志
             echo '<pre style="color:#F00; font-weight:bold; margin: 0px;">',
                 $printStr, 

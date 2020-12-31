@@ -44,9 +44,9 @@ config = {
         'init'  : function (p, c) {
             //标记已加载
             c.loaded = true;
-            if( L.type(p) === 'object' ) {
-                if( p.obj ) {
-                    if( p.obj.tagName === 'INPUT' && !/\bWdate\b/.test(p.obj.className) ) {
+            if (L.type(p) === 'object') {
+                if (p.obj) {
+                    if (p.obj.tagName === 'INPUT' && !/\bWdate\b/.test(p.obj.className)) {
                         p.obj.className += ' Wdate';
                     }
                     this.L.event(p.obj, p.type || 'click', function(){
@@ -79,7 +79,7 @@ config = {
         },
         'ready' : function (p, c) {
             if (p && p.expand) {
-                for(var i in p.expand) {
+                for (var i in p.expand) {
                     c.list['/js/jquery.ztree.' +p.expand[i]+ '.js'] = false;
                 }
             }
@@ -105,11 +105,11 @@ config = {
             '/echarts.js' : false
         },
         'init'  : function (p) {
-            if( p && p.obj ) {
+            if (p && p.obj) {
                 var obj = this.echarts.init(p.obj);
                 delete p.obj;
 
-                for(var i in p) obj[i](p[i]);
+                for (var i in p) obj[i](p[i]);
                 //返回图表实例
                 return obj;
             } else {
@@ -130,7 +130,7 @@ config = {
             '/oUpload.js'  : false
         },
         'init'  : function (p) {
-            if( p ) {
+            if (p) {
                 //返回图表实例
                 return this.oUpload(p);
             } else {
@@ -173,7 +173,7 @@ config.oFM = config.oDialogDiv = config.tip = config.upload = config.oEditor = {
         }
     },
     'ready' : function (p, c, n) {
-        switch( n ) {
+        switch (n) {
             case 'oEditor' :
                 c.list['/include/oEditor/oEditor.js'] = false;
                 break;
@@ -186,7 +186,7 @@ config.oFM = config.oDialogDiv = config.tip = config.upload = config.oEditor = {
         }
     },
     'init'  : function (p, c, n) {
-        switch( n ) {
+        switch (n) {
             case 'oFM'   :
                 return this.oFileManager;
             case 'upload':

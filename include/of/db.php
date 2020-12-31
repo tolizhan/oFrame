@@ -360,7 +360,7 @@ abstract class of_db {
      *      成功返回连接对象, 失败false
      * 作者 : Edgar.lee
      */
-    final private static function &getConnect($type) {
+    private static function &getConnect($type) {
         //连接参数引用
         $config = &self::$instList[self::$nowDbKey];
         //数据库连接源

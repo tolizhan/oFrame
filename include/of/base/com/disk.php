@@ -156,56 +156,65 @@ class of_base_com_disk {
     /**
      * 描述 : 遍历目录结构
      * 参数 :
-     *     &dir    : 字符串=指定遍历的目录
+     *      dir    : 字符串=指定遍历的目录
      *     &data   : 接收的数据, 数组={
      *          磁盘路 : false=文件,true=目录,如果遍历data时将目录其改成false,那么将不会继续遍历
      *      }
-     *      single : 遍历方式
-     *          true =(默认)每次返回一个文件夹数据
+     *      type : 遍历方式
+     *          true =(默认)循环返回每个目录的数据(单目录大于一万条拆分多次)
      *          false=一次返回深层数据
      *          null =返回指定子目录不影响已有遍历
      * 返回 :
      *      成功返回true,失败返回false(并结束遍历)
      * 作者 : Edgar.lee
      */
-    public static function each(&$dir, &$data, $single = true) {
+    public static function each($dir, &$data, $type = true) {
         static $cahceDir = array();
+        //指定最大结果集条数
+        $maxNum = $type === true ? 10000 : PHP_INT_MAX;
 
         //返回指定子目录
-        if ($single === null || ($nowDir = &$cahceDir[$dir]) === null) {
+        if ($type !== true || ($nowDir = &$cahceDir[$dir]) === null) {
             $nowDir = $data = null;
         }
 
         //读取数据
         if ($data !== false) {
             //初始化连接
-            $nowDir === null && $nowDir[$dir] = true;
+            $nowDir === null && $nowDir[$dir] = array('res' => true, 'run' => true);
             //开始读取目录
             $data = false;
 
             while ($path = key($nowDir)) {
                 $index = &$nowDir[$path];
-                unset($nowDir[$path]);
 
                 //目录被排除 || 目录不存在
-                if ($index === null || !file_exists($path)) {
+                if ($index['run'] === null || !file_exists($path)) {
+                    unset($nowDir[$path]);
                     continue;
                 //打开目录
-                } else if ($handle = opendir($path)) {
-                    while (is_string($fileName = readdir($handle))) {
+                } else if (is_resource($index['res']) || $index['res'] = opendir($path)) {
+                    while (is_string($fileName = readdir($index['res']))) {
                         if ($fileName !== '.' && $fileName !== '..') {
+                            //完整的磁盘路径
                             $fileName = $path .'/'. $fileName;
+                            //距离待遍历文件夹
                             if ($data[$fileName] = is_dir($fileName)) {
-                                $nowDir[$fileName] = &$data[$fileName];
+                                $nowDir[$fileName] = array('res' => true, 'run' => &$data[$fileName]);
                             }
+                            //达到单次遍历最多数量
+                            if (--$maxNum === 0) break 2;
                         }
                     }
-                    closedir($handle);
-                    //不为深度遍历时跳出
-                    if ($single !== false) break;
+                    //遍历结束
+                    closedir($index['res']);
+                    unset($nowDir[$path]);
+                    //(遍历目录 && 存在结果) || 直查目录
+                    if (($type === true && $data) || $type === null) break;
                 //目录打开失败
                 } else {
                     $data = false;
+                    unset($nowDir[$path]);
                     break;
                 }
             }
@@ -213,8 +222,8 @@ class of_base_com_disk {
 
         //操作结束 && 格式化数组
         ($fail = $data === false) && $data = array();
-        //(操作结束 || 深度遍历) && 清除缓存
-        if ($fail || $single === false) unset($cahceDir[$dir]);
+        //(操作结束 && 单层遍历) && 清除缓存
+        if ($fail && $type) unset($cahceDir[$dir]);
         //按文件顺序排序
         ksort($data);
         //返回结束信息

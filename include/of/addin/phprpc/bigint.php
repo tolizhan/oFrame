@@ -107,7 +107,7 @@ else if (extension_loaded('bcmath')) {
         $result = '0';
         $m = '1';
         for ($i = 0; $i < $len; $i++) {
-            $result = bcadd(bcmul($m, ord($str{$len - $i - 1})), $result);
+            $result = bcadd(bcmul($m, ord($str[$len - $i - 1])), $result);
             $m = bcmul($m, '256');
         }
         return $result;
@@ -281,14 +281,14 @@ else {
         $j = 0;
         $result = array();
         for ($i = 0; $i < $n; $i++) {
-            $result[$j++] = (ord($str{$i++}) << 7) | (ord($str{$i}) >> 1);
-            $result[$j++] = ((ord($str{$i++}) & 0x01) << 14) | (ord($str{$i++}) << 6) | (ord($str{$i}) >> 2);
-            $result[$j++] = ((ord($str{$i++}) & 0x03) << 13) | (ord($str{$i++}) << 5) | (ord($str{$i}) >> 3);
-            $result[$j++] = ((ord($str{$i++}) & 0x07) << 12) | (ord($str{$i++}) << 4) | (ord($str{$i}) >> 4);
-            $result[$j++] = ((ord($str{$i++}) & 0x0f) << 11) | (ord($str{$i++}) << 3) | (ord($str{$i}) >> 5);
-            $result[$j++] = ((ord($str{$i++}) & 0x1f) << 10) | (ord($str{$i++}) << 2) | (ord($str{$i}) >> 6);
-            $result[$j++] = ((ord($str{$i++}) & 0x3f) << 9) | (ord($str{$i++}) << 1) | (ord($str{$i}) >> 7);
-            $result[$j++] = ((ord($str{$i++}) & 0x7f) << 8) | ord($str{$i});
+            $result[$j++] = (ord($str[$i++]) << 7) | (ord($str[$i]) >> 1);
+            $result[$j++] = ((ord($str[$i++]) & 0x01) << 14) | (ord($str[$i++]) << 6) | (ord($str[$i]) >> 2);
+            $result[$j++] = ((ord($str[$i++]) & 0x03) << 13) | (ord($str[$i++]) << 5) | (ord($str[$i]) >> 3);
+            $result[$j++] = ((ord($str[$i++]) & 0x07) << 12) | (ord($str[$i++]) << 4) | (ord($str[$i]) >> 4);
+            $result[$j++] = ((ord($str[$i++]) & 0x0f) << 11) | (ord($str[$i++]) << 3) | (ord($str[$i]) >> 5);
+            $result[$j++] = ((ord($str[$i++]) & 0x1f) << 10) | (ord($str[$i++]) << 2) | (ord($str[$i]) >> 6);
+            $result[$j++] = ((ord($str[$i++]) & 0x3f) << 9) | (ord($str[$i++]) << 1) | (ord($str[$i]) >> 7);
+            $result[$j++] = ((ord($str[$i++]) & 0x7f) << 8) | ord($str[$i]);
         }
         $result = array_reverse($result);
         $i = count($result) - 1;

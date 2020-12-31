@@ -10,6 +10,14 @@ class ctrl_index extends L {
     }
 
     /**
+     * 描述 : 防火墙拦截IP
+     * 作者 : Edgar.lee
+     */
+    public function network() {
+        echo '在 /demo/config/network.php 文件中查看演示配置';
+    }
+
+    /**
      * 描述 : 开启工作演示
      * 作者 : Edgar.lee
      */
@@ -25,12 +33,30 @@ class ctrl_index extends L {
             //清除当前工作错误
             of::work('error', false);
 
+            //添加延迟调用到工作结束前(依然在事务中)
+            of::work('defer', array(
+                'onWork' => array(),
+                'asCall' => 'var_dump',
+                'params' => array(
+                    "\n<br>执行延迟回调: "
+                )
+            ), __METHOD__);
+
+            //添加完成调用到工作结束前(在父级工作中)
+            of::work('done', array(
+                'onWork' => of::work('info', 'list'),
+                'asCall' => 'var_dump',
+                'params' => array(
+                    "\n<br>执行完成回调: "
+                )
+            ), __METHOD__);
+
             //不在工作中返回 null, 反之返回 {"list" : [监听连接池, ...]}
             echo '是否在工作中: ', of::work('info') ? '是' : '否', "<br>\n";
 
             //查询工作时间
             echo '工作开始时间: ', of::work('time'), "<br>\n";
-            echo '工作开始时间戳: ', of::work('time', 1), "<br>\n";
+            echo '工作开始时间戳: ', of::work('time', 1), "\n";
 
             //演示两种不同异常
             of::work(401, '工作异常不会抛错', array(1, 2, 3));
@@ -44,6 +70,7 @@ class ctrl_index extends L {
         }
 
         //打印结果集
+        echo '<br>工作完成结果: ';
         print_r($result);
     }
 
@@ -71,7 +98,7 @@ class ctrl_index extends L {
         } else {
             of_base_com_net::request(
                 //请求一个地址
-                ROOT_URL . '/index.php?c=demo_index&a=index',
+                ROOT_URL . '/index.php?c=ctrl_index&a=index',
                 null, 
                 array('asCall' => array($this, __FUNCTION__))
             );

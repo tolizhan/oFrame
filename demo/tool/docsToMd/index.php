@@ -38,7 +38,7 @@ $specialChar = array(
 );
 
 //读取输出路径单层目录
-of_base_com_disk::each($htmlOut, $dirs);
+of_base_com_disk::each($htmlOut, $dirs, null);
 //删除输出路径非"."开头的目录
 foreach ($dirs as $k => &$v) {
     substr(basename($k), 0, 1) === '.' || of_base_com_disk::delete($k);

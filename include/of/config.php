@@ -90,14 +90,14 @@ return array(
         'of_base_session_base',
         //语言包支持
         //'of_base_language_packs',
+        //防火墙
+        'of_base_firewall_main',
         //xss 防御
         'of_base_xssFilter_main',
-        //扩展支持,依赖快捷集成
+        //扩展支持
         //'of_base_extension_match',
         //html模板引擎,实现UI,开发人员分离
         'of_base_htmlTpl_engine',
-        //加载兼容IE6+ bootstrap v3
-        //'of_addin_bsui_setup',
         //非生产环境检查最新版本
         'of_base_version_check',
         //加载 composer
@@ -157,6 +157,33 @@ return array(
             'kvPool' => 'default',
             // */
         )
+    ),
+    //防火墙
+    'firewall'    => array(
+        /**
+         *  访问限制, 字符串=指定配置路径(结构同数组), 数组={
+         *      "clientIp" :o从"$_SERVER"获取访问IP顺序, 如 "HTTP_X_REAL_IP", 默认["REMOTE_ADDR"]
+         *      "control"  : 匹配规则, 按顺序通过"matches"匹配来验证客户IP是否有效 {
+         *          匹配规则说明 : {
+         *              "matches" : 匹配调度信息, 调度格式为"class::action" {
+         *                  注释信息 : 其它过滤信息 {
+         *                      "action" : 匹配调度信息, 以"@"开始的字符串=按正则处理, "类名::方法"=全等匹配调度格式
+         *                      "method" :o匹配请求类型, 均大写, 默认不限制, 如 ["GET", "POST"],
+         *                  }, ...
+         *              },
+         *              "ipList"   : 验证IP列表, 支持IP v4 v6, 字符串=指定配置路径(结构同数组), 数组={
+         *                  "blocklist" :o黑名单, 在范围内会被拦截 [
+         *                      字符串=为固定IP,
+         *                      [小IP, 大IP]=IP范围,
+         *                      ...
+         *                  ],
+         *                  "allowlist" :o白名单, 不在范围内且不为空会被拦截, 结构同"blocklist"
+         *              }
+         *          }, ...
+         *      }
+         *  }
+         */
+        'network' => ''
     ),
     //多语言包
     'language'    => array(
@@ -269,7 +296,9 @@ return array(
                     //密码
                     'auth' => '',
                     //数据库
-                    'db'   => 0
+                    'db'   => 0,
+                    //是否长连接
+                    'persistent' => false
                     // */
 
                     #redis 多点模式, redis扩展 >= 4.3.0
@@ -283,39 +312,42 @@ return array(
                     //密码
                     'auth' => '',
                     //数据库, 集群不支持选择数据库
-                    'db'   => 0
+                    'db'   => 0,
+                    //是否长连接
+                    'persistent' => false
                     // */
                 )
             )
         ),
         //消息队列
         'mq' => array(
-            /*
-            消息队列池名 : {
-                "adapter" : 适配器(mysql),
-                "params"  : 调度参数 {
-                    #mysql 模式
-                    "dbPool" : _of.db 的连接池
-                    "vHost"  : 虚拟主机, 不同主机下的同名队列互不冲突, 默认=""
-                },
-                "bindDb"  : 事务数据库连接池名, 跟其提交或回滚,
-                "queues"  : 队列配置文件数组或路径, 消息会同时发给这些队列, 结构如下 {
-                    队列名 : {
-                        "mode"   : 队列模式, null=生产及消费,false=仅生产,true=仅消费,
-                        "check"  : 自动重载消息队列触发函数,
-                            true=(默认)校验"消费回调"加载的文件变动,
-                            false=仅校验队列配置文件变动,
-                            字符串=以"@"开头的正则忽略路径(软链接使用真实路径), 如: "@/ctrl/@i"
-                        "memory" : 单个并发未释放内存积累过高后自动重置, 单位M, 默认50, 0=不限制
-                        "keys"   : 消费消息时回调结构 {
-                            消息键 : 不存在的键将被抛弃 {
-                                "cNum" : 并发数量,
-                                "call" : 回调结构
-                            }, ...
-                        }
-                    }, ...
-                }
-            }, ... // */
+            /**
+             *  消息队列池名 : {
+             *      "adapter" : 适配器(mysql),
+             *      "params"  : 调度参数 {
+             *          #mysql 模式
+             *          "dbPool" : _of.db 的连接池
+             *          "vHost"  : 虚拟主机, 不同主机下的同名队列互不冲突, 默认=""
+             *      },
+             *      "bindDb"  : 事务数据库连接池名, 跟其提交或回滚,
+             *      "queues"  : 队列配置文件数组或路径, 消息会同时发给这些队列, 结构如下 {
+             *          队列名 : {
+             *              "mode"   : 队列模式, null=生产及消费,false=仅生产,true=仅消费,
+             *              "check"  : 自动重载消息队列触发函数,
+             *                  true=(默认)校验"消费回调"加载的文件变动,
+             *                  false=仅校验队列配置文件变动,
+             *                  字符串=以"@"开头的正则忽略路径(软链接使用真实路径), 如: "@/ctrl/@i"
+             *              "memory" : 单个并发分配内存积累过高后自动重置, 单位M, 默认50, 0=不限制
+             *              "keys"   : 消费消息时回调结构 {
+             *                  消息键 : 不存在的键将被抛弃 {
+             *                      "cNum" : 并发数量,
+             *                      "call" : 回调结构
+             *                  }, ...
+             *              }
+             *          }, ...
+             *      }
+             *  }, ...
+             */
         )
     ),
     //系统插件

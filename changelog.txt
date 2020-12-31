@@ -1,3 +1,77 @@
+版本: 246
+作者: Edgar
+日期: 2020年12月31日 11:44:55
+信息:
+说明: + 添加IP访问控制, 框架预加载添加 of_base_firewall_main 启用
+      + of::work 添加"defer"回调, 延迟到事务提交前按队列顺序执行
+      + of::work 添加"done"回调, 延迟工作完成后按队列顺序执行
+      + of::work("info", item) 支持第二个参数, 返回指定信息
+      + of::event('of::error', true, []) "[]"可设置"memo"不算错误仅存日志
+      + k-v redis 增加长连接配置"persistent"
+      + 兼容 PHP 8
+      - 使用 of_base_com_disk::each(..., true) 单目录大于一万条时会拆分多次
+      - 移除内置UI, 仅做整合UI方法之一的演示使用
+      * 修正k-v files 模式使用独享锁读数据的问题
+      * k-v redis 增加连接丢失重试机制
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/config/config.php
+已增加 : /trunk/demo/config/network.php
+已修改 : /trunk/demo/ctrl/index.php
+已增加 : /trunk/demo/file/bsui
+已增加 : /trunk/demo/file/bsui/css
+已增加 : /trunk/demo/file/bsui/css/bootstrap.css
+已增加 : /trunk/demo/file/bsui/js
+已增加 : /trunk/demo/file/bsui/js/bootstrap.bundle.js
+已增加 : /trunk/demo/file/bsui/js/jquery.js
+已增加 : /trunk/demo/file/bsui/js/vue.js
+已增加 : /trunk/demo/file/bsui/setup.php
+已修改 : /trunk/demo/tool/docsToMd/index.php
+已修改 : /trunk/include/of/accy/com/kv/files.php
+已修改 : /trunk/include/of/accy/com/kv/redis.php
+已修改 : /trunk/include/of/addin/PHPMailer/extras/htmlfilter.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Calculation/Engineering.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Calculation/FormulaParser.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Calculation/Functions.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Calculation/TextData.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Calculation.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Cell/DefaultValueBinder.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Cell.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Reader/Excel2003XML.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Reader/Excel5/Escher.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Reader/Excel5.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Reader/SYLK.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/ReferenceHelper.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Shared/OLE.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Shared/String.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Shared/ZipStreamWrapper.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Worksheet/AutoFilter.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Writer/Excel5/Parser.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Writer/Excel5/Workbook.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Writer/Excel5/Worksheet.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPWord/Shared/ZipStreamWrapper.php
+已删除 : /trunk/include/of/addin/bsui
+已修改 : /trunk/include/of/addin/config.js
+已修改 : /trunk/include/of/addin/phprpc/PHPRPC_Client.php
+已修改 : /trunk/include/of/addin/phprpc/bigint.php
+已修改 : /trunk/include/of/addin/tcpdf/include/barcodes/datamatrix.php
+已修改 : /trunk/include/of/addin/tcpdf/include/barcodes/pdf417.php
+已修改 : /trunk/include/of/addin/tcpdf/include/tcpdf_filters.php
+已修改 : /trunk/include/of/addin/tcpdf/include/tcpdf_images.php
+已修改 : /trunk/include/of/addin/tcpdf/tcpdf.php
+已修改 : /trunk/include/of/addin/tcpdf/tcpdf_barcodes_1d.php
+已修改 : /trunk/include/of/addin/tcpdf/tcpdf_parser.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已增加 : /trunk/include/of/base/firewall
+已增加 : /trunk/include/of/base/firewall/main.php
+已修改 : /trunk/include/of/base/link/codeNav.php
+已修改 : /trunk/include/of/base/tool/mysqlSync.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+
 版本: 244
 作者: Edgar
 日期: 2020年10月7日 16:08:41
