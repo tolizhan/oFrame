@@ -278,10 +278,10 @@ class of_accy_db_mysqli extends of_db {
                     //清除SQL缓存
                     $obj->sqlList = null;
                     $temp = 'of_accy_db_mysql::sqls-' . $obj->dbVar['linkMark'];
-                    of_base_com_kv::del($temp);
+                    of_base_com_kv::del($temp, '_ofSelf');
                     //记录事务追踪
                     $temp = 'of_accy_db_mysql::trace-' . $obj->dbVar['linkMark'];
-                    of_base_com_kv::set($temp, array_slice(debug_backtrace(), 2), 3600);
+                    of_base_com_kv::set($temp, array_slice(debug_backtrace(), 2), 3600, '_ofSelf');
                     //开启超时监听
                     $task = 'of_accy_db_mysqli::listenLockTimeout-' .
                         "{$obj->params['user']}@{$obj->params['host']}:{$obj->params['port']}";
@@ -311,7 +311,7 @@ class of_accy_db_mysqli extends of_db {
                     $obj->sqlList[] = date('H:i:s > ', time()) . $sql;
                     //写入k-v缓存
                     $temp = 'of_accy_db_mysql::sqls-' . $obj->dbVar['linkMark'];
-                    of_base_com_kv::set($temp, $obj->sqlList, 3600);
+                    of_base_com_kv::set($temp, $obj->sqlList, 3600, '_ofSelf');
                 }
             } catch (Exception $e) {
             }
@@ -337,7 +337,7 @@ class of_accy_db_mysqli extends of_db {
                     );
 
                     //阻塞列表读取成功
-                    if ($temp['wait'] = of_base_com_kv::get($temp['key'])) {
+                    if ($temp['wait'] = of_base_com_kv::get($temp['key'], '_ofSelf')) {
                         //记录超时客户端ID 与 阻塞信息
                         $note = array(
                             'requestId' => $obj->dbVar['linkCid'],
@@ -348,10 +348,10 @@ class of_accy_db_mysqli extends of_db {
                         foreach ($temp['wait']['bCids'] as &$v) {
                             //读取阻塞SQL
                             $temp['key'] = 'of_accy_db_mysql::sqls-' . $v . $temp['host'];
-                            $note['lockSqls'][$v] = of_base_com_kv::get($temp['key']);
+                            $note['lockSqls'][$v] = of_base_com_kv::get($temp['key'], '_ofSelf');
                             //读取阻塞追踪
                             $temp['key'] = 'of_accy_db_mysql::trace-' . $v . $temp['host'];
-                            $note['lockTrace'][$v] = of_base_com_kv::get($temp['key']);
+                            $note['lockTrace'][$v] = of_base_com_kv::get($temp['key'], '_ofSelf');
                         }
 
                         $note = print_r($note, true);
@@ -384,10 +384,10 @@ class of_accy_db_mysqli extends of_db {
                         } else {
                             //读取阻塞SQL
                             $temp['key'] = 'of_accy_db_mysql::sqls-' . $index . $temp['host'];
-                            $note['lockSqls'][$index] = of_base_com_kv::get($temp['key']);
+                            $note['lockSqls'][$index] = of_base_com_kv::get($temp['key'], '_ofSelf');
                             //读取阻塞追踪
                             $temp['key'] = 'of_accy_db_mysql::trace-' . $index . $temp['host'];
-                            $note['lockTrace'][$index] = of_base_com_kv::get($temp['key']);
+                            $note['lockTrace'][$index] = of_base_com_kv::get($temp['key'], '_ofSelf');
                         }
                     }
                 }
@@ -517,7 +517,7 @@ class of_accy_db_mysqli extends of_db {
                         //被阻列表缓存5分钟
                         $temp = 'of_accy_db_mysql::waits-' .
                             "{$kb}@{$dbArgv['host']}:{$dbArgv['port']}";
-                        of_base_com_kv::set($temp, $vb, 300);
+                        of_base_com_kv::set($temp, $vb, 300, '_ofSelf');
                     //释放无效内存
                     } else {
                         unset($bList[$kb]);

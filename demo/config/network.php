@@ -9,7 +9,9 @@ return array(
                 //全等方式匹配 "ctrl_index::network"
                 '全等方式匹配' => array(
                     'action' => 'ctrl_index::network',
-                    'method' => array('POST')
+                    'values' => array(
+                        '_SERVER.REQUEST_METHOD' => 'GET'
+                    )
                 ),
                 //正则方式匹配, "@"开头的正则表达式
                 '正则方式匹配'  => array(
@@ -26,6 +28,23 @@ return array(
                 ),
                 //白名单次之, 结构同"blocklist"
                 'allowlist' => array()
+            )
+        ),
+        '访问OF错误日志' => array(
+            'matches' => array(
+                //错误日志界面
+                '错误日志界面' => array(
+                    'action' => 'of_base_error_tool::index'
+                ),
+                //错误日志明细
+                '错误日志明细' => array(
+                    'action' => 'of_base_com_com::paging',
+                    'values' => array(
+                        '_POST.method' => 'of_base_error_tool::getLogTablePaging'
+                    )
+                )
+            ),
+            'ipList' => array(
             )
         )
     )

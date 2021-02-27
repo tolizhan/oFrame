@@ -68,6 +68,8 @@ class of_base_com_kv {
                             'path' => OF_DATA . '/_of/of_accy_com_kv_files'
                         )
                     );
+                    //框架自身连接
+                    isset($config['_ofSelf']) || $config['_ofSelf'] = $config['default'];
                 }
 
                 //引用连接池

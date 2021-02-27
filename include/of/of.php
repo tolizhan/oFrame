@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200246);
+define('OF_VERSION', 200248);
 
 /**
  * 描述 : 控制层核心

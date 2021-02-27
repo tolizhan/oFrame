@@ -1,6 +1,6 @@
 # orange-framework 模块化轻量级php框架
 
-框架本身是套解决方案, 兼容全浏览器及[php5.2~8.x](http://doc.phpof.net/?oFrame/FAQ/namespace.html,oFrame/navigation.html)<br>
+框架本身是套解决方案, 兼容全浏览器及[php5.2~8.0.x](http://doc.phpof.net/?oFrame/FAQ/namespace.html,oFrame/navigation.html)<br>
 它基于MVCS, 同时[支持多种设计模式](http://doc.phpof.net/?oFrame/FAQ/architect.html,oFrame/navigation.html)<br>
 它拥有简洁的[开发方式](http://doc.phpof.net/?oFrame/helpManual/controller.html,oFrame/navigation.html,work), 巧思的[模板引擎](http://doc.phpof.net/?oFrame/helpManual/htmlTpl.html,oFrame/navigation.html)<br>
 它支持原生的[并发操作](http://doc.phpof.net/?oFrame/components/timer.html,oFrame/navigation.html), 分布式[消息队列](http://doc.phpof.net/?oFrame/components/mq.html,oFrame/navigation.html)<br>
@@ -24,10 +24,11 @@
 3. 修改db键值连接一个数据库
 4. 根据实际需求开关 preloaded 中对应的模块
 5. 删除/demo文件夹
-6. 若为分布式架构, 将/data文件夹共享
-7. 如没特殊需求, 以下两点可忽略
-8. 框架可放在任意路径下,也可以改名,这里我们确定在"/include/of"
-9. 修改rootDir键值为strtr(substr(\_\_FILE\_\_, 0, -22), '\\\\', '/') 目的是定义磁盘根路径到 "/include/of"
+6. 若为分布式架构, 将各节点/data文件夹挂载到同一个目录, K-V使用非files方式
+7. 若为分布式架构, 将/data文件夹共享
+8. 如没特殊需求, 以下两点可忽略
+9. 框架可放在任意路径下,也可以改名,这里我们确定在"/include/of"
+10. 修改rootDir键值为strtr(substr(\_\_FILE\_\_, 0, -22), '\\\\', '/') 目的是定义磁盘根路径到 "/include/of"
 
 ### 系统访问
 1. URL格式可以通过系统入口定制<br>

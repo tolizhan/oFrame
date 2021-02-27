@@ -36,8 +36,8 @@ return array(
             'user'       => 'root',
             'password'   => 'admin',
             'database'   => 'test',
-            //mysql > 5.5.3 可配置utf8mb4存储emoji表情
-            'charset'    => 'utf8',
+            //mysql >= 5.5.3 可配置utf8mb4存储emoji表情
+            'charset'    => 'utf8mb4',
             //数据库时区, 默认true=框架时区, false=数据库时区, "±00:00"=指定时区
             'timezone'   => true,
             //设置隔离级别, ""=跟随系统, "READ UNCOMMITTED", "READ COMMITTED", "REPEATABLE READ", "SERIALIZABLE"
@@ -168,7 +168,11 @@ return array(
          *              "matches" : 匹配调度信息, 调度格式为"class::action" {
          *                  注释信息 : 其它过滤信息 {
          *                      "action" : 匹配调度信息, 以"@"开始的字符串=按正则处理, "类名::方法"=全等匹配调度格式
-         *                      "method" :o匹配请求类型, 均大写, 默认不限制, 如 ["GET", "POST"],
+         *                      "values" :o匹配全局变量$GLOBALS中的字符串数据 {
+         *                          以"."作为分隔符匹配深度数组 : 以"@"开始按正则, 否则全等对比,
+         *                          ...
+         *                      }
+         *                      "method" :o通过回调方法({"action" : 调度方法})判断匹配,返回 true=匹配, false=未匹配
          *                  }, ...
          *              },
          *              "ipList"   : 验证IP列表, 支持IP v4 v6, 字符串=指定配置路径(结构同数组), 数组={
@@ -239,9 +243,7 @@ return array(
         //网络请求
         'net' => array(
             //异步请求方案, ""=当前网址, url=带端口的网址
-            'async'  => '',
-            //k-v 池, 异步请求时用于安全校验
-            'kvPool' => 'default'
+            'async'  => ''
         ),
         //计划任务
         'timer' => array(
@@ -262,9 +264,7 @@ return array(
             //静态任务
             'cron' => array(
                 //静态计划任务文件
-                'path'   => '',
-                //k-v 池, 分布式时防重复执行
-                'kvPool' => 'default'
+                'path'   => ''
             )
         ),
         //key-value 数据存储 可像db分连接池, 'default'为默认连接池

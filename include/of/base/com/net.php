@@ -3,9 +3,9 @@
  * 描述 : 提供网络通信相关封装
  * 注明 :
  *      配置文件结构($config) : {
- *          "async"  : 异步请求方案, ""=当前网址, url=指定网址
- *          "kvPool" : k-v 池, 异步请求时用于安全校验
- *          "asUrl"  : 异步请求使用的网络地址解析格式 {
+ *          "async" : 异步请求方案, ""=当前网址, url=指定网址
+ *          "rCode" : 接受响应压缩编码
+ *          "asUrl" : 异步请求使用的网络地址解析格式 {
  *              "scheme" : 网络协议, http或https,
  *              "host"   : 请求域名,
  *              "port"   : 请求端口,
@@ -54,10 +54,9 @@ class of_base_com_net {
         );
 
         //读取网络请求配置
-        $temp = of::config('_of.com.net', array()) + array(
-            'async'  => '',
-            'kvPool' => 'default'
-        );
+        $temp = of::config('_of.com.net', array()) + array('async'  => '');
+        //接受响应压缩编码
+        $temp['rCode'] = function_exists('gzinflate') ? 'gzip' : 'none';
         //校验模式
         $temp['asUrl'] = strpos($temp['async'], '://') ?
             //异步请求地址
@@ -127,14 +126,14 @@ class of_base_com_net {
                 if (
                     isset($_GET['md5']) &&
                     ($temp = of_base_com_kv::get(
-                        'of_base_com_net::' . $_GET['md5'], false, $config['kvPool']
+                        'of_base_com_net::' . $_GET['md5'], false, '_ofSelf'
                     )) &&
                     $temp === md5($data)
                 ) {
                     //忽略客户端断开
                     ignore_user_abort(true);
                     //删除校验kv
-                    of_base_com_kv::del('of_base_com_net::' . $_GET['md5'], $config['kvPool']);
+                    of_base_com_kv::del('of_base_com_net::' . $_GET['md5'], '_ofSelf');
                     //默认关闭session
                     session_write_close();
                 } else {
@@ -345,7 +344,7 @@ class of_base_com_net {
                 //数据校验
                 $temp = of_base_com_str::uniqid();
                 of_base_com_kv::set(
-                    $asMd5 = 'of_base_com_net::' . $temp, md5($data['data']), 300, $config['kvPool']
+                    $asMd5 = 'of_base_com_net::' . $temp, md5($data['data']), 300, '_ofSelf'
                 );
                 $data['url']['query'] .= '&md5=' . $temp;
             }
@@ -432,14 +431,16 @@ class of_base_com_net {
             //组合请求数据
             $out[] = $data['type'] . " {$data['url']['path']}?{$data['url']['query']} HTTP/1.1";
             $out[] = 'Host: ' . $data['url']['host'] . $port;
-            //禁止缓存
-            $out[] = 'Connection: Close';
-            //禁止压缩
-            $out[] = 'Accept-Encoding: none';
+            //缓存连接
+            $out[] = 'Connection: keep-alive';
+            //压缩编码
+            $out[] = 'Accept-Encoding: ' . $config['rCode'];
             //post数据长度
             $out[] = 'Content-Length: ' . strlen($body);
             //支持的 MIME 类型
             preg_match('@^Accept *:@im', $data['header']) || $out[] = 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
+            //使用的浏览器
+            preg_match('@^User-Agent *:@im', $data['header']) || $out[] = 'User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:26.0) Gecko/20100101 Firefox/26.0';
             //默认报文类型
             if (!empty($data['file'])) {
                 //删除参数中设置的Content-Type
@@ -454,8 +455,6 @@ class of_base_com_net {
             $data['cookie'] && $out[] = 'Cookie: ' . $data['cookie'];
             //会替换下面的默认值
             $data['header'] && $out[] = &$data['header'];
-            //使用的浏览器
-            $out[] = 'User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:26.0) Gecko/20100101 Firefox/26.0';
             $out[] = '';
             //报文数据
             $out[] = &$body;
@@ -466,26 +465,46 @@ class of_base_com_net {
             unset($out, $body);
             //恢复内存设置
             ini_set('memory_limit', $memory);
-            //初始化响应数据
-            $res = null;
 
             //同步调用
             if ($mode === false) {
-                //引用头数据
-                $index = &$res['header'];
+                //初始化响应数据
+                $res = array('header' => array(), 'response' => array());
 
                 //设置请求超时
                 if (isset($data['timeout'][1])) {
                     stream_set_timeout($fp, $data['timeout'][1]);
                 }
 
-                //读取响应
+                //读取响应头
                 while ($temp = fgets($fp, 2048)) {
-                    $index[] = $temp;
-                    if (!isset($res['response']) && $temp === "\r\n") {
-                        $index = &$res['response'];
+                    if ($temp === "\r\n") {
+                        break ;
+                    } else {
+                        $res['header'][] = $temp;
                     }
                 }
+                $res['header'] = join($res['header']);
+
+                //chunk传输
+                if (preg_match('@Transfer-Encoding:\s*chunked@i', $res['header'])) {
+                    //为"0\r\n"时停止
+                    while ($temp = rtrim(fgets($fp, 2048))) {
+                        self::getLenStr($fp, hexdec($temp), $res['response']);
+                        //跳过\r\n
+                        fread($fp, 2);
+                    }
+                //Length传输
+                } else if (preg_match('@Content-Length:\s*(\d+)@i', $res['header'], $temp)) {
+                    self::getLenStr($fp, $temp[1], $res['response']);
+                //非标准响应
+                } else {
+                    while ($temp = fread($fp, 2048)) {
+                        $res['response'][] = $temp;
+                    }
+                }
+                //记录响应体
+                $res['response'] = join($res['response']);
 
                 //判断超时
                 $meta = stream_get_meta_data($fp);
@@ -493,15 +512,12 @@ class of_base_com_net {
                 //响应头, 超时 || empty=可能掉线或被GFW屏蔽地址
                 if ($meta['timed_out'] || empty($res['header'])) {
                     $res = array('header' => ' 503 ', 'response' => 'Internet failure');
-                } else {
-                    $res['header'] = join($res['header']);
-                    $res['response'] = empty($res['response']) ? '' : join($res['response']);
-                }
-
-                //chunk传输
-                if (preg_match('@Transfer-Encoding:\s*chunked@i', $res['header'])) {
-                    //chunk还原
-                    $res['response'] = &self::dechunk($res['response']);
+                //gzip压缩
+                } else if (
+                    isset($res['response'][0]) &&
+                    preg_match('@Content-Encoding:\s*gzip@i', $res['header'])
+                ) {
+                    $res['response'] = gzinflate(substr($res['response'], 10, -8));
                 }
 
                 //请求成功
@@ -535,7 +551,7 @@ class of_base_com_net {
                 //等待异步端数据接收成功
                 for ($i = 60; --$i;) {
                     usleep(50000);
-                    if (!of_base_com_kv::get($asMd5, false, $config['kvPool'])) {
+                    if (!of_base_com_kv::get($asMd5, false, '_ofSelf')) {
                         break ;
                     }
                 }
@@ -573,7 +589,7 @@ class of_base_com_net {
             if (is_numeric($len = hexdec(substr($str, $offset, $nowPos - $offset)))) {
                 $result[] = substr($str, $nowPos + 2, $len);
                 //更新偏移量
-                $offset = $len + $nowPos + 2;
+                $offset = $len + $nowPos + 4;
             //解析出错
             } else {
                 //解码失败
@@ -670,6 +686,19 @@ class of_base_com_net {
                 unset($cookie[$domain][$path][$config['name']]);
             }
         }
+    }
+
+    /**
+     * 描述 : 获取指定长度响应数据
+     * 作者 : Edgar.lee
+     */
+    private static function getLenStr(&$fp, $len, &$res) {
+        $strs = array();
+        while ($len > 0) {
+            $strs[] = $temp = fread($fp, $len);
+            $len -= strlen($temp);
+        }
+        $res[] = join($strs);
     }
 }
 of_base_com_net::init();

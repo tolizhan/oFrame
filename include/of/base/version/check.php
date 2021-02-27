@@ -20,11 +20,11 @@ class of_base_version_check {
             )
         ) {
             //获取版本号(版本号|跳转地址)
-            $ver = explode('|', of_base_com_kv::get('of_base_version_check::version', ''));
+            $ver = explode('|', of_base_com_kv::get('of_base_version_check::version', '', '_ofSelf'));
 
             //读取失败
             if (!$ver[0]) {
-                of_base_com_kv::set('of_base_version_check::version', 1, 86400);
+                of_base_com_kv::set('of_base_version_check::version', 1, 86400, '_ofSelf');
                 of_base_com_net::request(OF_URL, array(), 'of_base_version_check::version');
             //读取成功 && 有最新版本
             } else if ($ver[0] > OF_VERSION) {
@@ -66,7 +66,7 @@ class of_base_version_check {
             if ($params['state']) {
                 preg_match('@\bOF_VERSION[^\d]+(\d+)@', $params['response'], $temp);
                 $temp = ($temp ? (int)$temp[1] : 1) . '|' . $v;
-                of_base_com_kv::set('of_base_version_check::version', $temp, 86400);
+                of_base_com_kv::set('of_base_version_check::version', $temp, 86400, '_ofSelf');
                 break ;
             }
         }

@@ -9,7 +9,11 @@
  *                  "matches" : 匹配调度信息, 调度格式为"class::action" {
  *                      注释信息 : 其它过滤信息 {
  *                          "action" : 匹配调度信息, 以"@"开始的字符串=按正则处理, "类名::方法"=全等匹配调度格式
- *                          "method" :o匹配请求类型, 均大写, 默认不限制, 如 ["GET", "POST"],
+ *                          "values" :o匹配全局变量$GLOBALS中的字符串数据 {
+ *                              以"."作为分隔符匹配深度数组 : 以"@"开始按正则, 否则全等对比,
+ *                              ...
+ *                          }
+ *                          "method" :o通过回调方法({"action" : 调度方法})判断匹配,返回 true=匹配, false=未匹配
  *                      }, ...
  *                  },
  *                  "ipList"   : 验证IP列表, 支持IP v4 v6, 字符串=指定配置路径(结构同数组), 数组={
@@ -89,13 +93,25 @@ class of_base_firewall_main {
     private static function matches(&$match, &$action) {
         //匹配调度信息
         foreach ($match['matches'] as &$v) {
-            if (
-                //验证调度是否匹配 "@"开头 ? 正则匹配 : 全等匹配
-                ($v['action'][0] === '@' ? preg_match($v['action'], $action) : $v['action'] === $action) &&
-                //验证请求类型是否匹配
-                (empty($v['method']) || in_array($_SERVER['REQUEST_METHOD'], $v['method'], true))
-            ) {
-                return true;
+            //验证调度是否匹配 "@"开头 ? 正则匹配 : 全等匹配
+            if ($v['action'][0] === '@' ? preg_match($v['action'], $action) : $v['action'] === $action) {
+                //匹配GLOBALS全局变量
+                if (isset($v['values'])) {
+                    foreach ($v['values'] as $kv => &$vv) {
+                        //变量未匹配成功
+                        if (
+                            !is_string($temp = of::getArrData($kv, $GLOBALS)) ||
+                            !($vv[0] === '@' ? preg_match($vv, $temp) : $vv === $temp)
+                        ) {
+                            return false;
+                        }
+                    }
+                }
+
+                //通过回调方法判断匹配
+                return empty($v['method']) || of::callFunc($v['method'], array(
+                    'action' => $action
+                ));
             }
         }
 

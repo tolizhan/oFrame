@@ -67,15 +67,8 @@ abstract class of_base_com_mq {
     private static $mqDir = null;
     //队列监听路径
     private static $tPath = null;
-    //触发时的环境变量
-    private static $fireEnv = array(
-        //未释放的内存(默认1M)
-        'memory'   => 1048576,
-        //时区
-        'timezone' => null,
-        //当前消息数据
-        'mqData'   => null
-    );
+    //触发时变量 {"memory" : 最大内存, "timezone" : 当前时区, "mqData" : 当前消息, "mqClass" : 消费类名}
+    private static $fireEnv = null;
 
     /**
      * 描述 : 初始化
@@ -111,7 +104,7 @@ abstract class of_base_com_mq {
                 of_base_com_disk::each($path, $tasks, null);
                 //遍历发送重置命令
                 foreach ($tasks as $kt => &$vt) {
-                    $vt && of_base_com_disk::file($kt . '/command.php', '');
+                    $vt && of_base_com_kv::del('of_base_com_mq::command-' . basename($kt), '_ofSelf');
                 }
             //展示并发列表
             } else {
@@ -139,10 +132,14 @@ abstract class of_base_com_mq {
                             $vl['execInfo'] = of_base_com_timer::data(null, $kl, '/' . $k);
                             $vl['execInfo'] = &$vl['execInfo']['info'][$kl]['data']['_mq'];
 
+                            //存在执行信息
                             if (isset($vl['execInfo']['useMemory'])) {
+                                //内存转化成M单位
                                 $vl['execInfo']['useMemory'] = round(
                                     $vl['execInfo']['useMemory'] / 1048576, 2
                                 ) . 'M';
+                                //删除异常消息数据
+                                unset($vl['execInfo']['quitData']);
                             }
                         }
                     } else {
@@ -350,18 +347,35 @@ abstract class of_base_com_mq {
             $eTip = $data['this']['cCid'] === 1 ? 'MQ auto reload' : '';
             //可以垃圾回收
             ($isGc = function_exists('gc_enable')) && gc_enable();
-            //接收环境变化路径
-            $path = self::$tPath . '/command.php';
+            //接收环境变化键名
+            $cKey = 'of_base_com_mq::command-' . md5($_SERVER['SERVER_ADDR']);
             //消息队列实例对象
             $mqObj = &self::$mqList[$bind]['pools'][$data['pool']]['inst'];
-            //记录默认时区
-            $fireEnv['timezone'] = date_default_timezone_get();
+            //初始化环境变量
+            $fireEnv = array(
+                //未释放的内存(默认1M)
+                'memory'   => 1048576,
+                //时区
+                'timezone' => date_default_timezone_get(),
+                //当前消息数据
+                'mqData'   => null,
+                //处理消息的类名
+                'mqClass'  => get_class($mqObj)
+            );
             //重置当前并发数据
-            of_base_com_timer::data(array('_mq' => array()));
+            $index = &of_base_com_timer::data(array('_mq' => array()));
+
+            //存在异常消息
+            if (
+                ($index = &$index['info'][$data['this']['cCid']]['data']['_mq']['quitData']) &&
+                $index['class'] === $fireEnv['mqClass']
+            ) {
+                $mqObj->_quit($index['data']);
+            }
+            unset($index);
 
             while (true) {
-                $cmd = of_base_com_disk::file($path, true);
-                $cmd || $cmd = array('taskPid' => '', 'compare' => '');
+                $cmd = of_base_com_kv::get($cKey, array('taskPid' => '', 'compare' => ''), '_ofSelf');
                 isset($tPid) || $tPid = $cmd['taskPid'];
 
                 //运行环境无变化
@@ -412,8 +426,8 @@ abstract class of_base_com_mq {
                 if ($lock = self::lockListen($name)) {
                     //已绑定的监听ID
                     $tNum = array(0);
-                    //命令配置路径
-                    $cPath = self::$tPath . '/command.php';
+                    //命令配置键名
+                    $cKey = 'of_base_com_mq::command-' . md5($_SERVER['SERVER_ADDR']);
                     //队列监听列表
                     $qPath = self::$mqDir . '/queueTrigger';
 
@@ -456,8 +470,7 @@ abstract class of_base_com_mq {
                     //监听标志存在
                     while (true) {
                         //读取命令
-                        $cmd = of_base_com_disk::file($cPath, true);
-                        $cmd || $cmd = array('taskPid' => '', 'compare' => '');
+                        $cmd = of_base_com_kv::get($cKey, array('taskPid' => '', 'compare' => ''), '_ofSelf');
                         isset($tPid) || $tPid = $cmd['taskPid'];
                         //加载最新配置文件
                         $config = of::config('_of.com.mq', array(), 4);
@@ -506,8 +519,8 @@ abstract class of_base_com_mq {
                             if ($cmd['compare'] !== $temp) {
                                 $cmd['compare'] = $temp;
                                 $cmd['taskPid'] = $tPid = of_base_com_str::uniqid();
-                                of_base_com_disk::file($cPath, $cmd);
                             }
+                            of_base_com_kv::set($cKey, $cmd, 86400, '_ofSelf');
 
                             //激活消息队列
                             foreach ($waitCall as &$v) {
@@ -520,7 +533,7 @@ abstract class of_base_com_mq {
                         //关闭监听器
                         } else {
                             //停止在运行的消息进程
-                            $config || of_base_com_disk::file($cPath, '');
+                            $config || of_base_com_kv::del($cKey, '_ofSelf');
                             break ;
                         }
                     }
@@ -640,7 +653,7 @@ abstract class of_base_com_mq {
         //有新的队列 && 启动监听
         self::$waitMq && self::listen('queueLock');
         //回调函数意外退出
-        self::$fireEnv['mqData'] === null || trigger_error(
+        isset(self::$fireEnv['mqData']) && trigger_error(
             'MQ auto reload: (Q)Callback function "exit" unexpectedly. - ' .
             print_r(self::$fireEnv['mqData'], true)
         );
@@ -677,7 +690,11 @@ abstract class of_base_com_mq {
             'startTime' => date('Y-m-d H:i:s', time()),
             'doneTime'  => '',
             'runCount'  => ++$count,
-            'useMemory' => &$fireEnv['memory']
+            'useMemory' => &$fireEnv['memory'],
+            'quitData'  => array(
+                'class' => &$fireEnv['mqClass'],
+                'data'  => &$data
+            )
         );
         //记录监听数据
         of_base_com_timer::data(array('_mq' => &$cLog));
@@ -713,6 +730,8 @@ abstract class of_base_com_mq {
         $cLog['doneTime'] = date('Y-m-d H:i:s', time());
         //记录当前内存
         $cLog['useMemory'] = memory_get_peak_usage();
+        //清空异常消息
+        unset($cLog['quitData']);
         //记录监听数据
         of_base_com_timer::data(array('_mq' => &$cLog));
 
@@ -939,6 +958,25 @@ abstract class of_base_com_mq {
      * 作者 : Edgar.lee
      */
     abstract protected function _fire(&$calll, &$data);
+
+    /**
+     * 描述 : 触发消息队列意外退出时回调
+     * 参数 :
+     *     &data : 回调参数结构 {
+     *          "pool"  : 指定消息队列池,
+     *          "queue" : 队列名称,
+     *          "key"   : 消息键,
+     *          "this"  : 当前并发信息 {
+     *              "cMd5" : 回调唯一值
+     *              "cCid" : 当前并发值
+     *          }
+     *          "msgId" : 消息ID
+     *          "count" : 调用计数, 首次为 1
+     *          "data"  : 消息数据
+     *      }
+     * 作者 : Edgar.lee
+     */
+    abstract protected function _quit(&$data);
 
     /**
      * 描述 : 开启事务

@@ -26,6 +26,8 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
     private $noTran = true;
     private $vHost = '';
     private $waitList = array();
+    //消息偏移量记录{"time" : 最后更新时间戳, "limit" : 偏移量, "expire" : 过期时间}
+    private $offset = array('time' => 0, 'limit' => 0, 'expire' => 600);
 
     /**
      * 描述 : 初始化适配器
@@ -121,31 +123,15 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
     protected function _fire(&$call, &$data) {
         //唯一编码
         $uniqid = of_base_com_str::uniqid();
-        //当前时间
-        $nowTime = date('Y-m-d H:i:s', $time = time());
-        //10分钟过期
-        $expTime = date('Y-m-d H:i:s', $time + 600);
 
         //通过先筛选主键后加锁的方式解决同时修改与筛选导致索引死锁的问题
         do {
             //当筛选成功, 锁定失败时保持循环
             $loop = false;
-            //读取正在执行并发ID
-            $lock = of_base_com_timer::data(null, true);
-            //计算消息数据偏移量
-            $limit = $lock['info'][$data['this']['cCid']]['sort'] * 5;
-
-            //提取正在执行消息ID
-            foreach ($lock['info'] as $k => &$v) {
-                //正在执行
-                if (($index = &$v['data']['_mq']) && $index['doneTime'] === '') {
-                    $v = $index['msgId'];
-                //没有执行
-                } else {
-                    unset($lock['info'][$k]);
-                }
-            }
-            $lock = join('\',\'', $lock['info']);
+            //当前时间
+            $nowTime = date('Y-m-d H:i:s', $time = time());
+            //获取消息数据偏移量
+            $limit = $this->msgLimit($time, $data['this']['cCid']);
 
             //筛选合适消息
             $sql = "SELECT
@@ -157,7 +143,6 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             AND `queue` = '{$data['queue']}'
             AND `type` = '{$data['key']}'
             AND `lockTime` <= '{$nowTime}'
-            AND `msgId` NOT IN ('{$lock}')
             ORDER BY
                 `lockTime`
             LIMIT
@@ -166,6 +151,8 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
 
             //筛选成功
             if ($msgs = &$msgs[0]) {
+                //65分钟过期
+                $expTime = date('Y-m-d H:i:s', $time + 3900);
                 //锁定数据
                 $sql = "UPDATE
                     `_of_com_mq`
@@ -178,16 +165,37 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                 AND `lockTime` = '{$msgs['lockTime']}'";
                 $loop = of_db::sql($sql, $this->dbPool);
 
-                //执行出错 ? 跳出执行 : 响应行数决定有效或重试
-                $loop === false ? $msgs = null : $loop = !$loop;
+                //修改出错
+                if ($loop === false) {
+                    //跳出执行
+                    $msgs = null;
+                //修改成功
+                } else {
+                    //其它并发操作 && 重置消息偏移量
+                    $loop === 0 && $this->msgLimit();
+                    //响应行数决定有效或重试
+                    $loop = !$loop;
+                }
+            } else {
+                //重置消息偏移量
+                $this->msgLimit();
             }
         } while ($loop);
 
         //执行成功
         if ($msgs) {
+            //设置60分钟超时
+            ini_set('max_execution_time', 3600);
+
+            //解析消费数据
             $data['msgId'] = $msgs['msgId'];
             $data['count'] = $msgs['syncLevel'] + 1;
             $data['data'] = json_decode($msgs['data'], true);
+            $data['extra'] = array(
+                'mark'  => $msgs['mark'],
+                'lock'  => $uniqid,
+                'delay' => $data['count'] * 300
+            );
 
             //回调结果
             $return = self::callback($call, $data);
@@ -203,27 +211,50 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                 of_db::sql($sql, $this->dbPool);
             //执行失败
             } else {
-                //非指定时间的其它错误(包括 false), 计算下次执行时间(s)
-                is_int($return) || $return = $data['count'] * 300;
-                $expTime = date('Y-m-d H:i:s', time() + $return);
-
+                //返回数字 && 指定时间(s)
+                is_int($return) && $data['extra']['delay'] = $return;
                 //修改消息重试次数
-                $sql = "UPDATE
-                    `_of_com_mq`
-                SET
-                    `syncCount` = `syncCount` + 1,
-                    `syncLevel` = `syncLevel` + 1,
-                    `lockTime` = '{$expTime}',
-                    `lockMark` = ''
-                WHERE
-                    `type` = '{$data['key']}'
-                AND `mark` = '{$msgs['mark']}'
-                AND `lockMark` = '{$uniqid}'";
-                of_db::sql($sql, $this->dbPool);
+                $this->_quit($data);
             }
         }
 
         return !!$msgs;
+    }
+
+    /**
+     * 描述 : 触发消息队列意外退出时回调
+     * 参数 :
+     *     &data : {
+     *          "pool"  : 指定消息队列池,
+     *          "queue" : 队列名称,
+     *          "key"   : 消息键,
+     *          "this"  : 当前并发信息 {
+     *              "cMd5" : 回调唯一值
+     *              "cCid" : 当前并发值
+     *          }
+     *          "msgId" : 消息ID
+     *          "count" : 调用计数, 首次为 1
+     *          "data"  : 消息数据
+     *      }
+     * 作者 : Edgar.lee
+     */
+    protected function _quit(&$data) {
+        $extra = &$data['extra'];
+        $expTime = date('Y-m-d H:i:s', time() + $extra['delay']);
+
+        //修改消息重试次数
+        $sql = "UPDATE
+            `_of_com_mq`
+        SET
+            `syncCount` = `syncCount` + 1,
+            `syncLevel` = `syncLevel` + 1,
+            `lockTime` = '{$expTime}',
+            `lockMark` = ''
+        WHERE
+            `type` = '{$data['key']}'
+        AND `mark` = '{$extra['mark']}'
+        AND `lockMark` = '{$extra['lock']}'";
+        of_db::sql($sql, $this->dbPool);
     }
 
     /**
@@ -291,5 +322,30 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
         } else {
             return true;
         }
+    }
+
+    /**
+     * 描述 : 读取或重置消息偏移量, _fire辅助方法
+     * 作者 : Edgar.lee
+     */
+    private function msgLimit(&$time = 0, &$cCid = 0) {
+        $index = &$this->offset;
+
+        //重置偏移量
+        if ($time === 0) {
+            $index['expire'] = 30;
+        //偏移量失效
+        } else if ($time - $index['time'] > $index['expire']) {
+            //重置更新时间
+            $index['time'] = $time;
+            //重置过期时间
+            $index['expire'] = 600;
+            //读取正在执行并发数据
+            $data = of_base_com_timer::data(true, true);
+            //计算消息数据偏移量
+            $index['limit'] = $data['info'][$cCid]['sort'] * 5;
+        }
+
+        return $index['limit'];
     }
 }

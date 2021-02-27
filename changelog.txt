@@ -1,3 +1,36 @@
+版本: 248
+作者: Edgar
+日期: 2021年2月27日 23:52:52
+信息:
+说明: + K-V配置_of.com.kv增加"_ofSelf"为框架自身使用, 未设置配置同"defalut"
+      + 事件"of_base_error_writeLog::error"回调函数返回true时不会记录日志
+      + 消息队列增加抽象方法"_quit", 消费队列意外退出时回调
+      + 优化IP访问控制配置, 新增values配置, 可匹配$GLOBALS中字符串数据
+      + of_base_com_net::request 支持自定义 User-Agent
+      * of_base_com_net::request 使用keep-alive和gzip增强通信稳定性
+      * 消息队列对磁盘大部分依赖转到kv(_ofSelf), 提升分布式效率
+      * 自定义错误"memo"变量设置字符串, 指定备忘录类型
+      - 优化IP访问控制配置, method配置改为回调方法, 可自定义匹配结果
+      - 取消框架配置_of.com下net与timer.cron的kvPool配置, 固定使用"_ofSelf"
+      - of_base_com_timer::data 仅运行进程可修改自身数据
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/config/network.php
+已修改 : /trunk/include/of/accy/com/kv/redis.php
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/firewall/main.php
+已修改 : /trunk/include/of/base/version/check.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/license.txt
+
 版本: 246
 作者: Edgar
 日期: 2020年12月31日 11:44:55

@@ -23,7 +23,7 @@ class of_accy_com_kv_redis extends of_base_com_kv {
                 isset($host[1]) || $host[1] = (empty($params['port']) ? 6379 : $params['port']);
 
                 $redis = new Redis;
-                $redis->{$params['persistent'] ? 'connect' : 'pconnect'}($host[0], $host[1]);
+                $redis->{$params['persistent'] ? 'pconnect' : 'connect'}($host[0], $host[1]);
                 //授权
                 $redis->auth($params['auth']);
                 //选择数据库

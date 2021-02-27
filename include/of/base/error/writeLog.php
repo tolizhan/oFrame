@@ -60,7 +60,6 @@ class of_base_error_writeLog {
     public static function phpLog($errno = null, $errstr = null, $errfile = null, $errline = null) {
         //输出日志信息
         static $errorLevel = array(
-            0     => 'EXCEPTION',                   //异常
             1     => 'E_ERROR',                     //致命的运行时错误。错误无法恢复。脚本的执行被中断。
             2     => 'E_WARNING',                   //非致命的运行时错误。脚本的执行不会中断。
             4     => 'E_PARSE',                     //编译时语法解析错误。解析错误只应该由解析器生成。
@@ -149,7 +148,7 @@ class of_base_error_writeLog {
                 )
             );
             //标记为备忘录
-            empty($error['memo']) || $backtrace['environment']['memo'] = true;
+            empty($error['memo']) || $backtrace['environment']['memo'] = $error['memo'];
         //"@"错误 || 过期函数
         } else {
             //@trigger_error('') 返回 false, php 标准错误处理会接收
@@ -164,7 +163,14 @@ class of_base_error_writeLog {
         //错误编码
         $index['code'] = $index['type'];
         //错误类型
-        $backtrace['errorType'] === 'phpError' && $index['type'] = $errorLevel[$index['type']];
+        if (isset($index['memo'])) {
+            $index['type'] = is_string($index['memo']) ? $index['memo'] : 'MEMO';
+            $index['memo'] = true;
+        } else if ($backtrace['errorType'] === 'exception') {
+            $index['type'] = 'EXCEPTION';
+        } else if (isset($errorLevel[$index['type']])) {
+            $index['type'] = $errorLevel[$index['type']];
+        }
         //移除无效字符
         $index['info'] = iconv('UTF-8', 'UTF-8//IGNORE', $index['info']);
 
@@ -245,8 +251,14 @@ class of_base_error_writeLog {
             ". Timestamp : {$logData['time']}</pre>";
         }
 
+        //错误回调
+        $isSave = of::event('of_base_error_writeLog::error', true, array(
+            'type' => &$logType, 'data' => &$logData
+        ));
+        $isSave = !in_array(true, $isSave, true);
+
         //写入日志
-        if ($index = &$config[$logType . 'Log']) {
+        if ($isSave && $index = &$config[$logType . 'Log']) {
             //日志路径
             $logPath = ROOT_DIR . $index . date('/Y/m/d', $logData['time']) . $logType;
             //追加方式打开日志
@@ -254,7 +266,7 @@ class of_base_error_writeLog {
 
             //错误分组标识
             $index = &$logData['environment'];
-            $eMd5 = md5($index['file'] . '::' . $index['line'] . '::' . $index['code']);
+            $eMd5 = md5($index['file'] . '::' . $index['line'] . '::' . $index['code'] . '::' . $index['type']);
             //错误的分组明细路径
             $ePath = $logPath . 'Attr/group/' . $eMd5 . '.bin';
 
@@ -311,13 +323,8 @@ class of_base_error_writeLog {
             $handle = null;
         }
 
-        //错误回调
-        of::event('of_base_error_writeLog::error', true, array(
-            'type' => &$logType, 'data' => &$logData
-        ));
-
         //日志有时限 && 1%的机会清理
-        if (($index = &$config['gcTime']) > 0 && rand(0, 99) === 1) {
+        if ($isSave && ($index = &$config['gcTime']) > 0 && rand(0, 99) === 1) {
             //日志生命期
             $gcTime = $logData['time'] - $index * 86400;
 

@@ -27,7 +27,7 @@ class of_base_com_timer {
 
         //初始 静态任务 配置
         ($index = &$config['cron']) || $index = array();
-        $index += array('path' => '', 'kvPool' => 'default');
+        $index += array('path' => '');
         empty($index['path']) || $index['path'] = of::formatPath($index['path'], ROOT_DIR);
 
         //任务触发器路径(分布式)
@@ -296,10 +296,9 @@ class of_base_com_timer {
     /**
      * 描述 : 为并发提供共享数据
      * 参数 :
-     *      data : 读写数据,
-     *          null=无锁读取
+     *      data : 读写数据, 仅运行进程可修改自身数据
+     *          true=读取数据
      *          false=清空读取, 读取数据后清空原始数据
-     *          true=写锁读取, 读取数据同时加独享锁, 指针在最后位置
      *          数组=单层替换, 将数组键的值替换对应共享数据键的值
      *      cIds : 指定任务中的并发ID
      *          null=读取自身
@@ -317,28 +316,30 @@ class of_base_com_timer {
      *              并发ID, 从小到大排序 : {
      *                  "isRun" : 是否运行, true=运行, false=停止
      *                  "sort"  : 在返回列表中的位置, 从0开始
-     *                  "wRes"  : 写资源, data为true时有效
-     *                  "data"  : 并发所存数据
+     *                  "data"  : 并发所存修改前的数据
      *              }, ...
      *          }
      *      }
      * 作者 : Edgar.lee
      */
-    public static function &data($data = null, $cIds = null, $call = null) {
+    public static function &data($data = true, $cIds = null, $call = null) {
         //返回结构
         $result = array('info' => array());
 
         if ($cIds !== null && $call !== null || $nowTask = &self::$nowTask) {
             //读取自身任务
             if ($call === null) {
-                $call = '/' . $nowTask['cAvg']['cMd5'];
+                $call = $nowTask['cAvg']['cMd5'];
             //计算任务路径
             } else if (is_array($call) || $call[0] !== '/') {
-                $call = '/' . of_base_com_data::digest($call);
+                $call = of_base_com_data::digest($call);
+            //以'/'开头字符串
+            } else {
+                $call = substr($call, 1);
             }
 
             //任务路径
-            $path = self::$config['path'] . '/concurrent'. $call;
+            $path = self::$config['path'] . '/concurrent/'. $call;
             //过滤加锁(true=不过滤)
             $filt = $cIds !== true;
             //并发ID排序计数
@@ -358,8 +359,17 @@ class of_base_com_timer {
                         $cIds[] = $temp;
                     }
                 }
-            } else if (!is_array($cIds)) {
-                $cIds = array($cIds === null ? $nowTask['cAvg']['cCid'] : $cIds);
+            //读取自身
+            } else if ($cIds === null) {
+                $cIds = array($nowTask['cAvg']['cCid']);
+            //数字 || 数组
+            } else {
+                //强制转换成数组
+                is_array($cIds) || $cIds = (array)$cIds;
+                //检查并发有效性
+                foreach ($cIds as $k => &$v) {
+                    if (!is_file($path . '/' . $v)) unset($cIds[$k]);
+                }
             }
 
             //从小到大排序并发ID
@@ -368,50 +378,32 @@ class of_base_com_timer {
             //读取数据
             foreach ($cIds as &$v) {
                 //并发文件存在
-                if (is_file($cDir = $path . '/' . $v)) {
-                    //进程是否运行, true=运行, false=停止
-                    $isRun = !flock(fopen($cDir, 'r'), LOCK_SH | LOCK_NB);
+                $cDir = $path . '/' . $v;
+                //自身进程
+                $isSelf = isset($nowTask) && $nowTask['cAvg']['cCid'] === $v;
+                //进程是否运行, true=运行, false=停止
+                $isRun = $isSelf ? true : !flock(fopen($cDir, 'r'), LOCK_SH | LOCK_NB);
 
-                    //进程运行 || 不过滤
-                    if ($isRun || $filt) {
-                        $index = &$result['info'][$v];
-                        //进程运行状态
-                        $index = array(
-                            'isRun' => $isRun, 'wRes' => null, 'sort' => ++$sort
-                        );
+                //进程运行 || 不过滤
+                if ($isRun || $filt) {
+                    //数据键名
+                    $dKey = 'of_base_com_timer::data-' . $call . '.' . $v;
+                    //引用进程结果
+                    $index = &$result['info'][$v];
+                    //进程运行状态
+                    $index = array(
+                        'isRun' => $isRun, 'sort' => ++$sort, 'data' => of_base_com_kv::get($dKey, array(), '_ofSelf')
+                    );
 
-                        //加写锁(array, bool)
-                        if ($data || $data === false) {
-                            //打开写锁流
-                            $index['wRes'] = &of_base_com_disk::file(
-                                $cDir . '.dat', null, null
-                            );
-
-                            //文件尺寸
-                            $temp = ftell($index['wRes']);
-                            //移动到首位
-                            fseek($index['wRes'], 0);
-                            //解析并发数据
-                            $index['data'] = fread($index['wRes'], $temp + 1);
-                            $index['data'] = $index['data'] ?
-                                unserialize($index['data']) : array();
-
-                            //合并数据
-                            if (is_array($data)) {
-                                //写入数据
-                                $index['data'] = $data + $index['data'];
-                                of_base_com_disk::file($index['wRes'], $index['data']);
-                            //删除数据
-                            } else if ($data === false) {
-                                of_base_com_disk::file($index['wRes'], '');
-                            }
-
-                            //加锁读取 || 解锁资源
-                            $data === true || $index['wRes'] = null;
-                        //读数据
-                        } else {
-                            $index['data'] = &of_base_com_disk::file($cDir . '.dat', true);
-                            $index['data'] || $index['data'] = array();
+                    //修复数据
+                    if ($isSelf) {
+                        //合并写入
+                        if (is_array($data)) {
+                            //写入数据
+                            of_base_com_kv::set($dKey, $data + $index['data'], 86400, '_ofSelf');
+                        //删除数据
+                        } else if ($data === false) {
+                            of_base_com_kv::del($dKey, '_ofSelf');
                         }
                     }
                 }
@@ -808,14 +800,14 @@ class of_base_com_timer {
                         //加锁直到成功
                         if (of_base_com_disk::lock($lock)) {
                             //读取当前任务最后执行时间戳
-                            $temp = of_base_com_kv::get($tKey, 0, $config['kvPool']);
+                            $temp = of_base_com_kv::get($tKey, 0, '_ofSelf');
 
                             //对应时间整点没有执行过
                             if ($temp < $timeBox['nowTime']) {
                                 //记录成功项
                                 $result[] = array('time' => $timeBox['nowTime']) + $vt;
                                 //记录最后更新时间戳
-                                of_base_com_kv::set($tKey, $timeBox['nowTime'], 86400, $config['kvPool']);
+                                of_base_com_kv::set($tKey, $timeBox['nowTime'], 86400, '_ofSelf');
                             }
 
                             //解锁
