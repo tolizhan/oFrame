@@ -175,6 +175,10 @@ class of_base_com_net {
             ) {
                 $data['type'] = 'POST';
                 $temp && $data['data'] = &$data['post'];
+                unset($data['post']);
+            } else {
+                //请求类型
+                $data['type'] = empty($data['type']) ? 'GET' : strtoupper($data['type']);
             }
 
             //参数初始化
@@ -182,18 +186,28 @@ class of_base_com_net {
                 'get' => '', 'data' => '', 'cookie' => '',
                 'header' => '', 'timeout' => array()
             );
+            //原始请求地址, 记录请求地址
+            $data['oUrl'] = $data['url'] = $url;
             //格式化超时设置[连接超时(10), 请求超时(default_socket_timeout)]
             $data['timeout'] = (array)$data['timeout'] + array(10);
+            //格式化header参数
+            $data['header'] = is_array($data['header']) ?
+                join("\r\n", $data['header']) : trim($data['header'], "\r\n");
             //格式化get参数
             is_array($data['get']) && $data['get'] = http_build_query($data['get']);
             //格式化post参数
             is_array($data['data']) && $data['data'] = http_build_query($data['data']);
-            //格式化header参数
-            is_array($data['header']) && $data['header'] = join("\r\n", $data['header']);
+            //格式化cookie参数
+            is_array($data['cookie']) && $data['cookie'] = http_build_query($data['cookie'], '', '; ');
+
+            //请求开始前触发
+            of::event('of_base_com_net::before', true, array(
+                'params' => &$data
+            ));
 
             //解析目标网址
-            $index = &$data['url'];
-            $index = parse_url($url);
+            $index = &$data['pUrl'];
+            $index = parse_url($data['url']);
             //解析到域名
             if (isset($index['host'])) {
                 //初始路径
@@ -215,7 +229,6 @@ class of_base_com_net {
 
             //cookie整合
             if ($data['cookie']) {
-                is_array($data['cookie']) && $data['cookie'] = http_build_query($data['cookie'], '', '; ');
                 $data['cookie'] = explode('; ', $data['cookie']);
                 foreach ($data['cookie'] as &$v) {
                     $temp = explode('=', $v, 2);
@@ -234,6 +247,8 @@ class of_base_com_net {
                 'domain' => &$index['host'],
                 'path'   => of_base_com_str::realpath('/' . $index['path'] . 'a/../')
             ));
+            //当前是否发生错误(true=没错误)
+            $noErr = !of::work('error');
         //准备二次请求
         } else {
             //二次请求模式
@@ -338,23 +353,23 @@ class of_base_com_net {
                     'timeout' => array(30)
                 );
 
-                $data['url'] = $config['asUrl'];
-                $data['url']['path'] = OF_URL . '/index.php';
-                $data['url']['query'] = 'a=request&c=of_base_com_net';
+                $data['pUrl'] = $config['asUrl'];
+                $data['pUrl']['path'] = OF_URL . '/index.php';
+                $data['pUrl']['query'] = 'a=request&c=of_base_com_net';
                 //数据校验
                 $temp = of_base_com_str::uniqid();
                 of_base_com_kv::set(
                     $asMd5 = 'of_base_com_net::' . $temp, md5($data['data']), 300, '_ofSelf'
                 );
-                $data['url']['query'] .= '&md5=' . $temp;
+                $data['pUrl']['query'] .= '&md5=' . $temp;
             }
         }
 
         //创建连接
         $fp = stream_socket_client(
             //请求路径
-            ($data['url']['scheme'] === 'https' ? 'ssl://' : '') .
-                $data['url']['host'] . ':' . ($index = &$data['url']['port']),
+            ($data['pUrl']['scheme'] === 'https' ? 'ssl://' : '') .
+                $data['pUrl']['host'] . ':' . ($index = &$data['pUrl']['port']),
             //基础参数
             $errno, $errstr, $data['timeout'][0], STREAM_CLIENT_CONNECT,
             //配置上下文
@@ -366,14 +381,11 @@ class of_base_com_net {
                 )
             )
         );
+
         //连接成功
         if ($fp) {
             //设置内存不溢出
             $memory = ini_set('memory_limit', -1);
-            //请求类型
-            $data['type'] = empty($data['type']) ? 'GET' : strtoupper($data['type']);
-            //自定请求头
-            $data['header'] = trim($data['header'], "\r\n");
             //简单标准化处理 https(443) 和 http(80) 默认不传端口
             $port = $index === 443 || $index === 80 ? '' : ':' . $index;
             //附件分界线
@@ -429,8 +441,8 @@ class of_base_com_net {
             }
 
             //组合请求数据
-            $out[] = $data['type'] . " {$data['url']['path']}?{$data['url']['query']} HTTP/1.1";
-            $out[] = 'Host: ' . $data['url']['host'] . $port;
+            $out[] = $data['type'] . " {$data['pUrl']['path']}?{$data['pUrl']['query']} HTTP/1.1";
+            $out[] = 'Host: ' . $data['pUrl']['host'] . $port;
             //缓存连接
             $out[] = 'Connection: keep-alive';
             //压缩编码
@@ -532,9 +544,9 @@ class of_base_com_net {
 
                         //记忆cookie
                         self::cookie(array(
-                            'domain'  => isset($v['domain'][1]) ? $v['domain'][1] : $data['url']['host'],
-                            'path'    => isset($v['path'][1]) ? 
-                                $v['path'][1] : of_base_com_str::realpath('/' . $data['url']['path'] . 'a/../'),
+                            'domain'  => isset($v['domain'][1]) ? $v['domain'][1] : $data['pUrl']['host'],
+                            'path'    => isset($v['path'][1]) ?
+                                $v['path'][1] : of_base_com_str::realpath('/' . $data['pUrl']['path'] . 'a/../'),
                             'name'    => &$v[1],
                             'value'   => &$v[2],
                             'expires' => &$v['expires'][1],
@@ -564,6 +576,17 @@ class of_base_com_net {
         } else {
             //状态,内容
             $res = array('state' => false, 'errno' => &$errno, 'errstr' => &$errstr);
+        }
+
+        //是同步操作
+        if ($mode === false) {
+            //请求结束后触发
+            $temp = of::event('of_base_com_net::after', true, array(
+                'params' => &$data,
+                'result' => &$res
+            ));
+            //有事件触发 && 请求成功 && 请求前没错误 && 清理可能发生的错误(防止of::work回滚)
+            $temp && $res['state'] && $noErr && of::work('error', false);
         }
 
         return $res;

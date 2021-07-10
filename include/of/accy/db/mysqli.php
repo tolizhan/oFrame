@@ -337,7 +337,7 @@ class of_accy_db_mysqli extends of_db {
                     );
 
                     //阻塞列表读取成功
-                    if ($temp['wait'] = of_base_com_kv::get($temp['key'], '_ofSelf')) {
+                    if ($temp['wait'] = of_base_com_kv::get($temp['key'], null, '_ofSelf')) {
                         //记录超时客户端ID 与 阻塞信息
                         $note = array(
                             'requestId' => $obj->dbVar['linkCid'],
@@ -348,10 +348,10 @@ class of_accy_db_mysqli extends of_db {
                         foreach ($temp['wait']['bCids'] as &$v) {
                             //读取阻塞SQL
                             $temp['key'] = 'of_accy_db_mysql::sqls-' . $v . $temp['host'];
-                            $note['lockSqls'][$v] = of_base_com_kv::get($temp['key'], '_ofSelf');
+                            $note['lockSqls'][$v] = of_base_com_kv::get($temp['key'], null, '_ofSelf');
                             //读取阻塞追踪
                             $temp['key'] = 'of_accy_db_mysql::trace-' . $v . $temp['host'];
-                            $note['lockTrace'][$v] = of_base_com_kv::get($temp['key'], '_ofSelf');
+                            $note['lockTrace'][$v] = of_base_com_kv::get($temp['key'], null, '_ofSelf');
                         }
 
                         $note = print_r($note, true);
@@ -384,10 +384,10 @@ class of_accy_db_mysqli extends of_db {
                         } else {
                             //读取阻塞SQL
                             $temp['key'] = 'of_accy_db_mysql::sqls-' . $index . $temp['host'];
-                            $note['lockSqls'][$index] = of_base_com_kv::get($temp['key'], '_ofSelf');
+                            $note['lockSqls'][$index] = of_base_com_kv::get($temp['key'], null, '_ofSelf');
                             //读取阻塞追踪
                             $temp['key'] = 'of_accy_db_mysql::trace-' . $index . $temp['host'];
-                            $note['lockTrace'][$index] = of_base_com_kv::get($temp['key'], '_ofSelf');
+                            $note['lockTrace'][$index] = of_base_com_kv::get($temp['key'], null, '_ofSelf');
                         }
                     }
                 }

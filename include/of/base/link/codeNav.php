@@ -188,6 +188,19 @@ namespace of\base\sso {
 
 }
 
+namespace of\base\test {
+
+    class case extends \of_base_test_case {
+    }
+
+    class tool extends \of_base_test_tool {
+    }
+
+    class toolBaseClass extends \of_base_test_toolBaseClass {
+    }
+
+}
+
 namespace of\base\tool {
 
     class mysqlSync extends \of_base_tool_mysqlSync {

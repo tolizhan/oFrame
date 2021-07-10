@@ -106,7 +106,7 @@ class of_base_com_data {
      *      rule : 校验规则 {
      *          "."与"*"为关键词, "`"为转义字符的分割键名 : 参数结构如下, 字符串代表数组的type {
      *              "default" : 默认值, null=必存在, 其它=默认值
-     *              "keys"    : 按顺序验证键名中各"*"的类型 [
+     *              "keys"    : 按顺序验证键名中各"*"的类型, 如"a.*.b.*.c.*"分别对应0~2的配置 [
      *                  null为不验证,
      *                  type字符串验证类型(正则或内置),
      *                  {"type" => 同"值的类型", "min" => 数组最小个数, "max" => 数组最大个数},
@@ -143,6 +143,12 @@ class of_base_com_data {
      *                          "format" : 格式化样式, 默认="Y-m-d H:i:s", false=不格式,
      *                          "min"    : 最小时间,
      *                          "max"    : 最大时间,
+     *                      }
+     *                      "enum"  : 枚举类型, argv参数 {
+     *                          "list" : 枚举列表, [有效字符串, ...]
+     *                          "min"  : 最少选项,
+     *                          "max"  : 最多选项,
+     *                          "mode" : 校验类型, null(默认)=不校验, true=必须数组, false=必须标量
      *                      }
      *                      "mail"   : 验证邮箱, argv无参数
      *                      "call"   : 回调验证, null=验证成功, 其它=提示错误, argv参数符合回调结构, 接收参数 {
@@ -396,9 +402,48 @@ class of_base_com_data {
                                     (is_scalar($shift[0]) ? var_export($shift[0], true) : print_r($shift[0], true));
                             }
                             break;
+                        //枚举
+                        case 'enum':
+                            //验证键名 || 宽松校验
+                            if ($shift[3] === null || !isset($argv['mode'])) {
+                                $enum = (array)$shift[0];
+                            //数组校验
+                            } else if ($argv['mode']) {
+                                $enum = $shift[0];
+                            //标量校验
+                            } else {
+                                $enum = array($shift[0]);
+                            }
+
+                            //验证数值
+                            if (is_array($enum)) {
+                                //枚举数量
+                                $temp = count($enum);
+                                //初始化选择个数
+                                $argv += array('min' => 0, 'max' => PHP_INT_MAX);
+                                //验证选择个数
+                                if ($temp < $argv['min'] || $temp > $argv['max']) {
+                                    $error[$shift[2]] = 
+                                        "Val illegal, should be {$index['type']}, " .
+                                        "length >= {$argv['min']} and <= {$argv['max']} : " .
+                                        json_encode($enum);
+                                    break;
+                                }
+                            } else {
+                                $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') .
+                                    " illegal, should be {$index['type']} : Array";
+                                break;
+                            }
+
+                            if ($temp = array_diff($enum, $argv['list'])) {
+                                $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') .
+                                    " illegal, should be {$index['type']} : " .
+                                    json_encode($temp);
+                            }
+                            break;
                         //邮件
                         case 'mail':
-                            if (!preg_match('/^[\w-.]+@([\w-]+\.)+[a-z]+$/i', $shift[0])) {
+                            if (!preg_match('/^[\w\-.]+@([\w-]+\.)+[a-z]+$/i', $shift[0])) {
                                 $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') . 
                                     " illegal, should be {$index['type']} : " .
                                     (is_scalar($shift[0]) ? var_export($shift[0], true) : print_r($shift[0], true));

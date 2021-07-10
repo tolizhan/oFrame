@@ -168,6 +168,8 @@ class of_base_error_writeLog {
             $index['memo'] = true;
         } else if ($backtrace['errorType'] === 'exception') {
             $index['type'] = 'EXCEPTION';
+        } else if (isset($error['type'])) {
+            $index['type'] = $error['type'];
         } else if (isset($errorLevel[$index['type']])) {
             $index['type'] = $errorLevel[$index['type']];
         }

@@ -1,0 +1,307 @@
+/*调整外边距导航空间*/
+body { margin: 45px 0 0 70px; font-family:'微软雅黑','Arial';}
+
+/*主导航样式*/
+.oa-nav_main a { text-decoration:none; color: #333;}
+.oa-nav_main ul { list-style: none; margin: 0; padding: 0; white-space: nowrap;}
+.oa-nav_main ::-webkit-scrollbar {width: 6px; background-color: #F5F5F5;}
+.oa-nav_main ::-webkit-scrollbar-thumb {background-color: #999;}
+
+/*上边框导航*/
+.oa-nav_top {
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    height: 45px;
+    width: 100%;
+    color: #3A3A3A;
+    background-color:#418bca;
+    z-index: 9999;
+    /*background-image:-webkit-gradient(linear,0% 0%, 0% 100%, from(#656565), to(#3C8DBC));
+    background-image:-moz-linear-gradient(0% 0% 270deg, #656565,#3C8DBC);*/
+}
+.oa-nav_top a { color:#FFFFFF;}
+
+/*logo位置*/
+.oa-nav_top .oa-nav_logo{
+    float:left;
+    height:45px;
+    text-align:center;
+    padding-left:24px;
+    line-height: 24px;
+    padding-right:24px;
+    position:relative;
+}
+/*logo标题*/
+.oa-nav_top .oa-nav_logo a{
+    padding: 9px 0 0 0 ;
+    color:#FFFFFF;
+    height:45px;
+    font-size:22px;
+    font-weight: bold;
+    display: block;
+}
+
+/*顶部一级导航*/
+.oa-nav_top .oa-nav_link{
+    float:left;
+    height:45px;
+}
+.oa-nav_top .oa-nav_link a{
+    display: block;
+    white-space:nowrap;
+    height: 20px;
+    line-height:20px;
+    font-size:16px;
+    color:#FFFFFF;
+    padding:0 15px;
+    margin-top: 12px;
+    border-left:1px #61a3d7 solid;
+    border-right:1px #296bb5 solid;
+}
+.oa-nav_top .oa-nav_link:hover{
+    background-color:#3174ad;
+}
+
+/*顶部二级导航*/
+.oa-nav_top .oa-nav_link ul {
+    position: absolute;
+    top:45px;
+    background-color:#5089b9;
+    /*border:1px #2D718A solid;*/
+    border-top:0px;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+}
+.oa-nav_top .oa-nav_link ul a {
+    border-right:0;
+    font-size: 16px;
+    height: 38px;
+    padding:0 15px;
+    line-height: 36px;
+    margin:0;
+}
+.oa-nav_top .oa-nav_link ul a:hover{background-color:#2d72ad;}
+
+/*顶部功能区*/
+.oa-nav_top .oa-nav_func{
+    float:right;
+    height:40px;
+    padding-top: 8px;
+}
+/*登录用户*/
+.oa-nav_top .oa-nav_user {
+    font-size: 12px;
+    text-align: right;
+    float:right;
+}
+
+.oa-nav_top .oa-nav_user_set {
+    padding: 6px 5px;
+    display: block;
+}
+
+.oa-nav_top .oa-nav_user_exit a {
+    padding: 6px 10px;
+    display: block;
+}
+
+.oa-nav_func .logout {
+    /*width: 45px;*/
+    float: right;
+    margin: 2.5px 5px 0 0;
+}
+
+.oa-nav_func .notice {
+    width: 25px;
+    margin: 0 10px;
+    float: right;
+    margin-top: 2.5px;
+}
+
+.oa-nav_func .badge {
+    position: relative;
+    top: -33px;
+    left: 13px;
+    height: 12px;
+    border-radius: 10px;
+    min-width: 20px;
+    background: #f5222d;
+    color: #fff;
+    line-height: 10px;
+    text-align: center;
+    padding: 0 6px;
+    font-size: 12px;
+    font-weight: 400;
+    white-space: nowrap;
+    transform-origin: 0 center;
+    box-shadow: 0 0 0 1px #fff;
+}
+
+.oa-nav_func .notice a:hover {
+    cursor: pointer;
+}
+
+.oa-nav_top .oa-nav_user img{ margin-top: -3px;}
+
+/*左边框导航*/
+.oa-nav_left {
+    position: fixed;
+    top: 35px;
+    left: 0px;
+    z-index:999;
+}
+
+.oa-nav_left a{
+    padding: 0px 5px;
+    display: block;
+    font-size: 14px;
+    height:43px;
+    line-height: 43px;
+    color:#fff;
+}
+.oa-nav_left a:hover{
+    color:#4088c6;
+    background-color: #fff;
+}
+
+.oa-nav_left .oa-nav_left_list {
+    height: 90%;
+    width: 70px;
+    /*border-right: 1px solid #AAAAAA;*/
+    background:#38434d;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin-top: 10px;
+}
+.oa-nav_left .oa-nav_group{
+    color:#fff;
+    background-color: #38434d;
+}
+
+.oa-nav_left .oa-nav_group_list{
+    background-color: #282f36;
+}
+
+.oa-nav_left .oa-nav_left_full {
+    position: absolute;
+    left: 100px;
+    width: 440px;
+    color:#292929;
+    margin-top: 14px;
+    max-height: calc(100vh - 50px);
+    padding: 5px 15px 20px 15px;
+    background: #fff;
+    border: 1px solid #38434d;
+    border-left:0;
+    border-radius: 0px;
+    overflow-y: auto;
+}
+
+.oa-nav_left .oa-nav_left_full span {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    font-family: '微软雅黑';
+    font-size: 12px;
+}
+
+.oa-nav_left .oa-nav_left_full div {
+    text-align: left;
+    font-size: 12px;
+    color: #292929;
+    font-weight: bold;
+    margin-top: 10px;
+    /*clear: both;*/
+    width:100%;
+    float: left;
+    height:30px;
+    background-color: #f7f7f7;
+    padding-left: 10px;
+}
+
+.oa-nav_left .oa-nav_left_full a {
+    height:30px;
+    line-height: 30px;
+    padding: 0px;
+    color:#292929;
+    font-family: '微软雅黑';
+
+}
+
+.oa-nav_left .oa-nav_left_full a:hover {
+    color: #3C8DBC;
+    background: none;
+}
+
+.oa-nav_left .oa-nav_left_full ul {
+    padding-left: 10px;
+}
+
+.oa-nav_left .oa-nav_left_full ul li {
+    float: left;
+    min-width: 100px;
+    height: 26px;
+    margin-left: 20px;
+    line-height: 26px;
+    text-align: left;
+    font-size: 14px;
+    list-style-type: none ;
+}
+
+.search_result {
+    position: absolute;
+    top:36px;
+    display: none;
+    width: 260px;
+    overflow: hidden;
+    background: #dcf6f8;
+    border: #3c8dbc 1px solid;
+    border-top: none;
+    margin-left: -1px;
+
+}
+.search_result .ret {
+    border-spacing: 1px;
+}
+.oa-nav_search {
+    float: right;
+}
+.oa-nav_search .search {
+    /*width: 200px;*/
+    height: 28px;
+    float: left;
+    border:0px;
+    font-size: 14px;
+    padding-left: 3px;
+    border-radius: 2px;
+}
+
+.oa-nav_search .search_result .right {
+    float: left;
+    border: 1px solid #000000;
+    padding: 7px 20px;
+    width: 30px;
+    height: 30px;
+    border-left: none;
+}
+
+.oa-nav_search .search_result .line {
+    font-size: 12px;
+    color: #292929;
+    background: #ffffff;
+    width: 280px;
+    padding:4px 0 4px 5px;
+    border-bottom:1px solid #dfdfdf;
+}
+.oa-nav_search .search_result .line p {
+    line-height: 20px;
+    padding: 0;
+    margin: 0;
+    border:0px solid blue;
+
+}
+.oa-nav_search .search_result .hover {
+    background: #418bca;
+    color: #fff;
+}

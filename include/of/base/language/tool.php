@@ -117,7 +117,7 @@ if (OF_DEBUG === false) {
 
             foreach ($list as $kp => &$vd) {
                 $kp .= '/base/source';
-                while (of_base_com_disk::each($kp, $vd)) {
+                while (of_base_com_disk::each($kp, $vd, true)) {
                     foreach ($vd as $k => &$v) {
                         //是文件
                         if ($v === false) {

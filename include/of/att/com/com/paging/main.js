@@ -227,6 +227,9 @@ L.paging || (function () {
                         frag.innerHTML = 't' + tObj.w;
                         tObj.w = frag.childNodes[1];
                     }
+
+                    //引用单行数据
+                    tObj.w.data = tObj.d.data[i];
                     //插入父类最后位置
                     tObj.t.parent.appendChild(tObj.w);
                 }

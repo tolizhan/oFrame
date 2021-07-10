@@ -224,8 +224,8 @@ class of_base_htmlTpl_engine {
                     //是 style 或 非引用js
                     $tagName === 'style' || (
                         $tagName === 'script' &&
-                        $nodeObj->attr('src') === null && 
-                        $nodeObj->attr($config['attrPre'] . 'src') === null 
+                        $nodeObj->attr('src') === null &&
+                        $nodeObj->attr($config['attrPre'] . 'src') === null
                     )
                 ) {
                     $afterNode->before("</>\n")->before($nodeObj);

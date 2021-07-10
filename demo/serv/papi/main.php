@@ -1,7 +1,8 @@
 <?php
 /**
  * 描述 : 服务层API主类
- *      所有API基础该类, 并配置方法规则($funcRule)参数
+ *      所有API继承该类, 并在API类中配置方法规则($funcRule)参数
+ *      若有共同规则, 如授权, 可放在共用规则结构($shareRule)中
  * 注明 :
  *      方法规则结构($funcRule) : {
  *          方法名 : 验证规则 {
@@ -10,7 +11,7 @@
  *              }
  *          }
  *      }
- *      共享规则结构($shareRule) : {
+ *      共用规则结构($shareRule) : {
  *          $GLOBALS 中的GET POST等键名 : {
  *              符合 of_base_com_data::rule 规则
  *          }
@@ -20,7 +21,7 @@
 class serv_papi_main {
     //是否校验规则
     private static $isCheck = true;
-    //共享规则
+    //共用规则
     private static $shareRule = array();
     //方法规则
     protected $funcRule = array();
@@ -43,34 +44,36 @@ class serv_papi_main {
         //权限列表
         $ruleList = array();
         //接口文件夹路径
-        $path = dirname(__FILE__);
+        $path = strtr(dirname(__FILE__), '\\', '/');
         //提取接口注释
         $preg = '@^( *\/\*(?:(?!\*\/).)*?\*\/)[^(]* function +([^()]+) *\(@ms';
-        //类前缀
-        $cPre = substr(__CLASS__, 0, strrpos(__CLASS__, '_') + 1);
+        //类前缀长度
+        $pLen = strlen(__FILE__) - strlen(__CLASS__) - 4;
+        //组前缀长度
+        $gLen = strlen(pathinfo(__FILE__, PATHINFO_DIRNAME)) + 1;
+        //类空间分隔符
+        $char = strpos(of::dispatch('class'), '_') ? '_' : '\\';
 
         //获取接口文件名
-        of_base_com_disk::each($path, $data, null);
+        of_base_com_disk::each($path, $data, false);
+
         //提取规则与注释
         foreach ($data as $k => &$v) {
-            if (!$v) {
+            if (!$v && pathinfo($k, PATHINFO_EXTENSION) === 'php') {
                 //引用规则包
-                $index = &$ruleList[$name = basename($k, '.php')];
+                $index = &$ruleList[strtr(substr($k, $gLen, -4), '/', $char)];
                 //默认规则
                 $index = array();
-                //接口类名
-                $name = $cPre . $name;
 
                 //获取功能规则
-                $temp = new $name;
-                $rule = &self::mergeRule($temp);
+                $temp = strtr(substr($k, $pLen, -4), '/', $char);
+                $rule = &self::mergeRule(new $temp);
                 foreach ($rule as $kf => &$vf) {
                     $index[$kf] = array(
                         'funcRule' => htmlspecialchars(print_r($vf, true)),
                         'comment'  => false,
                     );
                 }
-                unset($temp);
 
                 //提取描述与方法名
                 preg_match_all($preg, file_get_contents($k), $match, PREG_SET_ORDER);
@@ -122,7 +125,7 @@ class serv_papi_main {
     }
 
     /**
-     * 描述 : 合并共享规则
+     * 描述 : 合并共用规则
      * 参数 :
      *      obj : 待合并的对象
      * 返回 :
@@ -130,14 +133,14 @@ class serv_papi_main {
      * 作者 : Edgar.lee
      */
     private static function &mergeRule($obj) {
-        $funcRule = &$obj->funcRule;
+        ($funcRule = &$obj->funcRule) === null && $funcRule = array();
 
         if (get_class($obj) === __CLASS__) {
             $funcRule = array('index' => array());
         } else {
-            //遍历共享规则 GET => RULE
+            //遍历共用规则 GET => RULE
             foreach (self::$shareRule as $k => &$v) {
-                //遍历接口规则 方法名 => 共享规则结构
+                //遍历接口规则 方法名 => 共用规则结构
                 foreach ($funcRule as &$vo) {
                     isset($vo[$k]) ? $vo[$k] += $v : $vo[$k] = $v;
                 }
@@ -147,3 +150,6 @@ class serv_papi_main {
         return $funcRule;
     }
 }
+
+//支持命名空间 && 设置空间别名
+function_exists('class_alias') && class_alias('serv_papi_main', 'serv\papi\main');

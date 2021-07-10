@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200248);
+define('OF_VERSION', 200250);
 
 /**
  * 描述 : 控制层核心
@@ -41,6 +41,11 @@ class of {
         self::loadSystemEnv();
         //注册::halt事件
         register_shutdown_function('of::event', 'of::halt', true);
+        //动态工作SQL监听
+        self::event('of_db::before', array(
+            'asCall' => 'of::work',
+            'params' => array(array(), 0)
+        ));
 
         //预先加载类
         if (isset(self::$config['_of']['preloaded'])) {
@@ -325,14 +330,15 @@ class of {
      *      可以抛出 工作异常 并通过捕获简化代码逻辑
      * 参数 :
      *     #开启工作(数组, null)
-     *      code : 监听数据库连接, 产生问题会自动回滚, 数组=[连接池, ...], null=["default"]
+     *      code : 监听数据库连接, 产生问题会自动回滚, 数组=[连接池, ...], null=自动监听
      *      info : 功能参数
-     *          int=增加数据监控, 0为当前工作, 1=父层工作..., 指定工作不存在便使用当前工作
+     *          int=增加数据监控, 0为当前工作, 1=父层工作..., 指定工作不存在抛出异常
      *          框架回调结构=回调模式创建工作, 不需要 try catch
      *              回调返回 false 时, 则回滚工作, 接收参数 {
      *                  "result" : &标准结果集
      *                  "data"   : &标准结果集中的data数据
      *              }
+     *      data : null=启动集成工作, 统一监听子孙工作事务
 
      *     #结束工作(布尔)
      *      code : 完结事务, true=提交, false=回滚
@@ -360,6 +366,7 @@ class of {
      *     #延迟回调(文本) 在工作事务提交前按队列顺序执行
      *      code : 固定"defer"
      *      info : 回调方法接收参数结构 {"wuid" : 工作ID, "isOk" : true=最终提交 false=最终回滚}
+     *          true = 读取指定标识的回调
      *          false = 删除指定标识的回调
      *          框架回调结构 = 不开启工作直接回调, 若报错将影响当前工作执行结果
      *          {"onWork" : 监听数据库, "asCall" : 框架回调, "params" :o回调参数} = 在新工作中回调
@@ -368,6 +375,7 @@ class of {
      *     #完成回调(文本) 在工作事务提交后(在父级工作中)按队列顺序执行
      *      code : 固定"done"
      *      info : 回调方法接收参数结构 {"wuid" : 工作ID, "isOk" : true=最终提交 false=最终回滚}
+     *          true = 读取指定标识的回调
      *          false = 删除指定标识的回调
      *          框架回调结构 = 不开启工作直接回调, 若报错将影响父级工作执行结果
      *          {"onWork" : 监听数据库, "asCall" : 框架回调, "params" :o回调参数} = 在新工作中回调
@@ -405,10 +413,16 @@ class of {
      *      不在工作中返回 null
      *      指定项存在, 返回项信息
      *      否则返回全部项 {"wuid" : 工作ID, "list" : [监听连接池, ...]}
+
+     *     #延迟回调("defer")
+     *     #完成回调("done")
+     *      info为true时, 返回回调信息, 不存在返回null, 不在工作中抛出异常
      * 注明 :
      *      监听栈列表结构($sList) : [{
      *          "wuid"  : 工作ID,
      *          "time"  : [时间戳, 格式化],
+     *          "dyna"  : 是否监听新连接池, true=是, false=否
+     *          "unify" : 集成工作增量, 0=未开启集成工作, >=1为集成工作增量
      *          "list"  : 监听的连接池 {
      *              数据池 : 被克隆数据池,
      *              ...
@@ -433,28 +447,57 @@ class of {
         static $sList = array();
         //数组传参模式
         $code === 'extr' && extract($info, EXTR_REFS);
-        //监听默认连接池
-        $code === null && $code = array('default');
 
         //数组=开启工作
-        if (is_array($code)) {
+        if (is_array($code) || $code === null) {
             //引用指定工作
-            if (is_int($info) && isset($sList[0])) {
-                //指定工作不存在 && 使用当前工作
-                $index = &$sList[isset($sList[$info]) ? $info : 0]['list'];
+            if (is_int($info)) {
+                //数据库回调
+                if (isset($data['pool'])) {
+                    //工作存在
+                    while (isset($sList[$info])) {
+                        //动态监听
+                        if ($sList[$info]['dyna']) {
+                            //统一工作增量
+                            $sList[$info]['unify'] && $info += $sList[$info]['unify'] - 1;
+                            //引用增量工作
+                            $index = &$sList[$info]['list'];
+                            $code[] = $data['pool'];
+                            break ;
+                        }
+                        $info += 1;
+                    }
+                //工作存在
+                } else if (isset($sList[$info])) {
+                    //统一工作增量
+                    $sList[$info]['unify'] && $info += $sList[$info]['unify'] - 1;
+                    //引用增量工作
+                    $index = &$sList[$info]['list'];
+                //工作不存在
+                } else {
+                    throw new Exception('Work does not exist: ' . $info);
+                }
             //添加新工作流
             } else {
+                //统一工作增量
+                $temp = isset($sList[0]) && $sList[0]['unify'] ?
+                    $sList[0]['unify'] + 1 : (int)($data === null);
                 //压入工作问题栈表
                 array_unshift(self::$workErr, null);
                 //压入栈列表
                 array_unshift($sList, array(
                     'wuid'  => uniqid(),
                     'time'  => array($time = time(), date('Y-m-d H:i:s', $time)),
+                    'dyna'  => $code === null,
+                    'unify' => $temp,
                     'list'  => array(),
                     'defer' => array(),
                     'done'  => array()
                 ));
-                $index = &$sList[0]['list'];
+                //引用增量工作
+                $index = &$sList[$temp ? $temp - 1 : 0]['list'];
+                //自动监听 && 初始化空连接池
+                $code === null && $code = array();
             }
 
             //遍历开启事务
@@ -481,7 +524,7 @@ class of {
                     //返回false回滚工作 || 有错误提交工作
                     self::work($temp = self::callFunc($info, array(
                         'result' => &$result, 'data' => &$result['data']
-                    ) + $data) !== false || self::$workErr[0] !== null);
+                    ) + ($data ? $data : array())) !== false || self::$workErr[0] !== null);
 
                     //回滚工作 && 状态成功 && 添加回滚提示
                     if ($temp === false && $result['code'] < 400) {
@@ -489,6 +532,8 @@ class of {
                             ' (Rollback)' : ': (Rollback)';
                     }
                 } catch (Exception $e) {
+                    $result = self::work($e);
+                } catch (Error $e) {
                     $result = self::work($e);
                 }
             }
@@ -538,12 +583,30 @@ class of {
                     } catch (Exception $e) {
                         //记录异常
                         of::event('of::error', true, $e);
+                    } catch (Error $e) {
+                        //记录异常
+                        of::event('of::error', true, $e);
                     }
                 }
             }
 
             //是否提交事务, true=提交, false=回滚
-            $isOk = $code && !$iwErr[0];
+            if ($isOk = $code && !$iwErr[0]) {
+                //检查是否有内部最终回滚的连接
+                foreach ($index['list'] as $k => &$v) {
+                    //数据库连接最终会回滚
+                    if (!$isOk = of_db::pool($k, 'state') === true) {
+                        $iwErr[0] = array(
+                            'code' => 2,
+                            'info' => 'Cannot commit transaction: ' . $k,
+                            'file' => '/of.php',
+                            'line' => __LINE__
+                        );
+                        break ;
+                    }
+                }
+            }
+
             //提交或回滚事务
             foreach ($index['list'] as $k => &$v) {
                 //事务提交失败 && 接下的事务回滚
@@ -581,6 +644,9 @@ class of {
                             //接受参数{"isOk" : true=最终提交 false=最终回滚, "wuid" : 工作ID}
                             self::callFunc($temp, array('isOk' => $isOk, 'wuid' => $index['wuid']));
                         } catch (Exception $e) {
+                            //记录异常
+                            of::event('of::error', true, $e);
+                        } catch (Error $e) {
                             //记录异常
                             of::event('of::error', true, $e);
                         }
@@ -630,12 +696,23 @@ class of {
                 case 'defer':
                 //done=完成回调
                 case 'done':
+                    //未在工作流程中
+                    if (!isset($sList[0])) throw new Exception('Did not start work');
                     //已指定回调标识 || 生成随机值
                     is_string($data) || $data = '_' . uniqid();
-                    //删除延迟回调
-                    unset($sList[0][$code][$data]);
-                    //添加延迟回调
-                    $info && $sList[0][$code][$data] = &$info;
+                    //引用回调类型
+                    $index = &$sList[0][$code];
+
+                    //读取回调
+                    if ($info === true) {
+                        return isset($index[$data]) ? $index[$data] : null;
+                    //设置回调
+                    } else {
+                        //删除延迟回调
+                        unset($index[$data]);
+                        //添加延迟回调
+                        $info && $index[$data] = &$info;
+                    }
                     break;
                 default :
                     throw new Exception('Invalid work command: ' . $code);

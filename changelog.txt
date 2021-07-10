@@ -1,3 +1,66 @@
+版本: 250
+作者: Edgar
+日期: 2021年7月10日 14:17:37
+信息:
+说明: + 增加简版测试用例库, 框架配置_of.test.cPath指定用例配置
+      + 框架分页, 前端"每条数据节点.data"引用单条完整数据
+      + 添加"of_base_com_net::before"和"of_base_com_net::after"事件,可用于网络监控与代理
+      + csv解析增加主动结束释放IO资源 of_base_com_csv::parse($path, false)
+      + of_base_com_data::rule 增加枚举"enum"类型验证
+      + 通过 of::work("defer"和"done", ture, 标识) 可以读取回调
+      + 错误日志将失败的消息队列信息按"消息键.队列名.队列池"分组
+      + 自定义错误"type"变量设置字符串, 指定错误类型, 不与"memo"同用
+      + of::work 创建工作时第三参数设为null, 会启动集成工作, 来统一监听嵌套的子孙工作事务
+      - of::work(null) 改为自动监听连接池, 不再等同于array("default")
+      - of_base_com_disk::each 第三个参数默认值由true改为null, 防止非循环默认参数写法占用IO
+      * of_base_com_disk::file 反序列化失败时会抛出异常
+      * 修复mysql错超时跟踪未记录sql语句问题
+      * of::work 提交时检查事务预提交状态
+      * 接口基类 serv_papi_main 支持深层接口与命名空间的文档显示
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/config/config.php
+已修改 : /trunk/demo/ctrl/index.php
+已修改 : /trunk/demo/model/list.php
+已修改 : /trunk/demo/serv/index.php
+已修改 : /trunk/demo/serv/papi/main.php
+已修改 : /trunk/demo/serv/readme.txt
+已增加 : /trunk/demo/test
+已增加 : /trunk/demo/test/cases
+已增加 : /trunk/demo/test/cases/demo.php
+已增加 : /trunk/demo/test/story
+已增加 : /trunk/demo/test/story/demo.php
+已修改 : /trunk/demo/view/html/htmlTpl.html
+已增加 : /trunk/demo/view/nav
+已增加 : /trunk/demo/view/nav/nav.css
+已增加 : /trunk/demo/view/nav/nav.js
+已增加 : /trunk/demo/view/nav/nav.json
+已修改 : /trunk/demo/view/tpl/ctrl/index/viewTest.tpl.php
+已修改 : /trunk/include/of/accy/com/kv/files.php
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/data.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/language/toolBaseClass.php
+已修改 : /trunk/include/of/base/link/codeNav.php
+已增加 : /trunk/include/of/base/test
+已增加 : /trunk/include/of/base/test/_meta.php
+已增加 : /trunk/include/of/base/test/case.php
+已增加 : /trunk/include/of/base/test/tool.php
+已增加 : /trunk/include/of/base/test/toolBaseClass.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+
 版本: 248
 作者: Edgar
 日期: 2021年2月27日 23:52:52
@@ -5,14 +68,14 @@
 说明: + K-V配置_of.com.kv增加"_ofSelf"为框架自身使用, 未设置配置同"defalut"
       + 事件"of_base_error_writeLog::error"回调函数返回true时不会记录日志
       + 消息队列增加抽象方法"_quit", 消费队列意外退出时回调
-      + 优化IP访问控制配置, 新增values配置, 可匹配$GLOBALS中字符串数据
       + of_base_com_net::request 支持自定义 User-Agent
+      + 优化IP访问控制配置, 新增values配置, 可匹配$GLOBALS中字符串数据
+      - 优化IP访问控制配置, method配置改为回调方法, 可自定义匹配结果
+      - 取消框架配置_of.com下net与timer.cron的kvPool配置, 固定使用"_ofSelf"
+      - of_base_com_timer::data 仅运行的进程可修改自身数据
       * of_base_com_net::request 使用keep-alive和gzip增强通信稳定性
       * 消息队列对磁盘大部分依赖转到kv(_ofSelf), 提升分布式效率
       * 自定义错误"memo"变量设置字符串, 指定备忘录类型
-      - 优化IP访问控制配置, method配置改为回调方法, 可自定义匹配结果
-      - 取消框架配置_of.com下net与timer.cron的kvPool配置, 固定使用"_ofSelf"
-      - of_base_com_timer::data 仅运行进程可修改自身数据
 ----
 已修改 : /trunk/changelog.txt
 已修改 : /trunk/demo/config/network.php

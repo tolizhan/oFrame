@@ -140,24 +140,28 @@ class of_base_com_csv {
     /**
      * 描述 : 解析csv
      * 参数 :
-     *      path    : 指定路径
-     *      charset : 指定解析编码, null=自动识别 UTF-8 UTF-16LE 和 配置_of.charset 字符集
+     *      path : 指定路径
+     *      func : 功能操作
+     *          str=自定文件编码, 如: "UTF-8", "UTF-16LE"
+     *          null=自动识别 UTF-8 UTF-16LE 和 配置_of.charset 字符集
+     *          false=主动结束循环解析, 是否IO占用的资源
      * 作者 : Edgar.lee
      */
-    public static function &parse(&$path, $charset = null) {
+    public static function &parse(&$path, $func = null) {
         static $list = null;
         $result = false;
-        ($index = &$list[$path]) || $index = array(
+
+        $func === false || ($index = &$list[$path]) || $index = array(
             //csv 句柄
             'fp' => fopen($path, 'rb'),
             //csv 字符集
-            'cs' => $charset,
+            'cs' => $func,
             //单行分隔符
             'de' => null
         );
 
         //打开资源
-        if ($index['fp']) {
+        if ($func !== false && $index['fp']) {
             if (!$index['de']) {
                 //尝试识别编码
                 if ($index['cs'] === null) {

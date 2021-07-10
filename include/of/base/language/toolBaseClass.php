@@ -289,7 +289,7 @@ class of_base_language_toolBaseClass {
         $data   = array('jsPack' => array(), 'phpPack' => array());
         $source = $envVar['path'] . $path;
 
-        while (of_base_com_disk::each($source, $dirList)) {
+        while (of_base_com_disk::each($source, $dirList, true)) {
             foreach ($dirList as $path => &$isDir) {
                 //是目录
                 if ($isDir) {

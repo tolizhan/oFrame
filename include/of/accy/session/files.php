@@ -45,7 +45,7 @@ class of_accy_session_files extends of_base_session_base {
         touch($path, $_SERVER['REQUEST_TIME']);
         //加锁成功
         if (flock($lock, LOCK_EX | LOCK_NB)) {
-            while (of_base_com_disk::each($dir, $list)) {
+            while (of_base_com_disk::each($dir, $list, true)) {
                 foreach ($list as $path => &$isDir) {
                     //清除过期会话
                     if (!$isDir && is_int($temp = fileatime($path)) && $temp < $timestamp) {

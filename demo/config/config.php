@@ -26,6 +26,10 @@ return array(
             'path' => '/demo/extend',
             'save' => '/demo/extend',
         ),
+        //测试用例库
+        'test' => array(
+            'cPath' => '/demo/test/story'
+        ),
         'com' => array(
             //计划任务
             'timer' => array(

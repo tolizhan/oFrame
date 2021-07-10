@@ -35,7 +35,7 @@ class ctrl_index extends L {
 
             //添加延迟调用到工作结束前(依然在事务中)
             of::work('defer', array(
-                'onWork' => array(),
+                'onWork' => null,
                 'asCall' => 'var_dump',
                 'params' => array(
                     "\n<br>执行延迟回调: "

@@ -17,6 +17,10 @@ class ctrl_list {
         of::event('of::loadClass', array(
             'classPre' => 'serv', 'mapping' => 'demo_serv'
         ), true);
+        //test_类映射
+        of::event('of::loadClass', array(
+            'classPre' => 'test', 'mapping' => 'demo_test'
+        ), true);
 
         //非框架入口
         if ($_SERVER['SCRIPT_NAME'] === rawurldecode(ROOT_URL) . '/index.php') {

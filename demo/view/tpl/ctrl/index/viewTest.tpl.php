@@ -9,6 +9,7 @@ $this->head( array(
     'js' => array('/jsLoadDemo.js')
 ));
 ?>
+<script src="<?= $this->path(true); ?>/nav/nav.js">{"remove" : "div:eq(0), span:eq(0)", "ssoAcc" : "sso"}</script>
 <pre>
 <?php
 echo "本站磁盘根目录: ", ROOT_DIR;    //$this->_rootDir

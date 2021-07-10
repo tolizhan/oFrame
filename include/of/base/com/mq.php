@@ -77,6 +77,18 @@ abstract class of_base_com_mq {
     public static function init() {
         self::$config = of::config('_of.com.mq');
         of::event('of::halt', 'of_base_com_mq::ofHalt');
+        of::event('of_db::rename', array(
+            'asCall' => 'of_base_com_mq::dbEvent',
+            'params' => array('rename')
+        ));
+        of::event('of_db::before', array(
+            'asCall' => 'of_base_com_mq::dbEvent',
+            'params' => array('before')
+        ));
+        of::event('of_db::after', array(
+            'asCall' => 'of_base_com_mq::dbEvent',
+            'params' => array('after')
+        ));
 
         self::$mqDir = ROOT_DIR . OF_DATA . '/_of/of_base_com_mq';
         self::$tPath = self::$mqDir . '/queueTrigger/' . md5($_SERVER['SERVER_ADDR']);
@@ -763,11 +775,13 @@ abstract class of_base_com_mq {
             } else {
                 $temp = 'Failed to consume message from queue: ' . var_export($result, true);
             }
-            trigger_error(
-                "{$temp}\n\n" .
-                'call--' . print_r($func, true) . "\n\n" .
-                'argv--' . print_r($data, true)
-            );
+            of::event('of::error', true, array(
+                'type' => "{$data['key']}.{$data['queue']}.{$data['pool']}",
+                'code' => E_USER_WARNING,
+                'info' => "{$temp}\n\n" .
+                    'call--' . print_r($func, true) . "\n\n" .
+                    'argv--' . print_r($data, true)
+            ));
 
             //返回false
             $return = false;
@@ -796,6 +810,8 @@ abstract class of_base_com_mq {
             $config[$pool] += array('bindDb' => '');
             //使用默认绑定事务
             $bind === null && $bind = $config[$pool]['bindDb'];
+            //非内部事务 && 追加到动态工作中
+            $bind && of::work(array(), 0, array('pool' => $bind));
             //引用当前操作的消息块
             $mqArr = &$mqList[$bind]['pools'][$pool];
 
@@ -803,18 +819,6 @@ abstract class of_base_com_mq {
             if (!isset($mqList[$bind]['level'])) {
                 $mqList[$bind]['level'] = of_db::pool($bind, 'level');
                 $mqList[$bind]['state'] = of_db::pool($bind, 'state');
-                of::event('of_db::rename', array(
-                    'asCall' => 'of_base_com_mq::dbEvent',
-                    'params' => array('rename')
-                ));
-                of::event('of_db::before', array(
-                    'asCall' => 'of_base_com_mq::dbEvent',
-                    'params' => array('before')
-                ));
-                of::event('of_db::after', array(
-                    'asCall' => 'of_base_com_mq::dbEvent',
-                    'params' => array('after')
-                ));
             }
 
             //初始化消息队列

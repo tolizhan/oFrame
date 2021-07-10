@@ -64,14 +64,27 @@ class of_base_com_disk {
             $temp = array();
             //判断是否跳过保护
             fseek($fp, $protected ? 15 : 0);
+
             //读取数据
             while (!feof($fp)) {
                 $temp[] = fread($fp, 8192);
             }
             $temp = join($temp);
-            //反序列化
-            $data && $temp = unserialize($temp);
+
+            //关闭文件流
             is_string($filePath) && fclose($fp);
+
+            //反序列化
+            if ($data) {
+                //数据为空 || 为false的序列化
+                if (!isset($temp[0]) || $temp === 'b:0;') {
+                    $temp = false;
+                //反序列化失败抛出异常
+                } else if (($temp = unserialize($temp)) === false) {
+                    throw new Exception('The passed string is not unserializeable.');
+                }
+            }
+
             return $temp;
         //写入数据
         } else {
@@ -157,18 +170,22 @@ class of_base_com_disk {
      * 描述 : 遍历目录结构
      * 参数 :
      *      dir    : 字符串=指定遍历的目录
-     *     &data   : 接收的数据, 数组={
-     *          磁盘路 : false=文件,true=目录,如果遍历data时将目录其改成false,那么将不会继续遍历
-     *      }
+     *     &data   : 接收的目录列表
+     *          当type为true时:
+     *              在循环遍历时传入false, 则不会继续遍历
+     *              将对应目录设置为false, 则不会继续遍历该目录
      *      type : 遍历方式
-     *          true =(默认)循环返回每个目录的数据(单目录大于一万条拆分多次)
+     *          null =(默认)返回指定目录列表
      *          false=一次返回深层数据
-     *          null =返回指定子目录不影响已有遍历
+     *          true =循环返回每个目录的数据(单目录大于一万条拆分多次)
      * 返回 :
-     *      成功返回true,失败返回false(并结束遍历)
+     *      失败返回false并结束遍历, 成功返回true并将数据存到data中 {
+     *          磁盘路 : false=文件, true=目录
+     *          ...
+     *      }
      * 作者 : Edgar.lee
      */
-    public static function each($dir, &$data, $type = true) {
+    public static function each($dir, &$data, $type = null) {
         static $cahceDir = array();
         //指定最大结果集条数
         $maxNum = $type === true ? 10000 : PHP_INT_MAX;
@@ -189,7 +206,7 @@ class of_base_com_disk {
                 $index = &$nowDir[$path];
 
                 //目录被排除 || 目录不存在
-                if ($index['run'] === null || !file_exists($path)) {
+                if (!$index['run'] || !file_exists($path)) {
                     unset($nowDir[$path]);
                     continue;
                 //打开目录

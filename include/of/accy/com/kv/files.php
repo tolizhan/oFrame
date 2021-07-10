@@ -135,7 +135,7 @@ class of_accy_com_kv_files extends of_base_com_kv {
         touch($path, 2147483647);
         //加锁成功
         if (flock($lock, LOCK_EX | LOCK_NB)) {
-            while (of_base_com_disk::each($dir, $list)) {
+            while (of_base_com_disk::each($dir, $list, true)) {
                 foreach ($list as $path => &$isDir) {
                     //清除过期会话(兼容win php < 5.3.0)
                     if (
