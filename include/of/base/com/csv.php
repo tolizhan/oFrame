@@ -63,7 +63,6 @@ class of_base_com_csv {
         //行分隔符
         $delimiter = $charset === 'UTF-16LE' ? "\t" : ',';
 
-        self::arrFill($fileArr);
         foreach ($fileArr as $vs) {
             foreach ($vs as &$v) {
                 //支持字符串和数字两种类型
@@ -96,24 +95,42 @@ class of_base_com_csv {
     }
 
     /*
-     * 描述:以指定的文件名下载csv
-     * 参数:
-     *      filename : 字符串=文件名
+     * 描述 : 以指定的文件名下载csv
+     * 参数 :
+     *      filename :
+     *          含"/"字符串=存储到磁盘路径,
+     *          其它字符串=下载文件名,
+     *          false=关闭存储IO
+     *          array=CSV数据, 可以是一维(单行)或二维(多行)数组
      *      charset  : 转化的字符集, 默认 "UTF-16LE"
-     * 示例:
+     * 示例 :
      *      $ExcelExportObj=new self;
      *      $ExcelExportObj->download('测试.csv');
      *      将弹出'测试.csv'下载框
-     * 作者:Edgar.Lee
+     * 作者 : Edgar.Lee
      */
     public static function download($filename = 'download', $charset = 'UTF-16LE') {
-        //需要发送头信息
-        static $sendHead = true;
+        //需要发送头信息, 下载模式(null=输出, 资源=存储)
+        static $sHead = null, $handle = null;
         //引用数组
         $fileArr = &self::$fileArr;
-        is_array($filename) && $fileArr[] = $filename;
 
-        if ($sendHead === true) {
+        //数组格式化, 格式化数组
+        if (is_array($filename)) {
+            is_array(reset($filename)) ? $fileArr = $filename :  $fileArr[] = $filename;
+        //关闭文件源, 切到下载模式
+        } else if ($filename === false || strpos($filename, '/') === false) {
+            $sHead = $handle = null;
+            if ($filename === false) return ;
+        //是文件路径, 切到存储模式
+        } else {
+            $handle = of_base_com_disk::file($filename, null, true);
+            //字符集
+            $sHead = $charset;
+        }
+
+        //下载模式 && 未设置头信息
+        if ($sHead === null) {
             //永不超时
             ini_set('max_execution_time', 0);
             //默认文件名
@@ -121,7 +138,7 @@ class of_base_com_csv {
             //UTF8 文件名
             strpos($_SERVER["HTTP_USER_AGENT"], 'Firefox') || $filename = rawurlencode($filename);
             //字符集
-            $sendHead = $charset;
+            $sHead = $charset;
             //下载头
             header('Content-Type: application/download');
             //二进制
@@ -134,7 +151,11 @@ class of_base_com_csv {
             if ($charset === 'UTF-16LE') echo chr(255) . chr(254);
         }
 
-        if ($fileArr) echo self::toString(null, $sendHead);
+        //转存数据信息
+        if ($fileArr) {
+            $index = &self::toString($handle, $sHead);
+            if ($handle === null) echo $index;
+        }
     }
 
     /**
@@ -144,7 +165,7 @@ class of_base_com_csv {
      *      func : 功能操作
      *          str=自定文件编码, 如: "UTF-8", "UTF-16LE"
      *          null=自动识别 UTF-8 UTF-16LE 和 配置_of.charset 字符集
-     *          false=主动结束循环解析, 是否IO占用的资源
+     *          false=主动结束循环解析, 释放IO占用的资源
      * 作者 : Edgar.lee
      */
     public static function &parse(&$path, $func = null) {

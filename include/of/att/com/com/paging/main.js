@@ -12,8 +12,6 @@
  *          true  = 完全代替参数并刷新
  *          false = 完全代替参数不刷新
  *          null  = 单层替换参数并刷新(默认)
- * 返回 :
- *      
  * 注明 :
  *      已初始化列表结构(list) : [{
  *          'block' : 分页块对象
@@ -27,7 +25,7 @@
  *          'fbar'  : 功能条对象, null=没有
  *          'save'  : 保存状态字符串,存入cookie
  *              method + ":" + save + ":" + 默认params = L.json({
- *                  "params" : 最新params, 
+ *                  "params" : 最新params,
  *                  "items"  : 总数据条目数
  *                  "size"   : 每页显示数
  *                  "page"   : 当期页数
@@ -142,7 +140,7 @@ L.paging || (function () {
     var layoutFunc = function (data) {
         //当前对象
         var tObj = {
-            'b' : list[this].block, 'i' : list[this].items, 's' : list[this].sorts, 
+            'b' : list[this].block, 'i' : list[this].items, 's' : list[this].sorts,
             'd' : L.json(data), 'n' : list[this].space, 'r' : RegExp('(`*){`' +list[this].space+ '([^:]+?)`}', 'g')
         };
 
@@ -212,7 +210,7 @@ L.paging || (function () {
                     tObj.w = tObj.t.itemObj.outerHTML.replace(tObj.r, function (all, bac, key) {
                         //单数"`"
                         if (bac.length % 2) {
-                            return all.substr(Math.ceil(bac.length / 2)) 
+                            return all.substr(Math.ceil(bac.length / 2))
                         } else {
                             return bac.substr(bac.length / 2) + (data.data[i][key] == null ? '' : data.data[i][key]);
                         }
@@ -333,7 +331,7 @@ L.paging || (function () {
                         list[i].fbar.currentStyle ? list[i].fbar.currentStyle : getComputedStyle(list[i].fbar, false)
                     ).display !== 'none'
                 ) {
-                    list[i].fbar.style.width = 
+                    list[i].fbar.style.width =
                         (100 - Math.ceil(L.val(list[i].fbar.parentNode.getElementsByTagName('div'), '[-1]').offsetWidth * 100 / list[i].fbar.parentNode.clientWidth)) + '%';
                     if (list[i].fbar.getElementsByTagName('div')[0].offsetWidth < list[i].fbar.offsetWidth - 50) {
                         list[i].fbar.style.width = '';
@@ -483,13 +481,16 @@ L.paging || (function () {
                     //可以发送请求
                     } else if (list[temp.k].lock === false) {
                         list[temp.k].lock = true;
-                        //显示等待
-                        temp.w = getAttrObj(list[temp.k].block, 'name', list[temp.k].space + 'pagingWait');
-                        for (var i in temp.w) temp.w[i].style.display = '';
 
                         //触发翻页前事件
                         temp.w = L.data('paging.before');
-                        for (var i in temp.w) if( temp.w[i].call(this, 'before') === false ) return ;
+                        for (var i in temp.w) if( temp.w[i].call(this, 'before') === false ) {
+                            return list[temp.k].lock = false;
+                        }
+
+                        //显示等待
+                        temp.w = getAttrObj(list[temp.k].block, 'name', list[temp.k].space + 'pagingWait');
+                        for (var i in temp.w) temp.w[i].style.display = '';
 
                         //整理排序列表
                         for (var i in temp.d) /^[\w.-`]+$/.test(i) && temp.t.push(i + ' ' + temp.d[i]);

@@ -173,11 +173,9 @@ class of_base_error_writeLog {
         } else if (isset($errorLevel[$index['type']])) {
             $index['type'] = $errorLevel[$index['type']];
         }
-        //移除无效字符
-        $index['info'] = iconv('UTF-8', 'UTF-8//IGNORE', $index['info']);
 
         //输出错误日志
-        $temp = htmlentities($index['info'], ENT_QUOTES, 'UTF-8');
+        $temp = str_replace(array('<', '>'), array('&lt;', '&gt;'), $index['info']);
         self::writeLog(
             $backtrace, 'php',
             "{$index['type']} : \"{$temp}\" in {$index['file']} on line {$index['line']}"
@@ -206,8 +204,9 @@ class of_base_error_writeLog {
         $backtrace = array(
             'errorType'     => 'sqlError',
             'environment'   => array(
-                'type'      => $params['pool'] . ':' . $params['code'] . ':' . $params['info'],
-                'info'      => is_string($params['sql']) ? $params['sql'] : var_export(null, true),
+                'type'      => $params['pool'] . ':' . $params['code'],
+                'info'      => "{$params['info']}\n\n" .
+                    (is_string($params['sql']) ? $params['sql'] : var_export(null, true)),
                 'code'      => &$params['code'],
                 'file'      => '(',
                 'line'      => 0,
@@ -222,7 +221,7 @@ class of_base_error_writeLog {
         //错误日志
         $index = &$backtrace['environment'];
         //输出错误日志
-        $temp = htmlentities($index['info'], ENT_QUOTES, 'UTF-8');
+        $temp = str_replace(array('<', '>'), array('&lt;', '&gt;'), $index['info']);
         self::writeLog(
             $backtrace, 'sql',
             "[{$index['type']}] : \"{$temp}\" in {$index['file']} on line {$index['line']}"
@@ -330,7 +329,7 @@ class of_base_error_writeLog {
             //日志生命期
             $gcTime = $logData['time'] - $index * 86400;
 
-            //执行清洗
+            //执行清理
             foreach (array('sqlLog', 'phpLog', 'jsLog') as $temp) {
                 if (!empty($config[$temp])) {
                     $temp = ROOT_DIR . $config[$temp];

@@ -1,3 +1,41 @@
+版本: 252
+作者: Edgar
+日期: 2021年10月30日 10:25:09
+信息:
+说明: + 消息队列支持批量消费, 配置 消息键.lots > 1 时回调消息变成一维数组
+      + 消息队列控制台显示当前消费超过24小时的异常队列
+      + of_base_com_timer::data(null) 不读数据, 仅关注运行状态时使用
+      + of_base_com_csv::download 可接受二维数组并支持磁盘存储
+      * 解决错误日志因含非UTF8字符导致无法查看的问题
+      * SQL错误日志抛出信息与SQL语句同框展示
+      * 解决上传插件返回错误路径的问题
+      * of::work 启动集成工作时将自动开启数据库自动监听
+      * 框架控制台磁盘空间小于10G时标红显示
+      * 修复分页js before回调 返回false后卡死页面的问题
+      * 修复session数据库模式报错及锁超时问题
+      * 优化 of_base_com_disk::lock 对网络盘的效率
+      * 修复动态计划任务数据库模式下任务不断重跑的错误
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/config/queue.php
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/session/mysql.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.php
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/test/case.php
+已修改 : /trunk/include/of/base/test/toolBaseClass.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/of.php
+
 版本: 250
 作者: Edgar
 日期: 2021年7月10日 14:17:37

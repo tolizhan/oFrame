@@ -110,7 +110,7 @@ class of_base_com_disk {
     /**
      * 描述 : 为并发流程创建独占通道
      * 参数 :
-     *      name : 锁通道标识
+     *      name : 锁通道标识, 推荐使用一个"::"分组来提升性能
      *      lock : 文件加锁方式 LOCK_EX, LOCK_SH, LOCK_UN, LOCK_NB
      * 返回 :
      *      true=成功, false=失败
@@ -119,51 +119,28 @@ class of_base_com_disk {
     public static function lock($name, $lock = LOCK_EX) {
         static $data = null;
 
+        //初始化结构
+        $data === null && $data['path'] = ROOT_DIR . OF_DATA . '/_of/of_base_com_disk/lock';
         //加锁文件名
         $file = md5($name);
-        //初始化结构
-        if ($data === null) {
-            //通道路径
-            $data['path'] = ROOT_DIR . OF_DATA . '/_of/of_base_com_disk/lock';
-            //创建路径
-            is_dir($data['path']) || @mkdir($data['path'], 0777, true);
-        }
+        //计算加锁路径
+        $dir = explode('::', $name, 2);
+        $dir = $data['path'] . '/' . (isset($dir[1]) ? md5($dir[0]) : 'default');
+        //创建路径
+        is_dir($dir) || @mkdir($dir, 0777, true);
 
         //垃圾回收
-        if (rand(0, 99) === 1) {
-            //一分钟前时间戳
-            $timestamp = time() - 60;
-
-            //打开加锁文件
-            $lfp = fopen($path = $data['path'] . '/lock.gc', 'w');
-            //加锁成功
-            if (flock($lfp, LOCK_EX | LOCK_NB)) {
-                of_base_com_disk::each($data['path'], $list, null);
-                foreach ($list as $path => &$isDir) {
-                    if (
-                        !$isDir && 
-                        filemtime($path) < $timestamp &&
-                        flock(fopen($path, 'a'), LOCK_EX | LOCK_NB)
-                    ) {
-                        //清除过期锁通道
-                        @unlink($path);
-                    }
-                }
-                //连接解锁
-                flock($lfp, LOCK_UN);
-            }
-            //关闭连接
-            fclose($lfp);
-        }
+        rand(0, 99) === 1 && of_base_com_timer::task(array(
+            'call' => 'of_base_com_disk::_lockGc',
+            'cNum' => 1
+        ));
 
         //初始化连接
-        ($index = &$data['flie'][$file]) || $index = fopen(
-            $data['path'] . '/' . $file, 'w'
-        );
-        //解锁操作
-        if ($lock === LOCK_UN) unset($data['flie'][$file]);
+        ($index = &$data['flie'][$file]) || $index = fopen($dir . '/' . $file, 'w');
+        //解锁操作(加锁失败 || 解锁操作)
+        if (!($result = flock($index, $lock)) || $lock === LOCK_UN) unset($data['flie'][$file]);
         //加锁操作
-        return flock($index, $lock);
+        return $result;
     }
 
     /**
@@ -434,5 +411,34 @@ class of_base_com_disk {
         }
 
         return $result;
+    }
+
+    /**
+     * 描述 : lock辅助方法, 异步回收数据
+     * 作者 : Edgar.lee
+     */
+    public static function _lockGc() {
+        while (!of_base_com_timer::renew()) {
+            //一分钟前时间戳
+            $timestamp = time() - 600;
+            //清理目录
+            $lockDir = ROOT_DIR . OF_DATA . '/_of/of_base_com_disk/lock';
+
+            while (of_base_com_disk::each($lockDir, $list, true)) {
+                foreach ($list as $path => &$isDir) {
+                    if (
+                        !$isDir &&
+                        filemtime($path) < $timestamp &&
+                        flock(fopen($path, 'a'), LOCK_EX | LOCK_NB)
+                    ) {
+                        //清除过期锁通道
+                        @unlink($path);
+                    }
+                }
+            }
+
+            //5分钟后继续
+            sleep(300);
+        }
     }
 }

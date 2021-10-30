@@ -83,7 +83,7 @@ class of_base_com_timer {
             $result = false;
         //任务列表遍历检查
         } else if ($name === 'taskLock') {
-            while (true) {
+            while (!self::renew()) {
                 //静态计划任务
                 ($crontab = &self::crontab()) && self::fireCalls($crontab);
                 //动态计划任务
@@ -104,7 +104,7 @@ class of_base_com_timer {
         } else if ($name === 'protected') {
             $fp = fopen($path . '/taskLock', 'a');
 
-            do {
+            while (!self::renew()) {
                 //连接加锁(非阻塞) 兼容 glusterfs 网络磁盘
                 while (!flock($fp, LOCK_EX | LOCK_NB)) {
                     usleep(200);
@@ -125,7 +125,7 @@ class of_base_com_timer {
                     //等待处理
                     sleep(30);
                 }
-            } while (true);
+            }
         }
 
         //连接解锁
@@ -142,7 +142,7 @@ class of_base_com_timer {
      *      params : 任务参数 {
      *          "time" : 执行时间, 五年内秒数=xx后秒执行, 其它=指定时间
      *          "call" : 框架标准的回调
-     *          "cNum" : 并发数量, 0=不设置, n=最大值
+     *          "cNum" : 并发数量, 0=不设置, n=最大值, []=指定并发ID(最小值1)
      *          "try"  : 尝试相隔秒数, 默认[], 如:[60, 100, ...]
      *      }
      * 作者 : Edgar.lee
@@ -163,17 +163,22 @@ class of_base_com_timer {
             $params['time'] = strtotime($params['time']);
         }
 
-        if (
-            $params['time'] <= $nowTime &&
-            of::dispatch('class') === 'of_base_com_net'
-        ) {
-            //直接触发
-            $temp = array(&$params);
-            self::fireCalls($temp);
-        } else {
-            //添加到待执行列表中
-            self::taskList($params);
+        //限制并发 && 立刻执行
+        if ($params['cNum'] && $params['time'] <= $nowTime) {
+            //并发数组
+            $cArr = is_array($params['cNum']) ?
+                $params['cNum'] : range(1, $params['cNum']);
+            //读取当前并发信息
+            $temp = self::data(null, true, $params['call']);
+
+            //当前执行并发数大于等于所需并发数, 直接跳出
+            if (!array_diff($cArr, array_keys($temp['info']))) {
+                return ;
+            }
         }
+
+        //添加到待执行列表中
+        self::taskList($params);
     }
 
     /**
@@ -296,10 +301,11 @@ class of_base_com_timer {
     /**
      * 描述 : 为并发提供共享数据
      * 参数 :
-     *      data : 读写数据, 仅运行进程可修改自身数据
+     *      data : 读写数据, 仅运行进程可修改清空自身数据
      *          true=读取数据
      *          false=清空读取, 读取数据后清空原始数据
      *          数组=单层替换, 将数组键的值替换对应共享数据键的值
+     *          null=不读数据, 仅关注运行状态使用
      *      cIds : 指定任务中的并发ID
      *          null=读取自身
      *          数字=指定并发ID
@@ -392,7 +398,10 @@ class of_base_com_timer {
                     $index = &$result['info'][$v];
                     //进程运行状态
                     $index = array(
-                        'isRun' => $isRun, 'sort' => ++$sort, 'data' => of_base_com_kv::get($dKey, array(), '_ofSelf')
+                        'isRun' => $isRun,
+                        'sort'  => ++$sort,
+                        'data'  => $data === null ?
+                            null : of_base_com_kv::get($dKey, array(), '_ofSelf')
                     );
 
                     //修复数据
@@ -504,7 +513,7 @@ class of_base_com_timer {
                         //关闭连接
                         fclose($fp);
                         //删除文件
-                        $clear && unlink($k);
+                        $clear && @unlink($k);
                     }
                 }
             }
@@ -680,7 +689,7 @@ class of_base_com_timer {
                         $sql = 'DELETE FROM
                             `_of_com_timer`
                         WHERE
-                            `hash` IN ("' .join("','", $safe['task']). '")';
+                            `hash` IN ("' .join('","', $safe['task']). '")';
                         of_db::sql($sql, $config['params']['dbPool']);
                     }
 

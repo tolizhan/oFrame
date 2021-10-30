@@ -66,6 +66,11 @@ if (isset($_GET['c'])) {
         $list = get_loaded_extensions();
         natcasesort($list);
         foreach ($list as &$v) $v = $v . '(' . phpversion($v) . ')';
+        //磁盘空间
+        $disk = array(
+            round(disk_free_space($path) / 1073741824, 1),
+            round(disk_total_space($path) / 1073741824, 1)
+        );
 
         echo "<hr>\n",
             'OF: ', OF_VERSION, "<br>\n",
@@ -74,8 +79,8 @@ if (isset($_GET['c'])) {
             'System: ', php_uname(), "<br>\n",
             'Time: ', date('Y-m-d H:i:s P e U', $_SERVER['REQUEST_TIME']), "<br>\n",
             'DiskSpace: ',
-                round(disk_free_space($path) / 1073741824, 1), '/',
-                round(disk_total_space($path) / 1073741824, 1), "G ({$path})<br>\n",
+                '<font', $disk[0] < 10 ? ' color="red"' : '', '>',
+                    "{$disk[0]}/{$disk[1]}G ({$path})</font><br>\n",
             'Extensions: <span style="font: caption;">', join(', ', $list), '</span>';
     }
 }

@@ -283,19 +283,13 @@ class of_accy_db_mysqli extends of_db {
                     $temp = 'of_accy_db_mysql::trace-' . $obj->dbVar['linkMark'];
                     of_base_com_kv::set($temp, array_slice(debug_backtrace(), 2), 3600, '_ofSelf');
                     //开启超时监听
-                    $task = 'of_accy_db_mysqli::listenLockTimeout-' .
-                        "{$obj->params['user']}@{$obj->params['host']}:{$obj->params['port']}";
-                    if (of_base_com_disk::lock($task, LOCK_EX | LOCK_NB)) {
-                        of_base_com_timer::task(array(
-                            'time' => 0,
-                            'call' => array(
-                                'asCall' => 'of_accy_db_mysqli::listenLockTimeout',
-                                'params' => array(&$obj->params, 'mysqli')
-                            ),
-                            'cNum' => 1
-                        ));
-                        of_base_com_disk::lock($task, LOCK_UN);
-                    }
+                    of_base_com_timer::task(array(
+                        'call' => array(
+                            'asCall' => 'of_accy_db_mysqli::listenLockTimeout',
+                            'params' => array(&$obj->params, 'mysqli')
+                        ),
+                        'cNum' => 1
+                    ));
                 //记录加锁SQL
                 } else if (
                     //事务已开启
@@ -418,10 +412,6 @@ class of_accy_db_mysqli extends of_db {
      * 作者 : Edgar.lee
      */
     public static function listenLockTimeout($dbArgv, $dbName) {
-        $task = 'of_accy_db_mysqli::listenLockTimeout-' .
-            "{$dbArgv['user']}@{$dbArgv['host']}:{$dbArgv['port']}";
-        //开启监控锁
-        of_base_com_disk::lock($task, LOCK_EX);
         //配置连接池
         of_db::pool($pool = uniqid(), array(
             'adapter' => &$dbName,
@@ -528,8 +518,5 @@ class of_accy_db_mysqli extends of_db {
             //休眠5s重新缓存
             sleep(5);
         }
-
-        //关闭监控锁
-        of_base_com_disk::lock($task, LOCK_UN);
     }
 }

@@ -18,6 +18,9 @@ class of_accy_session_mysql extends of_base_session_base {
             of_db::pool(of::config('_of.session.params.dbPool', 'default'))
         );
 
+        //设置锁超时30天
+        of_db::sql('SET @@innodb_lock_wait_timeout = 2592000', 'of_accy_session_mysql');
+
         of_db::sql(null, 'of_accy_session_mysql');
 
         $sql = "SELECT
@@ -32,8 +35,9 @@ class of_accy_session_mysql extends of_base_session_base {
         if (empty($temp)) {
             $sql = "INSERT INTO `_of_base_session` (
                 `hash`, `data`, `time`
-            ) VALUES 
-                '{$sessionId}', '', NOW()";
+            ) VALUES (
+                '{$sessionId}', '', NOW()
+            )";
             of_db::sql($sql, 'of_accy_session_mysql');
             $data = '';
         } else {

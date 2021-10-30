@@ -17,7 +17,7 @@ class of_base_test_case {
         if (is_string($call) && $call[0] === '/') {
             $call = explode('::', $call, 2);
             $list = include ROOT_DIR . $call[0];
-            $call = $list['cases']['php'][$call[1]];
+            $call = $list['cases'][$call[1]]['php'];
         }
 
         //打印结果集

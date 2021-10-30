@@ -53,12 +53,10 @@ $path = OF_DATA . of_base_com_str::realpath(str_replace(
 $fExt = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
 if (
-    //路径有效
-    $path[0] === '/' &&
     //框架写入路径禁止上传
     strncmp($temp = OF_DATA . '/_of/', $path, strlen($temp)) &&
     //路径验证
-    preg_match($config['folder'], $path, $math) &&
+    preg_match($config['folder'], $path) &&
     //扩展验证
     !preg_match($config['filtExt'], $fExt)
 ) {
@@ -69,5 +67,5 @@ if (
     //文件移动
     move_uploaded_file($_FILES['fileData']['tmp_name'], $file);
     //输出目录
-    echo substr($path, strlen(rtrim($math[isset($math[1])], '/')));
+    echo substr($path, strlen(OF_DATA));
 }

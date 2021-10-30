@@ -8,7 +8,7 @@ return array(
         'keys' => array(
             //不存在的键将被抛弃
             'key' => array(
-                'cNum' => 3,
+                'cNum' => 1,
                 'call' => 'ctrl_index::mqTest'
             ),
             'key1' => array(
@@ -24,6 +24,7 @@ return array(
         'keys' => array(
             //不存在的键将被抛弃
             'key' => array(
+                'lots' => 1,
                 'cNum' => 2,
                 'call' => 'ctrl_index::mqTest'
             )

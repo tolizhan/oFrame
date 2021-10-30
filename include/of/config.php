@@ -4,7 +4,7 @@ return array(
     'rootDir'     => strtr(substr(__FILE__, 0, -22), '\\', '/'),
     //域名到产品根目录地址,根路径为空字符串,null=尝试自动计算
     'rootUrl'     => null,
-    //配置文件路径, 数组=动态配置{动态键 : 配置路径}, 字符串=等同{"0" : 全局配置}
+    //配置文件路径, 数组=动态配置{动态键"."分隔 : 配置路径}, 字符串=等同{"0" : 全局配置}
     'config'      => '/demo/config/config.php',
     //系统时区, 设置php支持的时区(如: Europe/London 支持夏令时), 读取格式为 ±00:00
     'timezone'    => 'PRC',
@@ -133,8 +133,8 @@ return array(
         'adapter'     => 'files',
         //禁止 js 读取 session_id
         'httpOnly'    => true,
-        //正则匹配"调度类名::方法名"判断是否自动开启
-        'autoStart'   => '@^(?!of_base_com_net:|of_base_sso_api:|of_base_language_packs:)@',
+        //正则匹配"调度类名::方法名"判断是否自动开启, 不启动 com_net, sso_api, language_packs
+        'autoStart'   => '@^(?!serv(_|\b)|of_base_(com_net|sso|language))@',
         //最大生存时间(分钟)
         'maxLifeTime' => 60,
         //各调度参数
@@ -345,6 +345,7 @@ return array(
              *              "memory" : 单个并发分配内存积累过高后自动重置, 单位M, 默认50, 0=不限制
              *              "keys"   : 消费消息时回调结构 {
              *                  消息键 : 不存在的键将被抛弃 {
+             *                      "lots" : 批量消费, 1=单条消费, >1=一次消费最多数量(消息变成一维数组)
              *                      "cNum" : 并发数量,
              *                      "call" : 回调结构
              *                  }, ...
@@ -360,8 +361,8 @@ return array(
         'oUpload' => array(
             //禁止上传的扩展文件, 白名单写法 "@^(?!(exe|php|html|htm|js|css)$)@"
             'filtExt' => '@^(?:exe|php|html|htm|js|css|)$@',
-            //允许上传的文件夹(仅可匹配文件夹), 正则结果[1]指定根目录(前端无法重定向)
-            'folder'  => '@^(/data)/upload/@'
+            //允许上传的文件夹(仅可匹配文件夹)
+            'folder'  => '@^/data/upload/@'
         )
     )
 );

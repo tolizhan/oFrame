@@ -55,17 +55,13 @@ class of_base_error_tool {
                 $data[$k]['_code'] = isset($index['type']) ? $index['type'] : $v['errorType'];
                 $data[$k]['_file'] = $index['file'];
                 $data[$k]['_line'] = $index['line'];
-                $data[$k]['_info'] = '<pre>' . htmlentities($index['info'], ENT_QUOTES, 'UTF-8') . '</pre>';
+                $data[$k]['_info'] = '<pre>' . htmlspecialchars(iconv(
+                    'UTF-8', 'UTF-8//IGNORE', $index['info']
+                )) . '</pre>';
                 //格式化详细信息
-                $data[$k]['_detaile'] = str_replace(
-                    //兼容IE6 7 8
-                    array("\n", ' '), array('<br>', '&nbsp;'),
-                    //防止非UTF8不显示
-                    iconv(
-                        'UTF-8', 'UTF-8//IGNORE',
-                        htmlspecialchars(print_r($index, true))
-                    )
-                );
+                $data[$k]['_detaile'] = htmlspecialchars(iconv(
+                    'UTF-8', 'UTF-8//IGNORE', print_r($index, true)
+                ));
 
                 //分组概要数据
                 if (isset($v['groupMd5Key'])) {
@@ -85,7 +81,7 @@ class of_base_error_tool {
             '详细' => array(
                 '_attr' => array(
                     'attr' => 'class="center"',
-                    'body' => '<input name="radio" type="radio" md5Key="{`_md5Key`}" /><div style="display:none;">{`_detaile`}</div>',
+                    'body' => '<input name="radio" type="radio" md5Key="{`_md5Key`}" /><pre style="display:none;">{`_detaile`}</pre>',
                     'html' =>  '<div class="of-paging_action">' .
                         '<a name="pagingFirst" class="of-paging_first" href="#">&nbsp;</a>' .
                         '<a name="pagingPrev" class="of-paging_prev" href="#">&nbsp;</a>' .
@@ -213,7 +209,7 @@ a:hover{ text-decoration:underline; cursor:pointer;}
     color: #888;
     cursor: pointer;
 }
-.groupMain pre {
+td pre {
     max-height: 150px;
     overflow: hidden;
 }
@@ -275,7 +271,7 @@ a:hover{ text-decoration:underline; cursor:pointer;}
             'mode' => 'detailMain'
         )),
         $this->getLogTablePaging(array(
-            'attr' => 'mode=groupMain title="Double click to open items" class="of-paging_block groupMain"',
+            'attr' => 'mode=groupMain title="Double click to open items"',
             'mode' => 'groupMain'
         )),
         $this->getLogTablePaging(array(
@@ -328,7 +324,7 @@ a:hover{ text-decoration:underline; cursor:pointer;}
             'mode' => 'detailMain'
         )),
         $this->getLogTablePaging(array(
-            'attr' => 'mode=groupMain title="Double click to open items" class="of-paging_block groupMain"',
+            'attr' => 'mode=groupMain title="Double click to open items"',
             'mode' => 'groupMain'
         )),
         $this->getLogTablePaging(array(
@@ -381,7 +377,7 @@ a:hover{ text-decoration:underline; cursor:pointer;}
             'mode' => 'detailMain'
         )),
         $this->getLogTablePaging(array(
-            'attr' => 'mode=groupMain title="Double click to open items" class="of-paging_block groupMain"',
+            'attr' => 'mode=groupMain title="Double click to open items"',
             'mode' => 'groupMain'
         )),
         $this->getLogTablePaging(array(
@@ -535,13 +531,13 @@ var toolObj = {
         if (this.getElementsByTagName('td').length > 1) {
             temp = $('td:first input', this)
                 .prop('checked', true)
-                .siblings('div').html();
+                .siblings('pre').text();
 
             //清除尚未执行的单击(双击会调用两次)
             clearTimeout(toolObj.clickTr.timeout);
             //延迟执行单击(给双击留反映时间)
             toolObj.clickTr.timeout = setTimeout(function () {
-                floatObj.html(temp).show();
+                floatObj.text(temp).show();
             }, 300);
         }
     },

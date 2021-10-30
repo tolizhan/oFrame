@@ -110,6 +110,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
      *          "pool"  : 指定消息队列池,
      *          "queue" : 队列名称,
      *          "key"   : 消息键,
+     *          "lots"  : 批量消费数量,
      *          "data"  :x消息数据, _fire 函数实现
      *          "this"  : 当前并发信息 {
      *              "cMd5" : 回调唯一值
@@ -120,7 +121,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
      *      true=已匹配到消息, false=未匹配到消息
      * 作者 : Edgar.lee
      */
-    protected function _fire(&$call, &$data) {
+    protected function _fire(&$call, $data) {
         //唯一编码
         $uniqid = of_base_com_str::uniqid();
 
@@ -131,11 +132,11 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             //当前时间
             $nowTime = date('Y-m-d H:i:s', $time = time());
             //获取消息数据偏移量
-            $limit = $this->msgLimit($time, $data['this']['cCid']);
+            $limit = $this->msgLimit($time, $data['this']['cCid'], $data['lots']);
 
             //筛选合适消息
             $sql = "SELECT
-                `mark`, `data`, `msgId`, `syncLevel`, `lockTime`
+                `mark`
             FROM
                 `_of_com_mq`
             WHERE
@@ -146,13 +147,18 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             ORDER BY
                 `lockTime`
             LIMIT
-                {$limit}, 1";
-            $msgs = of_db::sql($sql, $this->dbPool);
+                {$limit}, {$data['lots']}";
 
             //筛选成功
-            if ($msgs = &$msgs[0]) {
+            if ($msgs = of_db::sql($sql, $this->dbPool)) {
                 //65分钟过期
                 $expTime = date('Y-m-d H:i:s', $time + 3900);
+                //提取消息标识
+                foreach ($msgs as &$v) $v = $v['mark'];
+                $marks = join('\',\'', $msgs);
+                //清空消息数据
+                $msgs = null;
+
                 //锁定数据
                 $sql = "UPDATE
                     `_of_com_mq`
@@ -161,20 +167,29 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                     `lockMark` = '{$uniqid}'
                 WHERE
                     `type` = '{$data['key']}'
-                AND `mark` = '{$msgs['mark']}'
-                AND `lockTime` = '{$msgs['lockTime']}'";
+                AND `mark` IN ('{$marks}')
+                AND `lockTime` <= '{$nowTime}'";
                 $loop = of_db::sql($sql, $this->dbPool);
 
-                //修改出错
-                if ($loop === false) {
-                    //跳出执行
-                    $msgs = null;
-                //修改成功
-                } else {
+                //修改成功(失败为false)
+                if (is_int($loop)) {
                     //其它并发操作 && 重置消息偏移量
-                    $loop === 0 && $this->msgLimit();
-                    //响应行数决定有效或重试
-                    $loop = !$loop;
+                    if ($loop === 0) {
+                        $this->msgLimit();
+                    //读取加锁成功的消息
+                    } else {
+                        $sql = "SELECT
+                            `mark`, `data`, `msgId`, `syncLevel`
+                        FROM
+                            `_of_com_mq`
+                        WHERE
+                            `type` = '{$data['key']}'
+                        AND `mark` IN ('{$marks}')
+                        AND `lockMark` = '{$uniqid}'";
+                        $msgs = of_db::sql($sql, $this->dbPool);
+                    }
+                    //消息数量决定是否重试
+                    $loop = !$msgs;
                 }
             } else {
                 //重置消息偏移量
@@ -188,11 +203,16 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             ini_set('max_execution_time', 3600);
 
             //解析消费数据
-            $data['msgId'] = $msgs['msgId'];
-            $data['count'] = $msgs['syncLevel'] + 1;
-            $data['data'] = json_decode($msgs['data'], true);
-            $data['extra'] = array(
-                'mark'  => $msgs['mark'],
+            foreach ($msgs as $k => &$v) {
+                $data['count'][] = $v['syncLevel'] + 1;
+                $data['msgId'][] = $v['msgId'];
+                $data['data'][$v['msgId']] = json_decode($v['data'], true);
+                $data['extra']['mark'][] = $v['mark'];
+            }
+
+            //格式化消费数据
+            $data['count'] = max($data['count']);
+            $data['extra'] += array(
                 'lock'  => $uniqid,
                 'delay' => $data['count'] * 300
             );
@@ -202,11 +222,12 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
 
             //执行成功
             if ($return === true) {
+                $temp = join('\',\'', $data['extra']['mark']);
                 $sql = "DELETE FROM
                     `_of_com_mq`
                 WHERE
                     `type` = '{$data['key']}'
-                AND `mark` = '{$msgs['mark']}'
+                AND `mark` IN ('{$temp}')
                 AND `lockMark` = '{$uniqid}'";
                 of_db::sql($sql, $this->dbPool);
             //执行失败
@@ -228,6 +249,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
      *          "pool"  : 指定消息队列池,
      *          "queue" : 队列名称,
      *          "key"   : 消息键,
+     *          "lots"  : 批量消费数量,
      *          "this"  : 当前并发信息 {
      *              "cMd5" : 回调唯一值
      *              "cCid" : 当前并发值
@@ -243,6 +265,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
         $expTime = date('Y-m-d H:i:s', time() + $extra['delay']);
 
         //修改消息重试次数
+        $temp = join('\',\'', $extra['mark']);
         $sql = "UPDATE
             `_of_com_mq`
         SET
@@ -252,7 +275,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             `lockMark` = ''
         WHERE
             `type` = '{$data['key']}'
-        AND `mark` = '{$extra['mark']}'
+        AND `mark` IN ('{$temp}')
         AND `lockMark` = '{$extra['lock']}'";
         of_db::sql($sql, $this->dbPool);
     }
@@ -328,7 +351,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
      * 描述 : 读取或重置消息偏移量, _fire辅助方法
      * 作者 : Edgar.lee
      */
-    private function msgLimit(&$time = 0, &$cCid = 0) {
+    private function msgLimit(&$time = 0, &$cCid = 0, &$lots = 1) {
         $index = &$this->offset;
 
         //重置偏移量
@@ -343,7 +366,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             //读取正在执行并发数据
             $data = of_base_com_timer::data(true, true);
             //计算消息数据偏移量
-            $index['limit'] = $data['info'][$cCid]['sort'] * 5;
+            $index['limit'] = $data['info'][$cCid]['sort'] * $lots * 5;
         }
 
         return $index['limit'];

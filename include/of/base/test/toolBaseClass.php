@@ -23,7 +23,7 @@ class of_base_test_toolBaseClass {
         $debug = of::config('_of.debug');
 
         //(开发模式 || 测试模式) && 启动测试
-        if (($debug || $debug === null) && self::$config['cPath']) {
+        if (($debug === true || $debug === null) && self::$config['cPath']) {
             of_base_com_timer::task(array(
                 'call' => 'of_base_test_case::task',
                 'cNum' => 1

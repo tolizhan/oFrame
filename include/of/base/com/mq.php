@@ -18,6 +18,7 @@
  *                      "memory" : 单个并发未释放内存积累过高后自动重置, 单位M, 默认50, 0=不限制
  *                      "keys"   : 消费消息时回调结构 {
  *                          消息键 : 不存在的键将被抛弃 {
+ *                              "lots" : 批量消费, 1=单条消费, >1=一次消费最多数量(消息变成一维数组)
  *                              "cNum" : 并发数量,
  *                              "call" : 回调结构
  *                          }, ...
@@ -127,6 +128,8 @@ abstract class of_base_com_mq {
 
                 echo '<pre><hr>Concurrent Running : ';
 
+                //消费超过24小时数量
+                $nums = 0;
                 //筛选消息队列任务
                 $list = of_base_com_timer::info(1);
                 foreach ($list as $k => &$v) {
@@ -141,23 +144,43 @@ abstract class of_base_com_mq {
 
                         //读取消息状态信息
                         foreach ($v['list'] as $kl => &$vl) {
-                            $vl['execInfo'] = of_base_com_timer::data(null, $kl, '/' . $k);
-                            $vl['execInfo'] = &$vl['execInfo']['info'][$kl]['data']['_mq'];
+                            $index = &of_base_com_timer::data(true, $kl, '/' . $k);
+                            $index = &$index['info'][$kl]['data']['_mq'];
 
-                            //存在执行信息
-                            if (isset($vl['execInfo']['useMemory'])) {
-                                //内存转化成M单位
-                                $vl['execInfo']['useMemory'] = round(
-                                    $vl['execInfo']['useMemory'] / 1048576, 2
-                                ) . 'M';
-                                //删除异常消息数据
-                                unset($vl['execInfo']['quitData']);
+                            //格式化执行信息
+                            if ($index === null) {
+                                $vl['execInfo'] = '<font color=red>Run for more than 24 hours</font>';
+                                //统计超长消费数量
+                                $nums += 1;
+                            } else {
+                                $vl['execInfo'] = &$index;
+
+                                //存在执行信息
+                                if (isset($index['useMemory'])) {
+                                    //内存转化成M单位
+                                    $index['useMemory'] = round(
+                                        $index['useMemory'] / 1048576, 2
+                                    ) . 'M';
+                                    //单条消费格式结构
+                                    is_array($index['msgId']) && (
+                                        isset($index['msgId'][1]) ?
+                                            $index['msgId'] = json_encode($index['msgId']) :
+                                            $index['msgId'] = &$index['msgId'][0]
+                                    );
+                                    //方便查询运行中队列
+                                    $index['doneTime'] || $index['doneTime'] = '--';
+                                    //删除异常消息数据
+                                    unset($index['quitData']);
+                                }
                             }
                         }
                     } else {
                         unset($list[$k]);
                     }
                 }
+
+                //打印队列信息
+                $nums && print_r("<font color=red>Exception({$nums})</font> ");
                 print_r($list);
 
                 echo '</pre>';
@@ -351,12 +374,12 @@ abstract class of_base_com_mq {
             $_SERVER['REMOTE_ADDR'] === $_SERVER['SERVER_ADDR'] &&
             $call = &$config['keys'][$data['key']]['call']
         ) {
+            //批量消费数量
+            ($data['lots'] = &$config['keys'][$data['key']]['lots']) < 1 && $data['lots'] = 1;
             //校验文件变动, ture=加载的文件, false=不校验, 字符串=@开头的正则白名单
             $check = &$config['check'];
             //检查内存占用峰值
             $memory = $config['memory'] * 1048576;
-            //重新加载提示
-            $eTip = $data['this']['cCid'] === 1 ? 'MQ auto reload' : '';
             //可以垃圾回收
             ($isGc = function_exists('gc_enable')) && gc_enable();
             //接收环境变化键名
@@ -395,7 +418,7 @@ abstract class of_base_com_mq {
                     //有效任务ID && 为当前任务
                     $cmd['taskPid'] && $cmd['taskPid'] === $tPid &&
                     //!(验证文件 && 文件变动)
-                    !($check && of_base_com_timer::renew($check, $eTip))
+                    !($check && of_base_com_timer::renew($check))
                 ) {
                     //存在消息
                     if ($mqObj->_fire($call, $data)) {
@@ -403,17 +426,20 @@ abstract class of_base_com_mq {
                         $isGc && gc_collect_cycles();
                         //检查内存 && 未释放内存过高
                         if ($memory && $fireEnv['memory'] > $memory) {
-                            //memory footprint reaches 100mb
-                            trigger_error(
-                                'MQ auto reload: (M)Unreleased memory takes up ' .
-                                "more than {$config['memory']}MB"
-                            );
+                            of::event('of::error', true, array(
+                                'type' => "{$data['key']}.{$data['queue']}.{$data['pool']}",
+                                'code' => E_USER_WARNING,
+                                'info' => 'MQ auto reload: (M)Unreleased memory takes up ' .
+                                    "more than {$config['memory']}MB"
+                            ));
                             //重置消息队列
                             break;
                         }
                     //消息为空
                     } else {
                         sleep(60);
+                        //保持_mq运行数据kv有效期
+                        of_base_com_timer::data(array());
                     }
                 //当前任务失效(停止)
                 } else {
@@ -480,12 +506,12 @@ abstract class of_base_com_mq {
                     flock($tLock, LOCK_UN);
 
                     //监听标志存在
-                    while (true) {
+                    while (!of_base_com_timer::renew()) {
                         //读取命令
                         $cmd = of_base_com_kv::get($cKey, array('taskPid' => '', 'compare' => ''), '_ofSelf');
                         isset($tPid) || $tPid = $cmd['taskPid'];
                         //加载最新配置文件
-                        $config = of::config('_of.com.mq', array(), 4);
+                        $config = of::config('_of.com.mq', array());
                         //待回调列表
                         $waitCall = array();
 
@@ -678,13 +704,17 @@ abstract class of_base_com_mq {
      *          "pool"  : 指定消息队列池,
      *          "queue" : 队列名称,
      *          "key"   : 消息键,
+     *          "lots"  : 批量消费数量,
      *          "this"  : 当前并发信息 {
      *              "cMd5" : 回调唯一值
      *              "cCid" : 当前并发值
      *          }
-     *          "msgId" : 消息ID
      *          "count" : 调用计数, 首次为 1
-     *          "data"  : 消息数据
+     *          "msgId" : 消息ID列表, [消息ID, ...]
+     *          "data"  : 消息数据 {
+     *              消息ID : 消息数据,
+     *              ...
+     *          }
      *      }
      * 作者 : Edgar.lee
      */
@@ -698,10 +728,10 @@ abstract class of_base_com_mq {
         $fireEnv['mqData'] = &$data;
         //生成并发日志
         $cLog = array(
-            'msgId'     => &$data['msgId'],
+            'msgId'     => $data['msgId'],
             'startTime' => date('Y-m-d H:i:s', time()),
             'doneTime'  => '',
-            'runCount'  => ++$count,
+            'runCount'  => $count += count($data['data']),
             'useMemory' => &$fireEnv['memory'],
             'quitData'  => array(
                 'class' => &$fireEnv['mqClass'],
@@ -712,6 +742,11 @@ abstract class of_base_com_mq {
         of_base_com_timer::data(array('_mq' => &$cLog));
 
         try {
+            //单消息处理
+            if ($data['lots'] === 1) {
+                $data['msgId'] = &$data['msgId'][0];
+                $data['data'] = &$data['data'][$data['msgId']];
+            }
             //处理消息
             $result = &of::callFunc($call, $data);
         } catch (Exception $e) {
@@ -771,7 +806,7 @@ abstract class of_base_com_mq {
 
             //抛出错误提示
             if ($return === true) {
-                $temp = 'The transaction is not closed: ' . join(', ', array_keys($trxs));
+                $temp = 'The database transaction is not closed: ' . join(', ', array_keys($trxs));
             } else {
                 $temp = 'Failed to consume message from queue: ' . var_export($result, true);
             }
@@ -951,6 +986,7 @@ abstract class of_base_com_mq {
      *          "pool"  : 指定消息队列池,
      *          "queue" : 队列名称,
      *          "key"   : 消息键,
+     *          "lots"  : 批量消费数量,
      *          "data"  :x消息数据, _fire 函数实现
      *          "this"  : 当前并发信息 {
      *              "cMd5" : 回调唯一值
@@ -961,7 +997,7 @@ abstract class of_base_com_mq {
      *      true=已匹配到消息, false=未匹配到消息
      * 作者 : Edgar.lee
      */
-    abstract protected function _fire(&$calll, &$data);
+    abstract protected function _fire(&$calll, $data);
 
     /**
      * 描述 : 触发消息队列意外退出时回调
@@ -970,6 +1006,7 @@ abstract class of_base_com_mq {
      *          "pool"  : 指定消息队列池,
      *          "queue" : 队列名称,
      *          "key"   : 消息键,
+     *          "lots"  : 批量消费数量,
      *          "this"  : 当前并发信息 {
      *              "cMd5" : 回调唯一值
      *              "cCid" : 当前并发值

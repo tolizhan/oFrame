@@ -719,7 +719,14 @@ class of_base_com_net {
         $strs = array();
         while ($len > 0) {
             $strs[] = $temp = fread($fp, $len);
-            $len -= strlen($temp);
+
+            //读取成功
+            if ($temp = strlen($temp)) {
+                $len -= $temp;
+            //读取失败
+            } else {
+                break ;
+            }
         }
         $res[] = join($strs);
     }

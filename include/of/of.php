@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200250);
+define('OF_VERSION', 200252);
 
 /**
  * 描述 : 控制层核心
@@ -338,7 +338,7 @@ class of {
      *                  "result" : &标准结果集
      *                  "data"   : &标准结果集中的data数据
      *              }
-     *      data : null=启动集成工作, 统一监听子孙工作事务
+     *      data : null=启动集成工作, 统一监听子孙工作事务, 启动时自动设置自动监听
 
      *     #结束工作(布尔)
      *      code : 完结事务, true=提交, false=回滚
@@ -454,18 +454,21 @@ class of {
             if (is_int($info)) {
                 //数据库回调
                 if (isset($data['pool'])) {
-                    //工作存在
-                    while (isset($sList[$info])) {
-                        //动态监听
-                        if ($sList[$info]['dyna']) {
-                            //统一工作增量
-                            $sList[$info]['unify'] && $info += $sList[$info]['unify'] - 1;
-                            //引用增量工作
-                            $index = &$sList[$info]['list'];
-                            $code[] = $data['pool'];
-                            break ;
-                        }
-                        $info += 1;
+                    if (
+                        //存在工作
+                        isset($sList[$info]) &&
+                        //已监听的不在执行
+                        !isset($sList[$info]['list'][$data['pool']]) &&
+                        //在数据库自动监听里
+                        $temp = $sList[$info]['dyna']
+                    ) {
+                        //定位所属的数据库监听工作
+                        $info += $temp - 1;
+                        //定位所属的集成工作
+                        $sList[$info]['unify'] && $info += $sList[$info]['unify'] - 1;
+                        //引用增量工作
+                        $index = &$sList[$info]['list'];
+                        $code[] = $data['pool'];
                     }
                 //工作存在
                 } else if (isset($sList[$info])) {
@@ -479,7 +482,9 @@ class of {
                 }
             //添加新工作流
             } else {
-                //统一工作增量
+                //集成工作 && 开启自动监控
+                $data === null && $code = null;
+                //多段数据库监听, 统一工作增量
                 $temp = isset($sList[0]) && $sList[0]['unify'] ?
                     $sList[0]['unify'] + 1 : (int)($data === null);
                 //压入工作问题栈表
@@ -488,7 +493,9 @@ class of {
                 array_unshift($sList, array(
                     'wuid'  => uniqid(),
                     'time'  => array($time = time(), date('Y-m-d H:i:s', $time)),
-                    'dyna'  => $code === null,
+                    'dyna'  => $code === null ? 1 : (isset($sList[0]) && $sList[0]['dyna'] ?
+                        $sList[0]['dyna'] + 1 : 0
+                    ),
                     'unify' => $temp,
                     'list'  => array(),
                     'defer' => array(),
