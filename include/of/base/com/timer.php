@@ -15,7 +15,10 @@ class of_base_com_timer {
      */
     public static function init() {
         $config = &self::$config;
+        //读取节点
         $config = of::config('_of.com.timer', array());
+        //节点名称
+        $nodeName = of::config('_of.nodeName');
 
         //文件锁路径
         empty($config['path']) && $config['path'] = OF_DATA . '/_of/of_base_com_timer';
@@ -31,9 +34,11 @@ class of_base_com_timer {
         empty($index['path']) || $index['path'] = of::formatPath($index['path'], ROOT_DIR);
 
         //任务触发器路径(分布式)
-        $config['addrPath'] = $config['path'] . '/taskTrigger/' . md5($_SERVER['SERVER_ADDR']);
+        $config['addrPath'] = $config['path'] . '/taskTrigger/' . md5($nodeName);
         //记录IP地址
-        of_base_com_disk::file($config['addrPath'] . '/address.php', $_SERVER['SERVER_ADDR'], true);
+        of_base_com_disk::file($config['addrPath'] . '/nodeInfo.php', array(
+            'node' => $nodeName
+        ), true);
 
         //web访问开启计划任务
         if (of::dispatch('class') === 'of_base_com_timer') {
@@ -76,7 +81,7 @@ class of_base_com_timer {
             //连接解锁
             flock($lock, LOCK_UN);
             //加载定时器
-            of_base_com_net::request(OF_URL, array(), array(
+            of_base_com_net::request('', array(), array(
                 'asCall' => 'of_base_com_timer::timer',
                 'params' => array($name, true)
             ));
@@ -177,8 +182,14 @@ class of_base_com_timer {
             }
         }
 
-        //添加到待执行列表中
-        self::taskList($params);
+        //命令模式 && 即时执行
+        if (PHP_SAPI === 'cli' && $params['time'] <= $nowTime) {
+            //直接触发
+            self::fireCalls(array(&$params));
+        } else {
+            //添加到待执行列表中
+            self::taskList($params);
+        }
     }
 
     /**
@@ -197,7 +208,7 @@ class of_base_com_timer {
      *          }
      *      }
      *      type为2时 : 分布定时器 {
-     *          服务器IP : {}
+     *          节点名称 : {}
      *      }
      *      type其它时 : 如1+2为3时 {
      *          "concurrent"  : type为1的结构,
@@ -279,16 +290,18 @@ class of_base_com_timer {
             of_base_com_disk::each($path, $data, null);
             foreach ($data as $k => &$v) {
                 //是文件夹 && 任务锁打开成功
-                if ($v && $fp = fopen($k . '/taskLock', 'a')) {
-                    //任务开启
-                    if (!flock($fp, LOCK_EX | LOCK_NB)) {
-                        $temp = of_base_com_disk::file($k . '/address.php', false, true);
-                        $save[$temp] = array();
+                if ($v) {
+                    //监控未开启
+                    if (flock(fopen($k . '/taskLock', 'a'), LOCK_EX | LOCK_NB)) {
+                        //清理未启动监控
+                        if ($_SERVER['REQUEST_TIME'] - filemtime($k . '/nodeInfo.php') > 86400) {
+                            of_base_com_disk::delete($k);
+                        }
+                    //监控已开启
+                    } else {
+                        $temp = of_base_com_disk::file($k . '/nodeInfo.php', true, true);
+                        $save[$temp['node']] = array();
                     }
-                    //连接解锁
-                    flock($fp, LOCK_UN);
-                    //关闭连接
-                    fclose($fp);
                 }
             }
 
@@ -302,10 +315,10 @@ class of_base_com_timer {
      * 描述 : 为并发提供共享数据
      * 参数 :
      *      data : 读写数据, 仅运行进程可修改清空自身数据
+     *          null=不读数据, 仅关注运行状态使用
      *          true=读取数据
      *          false=清空读取, 读取数据后清空原始数据
      *          数组=单层替换, 将数组键的值替换对应共享数据键的值
-     *          null=不读数据, 仅关注运行状态使用
      *      cIds : 指定任务中的并发ID
      *          null=读取自身
      *          数字=指定并发ID
@@ -372,10 +385,6 @@ class of_base_com_timer {
             } else {
                 //强制转换成数组
                 is_array($cIds) || $cIds = (array)$cIds;
-                //检查并发有效性
-                foreach ($cIds as $k => &$v) {
-                    if (!is_file($path . '/' . $v)) unset($cIds[$k]);
-                }
             }
 
             //从小到大排序并发ID
@@ -388,7 +397,7 @@ class of_base_com_timer {
                 //自身进程
                 $isSelf = isset($nowTask) && $nowTask['cAvg']['cCid'] === $v;
                 //进程是否运行, true=运行, false=停止
-                $isRun = $isSelf ? true : !flock(fopen($cDir, 'r'), LOCK_SH | LOCK_NB);
+                $isRun = $isSelf ? true : is_file($cDir) && !flock(fopen($cDir, 'r'), LOCK_SH | LOCK_NB);
 
                 //进程运行 || 不过滤
                 if ($isRun || $filt) {
@@ -526,7 +535,7 @@ class of_base_com_timer {
             is_dir($cDir) || @mkdir($cDir, 0777, true);
 
             //开启共享锁
-            of_base_com_disk::file($cDir . '.php', null);
+            $lock = of_base_com_disk::file($cDir . '.php', null);
 
             //打开并发文件
             $fp = fopen($cDir . '/' . $cAvg['cCid'], 'a+');
@@ -744,12 +753,14 @@ class of_base_com_timer {
         static $lastTime = null;
         $config = &self::$config['cron'];
         $timeList = $result = array();
-        $nowTime = time();
+        $lastKey = 'of_base_com_timer::crontab#lastTime';
+        $intTime = ($intTime = time()) - $intTime % 60;
 
-        //取整分时间
-        $lastTime === null && $lastTime = $nowTime - $nowTime % 60 - 60;
+        //取整分时间(KV缓存时间 || 当前时间前一分钟)
+        $lastTime === null && $lastTime = of_base_com_kv::get($lastKey, $intTime - 60, '_ofSelf');
+
         //执行间隔60s
-        while ($nowTime - $lastTime > 59) {
+        while ($intTime - $lastTime > 59) {
             $lastTime += 60;
             $timeList[] = array(
                 'nowTime' => $lastTime,
@@ -759,6 +770,8 @@ class of_base_com_timer {
         }
 
         if ($timeList) {
+            //记录缓存时间
+            of_base_com_kv::set($lastKey, $lastTime, 86400, '_ofSelf');
             //最新静态任务
             is_file($config['path']) && $cron = include $config['path'];
 
@@ -788,8 +801,8 @@ class of_base_com_timer {
                                 //范围通过 && 频率通过(不需要 || 在范围内 && 可整除)
                                 if (
                                     $temp && (
-                                        !$vl[3] || 
-                                        $index >= $vl[1] && 
+                                        !$vl[3] ||
+                                        $index >= $vl[1] &&
                                         ($index - (int)$vl[1]) % $vl[3] === 0
                                     )
                                 ) {
@@ -812,15 +825,17 @@ class of_base_com_timer {
                             $temp = of_base_com_kv::get($tKey, 0, '_ofSelf');
 
                             //对应时间整点没有执行过
-                            if ($temp < $timeBox['nowTime']) {
+                            if ($temp < $lastTime) {
                                 //记录成功项
                                 $result[] = array('time' => $timeBox['nowTime']) + $vt;
                                 //记录最后更新时间戳
-                                of_base_com_kv::set($tKey, $timeBox['nowTime'], 86400, '_ofSelf');
+                                of_base_com_kv::set($tKey, $lastTime, 86400, '_ofSelf');
                             }
 
                             //解锁
                             of_base_com_disk::lock($lock, LOCK_UN);
+                            //任务仅执行一次
+                            break ;
                         }
                     }
                 }
@@ -843,7 +858,7 @@ class of_base_com_timer {
      *      }, ...]
      * 作者 : Edgar.lee
      */
-    private static function fireCalls(&$list) {
+    private static function fireCalls($list) {
         //定时器根路径
         $path = self::$config['path'] . '/concurrent';
         //当前时间
@@ -853,7 +868,7 @@ class of_base_com_timer {
             //单计划
             if (empty($v['cNum'])) {
                 //触发任务
-                of_base_com_net::request(OF_URL, array(), array(
+                of_base_com_net::request('', array(), array(
                     'asCall' => 'of_base_com_timer::taskCall',
                     'params' => array(&$v, false)
                 ));
@@ -888,7 +903,7 @@ class of_base_com_timer {
                         fclose($fp);
 
                         //触发任务
-                        $isRun && of_base_com_net::request(OF_URL, array(), array(
+                        $isRun && of_base_com_net::request('', array(), array(
                             'asCall' => 'of_base_com_timer::taskCall',
                             'params' => array(
                                 &$v, array('cMd5' => $cMd5, 'cCid' => $cNum)

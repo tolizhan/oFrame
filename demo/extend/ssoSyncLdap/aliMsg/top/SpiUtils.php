@@ -130,7 +130,7 @@ class SpiUtils{
 				break;
 			}
 		}
-		return self::startsWith($remoteIp,"140.205.144.") || $this->startsWith($remoteIp,"40.205.145.");
+		return self::startsWith($remoteIp,"140.205.144.") || self::startsWith($remoteIp,"40.205.145.");
 	}
 
 	private static function getFormMap(){

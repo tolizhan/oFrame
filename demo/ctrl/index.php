@@ -128,8 +128,12 @@ class ctrl_index extends L {
                 echo '异步并发消息回调将在此文件中写入数据: ',
                     ROOT_DIR . OF_DATA . '/mqTest.txt';
                 L::sql(null);
-                //queue1 与 queue2 将同时收到信息, 延迟一分钟执行
-                of_base_com_mq::set(array('key', '消息ID', 600), '消息信息(可传数组)', 'exchange');
+                //批量创建消息队列, queue1 与 queue2 将同时收到信息, 延迟一分钟执行
+                of_base_com_mq::set(array(
+                    array('keys' => 'key', 'data' => array(1, 2, 3)),
+                    array('keys' => array('key'), 'data' => array(4, 5, 6)),
+                    array('keys' => array('key1', '延迟ID', 600), 'data' => '消息信息(可传数组)'),
+                ), 'exchange');
                 //因 queue2 没有 key1 键, 所以仅 queue1 会收到信息
                 of_base_com_mq::set(array('key1', '消息ID'), '消息信息(可传数组)', 'exchange');
                 L::sql(true);
@@ -219,9 +223,7 @@ class ctrl_index extends L {
      * 作者 : Edgar.lee
      */
     public function phpError() {
-        echo '下面的两个错误和一个异常将写到'. ROOT_DIR . of::config('_of.error.phpLog') . date('/Y/m/d') . '这个文件中';
-        //错误
-        1/0;
+        echo '下面的错误和异常将写到'. ROOT_DIR . of::config('_of.error.phpLog') . date('/Y/m/d') . '这个文件中';
         //错误
         trigger_error("A custom error has been triggered");
         //异常

@@ -813,8 +813,46 @@ class of_base_sso_main extends of_base_sso_api {
             //开启事务
             of_db::sql(null, self::$config['dbPool']);
 
+            //权限
+            $index = &$_SESSION['_of']['of_base_sso']['mgmt'];
+            $auth = array(
+                'site' => array(
+                    isset($index['realmAdd']) && isset($index['realmMod']) && isset($index['realmIce']),
+                    'realmAdd realmMod realmIce'
+                ),
+                'pack' => array(
+                    isset($index['packAdd']) && isset($index['packMod']) && isset($index['packIce']),
+                    'packAdd packMod packIce'
+                ),
+                'func' => array(
+                    isset($index['funcAdd']) && isset($index['funcMod']) && isset($index['funcIce']),
+                    'funcAdd funcMod funcIce'
+                ),
+                'user' => array(
+                    isset($index['userAdd']) && isset($index['userMod']) && isset($index['userIce']),
+                    'userAdd userMod userIce'
+                ),
+                'bind' => array(
+                    isset($index['packFunc']),
+                    'packFunc'
+                ),
+                'role' => array(
+                    isset($index['userPack']),
+                    'userPack'
+                )
+            );
+            //错误提示
+            $eTip = array();
+
             //解析CSV
             while ($data = &of_base_com_csv::parse($path)) {
+                //无效导入
+                if (!$index = &$auth[$data[0]]) continue ;
+                //权限不足
+                if (!$index[0]) $eTip[$data[0]] = $index[1];
+                //无效导入
+                if (isset($eTip[0])) continue ;
+
                 $data = array_map('addslashes', $data);
                 switch ($data[0]) {
                     //导入系统
@@ -919,10 +957,10 @@ class of_base_sso_main extends of_base_sso_api {
             }
 
             //有错误";
-            if (of::work('error')) {
+            if ($eTip || of::work('error')) {
                 //回滚事务
                 of_db::sql(false, self::$config['dbPool']);
-                echo '导入产生错误';
+                echo $eTip ? '无 ' . join(' ', $eTip) . ' 权限' : '导入产生错误';
             } else {
                 //提交事务
                 of_db::sql(true, self::$config['dbPool']);

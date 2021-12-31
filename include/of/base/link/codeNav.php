@@ -44,6 +44,9 @@ namespace of\accy\db {
     class mysqli extends \of_accy_db_mysqli {
     }
 
+    class tidb extends \of_accy_db_tidb {
+    }
+
 }
 
 namespace of\accy\session {

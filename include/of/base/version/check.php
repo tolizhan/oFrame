@@ -25,7 +25,10 @@ class of_base_version_check {
             //读取失败
             if (!$ver[0]) {
                 of_base_com_kv::set('of_base_version_check::version', 1, 86400, '_ofSelf');
-                of_base_com_net::request(OF_URL, array(), 'of_base_version_check::version');
+                of_base_com_timer::task(array(
+                    'call' => 'of_base_version_check::version',
+                    'cNum' => 1
+                ));
             //读取成功 && 有最新版本
             } else if ($ver[0] > OF_VERSION) {
                 //默认升级路径

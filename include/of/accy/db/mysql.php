@@ -6,7 +6,7 @@ class of_accy_db_mysql extends of_db {
     private $query = null;
     //事务状态(true=已开启, false=未开启)
     public $transState = false;
-    //数据库属性{"outBack" : 超时回滚, "timeout" : 加锁超时, "linkCid" : 连接ID, "version" : 版本号}
+    //数据库属性{"outBack" : 超时回滚, "timeout" : 加锁超时, "linkCid" : 连接ID, "version" : 版本号, "onTrace" : 开始跟踪}
     public $dbVar = null;
     //超时SQL记录列表
     public $sqlList = null;
@@ -39,7 +39,8 @@ class of_accy_db_mysql extends of_db {
                 'SET SESSION TRANSACTION ISOLATION LEVEL ' . $params['isolation'], $this->connection
             );
             //是否开启锁超时日志
-            isset($params['errorTrace']) || $params['errorTrace'] = 0;
+            ($index = &$params['errorTrace']) || $index = array();
+            $index = (array)$index + array(0, '@.@');
             //事务回滚模式
             $temp = 'SELECT 
                 @@innodb_rollback_on_timeout outBack,
@@ -74,7 +75,7 @@ class of_accy_db_mysql extends of_db {
         $errno = mysql_errno();
         $error = mysql_error();
 
-        //INNODB可能死锁
+        //INNODB可能锁超时(1205) || 死锁(1213)
         if ($errno === 1205 || $errno === 1213) {
             //初始化回滚属性
             if ($rollback === null) {

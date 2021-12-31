@@ -23,25 +23,27 @@ class of_accy_session_mysql extends of_base_session_base {
 
         of_db::sql(null, 'of_accy_session_mysql');
 
-        $sql = "SELECT
-            `data`
-        FROM
-            `_of_base_session`
-        WHERE
-            `hash` = '{$sessionId}'
-        FOR UPDATE";
-        $temp = &of_db::sql($sql, 'of_accy_session_mysql');
+        //加行独享锁
+        $sql = "/*UPDATE*/INSERT INTO `_of_base_session` (
+            `hash`, `data`, `time`
+        ) VALUES (
+            '{$sessionId}', '', NOW()
+        ) ON DUPLICATE KEY UPDATE
+            `time` = `time`";
 
-        if (empty($temp)) {
-            $sql = "INSERT INTO `_of_base_session` (
-                `hash`, `data`, `time`
-            ) VALUES (
-                '{$sessionId}', '', NOW()
-            )";
-            of_db::sql($sql, 'of_accy_session_mysql');
+        //新会话
+        if (of_db::sql($sql, 'of_accy_session_mysql') === 1) {
             $data = '';
+        //读会话
         } else {
-            $data = $temp[0]['data'];
+            $sql = "SELECT
+                `data`
+            FROM
+                `_of_base_session`
+            WHERE
+                `hash` = '{$sessionId}'";
+            $data = of_db::sql($sql, 'of_accy_session_mysql');
+            $data = $data[0]['data'];
         }
     }
 

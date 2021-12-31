@@ -8,27 +8,24 @@ class of_base_com_disk {
      * 描述 : 从一个文件读取或写入数据
      * 参数 :
      *      filePath  : 文件路径,或已经加锁的数据流
-     *      data      : 文件数据,false(默认)=读取数据,true=会用unserialize转化,null=返回文件链接源,字符串=写入数据,数组=会用serialize转化
+     *      data      : 默认=false
+     *          数据流 : null=返回文件链接源
+     *          写入时 : 字符串=写入数据, 数组=会用serialize转化
+     *          读取时 : false=读取数据,true=会用unserialize转化
      *      protected : 默认=false
      *          数据流 : true=写入锁,false=读取锁,null=尾部写入锁
      *          写入时 : true=向写入的字符串前追加"<?php exit; ?> "15个字符,false=不追加,null=尾部写入
      *          读取时 : true=文件已写入"<?php exit; ?> "保护, false=文件没写入保护
      * 返回 : 
-     *      失败返回null,读取成功返回读取数据,写入成功返回true
+     *      数据流 : 成功=资源, 失败=false
+     *      写入时 : 成功=true, 失败=false
+     *      读取时 : 成功=数据, 失败=null, 反序列失败=异常
      * 作者 : Edgar.lee
      */
     public static function &file($filePath, $data = false, $protected = false) {
-        //缓存路径
-        static $cachePath = null;
-
         if (is_resource($filePath)) {
             $fp = &$filePath;
         } else {
-            //引用文件流
-            $fp = &$cachePath[$filePath];
-
-            //防死锁
-            isset($fp) && is_resource($fp) && flock($fp, LOCK_UN) && fclose($fp);
             //嵌套创建文件夹
             is_dir($temp = dirname($filePath)) || @mkdir($temp, 0777, true);
             //读写方式打开
@@ -44,7 +41,7 @@ class of_base_com_disk {
                 }
             //打开失败
             } else {
-                return $result;
+                throw new Exception('Failed to open stream: ' . $filePath);
             }
         }
 
@@ -76,8 +73,11 @@ class of_base_com_disk {
 
             //反序列化
             if ($data) {
-                //数据为空 || 为false的序列化
-                if (!isset($temp[0]) || $temp === 'b:0;') {
+                //数据为空
+                if (!isset($temp[0])) {
+                    $temp = null;
+                //为false的序列化
+                } else if ($temp === 'b:0;') {
                     $temp = false;
                 //反序列化失败抛出异常
                 } else if (($temp = unserialize($temp)) === false) {
@@ -177,7 +177,7 @@ class of_base_com_disk {
             //初始化连接
             $nowDir === null && $nowDir[$dir] = array('res' => true, 'run' => true);
             //开始读取目录
-            $data = false;
+            $data = null;
 
             while ($path = key($nowDir)) {
                 $index = &$nowDir[$path];
@@ -212,6 +212,9 @@ class of_base_com_disk {
                     break;
                 }
             }
+
+            //未查到数据 && 结束遍历
+            $data === null && $data = false;
         }
 
         //操作结束 && 格式化数组
@@ -234,6 +237,7 @@ class of_base_com_disk {
      */
     public static function temp($isFile = true) {
         static $tempDir = null;
+
         if ($tempDir === null) {
             //php > 5.2.1
             if (function_exists('sys_get_temp_dir')) {
@@ -242,10 +246,12 @@ class of_base_com_disk {
                 //读取相关环境变量
                 ($tempDir = getenv('TMP')) || ($tempDir = getenv('TEMP')) || ($tempDir = getenv('TMPDIR'));
 
-                //环境变量读取失败,尝试创建临时文件
-                if (!$tempDir && $tempDir = tempnam(__FILE__, '')) {
-                    is_file($tempDir) && unlink($tempDir);
-                    $tempDir = dirname($tempDir);
+                //环境变量读取成功
+                if (!$tempDir) {
+                    //使用框架临时目录(可能因网络盘效率下降)
+                    $tempDir = ROOT_DIR . OF_DATA . '/_of/of_base_com_disk/temp';
+                    //创建临时文件夹
+                    is_dir($tempDir) || @mkdir($tempDir, 0777, true);
                 }
             }
         }

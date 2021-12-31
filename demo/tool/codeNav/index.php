@@ -22,7 +22,7 @@ $linkNav = array();
 //提取框架类名正则
 $ofClassPreg = '@\s(abstract\s+)?class\s+(of_[^\s]+)\s@ms';
 //L类方法名正则
-$ofLinkPreg = '@\bof::link\(.*?(?<!\\\\)(?:\\\\{2})*(?:\'|")?\);(?!\s*(?:\'|"))@ms';
+$ofLinkPreg = '@\bof::link\(.*?(?<!\\\\)(?:\\\\{2})*(?:\'|"|e)\s*\);(?!\s*(?:\'|"))@ms';
 //存储路径
 $savePath = OF_DIR . '/base/link/codeNav.php';
 

@@ -34,7 +34,7 @@ return array(
             'matches' => array(
                 //错误日志界面
                 '错误日志界面' => array(
-                    'action' => 'of_base_error_tool::index'
+                    'action' => '@^of_base_error_tool::@'
                 ),
                 //错误日志明细
                 '错误日志明细' => array(

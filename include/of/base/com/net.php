@@ -92,11 +92,13 @@ class of_base_com_net {
      *                  "verify_peer_name" : false
      *              }
      *          }
+     *          "save"    : 将响应体保存到磁盘, 下文件更省内存, 设置后方法返回的response为""
      *      }
-     *      mode : 提交模式,
+     *      mode : 提交模式
      *          false(默认) = 同步提交,
      *          true        = 无结果异步提交,
-     *          回调结构    = 符合 of::callFunc 结构(不能带递资源参数), 接收请求的响应结果
+     *          回调结构    = 异步回调符合 of::callFunc 结构(不能带递资源参数), 接收响应结果
+     *                        若url为"", 则仅触发回调不发生网络请求
      * 返回 :
      *      失败时 : {state:false, errno:失败码, errstr:错误描述}
      *      成功时 : {state:true, header:响应头, response:响应数据}
@@ -151,11 +153,11 @@ class of_base_com_net {
             unset($data['staticCookie'], $data['remoteAddr'], $data['mode']);
 
             //OF_URL 的无参数地址无需请求
-            if (
+            if ($data['url'] && (
                 strncmp($data['url'], OF_URL, strlen(OF_URL)) ||
                 strpos($data['url'], '=')
-            ) {
-                $index = &of_base_com_net::request($data['url'], $data);
+            )) {
+                $index = &self::request($data['url'], $data);
             } else {
                 $index = array('state' => true);
             }
@@ -183,7 +185,7 @@ class of_base_com_net {
 
             //参数初始化
             $data += array(
-                'get' => '', 'data' => '', 'cookie' => '',
+                'get' => array(), 'data' => '', 'cookie' => '',
                 'header' => '', 'timeout' => array()
             );
             //原始请求地址, 记录请求地址
@@ -194,7 +196,7 @@ class of_base_com_net {
             $data['header'] = is_array($data['header']) ?
                 join("\r\n", $data['header']) : trim($data['header'], "\r\n");
             //格式化get参数
-            is_array($data['get']) && $data['get'] = http_build_query($data['get']);
+            is_array($data['get']) || parse_str($data['get'], $data['get']);
             //格式化post参数
             is_array($data['data']) && $data['data'] = http_build_query($data['data']);
             //格式化cookie参数
@@ -224,8 +226,14 @@ class of_base_com_net {
             }
             //补全参数
             $index += self::$params;
+
+            //转成"RFC 1738"编码格式
+            if ($index['query']) {
+                parse_str($index['query'], $index['query']);
+                $index['query'] = http_build_query($index['query']);
+            }
             //合并get参数
-            $index['query'] .= ($index['query'] === '' || $data['get'] === '' ? '' : '&') . $data['get'];
+            $index['query'] .= ($index['query'] && $data['get'] ? '&' : '') . http_build_query($data['get']);
 
             //cookie整合
             if ($data['cookie']) {
@@ -390,10 +398,13 @@ class of_base_com_net {
             $port = $index === 443 || $index === 80 ? '' : ':' . $index;
             //附件分界线
             $line = '----ofFormBoundaryTCG418T3MwECCs03----';
+            //报文数据长度
+            $bLen = 0;
 
             //写入报文数据
             if (empty($data['file'])) {
-                $body = &$data['data'];
+                $body[] = &$data['data'];
+                $bLen = strlen($data['data']);
             //上传附件
             } else {
                 //发送文本报文
@@ -404,7 +415,8 @@ class of_base_com_net {
                         "\r\n--{$line}\r\nContent-Disposition: form-data; name=\"",
                         $temp
                     );
-                    $body[] = "--{$line}\r\n{$temp}";
+                    $body[] = $temp = "--{$line}\r\n{$temp}";
+                    $bLen = strlen($temp);
                 }
 
                 //发生附件报文
@@ -421,23 +433,27 @@ class of_base_com_net {
                     ($v['head'] = trim($v['head'], "\r\n")) && $v['head'] .= "\r\n";
 
                     //发生字段头
-                    $body[] = "--{$line}\r\nContent-Disposition: form-data; " .
+                    $body[] = $temp = "--{$line}\r\nContent-Disposition: form-data; " .
                         "name=\"{$v['name']}\"; filename=\"{$v['file']}\"\r\n" .
                         "Content-Type: {$v['mime']}\r\n{$v['head']}";
+                    $bLen += strlen($temp);
 
                     //发送字段报文
                     if (isset($v['data'])) {
                         $body[] = &$v['data'];
+                        $bLen += strlen($v['data']);
                     //发生文件流
                     } else {
-                        //文件流
-                        $body[] = &of_base_com_disk::file($v['path']);
+                        //文件流(读锁)
+                        $body[] = &of_base_com_disk::file($v['path'], null, false);
+                        $bLen += filesize($v['path']);
                     }
                 }
 
                 //合并报文数据
-                $body[] = '--' . $line . '--';
-                $body = join("\r\n", $body);
+                $body[] = $temp = '--' . $line . '--';
+                //计算报文长度, 报文数组之间加一个"\r\n"的长度
+                $bLen += strlen($temp) + count($body) * 2 - 2;
             }
 
             //组合请求数据
@@ -448,7 +464,7 @@ class of_base_com_net {
             //压缩编码
             $out[] = 'Accept-Encoding: ' . $config['rCode'];
             //post数据长度
-            $out[] = 'Content-Length: ' . strlen($body);
+            $out[] = 'Content-Length: ' . $bLen;
             //支持的 MIME 类型
             preg_match('@^Accept *:@im', $data['header']) || $out[] = 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
             //使用的浏览器
@@ -467,13 +483,28 @@ class of_base_com_net {
             $data['cookie'] && $out[] = 'Cookie: ' . $data['cookie'];
             //会替换下面的默认值
             $data['header'] && $out[] = &$data['header'];
+            //添加一个换行
             $out[] = '';
-            //报文数据
-            $out[] = &$body;
-
+            //发送报头
             fwrite($fp, join("\r\n", $out));
 
-            //释放大内存
+            //发送报文信息
+            foreach ($body as &$bv) {
+                fwrite($fp, "\r\n");
+
+                //文件流
+                if (is_resource($bv)) {
+                    //发送报文
+                    while (!feof($bv)) {
+                        fwrite($fp, fread($bv, 2048));
+                    }
+                //字符串
+                } else {
+                    fwrite($fp, $bv);
+                }
+            }
+
+            //释放大内存及文件资源
             unset($out, $body);
             //恢复内存设置
             ini_set('memory_limit', $memory);
@@ -496,7 +527,17 @@ class of_base_com_net {
                         $res['header'][] = $temp;
                     }
                 }
+
+                //合并响应头
                 $res['header'] = join($res['header']);
+                //响应体是否为GZIP压缩
+                $isGzip = preg_match('@Content-Encoding:\s*gzip@i', $res['header']);
+                //保存的磁盘路径
+                $save = empty($data['save']) ? '' : ($isGzip ?
+                    $gzipTempFile = of_base_com_disk::temp() : $data['save']
+                );
+                //保存磁盘 && 打开文件写锁流
+                $save && $res['response'] = of_base_com_disk::file($save, null, true);
 
                 //chunk传输
                 if (preg_match('@Transfer-Encoding:\s*chunked@i', $res['header'])) {
@@ -511,12 +552,8 @@ class of_base_com_net {
                     self::getLenStr($fp, $temp[1], $res['response']);
                 //非标准响应
                 } else {
-                    while ($temp = fread($fp, 2048)) {
-                        $res['response'][] = $temp;
-                    }
+                    self::getLenStr($fp, PHP_INT_MAX, $res['response']);
                 }
-                //记录响应体
-                $res['response'] = join($res['response']);
 
                 //判断超时
                 $meta = stream_get_meta_data($fp);
@@ -525,12 +562,31 @@ class of_base_com_net {
                 if ($meta['timed_out'] || empty($res['header'])) {
                     $res = array('header' => ' 503 ', 'response' => 'Internet failure');
                 //gzip压缩
-                } else if (
-                    isset($res['response'][0]) &&
-                    preg_match('@Content-Encoding:\s*gzip@i', $res['header'])
-                ) {
-                    $res['response'] = gzinflate(substr($res['response'], 10, -8));
+                } else if ($isGzip) {
+                    //磁盘解码
+                    if ($save) {
+                        //打开存储磁盘
+                        $res['response'] = of_base_com_disk::file($data['save'], null, true);
+                        //打开临时GZ压缩包
+                        $temp = gzopen($save, 'rb');
+
+                        //解码写入目标路径
+                        while (fwrite($res['response'], gzread($temp, 4096))) {
+                        }
+
+                        //响应结果为空
+                        $res['response'] = $temp = '';
+                    //内存解码
+                    } else if ($res['response'] = join($res['response'])) {
+                        $res['response'] = gzinflate(substr($res['response'], 10, -8));
+                    }
+                } else {
+                    //磁盘解码 ? 响应体为空 : 合并响应体
+                    $res['response'] = $save ? '' : join($res['response']);
                 }
+
+                //删除临时文件
+                isset($gzipTempFile) && unlink($gzipTempFile);
 
                 //请求成功
                 if (preg_match('/.* (\d+) .*/', $res['header'], $temp) && $temp[1] < 400) {
@@ -716,9 +772,11 @@ class of_base_com_net {
      * 作者 : Edgar.lee
      */
     private static function getLenStr(&$fp, $len, &$res) {
-        $strs = array();
         while ($len > 0) {
-            $strs[] = $temp = fread($fp, $len);
+            //每次最多仅读"0.5M"数据
+            $temp = fread($fp, $len > 524288 ? 524288 : $len);
+            //是数组 ? 记录内存 : 写入磁盘
+            is_array($res) ? $res[] = $temp : fwrite($res, $temp);
 
             //读取成功
             if ($temp = strlen($temp)) {
@@ -728,7 +786,6 @@ class of_base_com_net {
                 break ;
             }
         }
-        $res[] = join($strs);
     }
 }
 of_base_com_net::init();

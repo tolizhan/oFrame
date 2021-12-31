@@ -6,6 +6,8 @@ return array(
     'rootUrl'     => null,
     //配置文件路径, 数组=动态配置{动态键"."分隔 : 配置路径}, 字符串=等同{"0" : 全局配置}
     'config'      => '/demo/config/config.php',
+    //节点名称, 以此区别不同分布式节点, 默认 $_SERVER['SERVER_ADDR']+php_uname()
+    'nodeName'    => $_SERVER['SERVER_ADDR'] . php_uname(),
     //系统时区, 设置php支持的时区(如: Europe/London 支持夏令时), 读取格式为 ±00:00
     'timezone'    => 'PRC',
     //统一调试模式, true=开发环境, null=测试环境, false=生产环境, 字符串=切换开发环境密码
@@ -27,7 +29,7 @@ return array(
     'db'          => array(
         #单数据库混合写法
         //*
-        //数据库连接方式(mysqlPdo, mysqli, mysql)
+        //数据库连接方式(mysqlPdo, mysqli, mysql, tidb)
         'adapter'        => 'mysqli',
         //数据库连接参数
         'params'         => array(
@@ -42,8 +44,13 @@ return array(
             'timezone'   => true,
             //设置隔离级别, ""=跟随系统, "READ UNCOMMITTED", "READ COMMITTED", "REPEATABLE READ", "SERIALIZABLE"
             'isolation'  => 'READ COMMITTED',
-            //跟踪死锁与超时(需mysql >= 5.5, PROCESS权限), 默认n=0关闭, n>0记录前n条加锁SQL, n<0不记录SQL
-            'errorTrace' => 0,
+            //跟踪死锁与超时(需mysql >= 5.5, PROCESS权限)
+            'errorTrace' => array(
+                //默认n=0关闭, n>0记录前n条加锁SQL, n<0不记录SQL
+                0,
+                //正则匹配加锁SQL, 针对性跟踪表有利于提升系统性能
+                '@.@'
+            ),
             //是否长连接
             'persistent' => false
         )

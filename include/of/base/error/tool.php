@@ -1,9 +1,8 @@
 <?php
 class of_base_error_tool {
     public function __construct() {
+        session_write_close();
         of_base_error_toolBaseClass::init();
-        $temp = empty($_POST) ? 'printHtml' : 'response';
-        $this->$temp();
     }
 
     /**
@@ -55,13 +54,15 @@ class of_base_error_tool {
                 $data[$k]['_code'] = isset($index['type']) ? $index['type'] : $v['errorType'];
                 $data[$k]['_file'] = $index['file'];
                 $data[$k]['_line'] = $index['line'];
+                //日志大于10M, 显示下载标识
+                $data[$k]['_mode'] = $v['offset']['len'] > 10485760 ?
+                    'DL' : '<input name="radio" type="radio">';
+                //截取100k摘要信息
                 $data[$k]['_info'] = '<pre>' . htmlspecialchars(iconv(
-                    'UTF-8', 'UTF-8//IGNORE', $index['info']
+                    'UTF-8', 'UTF-8//IGNORE', substr($index['info'], 0, 102400)
                 )) . '</pre>';
-                //格式化详细信息
-                $data[$k]['_detaile'] = htmlspecialchars(iconv(
-                    'UTF-8', 'UTF-8//IGNORE', print_r($index, true)
-                ));
+                //异步加载详细信息
+                $data[$k]['_detaile'] = json_encode($v['offset']);
 
                 //分组概要数据
                 if (isset($v['groupMd5Key'])) {
@@ -81,7 +82,7 @@ class of_base_error_tool {
             '详细' => array(
                 '_attr' => array(
                     'attr' => 'class="center"',
-                    'body' => '<input name="radio" type="radio" md5Key="{`_md5Key`}" /><pre style="display:none;">{`_detaile`}</pre>',
+                    'body' => '{`_mode`}<pre style="display:none;" md5Key="{`_md5Key`}">{`_detaile`}</pre>',
                     'html' =>  '<div class="of-paging_action">' .
                         '<a name="pagingFirst" class="of-paging_first" href="#">&nbsp;</a>' .
                         '<a name="pagingPrev" class="of-paging_prev" href="#">&nbsp;</a>' .
@@ -118,10 +119,29 @@ class of_base_error_tool {
     }
 
     /**
+     * 描述 : 获取日志明细
+     * 作者 : Edgar.lee
+     */
+    public function getLogDetaile() {
+        //下载头
+        header('Content-Type: application/download');
+        //二进制
+        header('Content-Transfer-Encoding: binary');
+        //文件名
+        header('Content-Disposition: attachment; filename="log.txt"');
+        //不缓存
+        header('Pragma:no-cache');
+
+        $info = of_base_error_toolBaseClass::getLogDetaile($_GET['log'], $_GET['pos']);
+        $info = &$info['environment'];
+        echo iconv('UTF-8', 'UTF-8//IGNORE', print_r($info, true));
+    }
+
+    /**
      * 描述 : 响应请求
      * 作者 : Edgar.lee
      */
-    private function response() {
+    public function response() {
         if (isset($_POST['type'])) {
             switch ($_POST['type']) {
                 case 'getDir':                //获取目录(带状态)
@@ -151,7 +171,7 @@ class of_base_error_tool {
      * 描述 : 打印html
      * 作者 : Edgar.lee
      */
-    private function printHtml() {
+    public function index() {
         of_view::head(array());
 ?>
 
@@ -473,7 +493,12 @@ var toolObj = {
         } else if( path.substr(0, 1) === '/' ) {   //切换语言包
             urlBarObj.html(path);
             window.L.open('tip')('正在加载', false);
-            $.post(OF_URL + '/index.php?c=of_base_error_tool', {'type' : 'getDir', 'path' : path, 'logType' : logType}, responseFun, 'json');
+            $.post(
+                OF_URL + '/index.php?c=of_base_error_tool&a=response',
+                {'type' : 'getDir', 'path' : path, 'logType' : logType},
+                responseFun,
+                'json'
+            );
         } else if( path === '..' ) {              //上级目录
             path = urlBarObj.html();
             if( (temp = path.lastIndexOf('/')) > -1 )    //读取上级目录
@@ -481,19 +506,34 @@ var toolObj = {
                 window.L.open('tip')('正在加载', false);
                 temp > 0 && (path = path.substr(0, temp));
                 urlBarObj.html(path);
-                $.post(OF_URL + '/index.php?c=of_base_error_tool', {'type' : 'getDir', 'path' : path, 'logType' : logType}, responseFun, 'json');
+                $.post(
+                    OF_URL + '/index.php?c=of_base_error_tool&a=response',
+                    {'type' : 'getDir', 'path' : path, 'logType' : logType},
+                    responseFun,
+                    'json'
+                );
             }
         } else if( path === '.' ) {               //刷新目录
             if( (path = $.trim(urlBarObj.html())) !== '' )
             {
                 window.L.open('tip')('正在加载', false);
-                $.post(OF_URL + '/index.php?c=of_base_error_tool', {'type' : 'getDir', 'path' : path, 'logType' : logType}, responseFun, 'json');
+                $.post(
+                    OF_URL + '/index.php?c=of_base_error_tool&a=response',
+                    {'type' : 'getDir', 'path' : path, 'logType' : logType},
+                    responseFun,
+                    'json'
+                );
             }
         } else {                                  //常规目录
             path = urlBarObj.html() + '/' + path;
             urlBarObj.html(path);
             window.L.open('tip')('正在加载', false);
-            $.post(OF_URL + '/index.php?c=of_base_error_tool', {'type' : 'getDir', 'path' : path, 'logType' : logType}, responseFun, 'json');
+            $.post(
+                OF_URL + '/index.php?c=of_base_error_tool&a=response',
+                {'type' : 'getDir', 'path' : path, 'logType' : logType},
+                responseFun,
+                'json'
+            );
         }
     },
 
@@ -526,17 +566,38 @@ var toolObj = {
     //鼠标点击TR标签触发
     'clickTr' : function(){
         //当前浮动层
-        var temp, floatObj = $('#' + $('.nav input:checked').val() + ' .floatPre');
+        var temp, pObj, floatObj = $('#' + $('.nav input:checked').val() + ' .floatPre');
 
         if (this.getElementsByTagName('td').length > 1) {
-            temp = $('td:first input', this)
-                .prop('checked', true)
-                .siblings('pre').text();
+            pObj = $('td:first pre[md5Key]', this);
+            pObj.siblings('input').prop('checked', true);
+            temp = pObj.text();
 
             //清除尚未执行的单击(双击会调用两次)
             clearTimeout(toolObj.clickTr.timeout);
             //延迟执行单击(给双击留反映时间)
             toolObj.clickTr.timeout = setTimeout(function () {
+                //同步加载日志
+                if (temp.substr(0, 1) === '{') {
+                    temp = L.json(temp);
+                    temp.a = 'getLogDetaile';
+
+                    //大于10M的日志直接下载
+                    if (temp.len > 10485760) {
+                        window.open(window.location.href + '&' + L.param(temp));
+                        return ;
+                    //同步打卡日志
+                    } else {
+                        L.ajax({
+                            'async'   : false,
+                            'data'    : {'get'  : temp},
+                            'success' : function (text) {
+                                pObj.text(temp = text);
+                            }
+                        })
+                    }
+                }
+
                 floatObj.text(temp).show();
             }, 300);
         }
@@ -549,7 +610,7 @@ var toolObj = {
         //日志文件路径
         var logPath = $(this).parents('table').hide().get(0).paging().path;
         //分组明细唯一键
-        var md5key = $('td:first input', this).attr('md5key');
+        var md5key = $('td:first pre[md5key]', this).attr('md5key');
         //分组明细列表(jq对象)
         var listJobj = $('table[mode=groupList]', showPageObj).show();
         //分组明细列表(js对象)
@@ -580,7 +641,7 @@ var toolObj = {
         //分组明细列表(js对象)
         var listNode = $('table[mode=groupList]', showPageObj).get(0);
         //分组明细唯一键
-        var md5key = $(this).parents('tr').find('td:first input').attr('md5key');
+        var md5key = $(this).parents('tr').find('td:first pre[md5key]').attr('md5key');
 
         if (window.confirm('Do you want to empty the error?')) {
             groupTable.paging({'empty' : true, 'md5Key' : md5key});

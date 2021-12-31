@@ -26,9 +26,10 @@ class of_base_htmlTpl_tool {
                 rename($cDir, $dDir . '/' . of_base_com_str::uniqid());
 
                 //异步删除失效文件
-                of_base_com_net::request(
-                    OF_URL, array(), 'of_base_htmlTpl_tool::delete'
-                );
+                of_base_com_timer::task(array(
+                    'call' => 'of_base_htmlTpl_tool::delete',
+                    'cNum' => 1
+                ));
             }
 
             unset($get['type']);
@@ -56,21 +57,9 @@ class of_base_htmlTpl_tool {
             '_of.htmlTpl.path', OF_DATA . '/_of/of_base_htmlTpl_engine'
         ) . '/delete';
 
-        $lFp = fopen($dDir . '/lock', 'a');
-
-        if (
-            flock($lFp, LOCK_EX | LOCK_NB) &&
-            of_base_com_disk::each($dDir, $data, null)
-        ) {
-            foreach ($data as $k => &$v) {
-                //是文件夹 && 删除文件夹
-                $v && of_base_com_disk::delete($k);
-            }
-        }
-
-        //解锁并关闭
-        flock($lFp, LOCK_UN);
-        fclose($lFp);
+        //清空子文件
+        of_base_com_disk::each($dDir, $data, null);
+        foreach ($data as $k => &$v) of_base_com_disk::delete($k);
     }
 }
 

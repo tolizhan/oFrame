@@ -1,3 +1,54 @@
+版本: 254
+作者: Edgar
+日期: 2021年12月31日 14:24:04
+信息:
+说明: + 增加TIDB数据库的支持, 适配器"tidb", 支持死锁及锁超时跟踪
+      + of_base_com_net::request设置"save"将响应结果保存到磁盘
+      + 可设置框架节点名称"_of.nodeName", 以此区别不同分布式节点
+      + 系统不可用期间的"静态计划任务"将延迟到系统恢复后执行
+      + of::work 回调模式返回array时, 等同 params['data'] = array
+      + 验证码 of_base_com_com::captcha 可设置干扰像素与字符数量
+      + of_base_com_mq::set(二维数组)可批量创建消息并提升创建速度
+      + 数据库配置errorTrace[1]可设置正则针对表跟踪来提升系统性能
+      + 兼容 PHP 8.1
+      - 移除 of_base_com_disk::file 路径缓存, 更好的管理IO资源
+      * 减少 of_base_com_net::request 上传大文件的内存占用
+      * of_base_com_net::request get参数自动转成"RFC 1738"编码
+      * 提升消息队列的响应速度, 空消息等待间隔由60秒改为1秒
+      * 错误日志的分页列表加载更快, 查看大于10M日志明细时改为下载
+      * 单点登录管理界面导入功能使用SSO对应的权限进行控制
+      * 修复消息队列批量消费失败时, 单条消息重试时间不准的问题
+      * of_base_com_disk::file 文件流打开失败将抛出异常
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/ctrl/index.php
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqlPdo.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/version/check.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/toolBaseClass.php
+已修改 : /trunk/include/of/accy/com/kv/files.php
+已修改 : /trunk/include/of/base/htmlTpl/tool.php
+已修改 : /trunk/include/of/accy/session/mysql.php
+已修改 : /trunk/include/of/base/tool/mysqlSync.php
+已修改 : /trunk/demo/config/crontab.php
+已修改 : /trunk/demo/config/network.php
+已修改 : /trunk/demo/extend/ssoSyncLdap/aliMsg/top/SpiUtils.php
+已修改 : /trunk/demo/tool/codeNav/index.php
+已增加 : /trunk/include/of/accy/db/tidb.php
+已修改 : /trunk/include/of/base/firewall/main.php
+已修改 : /trunk/include/of/base/link/codeNav.php
+
 版本: 252
 作者: Edgar
 日期: 2021年10月30日 10:25:09

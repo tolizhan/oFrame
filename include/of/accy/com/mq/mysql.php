@@ -10,13 +10,13 @@
  *          `msgId` char(100) NOT NULL COMMENT '消息ID',
  *          `data` mediumtext NOT NULL COMMENT '队列数据',
  *          `syncCount` int(11) UNSIGNED NOT NULL COMMENT '已同步次数',
- *          `updateTime` timestamp NOT NULL DEFAULT '2000-01-01 00:00:00' COMMENT '消息最后更新时间',
- *          `createTime` timestamp NOT NULL DEFAULT '2000-01-01 00:00:00' COMMENT '消息首次创建时间',
+ *          `createTime` timestamp NOT NULL DEFAULT '2000-01-01 00:00:00' COMMENT '生成时间',
+ *          `updateTime` timestamp NOT NULL DEFAULT '2000-01-01 00:00:00' COMMENT '消费时间, 2001为删除',
  *          `syncLevel` int(11) UNSIGNED NOT NULL COMMENT '同步等级, 数值越大优先级越低',
  *          `lockTime` timestamp NOT NULL DEFAULT '2000-01-01 00:00:00' COMMENT '锁定时间, 每 syncLevel * 5 分钟重试',
  *          `lockMark` char(32) NOT NULL COMMENT '锁定时生成的唯一ID',
  *          PRIMARY KEY (`type`,`mark`) USING BTREE,
- *          KEY `常规排序搜索` (`type`,`lockTime`,`queue`) USING BTREE
+ *          KEY `idx_consumer` (`type`,`lockTime`,`queue`) USING BTREE
  *      ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='消息队列表'
  *      /*!50100 PARTITION BY KEY (`type`) PARTITIONS 251 * /;
  * 作者 : Edgar.lee
@@ -63,38 +63,34 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
      * 作者 : Edgar.lee
      */
     protected function _sets(&$msgs) {
-        $nowTime = date('Y-m-d H:i:s');
-        $waitList = &$this->waitList;
+        //当前时间
+        $nowTime = date('Y-m-d H:i:s', $stamp = time());
+        //引用待处理
+        $wait = &$this->waitList;
 
-        foreach ($msgs as $k => &$v) {
+        foreach ($msgs as &$v) {
             $keys = &$v['keys'];
             $mark = md5($this->vHost . "\1" . $v['queue'] . "\1" . $keys[0] . "\1" . $keys[1]);
+            //触发时间
+            $exeTime = date('Y-m-d H:i:s', $stamp + $keys[2]);
 
             //删除数据
             if ($v['data'] === null) {
-                $waitList[$mark] = array(
-                    'type' => 'delete',
-                    'mark' => $mark,
-                    'key'  => $keys[0]
+                $wait[$mark] = array(
+                    'mode' => 'del',
+                    'data' => "(`mark` = '{$mark}' AND `type` = '{$keys[0]}')"
                 );
             //增改数据
             } else {
                 $temp = addslashes(json_encode($v['data']));
-                $temp = "`vHost` = '{$this->vHost}',
-                    `queue` = '{$v['queue']}',
-                    `mark` = '{$mark}',
-                    `type` = '{$keys[0]}',
-                    `msgId` = '{$keys[1]}',
-                    `data` = '{$temp}',
-                    `updateTime` = '{$nowTime}',
-                    `syncLevel` = '0',
-                    `lockTime` = DATE_ADD('{$nowTime}', INTERVAL {$keys[2]} SECOND),
-                    `lockMark` = ''";
-
-                $waitList[$mark] = array(
-                    'type'  => 'update',
-                    'time'  => &$nowTime,
-                    'attr'  => $temp
+                $wait[$mark] = array(
+                    'mode'  => 'set',
+                    'data'  => "(
+                        '{$mark}', '{$this->vHost}', '{$v['queue']}',
+                        '{$keys[0]}', '{$keys[1]}', '{$temp}',
+                        '0', '{$exeTime}', '{$nowTime}',
+                        '0', '{$exeTime}', ''
+                    )"
                 );
             }
         }
@@ -122,8 +118,12 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
      * 作者 : Edgar.lee
      */
     protected function _fire(&$call, $data) {
+        //设置 120 分钟超时
+        ini_set('max_execution_time', 7200);
         //唯一编码
         $uniqid = of_base_com_str::uniqid();
+        //消息数据
+        $msgs = array();
 
         //通过先筛选主键后加锁的方式解决同时修改与筛选导致索引死锁的问题
         do {
@@ -133,6 +133,8 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             $nowTime = date('Y-m-d H:i:s', $time = time());
             //获取消息数据偏移量
             $limit = $this->msgLimit($time, $data['this']['cCid'], $data['lots']);
+            //剩余消息数量
+            $size = $data['lots'] - count($msgs);
 
             //筛选合适消息
             $sql = "SELECT
@@ -147,22 +149,22 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             ORDER BY
                 `lockTime`
             LIMIT
-                {$limit}, {$data['lots']}";
+                {$limit}, {$size}";
 
             //筛选成功
-            if ($msgs = of_db::sql($sql, $this->dbPool)) {
-                //65分钟过期
-                $expTime = date('Y-m-d H:i:s', $time + 3900);
+            if ($marks = of_db::sql($sql, $this->dbPool)) {
+                //120 + 5分钟过期
+                $expTime = date('Y-m-d H:i:s', $time + 7500);
                 //提取消息标识
-                foreach ($msgs as &$v) $v = $v['mark'];
-                $marks = join('\',\'', $msgs);
-                //清空消息数据
-                $msgs = null;
+                foreach ($marks as &$v) $v = $v['mark'];
+                $marks = join('\',\'', $marks);
 
                 //锁定数据
                 $sql = "UPDATE
                     `_of_com_mq`
                 SET
+                    `syncCount` = `syncCount` + 1,
+                    `syncLevel` = `syncLevel` + 1,
                     `lockTime` = '{$expTime}',
                     `lockMark` = '{$uniqid}'
                 WHERE
@@ -176,20 +178,44 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                     //其它并发操作 && 重置消息偏移量
                     if ($loop === 0) {
                         $this->msgLimit();
+                        $loop = true;
                     //读取加锁成功的消息
                     } else {
+                        //读取加锁消息
                         $sql = "SELECT
-                            `mark`, `data`, `msgId`, `syncLevel`
+                            `mark`, `data`, `msgId`, `syncLevel`, `updateTime`
                         FROM
                             `_of_com_mq`
                         WHERE
                             `type` = '{$data['key']}'
                         AND `mark` IN ('{$marks}')
                         AND `lockMark` = '{$uniqid}'";
-                        $msgs = of_db::sql($sql, $this->dbPool);
+                        $marks = of_db::sql($sql, $this->dbPool);
+
+                        //将删除与未删除的消息分流
+                        foreach ($marks as $k => &$v) {
+                            //标记删除的消息
+                            if ($v['updateTime'] === '2001-01-01 00:00:00') {
+                                $v = $v['mark'];
+                            //正常消息
+                            } else {
+                                $msgs[$v['mark']] = &$v;
+                                unset($marks[$k]);
+                            }
+                        }
+
+                        //清理标记删除的消息
+                        if ($loop = join('\',\'', $marks)) {
+                            $sql = "DELETE FROM
+                                `_of_com_mq`
+                            WHERE
+                                `type` = '{$data['key']}'
+                            AND `mark` IN ('{$loop}')
+                            AND `lockMark` = '{$uniqid}'
+                            AND `updateTime` = '2001-01-01 00:00:00'";
+                            of_db::sql($sql, $this->dbPool);
+                        }
                     }
-                    //消息数量决定是否重试
-                    $loop = !$msgs;
                 }
             } else {
                 //重置消息偏移量
@@ -199,12 +225,11 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
 
         //执行成功
         if ($msgs) {
-            //设置60分钟超时
-            ini_set('max_execution_time', 3600);
-
+            //记录加锁编码
+            $data['extra'] = array('lock'  => $uniqid);
             //解析消费数据
             foreach ($msgs as $k => &$v) {
-                $data['count'][] = $v['syncLevel'] + 1;
+                $data['count'][] = $v['syncLevel'];
                 $data['msgId'][] = $v['msgId'];
                 $data['data'][$v['msgId']] = json_decode($v['data'], true);
                 $data['extra']['mark'][] = $v['mark'];
@@ -212,24 +237,35 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
 
             //格式化消费数据
             $data['count'] = max($data['count']);
-            $data['extra'] += array(
-                'lock'  => $uniqid,
-                'delay' => $data['count'] * 300
-            );
 
             //回调结果
             $return = self::callback($call, $data);
 
             //执行成功
             if ($return === true) {
-                $temp = join('\',\'', $data['extra']['mark']);
+                //删除队列
+                $mark = join('\',\'', $data['extra']['mark']);
                 $sql = "DELETE FROM
                     `_of_com_mq`
                 WHERE
                     `type` = '{$data['key']}'
-                AND `mark` IN ('{$temp}')
-                AND `lockMark` = '{$uniqid}'";
-                of_db::sql($sql, $this->dbPool);
+                AND `mark` IN ('{$mark}')
+                AND `lockMark` = '{$uniqid}'
+                AND (`syncLevel` > '0' OR `updateTime` = '2001-01-01 00:00:00')";
+                $temp = of_db::sql($sql, $this->dbPool);
+
+                //删除队列失败(因消息被更新, `syncLevel` = 0) || 使用新触发时间
+                count($data['extra']['mark']) === $temp || of_db::sql("UPDATE
+                        `_of_com_mq`
+                    SET
+                        `lockTime` = `updateTime`,
+                        `lockMark` = ''
+                    WHERE
+                        `type` = '{$data['key']}'
+                    AND `mark` IN ('{$mark}')
+                    AND `lockMark` = '{$uniqid}'
+                    AND `syncLevel` = '0'", $this->dbPool
+                );
             //执行失败
             } else {
                 //返回数字 && 指定时间(s)
@@ -261,21 +297,29 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
      * 作者 : Edgar.lee
      */
     protected function _quit(&$data) {
+        //引用扩展
         $extra = &$data['extra'];
-        $expTime = date('Y-m-d H:i:s', time() + $extra['delay']);
-
         //修改消息重试次数
-        $temp = join('\',\'', $extra['mark']);
+        $mark = join('\',\'', $extra['mark']);
+        //当前时间
+        $date = date('Y-m-d H:i:s', time());
+        //重试时间语句
+        $delay = isset($extra['delay']) ?
+            $extra['delay'] : 'IF(`syncLevel` = "0", 300, `syncLevel` * 300)';
+
+        //更新重试数据
         $sql = "UPDATE
             `_of_com_mq`
         SET
-            `syncCount` = `syncCount` + 1,
-            `syncLevel` = `syncLevel` + 1,
-            `lockTime` = '{$expTime}',
+            `lockTime` = IF(
+                `updateTime` = '2001-01-01 00:00:00',
+                `updateTime`,
+                DATE_ADD('{$date}', INTERVAL {$delay} SECOND)
+            ),
             `lockMark` = ''
         WHERE
             `type` = '{$data['key']}'
-        AND `mark` IN ('{$temp}')
+        AND `mark` IN ('{$mark}')
         AND `lockMark` = '{$extra['lock']}'";
         of_db::sql($sql, $this->dbPool);
     }
@@ -296,37 +340,69 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
      */
     protected function _commit($type) {
         if ($type === 'before') {
-            $waitList = &$this->waitList;
-            ksort($waitList);
+            //操作模式
+            $mode = '';
+            //操作长度
+            $sLen = 0;
+            //操作列表
+            $list = array();
+            //待处理列表
+            $wait = &$this->waitList;
+            ksort($wait);
+            //增加结束标识
+            $wait['']['data'] = '';
 
-            foreach ($waitList as &$v) {
-                //修改数据
-                if ($v['type'] === 'update') {
-                    $sql = "INSERT INTO
-                        `_of_com_mq`
-                    SET
-                        {$v['attr']},
-                        `createTime` = '{$v['time']}',
-                        `syncCount` = '0'
-                    ON DUPLICATE KEY UPDATE
-                        `data` = VALUES(`data`),
-                        `updateTime` = VALUES(`updateTime`),
-                        `syncLevel` = VALUES(`syncLevel`),
-                        `lockTime` = VALUES(`lockTime`),
-                        `lockMark` = VALUES(`lockMark`)";
-                //删除数据
-                } else {
-                    $sql = "DELETE FROM 
-                        `_of_com_mq`
-                    WHERE
-                        `type` = '{$v['key']}'
-                    AND `mark` = '{$v['mark']}'";
+            foreach ($wait as $k => &$v) {
+                if (
+                    //操作列表有数据
+                    isset($list[0]) &&
+                    //操作列表已满(>=0.5M) || 处理列表结束 || 模式切换
+                    ($sLen >= 524288 || $k === '' || $mode !== $v['mode'])
+                ) {
+                    //修改数据
+                    if ($mode === 'set') {
+                        $sql = 'INSERT INTO `_of_com_mq` (
+                            `mark`, `vHost`, `queue`,
+                            `type`, `msgId`, `data`,
+                            `syncCount`, `updateTime`, `createTime`,
+                            `syncLevel`, `lockTime`, `lockMark`
+                        ) VALUES
+                            ' . join(', ', $list) . '
+                        ON DUPLICATE KEY UPDATE
+                            `data` = VALUES(`data`),
+                            `createTime` = VALUES(`createTime`),
+                            `updateTime` = VALUES(`updateTime`),
+                            `lockTime` = IF(`lockMark` = "", VALUES(`lockTime`), `lockTime`),
+                            `syncLevel` = "0"';
+                    //删除数据
+                    } else {
+                        //防止同一消息运行过程中, 删除再创建导致并列执行
+                        $sql = 'UPDATE
+                            `_of_com_mq`
+                        SET
+                            `updateTime` = "2001-01-01 00:00:00"
+                        WHERE
+                            ' . join(' OR ', $list);
+                    }
+
+                    //批量执行
+                    of_db::sql($sql, $this->dbPool);
+                    //重置操作长度
+                    $sLen = 0;
+                    //重置操作列表
+                    $list = array();
                 }
 
-                of_db::sql($sql, $this->dbPool);
+                //记录操作模式
+                $mode = &$v['mode'];
+                //操作长度
+                $sLen += strlen($v['data']) + 4;
+                //记录操作数据
+                $list[] = &$v['data'];
             }
 
-            $waitList = array();
+            //重置待处理列表
+            $wait = array();
             return of_db::pool($this->dbPool, 'state');
         } else {
             return $this->noTran || of_db::sql(true, $this->dbPool);

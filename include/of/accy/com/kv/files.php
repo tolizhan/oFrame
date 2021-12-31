@@ -125,7 +125,8 @@ class of_accy_com_kv_files extends of_base_com_kv {
      * 作者 : Edgar.lee
      */
     private function _gc() {
-        $dir = $this->params['path'];
+        //文件夹不存在
+        if (!is_dir($dir = $this->params['path'])) return ;
         //当前时间戳
         $timestamp = time();
 
@@ -140,8 +141,8 @@ class of_accy_com_kv_files extends of_base_com_kv {
                     //清除过期会话(兼容win php < 5.3.0)
                     if (
                         !$isDir && 
-                        filemtime($path) < $timestamp && 
-                        fileatime($path) < $timestamp
+                        filemtime($path) + 300 < $timestamp && 
+                        fileatime($path) + 300 < $timestamp
                     ) {
                         unlink($path);
                         //移除空文件夹

@@ -12,20 +12,12 @@ class of_base_error_toolBaseClass {
      */
     public static function init($config = array()) {
         self::$config = &$config;
-        if (class_exists('of')) {
-            $config += array(
-                'sql' => ROOT_DIR . of::config('_of.error.sqlLog', OF_DATA. '/error/sqlLog'),
-                'php' => ROOT_DIR . of::config('_of.error.phpLog', OF_DATA. '/error/phpLog'),
-                'js' => ROOT_DIR . of::config('_of.error.jsLog', OF_DATA. '/error/jsLog'),
-            );
-        } else {
-            $temp = dirname(__FILE__) . '/error';
-            $config += array(
-                'sql' => $temp,
-                'php' => $temp,
-                'js' => $temp,
-            );
-        }
+
+        $config += array(
+            'sql' => ($temp = of::config('_of.error.sqlLog', OF_DATA. '/error/sqlLog')) ? ROOT_DIR . $temp : false,
+            'php' => ($temp = of::config('_of.error.phpLog', OF_DATA. '/error/phpLog')) ? ROOT_DIR . $temp : false,
+            'js' => ($temp = of::config('_of.error.jsLog', OF_DATA. '/error/jsLog')) ? ROOT_DIR . $temp : false,
+        );
 
         ini_set('max_execution_time', 0);
         ini_set('memory_limit', '1024M');
@@ -138,12 +130,21 @@ class of_base_error_toolBaseClass {
 
                     //读取具体日志数据
                     foreach ($data as $k => &$v) {
+                        $pos = base_convert($v, 36, 10);
                         //定位日志数据偏移量(36=>10进制)
-                        fseek($fpData, base_convert($v, 36, 10));
+                        fseek($fpData, $pos);
                         //读取一行数据并反序列化
                         $v = @unserialize(strtr(fgets($fpData), array("+\1+" => "\n")));
                         //仅读取正确日志
-                        if (!$v) unset($data[$k]);
+                        if ($v) {
+                            $v['offset'] = array(
+                                'log' => $path,
+                                'pos' => $pos,
+                                'len' => ftell($fpData) - $pos
+                            );
+                        } else {
+                            unset($data[$k]);
+                        }
                     }
                     return $data;
                 }
@@ -153,11 +154,20 @@ class of_base_error_toolBaseClass {
             fseek($fpData, 15);
             //当无索引文件时通过日志数据进行计数及读取数据
             while ($curPage === null || $curSize > $line) {
+                $pos = base_convert($fpData, 36, 10);
                 if ($temp = fgets($fpData)) {
                     if ($curPage !== null && $curPage <= $line && $curSize > $line) {
                         $data[$line] = @unserialize(strtr($temp, array("+\1+" => "\n")));
                         //仅读取正确日志
-                        if (!$data[$line]) unset($data[$line]);
+                        if ($data[$line]) {
+                            $data[$line]['offset'] = array(
+                                'log' => $path,
+                                'pos' => $pos,
+                                'len' => ftell($fpData) - $pos
+                            );
+                        } else {
+                            unset($data[$line]);
+                        }
                     }
                     $line += 1;
                 } else {
@@ -207,14 +217,22 @@ class of_base_error_toolBaseClass {
 
                     //读取具体日志数据
                     foreach ($data as &$v) {
+                        $pos = base_convert($v, 36, 10);
                         //定位日志数据偏移量(36=>10进制)
-                        fseek($fpData, base_convert($v, 36, 10));
+                        fseek($fpData, $pos);
                         //读取一行数据并反序列化
                         $v = @unserialize(
                             strtr(fgets($fpData), array("+\1+" => "\n"))
                         );
                         //仅读取正确日志
-                        $v && $result['pList'][] = &$v;
+                        if ($v) {
+                            $v['offset'] = array(
+                                'log' => $path,
+                                'pos' => $pos,
+                                'len' => ftell($fpData) - $pos
+                            );
+                            $result['pList'][] = &$v;
+                        }
                     }
                 }
             //获取分组概要
@@ -235,18 +253,25 @@ class of_base_error_toolBaseClass {
                             substr($v, 8)
                         );
                         //定位日志数据偏移量(36=>10进制)
-                        fseek($fpData, $v[0]);
+                        fseek($fpData, $pos = $v[0]);
                         //读取一行数据并反序列化
                         $log = @unserialize(
                             strtr(fgets($fpData), array("+\1+" => "\n"))
                         );
                         //仅读取正确日志
-                        $log && $result['pList'][] = $log + array(
-                            'groupMd5Key' => $v[1],
-                            'groupCount'  => is_file(
-                                $temp = $rPath . 'Attr/group/' . $v[1] . '.bin'
-                            ) ? floor(filesize($temp) / 8) : 0
-                        );
+                        if ($log) {
+                            $log['offset'] = array(
+                                'log' => $path,
+                                'pos' => $pos,
+                                'len' => ftell($fpData) - $pos
+                            );
+                            $result['pList'][] = $log + array(
+                                'groupMd5Key' => $v[1],
+                                'groupCount'  => is_file(
+                                    $temp = $rPath . 'Attr/group/' . $v[1] . '.bin'
+                                ) ? floor(filesize($temp) / 8) : 0
+                            );
+                        }
                     }
                 }
             }
@@ -268,6 +293,29 @@ class of_base_error_toolBaseClass {
             $path . 'Attr/group/' . $md5 . '.bin';
         //清空分组索引文件
         of_base_com_disk::file($mPath, '');
+    }
+
+    /**
+     * 描述 : 获取日志明细
+     * 参数 :
+     *      path : 日志路径
+     *      pos  : 日志偏移
+     * 返回 :
+     *      返回单条日志信息
+     * 作者 : Edgar.lee
+     */
+    public static function getLogDetaile($path, $pos) {
+        //日志根目录
+        $rPath = self::$config[substr($path, -2) === 'js' ? 'js' : substr($path, -3)] . $path;
+
+        if (is_file($rPath = $rPath . 'Data.php')) {
+            //打开日志数据读流
+            $fpData = fopen($rPath, 'r');
+            //定位日志数据偏移量
+            fseek($fpData, $pos);
+            //读取一行数据并反序列化
+            return @unserialize(strtr(fgets($fpData), array("+\1+" => "\n")));
+        }
     }
 
     /**

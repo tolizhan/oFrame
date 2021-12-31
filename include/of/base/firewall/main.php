@@ -100,7 +100,7 @@ class of_base_firewall_main {
                     foreach ($v['values'] as $kv => &$vv) {
                         //变量未匹配成功
                         if (
-                            !is_string($temp = of::getArrData($kv, $GLOBALS)) ||
+                            !is_string($temp = of::getArrData(array($kv, $GLOBALS))) ||
                             !($vv[0] === '@' ? preg_match($vv, $temp) : $vv === $temp)
                         ) {
                             return false;

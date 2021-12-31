@@ -145,10 +145,10 @@ class of_base_com_com {
                 'action' => null,
                 'attr'   => '',
                 'empty'  => '',
-                'event'  => null,
+                'event'  => '',
                 'fbar'   => '',
                 'page'   => 1,
-                'save'   => null,
+                'save'   => '',
                 'space'  => ''
             );
             //命名空间补全
@@ -498,8 +498,10 @@ class of_base_com_com {
      *      captcha       : 需要对比验证码
      *      key           : 指定验证key,多验证码使用,调用时使用get方式传入key
      *      _GET[key]     : 指定验证的key,如 key=hh
-     *      _GET[width]   : 指定宽度,如 width=60
-     *      _GET[height]  : 指定高度,如 height=20
+     *      _GET[noise]   : 干扰像素,默认 noise=0.0
+     *      _GET[width]   : 指定宽度,默认 width=60
+     *      _GET[height]  : 指定高度,默认 height=20
+     *      _GET[length]  : 字符个数,默认 length=4
      *      _GET[bgColor] : 指定背景色,如 bgColor = FFFFFF 白色背景
      * 返回 :
      *      不传入captcha时,返回img图片,否则正确返回true,错误返回false
@@ -533,12 +535,16 @@ class of_base_com_com {
             $width = isset($_GET['width']) ? $_GET['width'] : 60;
             //图像高度
             $height = isset($_GET['height']) ? $_GET['height'] : 20;
+            //字符长度
+            $length = isset($_GET['length']) ? $_GET['length'] : 4;
+            //干扰像素
+            $noise = isset($_GET['noise']) ? $_GET['noise'] : 0;
             //字体位置
             $fontPos = floor($height * 3 / 4);
             //字体大小
             $fontSize = floor($fontPos * 0.8);
             //字体宽度
-            $fontWidth = floor($width / 5);
+            $fontWidth = floor($width / ($length + 1));
             //字体左边
             $fontLeft = $fontWidth >> 1;
             //制定图片背景大小
@@ -564,8 +570,7 @@ class of_base_com_com {
             $result[$key] = '';
 
             //生成四个字母
-            for ($i = 0; $i < 4; ++$i) {
-                //imagestring($im, rand(2, 5), 10 * $i, rand(0,5), $char, ImageColorAllocate($im, rand(0,255), 0, rand(0,255)));
+            for ($i = 0; $i < $length; ++$i) {
                 //生成大写字母
                 $char = chr(rand(65, 90));
 
@@ -576,13 +581,13 @@ class of_base_com_com {
                 $result[$key] .= $char;
             }
 
-            /* 加入干扰象素
-            for($i = 0, $j = $width * $height * 0.2; $i < $j; ++$i) {
+            //* 加入干扰象素
+            for($i = 0, $j = $width * $height * $noise; $i < $j; ++$i) {
                 $randcolor = ImageColorallocate(
                     $im, rand(0, 255), rand(0, 255), rand(0, 255)
                 );
                 imagesetpixel($im, rand() % $width, rand() % $height, $randcolor);
-            } // */
+            }
 
             //发送到浏览器
             imagepng($im);

@@ -505,7 +505,7 @@ class of_base_tool_mysqlSync {
                 //连接字符集
                 $temp = isset($sql['charset']) ?
                     $sql['charset'] : 
-                    isset(self::$config['charset']) ? self::$config['charset'][0] : 'utf8';
+                    (isset(self::$config['charset']) ? self::$config['charset'][0] : 'utf8');
 
                 //兼容php < 5.2.6
                 if (function_exists($func['set_charset'])) {
@@ -519,7 +519,7 @@ class of_base_tool_mysqlSync {
                 //选择数据库
                 $temp = isset($sql['database']) ?
                     $sql['database'] :
-                    isset(self::$config['database']) ? self::$config['database'] : false;
+                    (isset(self::$config['database']) ? self::$config['database'] : false);
 
                 //使用数据库
                 $arg0 = 'USE `' .strtr($temp, array('`' => '``')). '`';
@@ -560,7 +560,7 @@ class of_base_tool_mysqlSync {
                 $index['params']['_'] = &$sql;
                 //兼容 php >= 8 添加的命名参数
                 foreach ($index['params'] as &$v) $args[] = &$v;
-                $return = call_user_func_array($index['asCall'], $index['params']);
+                $return = call_user_func_array($index['asCall'], $args);
             }
 
             //获取错误日志
@@ -708,100 +708,101 @@ class of_base_tool_mysqlSync {
         //默认字符集
         $charset = 'DEFAULT CHARACTER SET=' .self::$config['charset'][0]. ' COLLATE=' .self::$config['charset'][1];
 
-        //支持MyISAM引擎
-        if (self::isSupportEngines('MyISAM')) {
-            self::message('tip', '开始更新结构', __FUNCTION__);
+        self::message('tip', '开始更新结构', __FUNCTION__);
 
-            //删除需求表
-            self::sql($dropPrefix);
+        //删除需求表
+        self::sql($dropPrefix);
 
-            self::sql("CREATE TABLE `{$prefix}FOREIGNKEY` (
-                `CONSTRAINT_NAME`         varchar(255) NULL DEFAULT NULL COMMENT '外键名' ,
-                `TABLE_NAME`              varchar(255) NULL DEFAULT NULL COMMENT '本表名' ,
-                `REFERENCED_TABLE_NAME`   varchar(255) NULL DEFAULT NULL COMMENT '外表名' ,
-                `COLUMNS_NAME`            longtext     NULL              COMMENT '本表列集' ,
-                `REFERENCED_COLUMNS_NAME` longtext     NULL              COMMENT '外表列集' ,
-                `UPDATE_RULE`             varchar(255) NULL DEFAULT NULL COMMENT '更新规则' ,
-                `DELETE_RULE`             varchar(255) NULL DEFAULT NULL COMMENT '删除规则' ,
-                INDEX USING BTREE (`TABLE_NAME`) 
-            ) ENGINE=MyISAM {$charset} COMMENT='外键表'");                                                              //创建外键表
+        //创建外键表
+        self::sql("CREATE TABLE `{$prefix}FOREIGNKEY` (
+            `CONSTRAINT_NAME`         varchar(255) NULL DEFAULT NULL COMMENT '外键名' ,
+            `TABLE_NAME`              varchar(255) NULL DEFAULT NULL COMMENT '本表名' ,
+            `REFERENCED_TABLE_NAME`   varchar(255) NULL DEFAULT NULL COMMENT '外表名' ,
+            `COLUMNS_NAME`            longtext     NULL              COMMENT '本表列集' ,
+            `REFERENCED_COLUMNS_NAME` longtext     NULL              COMMENT '外表列集' ,
+            `UPDATE_RULE`             varchar(255) NULL DEFAULT NULL COMMENT '更新规则' ,
+            `DELETE_RULE`             varchar(255) NULL DEFAULT NULL COMMENT '删除规则' ,
+            INDEX USING BTREE (`TABLE_NAME`) 
+        ) {$charset} COMMENT='外键表'");
 
-            self::sql("CREATE TABLE `{$prefix}TRIGGERS` (
-                `TRIGGER_NAME`       varchar(255) NULL DEFAULT NULL COMMENT '触发器名' ,
-                `EVENT_MANIPULATION` varchar(255) NULL DEFAULT NULL COMMENT '激活事件' ,
-                `EVENT_OBJECT_TABLE` varchar(255) NULL DEFAULT NULL COMMENT '激活表' ,
-                `ACTION_STATEMENT`   longtext     NULL              COMMENT '触发语句' ,
-                `ACTION_TIMING`      varchar(255) NULL DEFAULT NULL COMMENT '触发位置' ,
-                INDEX USING BTREE (`EVENT_OBJECT_TABLE`) 
-            ) ENGINE=MyISAM {$charset} COMMENT='触发器表'");                                                            //创建触发器表
+        //创建触发器表
+        self::sql("CREATE TABLE `{$prefix}TRIGGERS` (
+            `TRIGGER_NAME`       varchar(255) NULL DEFAULT NULL COMMENT '触发器名' ,
+            `EVENT_MANIPULATION` varchar(255) NULL DEFAULT NULL COMMENT '激活事件' ,
+            `EVENT_OBJECT_TABLE` varchar(255) NULL DEFAULT NULL COMMENT '激活表' ,
+            `ACTION_STATEMENT`   longtext     NULL              COMMENT '触发语句' ,
+            `ACTION_TIMING`      varchar(255) NULL DEFAULT NULL COMMENT '触发位置' ,
+            INDEX USING BTREE (`EVENT_OBJECT_TABLE`) 
+        ) {$charset} COMMENT='触发器表'");
 
-            self::sql("CREATE TABLE `{$prefix}TABLES` (
-                `TABLE_NAME`      varchar(255) NULL DEFAULT NULL COMMENT '表名' ,
-                `ENGINE`          varchar(255) NULL DEFAULT NULL COMMENT '存储引擎' ,
-                `ROW_FORMAT`      varchar(255) NULL DEFAULT NULL COMMENT '行格式' ,
-                `TABLE_COLLATION` varchar(255) NULL DEFAULT NULL COMMENT '排序字符集' ,
-                `AUTO_INCREMENT`  BIGINT(21)   UNSIGNED DEFAULT NULL COMMENT '自增数值' ,
-                `CREATE_OPTIONS`  varchar(255) NULL DEFAULT NULL COMMENT '附带参数' ,
-                `TABLE_COMMENT`   varchar(255) NULL DEFAULT NULL COMMENT '注释' ,
-                INDEX USING BTREE (`TABLE_NAME`) 
-            ) ENGINE=MyISAM {$charset} COMMENT='表信息'");                                                              //创建表信息表
+        //创建表信息表
+        self::sql("CREATE TABLE `{$prefix}TABLES` (
+            `TABLE_NAME`      varchar(255) NULL DEFAULT NULL COMMENT '表名' ,
+            `ENGINE`          varchar(255) NULL DEFAULT NULL COMMENT '存储引擎' ,
+            `ROW_FORMAT`      varchar(255) NULL DEFAULT NULL COMMENT '行格式' ,
+            `TABLE_COLLATION` varchar(255) NULL DEFAULT NULL COMMENT '排序字符集' ,
+            `AUTO_INCREMENT`  BIGINT(21)   UNSIGNED DEFAULT NULL COMMENT '自增数值' ,
+            `CREATE_OPTIONS`  varchar(255) NULL DEFAULT NULL COMMENT '附带参数' ,
+            `TABLE_COMMENT`   varchar(255) NULL DEFAULT NULL COMMENT '注释' ,
+            INDEX USING BTREE (`TABLE_NAME`) 
+        ) {$charset} COMMENT='表信息'");
 
-            self::sql("CREATE TABLE `{$prefix}COLUMNS` (
-                `TABLE_NAME`         varchar(255) NULL DEFAULT NULL COMMENT '表名' ,
-                `COLUMN_NAME`        varchar(255) NULL DEFAULT NULL COMMENT '字段名' ,
-                `ORDINAL_POSITION`   int(10)      NULL DEFAULT NULL COMMENT '字段位置' ,
-                `COLUMN_DEFAULT`     varchar(255) NULL DEFAULT NULL COMMENT '默认值,timestamp可以CURRENT_TIMESTAMP' ,
-                `IS_NULLABLE`        varchar(255) NULL DEFAULT NULL COMMENT '允许为空,YES=允许,NO=不运行' ,
-                `CHARACTER_SET_NAME` varchar(255) NULL DEFAULT NULL COMMENT '字符集' ,
-                `COLLATION_NAME`     varchar(255) NULL DEFAULT NULL COMMENT '排序规则' ,
-                `COLUMN_TYPE`        varchar(255) NULL DEFAULT NULL COMMENT '字段信息' ,
-                `EXTRA`              varchar(255) NULL DEFAULT NULL COMMENT '附加信息' ,
-                `COLUMN_COMMENT`     varchar(255) NULL DEFAULT NULL COMMENT '注释' ,
-                INDEX USING BTREE (`TABLE_NAME`) 
-            ) ENGINE=MyISAM {$charset} COMMENT='字段表'");                                                              //创建表字段表
+        //创建表字段表
+        self::sql("CREATE TABLE `{$prefix}COLUMNS` (
+            `TABLE_NAME`         varchar(255) NULL DEFAULT NULL COMMENT '表名' ,
+            `COLUMN_NAME`        varchar(255) NULL DEFAULT NULL COMMENT '字段名' ,
+            `ORDINAL_POSITION`   int(10)      NULL DEFAULT NULL COMMENT '字段位置' ,
+            `COLUMN_DEFAULT`     varchar(255) NULL DEFAULT NULL COMMENT '默认值,timestamp可以CURRENT_TIMESTAMP' ,
+            `IS_NULLABLE`        varchar(255) NULL DEFAULT NULL COMMENT '允许为空,YES=允许,NO=不运行' ,
+            `CHARACTER_SET_NAME` varchar(255) NULL DEFAULT NULL COMMENT '字符集' ,
+            `COLLATION_NAME`     varchar(255) NULL DEFAULT NULL COMMENT '排序规则' ,
+            `COLUMN_TYPE`        varchar(255) NULL DEFAULT NULL COMMENT '字段信息' ,
+            `EXTRA`              varchar(255) NULL DEFAULT NULL COMMENT '附加信息' ,
+            `COLUMN_COMMENT`     varchar(255) NULL DEFAULT NULL COMMENT '注释' ,
+            INDEX USING BTREE (`TABLE_NAME`) 
+        ) {$charset} COMMENT='字段表'");
 
-            self::sql("CREATE TABLE `{$prefix}STATISTICS` (
-                `TABLE_NAME`   varchar(255) NULL DEFAULT NULL COMMENT '表名' ,
-                `NON_UNIQUE`   varchar(255) NULL DEFAULT NULL COMMENT '是否唯一(0为UNIQUE INDEX 或 PRIMARY KEY,1为INDEX 或 FULLTEXT INDEX)' ,
-                `INDEX_NAME`   varchar(255) NULL DEFAULT NULL COMMENT '索引名(PRIMARY=主键)' ,
-                `COLUMNS_NAME` longtext     NULL              COMMENT '字段集名' ,
-                `INDEX_TYPE`   varchar(255) NULL DEFAULT NULL COMMENT '索引类型' ,
-                INDEX USING BTREE (`TABLE_NAME`) 
-            ) ENGINE=MyISAM {$charset} COMMENT='索引表'");                                                              //创建表索引表
+        //创建表索引表
+        self::sql("CREATE TABLE `{$prefix}STATISTICS` (
+            `TABLE_NAME`   varchar(255) NULL DEFAULT NULL COMMENT '表名' ,
+            `NON_UNIQUE`   varchar(255) NULL DEFAULT NULL COMMENT '是否唯一(0为UNIQUE INDEX 或 PRIMARY KEY,1为INDEX 或 FULLTEXT INDEX)' ,
+            `INDEX_NAME`   varchar(255) NULL DEFAULT NULL COMMENT '索引名(PRIMARY=主键)' ,
+            `COLUMNS_NAME` longtext     NULL              COMMENT '字段集名' ,
+            `INDEX_TYPE`   varchar(255) NULL DEFAULT NULL COMMENT '索引类型' ,
+            INDEX USING BTREE (`TABLE_NAME`) 
+        ) {$charset} COMMENT='索引表'");
 
-            self::sql("CREATE TABLE `{$prefix}PARTITIONS` (
-                `TABLE_NAME`      varchar(255) NULL DEFAULT NULL COMMENT '表名' ,
-                `PARTITION_SQL`   longtext     NULL              COMMENT '分区语句' ,
-                `COLUMNS_COMPARE` varchar(255) NULL DEFAULT NULL COMMENT '比对字段' ,
-                INDEX USING BTREE (`TABLE_NAME`) 
-            ) ENGINE=MyISAM {$charset} COMMENT='分区表'");                                                              //创建表分区表
+        //创建表分区表
+        self::sql("CREATE TABLE `{$prefix}PARTITIONS` (
+            `TABLE_NAME`      varchar(255) NULL DEFAULT NULL COMMENT '表名' ,
+            `PARTITION_SQL`   longtext     NULL              COMMENT '分区语句' ,
+            `COLUMNS_COMPARE` varchar(255) NULL DEFAULT NULL COMMENT '比对字段' ,
+            INDEX USING BTREE (`TABLE_NAME`) 
+        ) {$charset} COMMENT='分区表'");
 
-            self::sql("CREATE TABLE `{$prefix}VIEWS` (
-                `TABLE_NAME`      varchar(255) NULL DEFAULT NULL COMMENT '视图名' ,
-                `VIEW_DEFINITION` longtext     NULL              COMMENT '查询语句' ,
-                `CHECK_OPTION`    varchar(255) NULL DEFAULT NULL COMMENT '检查选项' ,
-                `IS_UPDATABLE`    varchar(255) NULL DEFAULT NULL COMMENT '是否更新,YES为ALGORITHM=MERGE,NO为ALGORITHM=TEMPTABLE' ,
-                `SECURITY_TYPE`   varchar(255) NULL DEFAULT NULL COMMENT '安全性' ,
-                INDEX USING BTREE (`TABLE_NAME`) 
-            ) ENGINE=MyISAM {$charset} COMMENT='视图表'");                                                              //创建表视图表
+        //创建表视图表
+        self::sql("CREATE TABLE `{$prefix}VIEWS` (
+            `TABLE_NAME`      varchar(255) NULL DEFAULT NULL COMMENT '视图名' ,
+            `VIEW_DEFINITION` longtext     NULL              COMMENT '查询语句' ,
+            `CHECK_OPTION`    varchar(255) NULL DEFAULT NULL COMMENT '检查选项' ,
+            `IS_UPDATABLE`    varchar(255) NULL DEFAULT NULL COMMENT '是否更新,YES为ALGORITHM=MERGE,NO为ALGORITHM=TEMPTABLE' ,
+            `SECURITY_TYPE`   varchar(255) NULL DEFAULT NULL COMMENT '安全性' ,
+            INDEX USING BTREE (`TABLE_NAME`) 
+        ) {$charset} COMMENT='视图表'");
 
-            self::sql("CREATE TABLE `{$prefix}ROUTINES` (
-                `ROUTINE_NAME`       varchar(255) NULL DEFAULT NULL COMMENT '存储程序名' ,
-                `ROUTINE_TYPE`       varchar(255) NULL DEFAULT NULL COMMENT '类型,FUNCTION=函数,PROCEDURE=过程' ,
-                `DTD_IDENTIFIER`     varchar(255) NULL DEFAULT NULL COMMENT '返回类型' ,
-                `ROUTINE_DEFINITION` longtext     NULL              COMMENT '结构体' ,
-                `IS_DETERMINISTIC`   varchar(255) NULL DEFAULT NULL COMMENT '是否附加DETERMINISTIC,YES=是,NO=非' ,
-                `SQL_DATA_ACCESS`    varchar(255) NULL DEFAULT NULL COMMENT '数据访问' ,
-                `SECURITY_TYPE`      varchar(255) NULL DEFAULT NULL COMMENT '安全性' ,
-                `ROUTINE_COMMENT`    varchar(255) NULL DEFAULT NULL COMMENT '注释' ,
-                `PARAM_LIST`         longtext     NULL              COMMENT '参数列表' ,
-                INDEX USING BTREE (`ROUTINE_NAME`) 
-            ) ENGINE=MyISAM {$charset} COMMENT='存储程序表'");                                                          //创建表存储程序表
-        //不支持MyISAM引擎
-        } else {
-            self::message('error', '不支持引擎', __FUNCTION__, 'MyISAM');
-            $returnBool = false;
-        }
+        //创建表存储程序表
+        self::sql("CREATE TABLE `{$prefix}ROUTINES` (
+            `ROUTINE_NAME`       varchar(255) NULL DEFAULT NULL COMMENT '存储程序名' ,
+            `ROUTINE_TYPE`       varchar(255) NULL DEFAULT NULL COMMENT '类型,FUNCTION=函数,PROCEDURE=过程' ,
+            `DTD_IDENTIFIER`     varchar(255) NULL DEFAULT NULL COMMENT '返回类型' ,
+            `ROUTINE_DEFINITION` longtext     NULL              COMMENT '结构体' ,
+            `IS_DETERMINISTIC`   varchar(255) NULL DEFAULT NULL COMMENT '是否附加DETERMINISTIC,YES=是,NO=非' ,
+            `SQL_DATA_ACCESS`    varchar(255) NULL DEFAULT NULL COMMENT '数据访问' ,
+            `SECURITY_TYPE`      varchar(255) NULL DEFAULT NULL COMMENT '安全性' ,
+            `ROUTINE_COMMENT`    varchar(255) NULL DEFAULT NULL COMMENT '注释' ,
+            `PARAM_LIST`         longtext     NULL              COMMENT '参数列表' ,
+            INDEX USING BTREE (`ROUTINE_NAME`) 
+        ) {$charset} COMMENT='存储程序表'");
 
         //导入数据并比对
         if (

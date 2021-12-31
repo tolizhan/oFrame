@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200252);
+define('OF_VERSION', 200254);
 
 /**
  * 描述 : 控制层核心
@@ -108,7 +108,7 @@ class of {
      * 描述 : 读取config数据
      * 参数 :
      *      name    : 配置名,以'.'分割读取深层数据
-     *      default : 默认值(null)
+     *      default : 默认值(null), 第一次将被缓存
      *      action  : 功能操作
      *          0=无任何操作
      *          1=读取到的数据格式化成磁盘路径
@@ -333,11 +333,12 @@ class of {
      *      code : 监听数据库连接, 产生问题会自动回滚, 数组=[连接池, ...], null=自动监听
      *      info : 功能参数
      *          int=增加数据监控, 0为当前工作, 1=父层工作..., 指定工作不存在抛出异常
-     *          框架回调结构=回调模式创建工作, 不需要 try catch
-     *              回调返回 false 时, 则回滚工作, 接收参数 {
+     *          框架回调结构=回调模式创建工作, 不需要 try catch, 回调接收(params)参数 {
      *                  "result" : &标准结果集
      *                  "data"   : &标准结果集中的data数据
      *              }
+     *              返回 false 时, 回滚工作, 等同 of::work(200, 'Successful', params['data'])
+     *              返回 array 时, 赋值data, 等同 params['data'] = array;
      *      data : null=启动集成工作, 统一监听子孙工作事务, 启动时自动设置自动监听
 
      *     #结束工作(布尔)
@@ -529,12 +530,15 @@ class of {
             if (!is_int($info) && $info) {
                 try {
                     //返回false回滚工作 || 有错误提交工作
-                    self::work($temp = self::callFunc($info, array(
+                    self::work(($temp = self::callFunc($info, array(
                         'result' => &$result, 'data' => &$result['data']
-                    ) + ($data ? $data : array())) !== false || self::$workErr[0] !== null);
+                    ) + ($data ? $data : array()))) !== false || self::$workErr[0] !== null);
 
+                    //返回数组赋值到data中
+                    if (is_array($temp)) {
+                        $result['data'] = $temp;
                     //回滚工作 && 状态成功 && 添加回滚提示
-                    if ($temp === false && $result['code'] < 400) {
+                    } else if ($temp === false && $result['code'] < 400) {
                         $result['info'] .= strpos($result['info'], ': ') ?
                             ' (Rollback)' : ': (Rollback)';
                     }
@@ -987,6 +991,9 @@ class of {
         //合并系统配置
         $config['_of'] = &self::arrayReplaceRecursive($of, $config['_of']);
 
+        //默认节点名称
+        ($index = &$of['nodeName']) || $index = $_SERVER['SERVER_ADDR'] . php_uname();
+
         //默认时区 框架时区>系统时区>PRC时区
         if (
             ($index = &$of['timezone']) ||
@@ -1171,7 +1178,7 @@ class of {
      *      返回 调用函数 返回的数据
      * 作者 : Edgar.lee
      */
-    public static function &callFunc($call, $params = null, $return = -1584930453) {
+    public static function &callFunc($call, $params = null, $return = null) {
         //带"."的字符串从配置文件中读取回调
         is_string($call) && strpos($call, '.') && $call = self::config($call);
 
@@ -1185,18 +1192,19 @@ class of {
             $call['asCall'][0] = new $call['asCall'][0];
         }
 
-        //有默认返回值 && 无法回调
-        if ($return !== -1584930453 && !is_callable($call['asCall'])) {
-            $call = &$return;
-        //正常调用
-        } else {
-            $call['params']['_'] = &$params;
+        //没有默认返回值 || 回调方法有效
+        if (($argc = func_num_args()) < 3 || is_callable($call['asCall'])) {
+            //初始化回调参数
+            ($index = &$call['params']) || $index = array();
+            //存在触发参数 ? 合并到回调参数 : 初始回调参数
+            $argc > 1 ? $index['_'] = &$params : ($index || $args = $index);
             //兼容 php >= 8 添加的命名参数
-            foreach ($call['params'] as &$v) $args[] = &$v;
-            $call = call_user_func_array($call['asCall'], $args);
+            foreach ($index as &$v) $args[] = &$v;
+            //调用回调方法
+            $return = call_user_func_array($call['asCall'], $args);
         }
 
-        return $call;
+        return $return;
     }
 
     /**
