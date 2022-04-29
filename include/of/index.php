@@ -33,7 +33,7 @@ if (isset($_GET['c'])) {
         return $list;
     }
 
-    //输出模块
+    //输出模块, 设计上base模块可能不存在, 故不使用of_base_com_disk::each
     if (is_dir($path = OF_DIR . '/base') && $handle = opendir($path)) {
         while (is_string($v = readdir($handle))) {
             //寻找 of/base/xxx/_meta.php 文件

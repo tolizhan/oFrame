@@ -17,9 +17,9 @@ class of_base_com_timer {
         $config = &self::$config;
         //读取节点
         $config = of::config('_of.com.timer', array());
-        //节点名称
-        $nodeName = of::config('_of.nodeName');
 
+        //操作系统类型(WINNT:windows, Darwin:mac, 其它:linux)
+        $config['osType'] = strtolower(substr(PHP_OS, 0, 3));
         //文件锁路径
         empty($config['path']) && $config['path'] = OF_DATA . '/_of/of_base_com_timer';
         $config['path'] = of::formatPath($config['path'], ROOT_DIR);
@@ -33,12 +33,15 @@ class of_base_com_timer {
         $index += array('path' => '');
         empty($index['path']) || $index['path'] = of::formatPath($index['path'], ROOT_DIR);
 
-        //任务触发器路径(分布式)
-        $config['addrPath'] = $config['path'] . '/taskTrigger/' . md5($nodeName);
-        //记录IP地址
-        of_base_com_disk::file($config['addrPath'] . '/nodeInfo.php', array(
-            'node' => $nodeName
-        ), true);
+        //空节点名称不生成触发器路径
+        if ($nodeName = of::config('_of.nodeName')) {
+            //任务触发器路径(分布式)
+            $config['addrPath'] = $config['path'] . '/taskTrigger/' . md5($nodeName);
+            //记录IP地址
+            of_base_com_disk::file($config['addrPath'] . '/nodeInfo.php', array(
+                'node' => $nodeName
+            ), true);
+        }
 
         //web访问开启计划任务
         if (of::dispatch('class') === 'of_base_com_timer') {
@@ -68,8 +71,8 @@ class of_base_com_timer {
      * 作者 : Edgar.lee
      */
     public static function &timer($name = 'taskLock', $type = null) {
-        //定时器路径
-        $path = self::$config['addrPath'];
+        //定时器路径, 空路径(空节点名)不启动触发器
+        if (!$path = &self::$config['addrPath']) return $result;
         //打开加锁文件
         $lock = fopen($path . '/' . $name, 'a');
 
@@ -89,18 +92,19 @@ class of_base_com_timer {
         //任务列表遍历检查
         } else if ($name === 'taskLock') {
             while (!self::renew()) {
+                //休眠后返回任务数量
+                $needNum = self::getRunNum();
+
                 //静态计划任务
-                ($crontab = &self::crontab()) && self::fireCalls($crontab);
+                ($crontab = &self::crontab($needNum)) && self::fireCalls($crontab);
                 //动态计划任务
-                ($movTask = &self::taskList(false)) && self::fireCalls($movTask);
+                ($movTask = &self::taskList($needNum)) && self::fireCalls($movTask);
 
                 //无任何任务
                 if ($movTask === false && $crontab === false) {
                     break;
                 //有未到期任务
                 } else {
-                    //休眠后重新检查
-                    sleep(5);
                     //保护进程
                     self::timer('protected');
                 }
@@ -174,7 +178,7 @@ class of_base_com_timer {
             $cArr = is_array($params['cNum']) ?
                 $params['cNum'] : range(1, $params['cNum']);
             //读取当前并发信息
-            $temp = self::data(null, true, $params['call']);
+            $temp = self::data(null, 1, $params['call']);
 
             //当前执行并发数大于等于所需并发数, 直接跳出
             if (!array_diff($cArr, array_keys($temp['info']))) {
@@ -182,10 +186,11 @@ class of_base_com_timer {
             }
         }
 
-        //命令模式 && 即时执行
-        if (PHP_SAPI === 'cli' && $params['time'] <= $nowTime) {
+        //异步模式 && 即时执行
+        if (self::$nowTask && $params['time'] <= $nowTime) {
             //直接触发
             self::fireCalls(array(&$params));
+        //同步模式 || 延迟执行
         } else {
             //添加到待执行列表中
             self::taskList($params);
@@ -314,17 +319,17 @@ class of_base_com_timer {
     /**
      * 描述 : 为并发提供共享数据
      * 参数 :
-     *      data : 读写数据, 仅运行进程可修改清空自身数据
+     *      data : 读写数据, 仅可操作自身或未运行进程数据
      *          null=不读数据, 仅关注运行状态使用
      *          true=读取数据
      *          false=清空读取, 读取数据后清空原始数据
      *          数组=单层替换, 将数组键的值替换对应共享数据键的值
      *      cIds : 指定任务中的并发ID
      *          null=读取自身
-     *          数字=指定并发ID
      *          数组=多个并发ID, [并发ID, ...]
-     *          true=正在运行
-     *          false=包括停止
+     *          1=正在运行
+     *          2=停止运行
+     *          3=包括停止
      *      call : 指定任务ID
      *          null=读取自身
      *          '/'开头字符串=指定任务ID
@@ -359,13 +364,13 @@ class of_base_com_timer {
 
             //任务路径
             $path = self::$config['path'] . '/concurrent/'. $call;
-            //过滤加锁(true=不过滤)
-            $filt = $cIds !== true;
+            //过滤加锁(true=读取全部, false=读取运行, null=读取停止)
+            $filt = $cIds === 2 ? null : $cIds !== 1;
             //并发ID排序计数
             $sort = -1;
 
-            //读取自身
-            if (is_bool($cIds)) {
+            //遍历列表
+            if (is_int($cIds)) {
                 //重置并发ID
                 $cIds = array();
 
@@ -375,16 +380,13 @@ class of_base_com_timer {
                 foreach ($task as $k => &$v) {
                     //是文件 && 是进程
                     if (!$v && is_numeric($temp = basename($k))) {
-                        $cIds[] = $temp;
+                        $cIds[] = (int)$temp;
                     }
                 }
             //读取自身
             } else if ($cIds === null) {
                 $cIds = array($nowTask['cAvg']['cCid']);
-            //数字 || 数组
-            } else {
-                //强制转换成数组
-                is_array($cIds) || $cIds = (array)$cIds;
+            //其它为数组
             }
 
             //从小到大排序并发ID
@@ -397,10 +399,10 @@ class of_base_com_timer {
                 //自身进程
                 $isSelf = isset($nowTask) && $nowTask['cAvg']['cCid'] === $v;
                 //进程是否运行, true=运行, false=停止
-                $isRun = $isSelf ? true : is_file($cDir) && !flock(fopen($cDir, 'r'), LOCK_SH | LOCK_NB);
+                $isRun = $isSelf ? true : is_file($cDir) && !flock($lock = fopen($cDir, 'r'), LOCK_SH | LOCK_NB);
 
-                //进程运行 || 不过滤
-                if ($isRun || $filt) {
+                //读取全部进程 || (读取停止 ? 进程停止 : 进程运行)
+                if ($filt || ($filt === null ? !$isRun : $isRun)) {
                     //数据键名
                     $dKey = 'of_base_com_timer::data-' . $call . '.' . $v;
                     //引用进程结果
@@ -413,8 +415,8 @@ class of_base_com_timer {
                             null : of_base_com_kv::get($dKey, array(), '_ofSelf')
                     );
 
-                    //修复数据
-                    if ($isSelf) {
+                    //修改数据(自身进程 || 未运行)
+                    if ($isSelf || !$isRun) {
                         //合并写入
                         if (is_array($data)) {
                             //写入数据
@@ -425,6 +427,9 @@ class of_base_com_timer {
                         }
                     }
                 }
+
+                //解锁未运行的进程
+                unset($lock);
             }
         }
 
@@ -481,7 +486,7 @@ class of_base_com_timer {
      *      call : task 参数格式
      *      cAvg : 并发参数 false=无并发, 数组=启动并发 {
      *          "cMd5" : 回调唯一值
-     *          "cCid" : 并发ID
+     *          "cCid" : 并发ID, 从1开始
      *      }
      * 作者 : Edgar.lee
      */
@@ -507,8 +512,8 @@ class of_base_com_timer {
             //读取单层文件夹
             if (of_base_com_disk::each($path, $data, null)) {
                 foreach ($data as $k => &$v) {
-                    //是文件
-                    if (!$v) {
+                    //是进程文件 && 24小时未执行
+                    if (!$v && $_SERVER['REQUEST_TIME'] - filemtime($k) > 86400) {
                         //打开并发文件
                         $fp = fopen($k, 'a');
 
@@ -535,7 +540,9 @@ class of_base_com_timer {
             is_dir($cDir) || @mkdir($cDir, 0777, true);
 
             //开启共享锁
-            $lock = of_base_com_disk::file($cDir . '.php', null);
+            $lock = of_base_com_disk::file($temp = $cDir . '.php', null);
+            //更新进程触发时间
+            touch($temp, $_SERVER['REQUEST_TIME']);
 
             //打开并发文件
             $fp = fopen($cDir . '/' . $cAvg['cCid'], 'a+');
@@ -543,7 +550,7 @@ class of_base_com_timer {
             if (flock($fp, LOCK_EX | LOCK_NB)) {
                 //清空文件内容
                 ftruncate($fp, 0);
-                //更新文件修改时间
+                //更新进程并发的修改时间
                 fwrite($fp, $_SERVER['REQUEST_TIME']);
             //并发已开启, 不用继续执行
             } else {
@@ -565,6 +572,50 @@ class of_base_com_timer {
                 self::taskList($call);
             }
         }
+    }
+
+    /**
+     * 描述 : 根据服务器空闲资源休眠并返回执行并发任务数
+     * 作者 : Edgar.lee
+     */
+    private static function getRunNum() {
+        //引用配置
+        $config = &self::$config;
+
+        //windows系统
+        if ($config['osType'] === 'win') {
+            //读取CPU使用率, 耗时1s
+            preg_match(
+                "@[0-9]+@",
+                fread(popen('WMIC CPU GET LOADPERCENTAGE /ALL', 'r'), 1024),
+                $rate
+            );
+            $rate = intval((int)$rate[0] / 10);
+        //类linux系统
+        } else {
+            //读取CPU使用率, 耗时1s
+            preg_match_all(
+                "@[^,]+id@",
+                fread(popen('top -b -d 1 -n 2 | grep -E "(Cpu\(s\))"', 'r'), 1024),
+                $rate
+            );
+            $rate = intval(10 - (int)$rate[0][1] / 10);
+        }
+
+        //CPU 占用 <= 50%
+        if ($rate < 6) {
+            //CPU 占用对应休眠 40% : 1, 50% : 2
+            $rate > 3 && sleep($rate - 3);
+        //CPU 占用 <= 80%
+        } else if ($rate < 9) {
+            sleep($rate);
+        //CPU 占用 <= 100%
+        } else {
+            sleep($rate + 9);
+        }
+
+        //执行任务数量
+        return (11 - $rate) * 10;
     }
 
     /**
@@ -641,7 +692,7 @@ class of_base_com_timer {
                 $fp = of_base_com_disk::file(self::$config['path'] . '/taskList.php', null, null);
 
                 //任务列表不为空 && 读取详细信息
-                if (($result = ftell($fp) > 21) && $mode === false) {
+                if (($result = ftell($fp) > 21) && is_int($mode)) {
                     $result = array();
                     //读取任务列表
                     $task = of_base_com_disk::file($fp, true, true);
@@ -654,7 +705,7 @@ class of_base_com_timer {
 
                         //可能是空数组也可能已被其它并发删掉
                         if (empty($task[$safe['time']])) unset($task[$safe['time']]);
-                        $callback = true;
+                        $call = true;
                     }
 
                     //重置保险时间
@@ -663,21 +714,46 @@ class of_base_com_timer {
 
                     //有到期任务
                     while (($time = key($task)) && $nowtime >= $time) {
-                        foreach ($task[$time] as $k => &$callback) {
-                            //引用回调
-                            $result[] = &$callback;
-                            //保存唯一键
-                            $safe['task'][] = $k;
-                            //计划任务切换到保险位置
-                            $task[$safe['time']][$k] = &$callback;
+                        foreach ($task[$time] as $k => &$v) {
+                            //反序列任务
+                            $call = $v += array('rNum' => 0);
+                            //执行任务数量, 无并发 ? 1 : 并发数
+                            $tNum = empty($call['cNum']) ? 1 : (
+                                is_array($call['cNum']) ? count($call['cNum']) : $call['cNum']
+                            );
+                            //计算执行任务数量
+                            $cNum = min($tNum - $v['rNum'], $mode);
+                            //更新执行并发数
+                            $v['rNum'] += $cNum;
+                            //更新剩余任务数
+                            $mode -= $cNum;
+
+                            //并发已完全运行, 应执行数 > 已执行数
+                            if ($tNum <= $v['rNum']) {
+                                //保存唯一键
+                                $safe['task'][] = $k;
+                                //计划任务切换到保险位置
+                                $task[$safe['time']][$k] = &$v;
+                                //删除完成的任务
+                                unset($task[$time][$k]);
+                            }
+
+                            //未指定并发 || 指定最大任务并发数
+                            empty($call['cNum']) || $call['cNum'] = range(
+                                $v['rNum'] - $cNum + 1, $v['rNum']
+                            );
+                            $result[] = $call;
+
+                            //所需任务为空, 结束后续列表
+                            if (!$mode) break 2;
                         }
+
                         //删除完成的任务
-                        unset($task[$time]);
+                        if (!$task[$time]) unset($task[$time]);
                     }
 
                     //触发过 && 写回任务列表
-                    isset($callback) && of_base_com_disk::file($fp, $task, true);
-                    unset($callback);
+                    isset($call) && of_base_com_disk::file($fp, $task, true);
                 }
 
                 //连接解锁
@@ -692,7 +768,7 @@ class of_base_com_timer {
                 $temp = of_db::sql($sql, $config['params']['dbPool']);
 
                 //是否有数据 && 读取详细信息
-                if (($result = !empty($temp)) && $mode === false) {
+                if (($result = !empty($temp)) && is_int($mode)) {
                     //删除上次计划日志
                     if ($safe['task']) {
                         $sql = 'DELETE FROM
@@ -706,24 +782,56 @@ class of_base_com_timer {
                     $safe['time'] = $nowtime + 600;
                     $safe['task'] = array();
 
+                    //读取所需数量任务
                     $sql = "SELECT
                         `hash`, `task`
                     FROM
                         `_of_com_timer`
                     WHERE
                         `time` <= '{$nowtime}'
-                    LIMIT 
-                        100
+                    LIMIT
+                        {$mode}
                     FOR UPDATE";
-                    $temp = of_db::sql($sql, $config['params']['dbPool']);
+                    $list = of_db::sql($sql, $config['params']['dbPool']);
                     $result = array();
 
                     //获取任务数据
-                    foreach ($temp as &$v) {
-                        $result[] = unserialize($v['task']);
+                    foreach ($list as &$v) {
+                        //反序列任务
+                        $call = unserialize($v['task']) + array('rNum' => 0);
+                        //执行任务数量, 无并发 ? 1 : 并发数
+                        $tNum = empty($call['cNum']) ? 1 : (
+                            is_array($call['cNum']) ? count($call['cNum']) : $call['cNum']
+                        );
+                        //计算执行任务数量
+                        $cNum = min($tNum - $call['rNum'], $mode);
+                        //更新执行并发数
+                        $call['rNum'] += $cNum;
+                        //更新剩余任务数
+                        $mode -= $cNum;
 
-                        //保存唯一键
-                        $safe['task'][] = $v['hash'];
+                        //并发未完全运行, 应执行数 > 已执行数
+                        if ($tNum > $call['rNum']) {
+                            $sql = 'UPDATE
+                                `_of_com_timer`
+                            SET
+                                `task` = "' .addslashes(serialize($call)). '"
+                            WHERE
+                                `hash` = "' .$v['hash']. '"';
+                            of_db::sql($sql, $config['params']['dbPool']);
+                        } else {
+                            //保存唯一键
+                            $safe['task'][] = $v['hash'];
+                        }
+
+                        //未指定并发 || 指定最大任务并发数
+                        empty($call['cNum']) || $call['cNum'] = range(
+                            $call['rNum'] - $cNum + 1, $call['rNum']
+                        );
+                        $result[] = $call;
+
+                        //所需任务为空, 结束后续列表
+                        if (!$mode) break ;
                     }
 
                     $sql = 'UPDATE
@@ -749,18 +857,20 @@ class of_base_com_timer {
      *      无任何任务返回false, 否则当前可执行的任务(可能为空数组)
      * 作者 : Edgar.lee
      */
-    private static function &crontab() {
+    private static function &crontab($needNum = 0) {
         static $lastTime = null;
         $config = &self::$config['cron'];
         $timeList = $result = array();
         $lastKey = 'of_base_com_timer::crontab#lastTime';
-        $intTime = ($intTime = time()) - $intTime % 60;
+        $entTime = ($entTime = time()) - $entTime % 60;
 
         //取整分时间(KV缓存时间 || 当前时间前一分钟)
-        $lastTime === null && $lastTime = of_base_com_kv::get($lastKey, $intTime - 60, '_ofSelf');
+        $lastTime === null && $lastTime = of_base_com_kv::get($lastKey, $entTime - 60, '_ofSelf');
+        //记录调用初始化时间
+        $initTime = $lastTime;
 
         //执行间隔60s
-        while ($intTime - $lastTime > 59) {
+        while ($entTime - $lastTime > 59) {
             $lastTime += 60;
             $timeList[] = array(
                 'nowTime' => $lastTime,
@@ -770,12 +880,13 @@ class of_base_com_timer {
         }
 
         if ($timeList) {
-            //记录缓存时间
-            of_base_com_kv::set($lastKey, $lastTime, 86400, '_ofSelf');
             //最新静态任务
             is_file($config['path']) && $cron = include $config['path'];
 
             if (!empty($cron) && is_array($cron)) {
+                //无效任务数
+                if ($needNum < 1) return $result;
+
                 foreach ($cron as &$vt) {
                     //每项时间分割
                     $item = preg_split('@\s+@', trim($vt['time']));
@@ -821,15 +932,43 @@ class of_base_com_timer {
 
                         //加锁直到成功
                         if (of_base_com_disk::lock($lock)) {
-                            //读取当前任务最后执行时间戳
-                            $temp = of_base_com_kv::get($tKey, 0, '_ofSelf');
+                            //读取当前任务最后执行信息
+                            $info = of_base_com_kv::get($tKey, 0, '_ofSelf');
+                            //格式化执行信息
+                            is_int($info) && $info = array(
+                                //最后执行时间戳
+                                'time' => $info,
+                                //已执行并发次数
+                                'rNum' => 0
+                            );
 
                             //对应时间整点没有执行过
-                            if ($temp < $lastTime) {
+                            if ($info['time'] < $lastTime) {
+                                //执行任务数量, 无并发 ? 1 : 并发数
+                                $tNum = empty($vt['cNum']) ? 1 : $vt['cNum'];
+                                //配置文件修改并发数 && 已执行并发次数归零
+                                $tNum > $info['rNum'] || $info['rNum'] = 0;
+                                //计算执行任务数量
+                                $cNum = min($tNum - $info['rNum'], $needNum);
+
+                                //更新执行并发数
+                                $info['rNum'] += $cNum;
+                                //更新剩余任务数
+                                $needNum -= $cNum;
+
+                                //克隆任务信息
+                                $call = array('time' => $timeBox['nowTime']) + $vt;
+                                //未指定并发 || 指定最大任务并发数
+                                empty($vt['cNum']) || $call['cNum'] = range(
+                                    $info['rNum'] - $cNum + 1, $info['rNum']
+                                );
                                 //记录成功项
-                                $result[] = array('time' => $timeBox['nowTime']) + $vt;
-                                //记录最后更新时间戳
-                                of_base_com_kv::set($tKey, $lastTime, 86400, '_ofSelf');
+                                $result[] = $call;
+
+                                //任务未执行完 ? 记录执行进度 : 记录最后时间戳
+                                $temp = $tNum > $info['rNum'] ? $info : $lastTime;
+                                //记录最后更新进度
+                                of_base_com_kv::set($tKey, $temp, 86400, '_ofSelf');
                             }
 
                             //解锁
@@ -838,10 +977,19 @@ class of_base_com_timer {
                             break ;
                         }
                     }
+
+                    //所需为空, 恢复初始时间
+                    if ($needNum === 0) {
+                        $lastTime = $initTime;
+                        break ;
+                    }
                 }
             } else {
                 $result = false;
             }
+
+            //记录缓存时间
+            of_base_com_kv::set($lastKey, $lastTime, 86400, '_ofSelf');
         }
 
         return $result;
@@ -861,8 +1009,6 @@ class of_base_com_timer {
     private static function fireCalls($list) {
         //定时器根路径
         $path = self::$config['path'] . '/concurrent';
-        //当前时间
-        $nowTime = time();
 
         foreach ($list as &$v) {
             //单计划
@@ -890,18 +1036,8 @@ class of_base_com_timer {
                     }
 
                     foreach ($cArr as &$cNum) {
-                        //打开并发文件
-                        $fp = fopen($temp = $cDir . '/' . $cNum, 'a');
-
                         //加锁成功, 没有使用的并发ID
-                        $isRun = flock($fp, LOCK_EX | LOCK_NB);
-                        $isRun && touch($temp, $nowTime);
-
-                        //连接解锁
-                        flock($fp, LOCK_UN);
-                        //关闭连接
-                        fclose($fp);
-
+                        $isRun = flock(fopen($cDir . '/' . $cNum, 'a'), LOCK_EX | LOCK_NB);
                         //触发任务
                         $isRun && of_base_com_net::request('', array(), array(
                             'asCall' => 'of_base_com_timer::taskCall',

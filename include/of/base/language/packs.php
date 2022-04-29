@@ -254,10 +254,7 @@ class of_base_language_packs {
         }
 
         //检查flie有效性
-        if (empty($params['file']) || strpos($params['file'], '(')) {
-            //检查失败
-            trigger_error('No such file');
-        } else {
+        if (!empty($params['file']) && !strpos($params['file'], '(')) {
             //整理file
             $filePath = strtr(
                 $params['type'] === 'js' ? $params['file'] : substr($params['file'], strlen(ROOT_DIR)),

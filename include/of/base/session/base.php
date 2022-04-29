@@ -38,6 +38,8 @@ class of_base_session_base {
             ini_set('session.cookie_path', ROOT_URL . '/');
             //会话对接
             self::handler();
+            //注册L类的session控制
+            of::link('session', '$type = true', 'of_base_session_base::control($type);');
 
             //初始化session状态
             if (!function_exists('session_status')) {
@@ -56,7 +58,31 @@ class of_base_session_base {
             preg_match($temp, join('::', of::dispatch()))
         ) {
             //自动开启session
-            session_open();
+            self::control(true);
+        }
+    }
+
+    /**
+     * 描述 : 会话开启与关闭
+     * 参数 :
+     *      type : true=开启, false=关闭
+     * 作者 : Edgar.lee
+     */
+    final public static function control($type) {
+        static $repeat = null;
+
+        //开启
+        if ($type) {
+            //php < 5.3 每次开启均加载 handler, 第一次init已初始过handler不调用
+            $repeat && self::handler();
+            //php < 5.3 ?
+            $repeat === null && $repeat = version_compare(PHP_VERSION, '5.3', '<');
+
+            //已开启 || 开启会话
+            self::$status === 2 || session_start();
+        //关闭
+        } else {
+            session_write_close();
         }
     }
 
@@ -155,20 +181,3 @@ class of_base_session_base {
 
 of_base_session_base::init(true);
 of::event('of::dispatch', 'of_base_session_base::init');
-
-/**
- * 描述 : 开启session,代替session_start函数
- * 返回 :
- *      成功返回true,失败返回false
- * 作者 : Edgar.lee
- */
-function session_open() {
-    static $repeat = null;
-
-    //php < 5.3 每次开启均加载 handler
-    $repeat && of_base_session_base::handler();
-    //php < 5.3 第一次不调用, init 已初始化过 handler
-    $repeat === null && $repeat = version_compare(PHP_VERSION, '5.3', '<');
-
-    return session_status() === 2 || session_start();
-}

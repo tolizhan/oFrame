@@ -9,6 +9,9 @@ class of_base_sso_main extends of_base_sso_api {
      * 作者 : Edgar.lee
      */
     public function index() {
+        //发送完整的Referrer头信息
+        header('Referrer-Policy: unsafe-url');
+
         //进入回调或管理
         if (empty($_GET['referer']) ?
                 //管理平台未登录
@@ -19,7 +22,6 @@ class of_base_sso_main extends of_base_sso_api {
             self::loginMain();
         //已登录回跳
         } else if (isset($_GET['referer'])) {
-            header('Referrer-Policy: unsafe-url');
             $_GET['form'] = of_base_sso_api::ticket();
             of_view::display('_' . OF_DIR . '/att/sso/tpl/login.tpl.php');
         //初始化管理权限

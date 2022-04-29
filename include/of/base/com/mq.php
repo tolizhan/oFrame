@@ -70,6 +70,8 @@ abstract class of_base_com_mq {
      */
     public static function init() {
         self::$config = of::config('_of.com.mq');
+        self::$mqDir = ROOT_DIR . OF_DATA . '/_of/of_base_com_mq';
+
         of::event('of::halt', 'of_base_com_mq::ofHalt');
         of::event('of_db::rename', array(
             'asCall' => 'of_base_com_mq::dbEvent',
@@ -84,9 +86,11 @@ abstract class of_base_com_mq {
             'params' => array('after')
         ));
 
-        self::$mqDir = ROOT_DIR . OF_DATA . '/_of/of_base_com_mq';
-        self::$tPath = self::$mqDir . '/queueTrigger/' . md5(of::config('_of.nodeName'));
-        is_dir(self::$tPath) || @mkdir(self::$tPath, 0777, true);
+        //空节点名称不生成队列监听路径
+        if ($nodeName = of::config('_of.nodeName')) {
+            self::$tPath = self::$mqDir . '/queueTrigger/' . md5(of::config('_of.nodeName'));
+            is_dir(self::$tPath) || @mkdir(self::$tPath, 0777, true);
+        }
 
         //web访问开启消息队列
         if (of::dispatch('class') === 'of_base_com_mq') {
@@ -137,7 +141,7 @@ abstract class of_base_com_mq {
 
                         //读取消息状态信息
                         foreach ($v['list'] as $kl => &$vl) {
-                            $index = &of_base_com_timer::data(true, $kl, '/' . $k);
+                            $index = &of_base_com_timer::data(true, array($kl), '/' . $k);
                             $index = &$index['info'][$kl]['data']['_mq'];
 
                             //格式化执行信息
@@ -364,12 +368,13 @@ abstract class of_base_com_mq {
         $data['this'] = &$nowTask['this'];
         $config = &self::pool($params['fire']['pool'], $bind);
         $config = &$config['queues'][$data['queue']];
+        $thisMq = &$config['keys'][$data['key']];
         $fireEnv = &self::$fireEnv;
 
         //有效回调
-        if ($call = &$config['keys'][$data['key']]['call']) {
+        if ($thisMq['cNum'] > 0 && $call = &$thisMq['call']) {
             //批量消费数量
-            ($data['lots'] = &$config['keys'][$data['key']]['lots']) < 1 && $data['lots'] = 1;
+            ($data['lots'] = &$thisMq['lots']) < 1 && $data['lots'] = 1;
             //校验文件变动, ture=加载的文件, false=不校验, 字符串=@开头的正则白名单
             $check = &$config['check'];
             //检查内存占用峰值
@@ -393,17 +398,9 @@ abstract class of_base_com_mq {
                 //处理消息的对象
                 'mqObj'    => &$mqObj
             );
-            //重置当前并发数据
-            $index = &of_base_com_timer::data(array('_mq' => array()));
 
-            //存在异常消息
-            if (
-                ($index = &$index['info'][$data['this']['cCid']]['data']['_mq']['quitData']) &&
-                $index['class'] === $fireEnv['mqClass']
-            ) {
-                $mqObj->_quit($index['data']);
-            }
-            unset($index);
+            //重置自身消息数据
+            self::resetPaincMqData(null);
 
             while (true) {
                 $cmd = of_base_com_kv::get($cKey, array('taskPid' => '', 'compare' => ''), '_ofSelf');
@@ -416,6 +413,11 @@ abstract class of_base_com_mq {
                     //!(验证文件 && 文件变动)
                     !($check && of_base_com_timer::renew($check))
                 ) {
+                    //重置未启动消息数据
+                    if ($data['this']['cCid'] % $thisMq['cNum'] === 1) {
+                        self::resetPaincMqData(2);
+                    }
+
                     //存在消息
                     if ($mqObj->_fire($call, $data)) {
                         //回收内存
@@ -450,8 +452,11 @@ abstract class of_base_com_mq {
      * 作者 : Edgar.lee
      */
     public static function listen($name = 'queueLock', $type = null) {
+        //空监听路径(空节点名称)不触发队列监听路径
+        if (!self::$tPath) {
+            return ;
         //开始监听
-        if ($type === true && $name === 'queueLock') {
+        } else if ($type === true && $name === 'queueLock') {
             //打开监听触发锁
             $tLock = fopen(self::$mqDir . '/triggerLock', 'a+');
             //加锁监听触发锁
@@ -688,10 +693,6 @@ abstract class of_base_com_mq {
         self::$fireMq && self::listen('queueLock');
         //回调函数意外退出
         if ($index = &self::$fireEnv['mqData']) {
-            //意外退出回调
-            self::$fireEnv['mqObj']->_quit($index);
-            //重置当前并发数据
-            of_base_com_timer::data(array('_mq' => array()));
             //记录异常日志
             of::event('of::error', true, array(
                 'type' => "{$index['key']}.{$index['queue']}.{$index['pool']}",
@@ -952,6 +953,39 @@ abstract class of_base_com_mq {
         ) {
             //{队列池:{队列名:{}, ...}} 转成 {队列名:{}, ...}
             $config = $config[$pool];
+        }
+    }
+
+    /**
+     * 描述 : 重置异常消息数据
+     * 参数 :
+     *      type : 指定任务中的并发ID, null=重置自身, 2=重置停止
+     * 作者 : Edgar.lee
+     */
+    private static function resetPaincMqData($type = 2) {
+        static $resetTime = 0;
+
+        //每间隔5s执行一次
+        if (($time = time()) - $resetTime > 4) {
+            //更新重置时间
+            $type && $resetTime = $time;
+            //引用环境
+            $fireEnv = &self::$fireEnv;
+            //重置自身及未启动消息数据
+            $index = &of_base_com_timer::data(array('_mq' => array()), $type);
+            //遍历处理异常消息
+            foreach ($index['info'] as $k => &$v) {
+                if (
+                    //自身进程 || 未运行进程
+                    ($type === null || !$v['isRun']) &&
+                    //存在异常消息
+                    ($v = &$v['data']['_mq']['quitData']) &&
+                    //消费类相同
+                    $v['class'] === $fireEnv['mqClass']
+                ) {
+                    $fireEnv['mqObj']->_quit($v['data']);
+                }
+            }
         }
     }
 

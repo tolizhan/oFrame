@@ -57,7 +57,7 @@ var ofBaseSsoLogin = {
 
                     //post 跳转页面
                     if (L.type(data.msg) === 'object') {
-                        ofBaseSsoLogin.form(data.msg);
+                        ofBaseSsoLogin.jump(data.msg);
                     } else {
                         //跳转 管理界面
                         window.location.href = OF_URL + 
@@ -75,24 +75,15 @@ var ofBaseSsoLogin = {
     },
 
     /**
-     * 描述 : 通过 form 发送 post 数据
+     * 描述 : 跳转回referer
      * 作者 : Edgar.lee
      */
-    'form' : function (post) {
-        var form = document.createElement("form"), temp;
-        form.action = ofBaseSsoLogin.args.referer;
-        form.method = "post";
-        form.style.display = "none";
-
-        for (var i in post) {
-            temp = document.createElement("input");
-            temp.name = i;
-            temp.value = post[i];
-            form.appendChild(temp);
-        }
-
-        document.body.appendChild(form);
-        form.submit();
+    'jump' : function (get) {
+        var url = ofBaseSsoLogin.args.referer;
+        //追加?和&
+        url += url.indexOf('?') == -1 ? '?' : url.slice(-1) === '?' ? '' : '&';
+        //跳转 请求页面
+        window.location.href = url + L.param(get);
     },
 
     /**
@@ -167,5 +158,5 @@ if (ofBaseSsoLogin.args.tip) {
     document.getElementById('loginBlock').style.display = 'none';
     ofBaseSsoLogin.tipBar('正在自动登录, 请稍后...');
     //登录跳转
-    ofBaseSsoLogin.form(ofBaseSsoLogin.args.form);
+    ofBaseSsoLogin.jump(ofBaseSsoLogin.args.form);
 }

@@ -120,7 +120,7 @@ class of_base_com_net {
             ini_set('max_execution_time', 0);
 
             if (PHP_SAPI === 'cli') {
-                $data = $GLOBALS['_ARGV']['data'];
+                $data = rawurldecode($GLOBALS['_ARGV']['data']);
             } else {
                 //请求数据流
                 $data = file_get_contents('php://input');
@@ -297,7 +297,7 @@ class of_base_com_net {
                 //Windows
                 if ($osType === 'win') {
                     //win 异步数据结构
-                    $exec[] = 'data:' . str_replace('"', '\"', serialize($data));
+                    $exec[] = 'data:' . rawurlencode(serialize($data));
 
                     if (empty($config['exeDir'])) {
                         $temp = 'wmic process where processid=' . getmypid() . ' get ExecutablePath';
@@ -337,7 +337,7 @@ class of_base_com_net {
                     //命令校验成功
                     if (($temp = fgets(popen($check, 'r'))) === '1') {
                         //linux 异步数据结构
-                        $exec[] = 'data:' . addcslashes(serialize($data), '`"\$');
+                        $exec[] = 'data:' . rawurlencode(serialize($data));
                         //拼成异步命令
                         $exec = $aPre . '"' . join('" "', $exec) . '" >/dev/null 2>&1 &';
                     //命令校验失败

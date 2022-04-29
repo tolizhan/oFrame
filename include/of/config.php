@@ -1,18 +1,18 @@
 <?php
 return array(
-    //用__FILE__表示的站点根目录,修改substr的第二参数即可
+    //用__FILE__表示的站点根目录, 修改substr的第二参数即可
     'rootDir'     => strtr(substr(__FILE__, 0, -22), '\\', '/'),
-    //域名到产品根目录地址,根路径为空字符串,null=尝试自动计算
+    //域名到产品根目录地址, 根路径为空字符串, null=尝试自动计算
     'rootUrl'     => null,
     //配置文件路径, 数组=动态配置{动态键"."分隔 : 配置路径}, 字符串=等同{"0" : 全局配置}
     'config'      => '/demo/config/config.php',
-    //节点名称, 以此区别不同分布式节点, 默认 $_SERVER['SERVER_ADDR']+php_uname()
+    //节点名称, 区别分布式不同节点, ""=不执行计划及队列等后台任务(用来分流后台任务与用户访问)
     'nodeName'    => $_SERVER['SERVER_ADDR'] . php_uname(),
     //系统时区, 设置php支持的时区(如: Europe/London 支持夏令时), 读取格式为 ±00:00
     'timezone'    => 'PRC',
     //统一调试模式, true=开发环境, null=测试环境, false=生产环境, 字符串=切换开发环境密码
     'debug'       => true,
-    //可写目录,上传,缓存等路径都将写入该文件夹
+    //可写目录, 上传, 缓存等路径都将写入该文件夹
     'dataDir'     => '/data',
     //用户群体的系统字符集
     'charset'     => 'GB18030',
@@ -103,7 +103,7 @@ return array(
         'of_base_xssFilter_main',
         //扩展支持
         //'of_base_extension_match',
-        //html模板引擎,实现UI,开发人员分离
+        //html模板引擎, 实现UI, 开发人员分离
         'of_base_htmlTpl_engine',
         //非生产环境检查最新版本
         'of_base_version_check',
@@ -123,15 +123,15 @@ return array(
     ),
     //错误日志
     'error'       => array(
-        //日志有效时间(天),0=不清理
+        //日志有效时间(天), 0=不清理
         'gcTime' => 30,
         //相同错误最多记录次数, 大于0时起用
         'repeat' => 999,
-        //sql日志路径,false=关闭
+        //sql日志路径, false=关闭
         'sqlLog' => '/data/error/sqlLog',
-        //php日志路径,false=关闭
+        //php日志路径, false=关闭
         'phpLog' => '/data/error/phpLog',
-        //js日志路径,false=关闭
+        //js日志路径, false=关闭
         'jsLog'  => '/data/error/jsLog'
     ),
     //会话封装
@@ -152,7 +152,7 @@ return array(
             'path'    => '/data/_of/of_accy_session_files'
             // */
 
-            #mysql 模式, mysql存储表信息(推荐Innodb,MEM
+            #mysql 模式, mysql存储表信息(推荐Innodb, MEM
             /*
             //数据库连接池
             'dbPool' => 'default',
@@ -179,7 +179,7 @@ return array(
          *                          以"."作为分隔符匹配深度数组 : 以"@"开始按正则, 否则全等对比,
          *                          ...
          *                      }
-         *                      "method" :o通过回调方法({"action" : 调度方法})判断匹配,返回 true=匹配, false=未匹配
+         *                      "method" :o通过回调方法({"action" : 调度方法})判断匹配, 返回 true=匹配, false=未匹配
          *                  }, ...
          *              },
          *              "ipList"   : 验证IP列表, 支持IP v4 v6, 字符串=指定配置路径(结构同数组), 数组={
@@ -230,18 +230,24 @@ return array(
     ),
     //单点登录
     'sso'         => array(
-        //单点登录所使用的数据库
-        'dbPool'  => 'default',
-        //用户密码有效期(天), 0=不限制, 期满必须修改
-        'expiry'  => 90,
-        //开放注册,单点登录系统使用
-        'openReg' => true,
-        //对接网址,工具包使用,默认本机接口
-        'url'     => null,
-        //对接帐号,工具包使用
-        'name'    => 'sso',
-        //对接密码,工具包使用
-        'key'     => '123456'
+        //键为以"@"开头的正则, 空间使用首次匹配的配置
+        '@.@' => array(
+            #服务端配置(非服务端删掉)
+            //单点登录所使用的数据库
+            'dbPool'  => 'default',
+            //用户密码有效期(天), 0=不限制, 期满必须修改
+            'expiry'  => 90,
+            //开放注册, 单点登录系统使用
+            'openReg' => true,
+
+            #客户端配置(非客户端删掉)
+            //对接网址, 工具包使用, 默认本机接口
+            'url'     => '',
+            //对接帐号, 工具包使用
+            'name'    => 'sso',
+            //对接密码, 工具包使用
+            'key'     => '123456'
+        )
     ),
     //系统组件
     'com'         => array(
@@ -344,7 +350,7 @@ return array(
              *      "bindDb"  : 事务数据库连接池名, 跟其提交或回滚,
              *      "queues"  : 队列配置文件数组或路径, 消息会同时发给这些队列, 结构如下 {
              *          队列名 : {
-             *              "mode"   : 队列模式, null=生产及消费,false=仅生产,true=仅消费,
+             *              "mode"   : 队列模式, null=生产及消费, false=仅生产, true=仅消费,
              *              "check"  : 自动重载消息队列触发函数,
              *                  true=(默认)校验"消费回调"加载的文件变动,
              *                  false=仅校验队列配置文件变动,

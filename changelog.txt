@@ -1,3 +1,46 @@
+版本: 256
+作者: Edgar
+日期: 2022年4月29日 11:24:31
+信息:
+说明: + _of.nodeName 为""时, 不执行计划及队列等后台任务
+      + SSO单点登录支持不同空间的服务端单独配置
+      + SSO调用tool::check(bool, space)会切换默认空间
+      + SSO支持添加用户of_base_sso_tool::func("addUser")
+      - SSO跳转方式支持Chrome跨域, 先升客户端再升服务端
+      - 增加L::session(bool)开关会话, 移除session_open方法
+      * 分页替掉SQL_CALC_FOUND_ROWS用法, 向mysql 8.0兼容
+      * 优化队列对服务器重启等因素导致消息异常中断的处理
+      * 修复linux下含\0字符的回调无法启动并发的问题
+      * 兼容$_COOKIE中键名含%XX的解析行为
+      * 分布式下的并发任务负载更均衡
+----
+已修改 : /trunk/changelog.txt
+已增加 : /trunk/demo/extend/corsCheck
+已增加 : /trunk/demo/extend/corsCheck/config.php
+已增加 : /trunk/demo/extend/corsCheck/main
+已增加 : /trunk/demo/extend/corsCheck/main/main.php
+已修改 : /trunk/demo/extend/sqlProfiling/main/main.php
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/tidb.php
+已删除 : /trunk/include/of/addin/PHPMailer/composer.json
+已删除 : /trunk/include/of/addin/PHPMailer/composer.lock
+已修改 : /trunk/include/of/att/sso/js/login.js
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/language/packs.php
+已修改 : /trunk/include/of/base/link/codeNav.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/license.txt
+
 版本: 254
 作者: Edgar
 日期: 2021年12月31日 14:24:04

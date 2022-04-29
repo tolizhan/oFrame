@@ -286,6 +286,10 @@ namespace {
         public static function open($name) {
             /*return include '';*/
         }
+
+        public static function session($type = true) {
+            /*of_base_session_base::control($type);*/
+        }
     }
 
 }

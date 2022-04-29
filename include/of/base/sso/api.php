@@ -8,6 +8,7 @@
  *          402 : 帐号密码错误
  *          403 : 功能操作无效
  *          404 : 需先修改密码
+ *          405 : 新增数据已存在
  *          501 : 安全校验失败
  *          502 : 通信结构错误
  *          503 : 系统帐号操作权限不够
@@ -15,7 +16,7 @@
  *      }
  *      单点登录session存储结构($_SESSION['_of']['of_base_sso']) : {
  *          "users" : 已登录的用户 {
- *              登录类型 : {
+ *              登录空间 : {
  *                  "user"  : 已登陆的用户ID
  *                  "name"  : 已登录的用户名
  *                  "nick"  : 已登录的用户昵称
@@ -42,9 +43,15 @@
  *              }, ...
  *          },
  *          "tool" : 客户端的信息包 {
- *              "ticket" : 使用的票据
+ *              "client" : {
+ *                  登录空间 : {
+ *                      "digest" : 配置标识
+ *                      "ticket" : 通信票据
+ *                      "check"  : 票据校验
+ *                  }, ...
+ *              }
  *              "online" : {
- *                  登录类型 : 在线用户 {
+ *                  登录空间 : 在线用户 {
  *                      "user"  : SSO中的用户ID
  *                      "name"  : 用户名
  *                      "nick"  : 昵称
@@ -84,7 +91,14 @@
  * 作者 : Edgar.lee
  */
 class of_base_sso_api {
-    protected static $config = null;
+    protected static $config = array(
+        //单点登录所使用的数据库
+        'dbPool'  => 'default',
+        //开放注册,单点登录系统使用
+        'openReg' => true,
+        //信息有效期(天)
+        'expiry'  => 90
+    );
 
     /**
      * 描述 : 析构函数,验证参数,开启session
@@ -97,11 +111,11 @@ class of_base_sso_api {
             if (
                 isset($_GET['name']) && (
                     $dp['action'] === 'ticket' || isset($_GET['md5']) && isset($_GET['ticket'])
-                ) 
+                )
             ) {
                 if ($dp['action'] === 'ticket') {
                     //开启SESSION
-                    self::openSession();
+                    L::session();
                 //验证参数
                 } else {
                     $temp = array($_GET['md5'], self::getTicket($_GET['ticket']));
@@ -112,7 +126,8 @@ class of_base_sso_api {
                         session_write_close();
                         //修改session
                         session_id($temp[1]);
-                        function_exists('session_open') ? session_open() : session_start();
+                        //启动session
+                        L::session();
                     }
 
                     //读取登录数据
@@ -123,14 +138,11 @@ class of_base_sso_api {
                     //存在则校验票据正确性
                     if ($index) {
                         if (
-                            //票据相同
-                            $index['ticket'] === $_GET['ticket'] &&
-                            //md5验证通过
-                            md5(stripslashes(join($_GET)) . $index['pwd']) === $temp[0]
+                            //票据不相同
+                            $index['ticket'] !== $_GET['ticket'] ||
+                            //md5验证未通过
+                            md5(stripslashes(join($_GET)) . $index['pwd']) !== $temp[0]
                         ) {
-                            //更新票据
-                            $index['ticket'] = self::getTicket();
-                        } else {
                             exit('{"state":501,"msg":"安全校验失败"}');
                         }
                     //不存在且为退出时给新票据(可能是sso系统session过期)
@@ -154,24 +166,24 @@ class of_base_sso_api {
         //引用配置文件
         $config = &self::$config;
         //单点登录配置
-        $config = of::config('_of.sso', array()) + array(
-            //单点登录所使用的数据库
-            'dbPool'  => 'default',
-            //开放注册,单点登录系统使用
-            'openReg' => true,
-            //信息有效期(天)
-            'expiry'  => 90,
-            //对接网址,工具包使用,默认本机接口
-            'url'     => null,
-            //对接帐号,工具包使用
-            'name'    => null,
-            //对接密码,工具包使用
-            'key'     => null,
-        );
-        $config['url'] || $config['url'] = OF_URL . '/index.php?c=of_base_sso_api';
+        $sConf = of::config('_of.sso', array());
+
+        //单点配置客户端 || 单点配置服务端
+        if (isset($sConf['name']) || isset($sConf['dbPool'])) {
+            //格式sso配置=>{空间正则 : SSO配置, ...}
+            $sConf = array('@.@' => $sConf);
+        }
+
+        //需找第一个服务器配置
+        foreach ($sConf as $k => &$v) {
+            if (isset($v['dbPool'])) {
+                $config = $v + $config;
+                break ;
+            }
+        }
 
         //开启SESSION
-        of::dispatch('class') === 'of_base_sso_api' || self::openSession();
+        of::dispatch('class') === 'of_base_sso_api' || L::session();
     }
 
     /**
@@ -193,8 +205,6 @@ class of_base_sso_api {
      */
     public static function ticket() {
         if (isset($_GET['name'])) {
-            $index = &$_SESSION['_of']['of_base_sso'];
-
             $sql = "SELECT
                 `id` `realmId`, `pwd`, `trust`
             FROM
@@ -205,16 +215,21 @@ class of_base_sso_api {
 
             //系统账号可用
             if ($temp = of_db::sql($sql, self::$config['dbPool'])) {
+                //引用登录空间
+                $index = &$_SESSION['_of']['of_base_sso']['realm'][$_GET['name']];
+                //更新票据
+                $temp[0]['ticket'] = isset($index['ticket']) ?
+                    $index['ticket'] : self::getTicket();
                 //保存密码和后台授权
-                $index['realm'][$_GET['name']] = &$temp[0];
+                $index = $temp[0];
                 //对接权限转整型
-                $temp[0]['trust'] += 0;
+                $index['trust'] += 0;
                 //加密密钥
-                $pwd = $temp[0]['pwd'];
+                $pwd = $index['pwd'];
                 //响应成功
                 $temp = array(
                     'state'  => 200,
-                    'ticket' => $temp[0]['ticket'] = self::getTicket()
+                    'ticket' => $index['ticket']
                 );
             } else {
                 //响应失败
@@ -228,7 +243,7 @@ class of_base_sso_api {
                 echo $_GET['callback'], '(' .of_base_com_data::json($temp). ');';
             } else if (!empty($_GET['referer'])) {
                 if ($temp['state'] === 200 && isset($_GET['check'])) {
-                    $temp = array('data' => self::check(true));
+                    $temp = array('data' => of_base_com_data::json($temp));
                     $temp['md5'] = md5($temp['data'] . $_GET['check'] . $pwd);
                 } else {
                     $temp = array('data' => of_base_com_data::json($temp));
@@ -424,6 +439,15 @@ class of_base_sso_api {
      *          "state"    : 可用状态,0=冻结,1=启用
      *          "question" : 问题
      *          "answer"   : 回答
+
+     *              修改用户数据时,type 为 addUser
+     *          "user"     : 要添加的用户
+     *          "pwd"      : 密码
+     *          "nick"     : 昵称
+     *          "notes"    : 用户备注
+     *          "state"    : 可用状态,0=冻结,1=启用
+     *          "question" : 问题
+     *          "answer"   : 回答
      *      }
      * 作者 : Edgar.lee
      */
@@ -434,6 +458,44 @@ class of_base_sso_api {
         //可通过权限修改
         if ($index['realm'][$_GET['name']]['trust'] & 2) {
             switch (L::get('type')) {
+                case 'addUser':
+                    //用户名存在 && 符合规则
+                    if (isset($_GET['user']) && preg_match('@^\w+$@', $_GET['user'])) {
+                        //整理新增用户数据
+                        $data = array_map(
+                            'stripslashes',
+                            array_intersect_key($_GET, $data = array(
+                                'user' => '',
+                                'pwd' => '',
+                                'nick' => '',
+                                'notes' => '',
+                                'state' => '',
+                                'question' => '',
+                                'answer' => '',
+                            ))
+                        ) + $data + array('find' => '');
+                        $data['pwd'] = md5($data['pwd']);
+                        $data['answer'] && $data['find'] = strlen($data['question']) .
+                            '_' . $data['question'] . md5($data['answer']);
+                        of::slashesDeep($data);
+
+                        //插入新用户
+                        $sql = "/*UPDATE*/INSERT INTO `_of_sso_user_attr` (
+                            `name`, `pwd`, `state`,
+                            `nick`, `notes`, `find`
+                        ) VALUES (
+                            '{$data['user']}', '{$data['pwd']}', '{$data['state']}',
+                            '{$data['nick']}', '{$data['notes']}', '{$data['find']}'
+                        ) ON DUPLICATE KEY UPDATE
+                            `name` = `name`";
+                        $temp = of_db::sql($sql, self::$config['dbPool']);
+
+                        //插入成功
+                        $json = $temp === 1 ?
+                            array('state' => 200, 'msg' => '操作成功') :
+                            array('state' => 405, 'msg' => '用户已存在');
+                    }
+                    break;
                 case 'getUser':
                     if (!empty($_GET['user'])) {
                         $sql = "SELECT
@@ -457,12 +519,13 @@ class of_base_sso_api {
                     empty($_GET['notes']) || $sql[] = "`notes` = '{$_GET['notes']}'";
                     empty($_GET['state']) || $sql[] = "`state` = '{$_GET['state']}'";
                     if (!empty($_GET['question']) && !empty($_GET['answer'])) {
+                        $temp = stripslashes($_GET['answer']);
                         $sql[] = '`find`=\'' . 
-                            str_pad(strlen($_GET['question']) . '_' . $_GET['question'] . md5($_GET['answer']), 255, "\0") . 
+                            str_pad(strlen($_GET['question']) . '_' . $_GET['question'] . md5($temp), 255, "\0") . 
                             '\'';
                     }
                     if (!empty($_GET['pwd'])) {
-                        $temp = md5($_GET['pwd']);
+                        $temp = md5(stripslashes($_GET['pwd']));
                         $sql[] = "`time` = IF(`pwd` = '{$temp}', `time`, NOW())";
                         $sql[] = "`pwd` = '{$temp}'";
                     }
@@ -470,11 +533,18 @@ class of_base_sso_api {
                     empty($_GET['space']) || $where[] = 
                         isset($index['users'][$_GET['space']]['name']) &&
                         $index['users'][$_GET['space']]['name'] === $_GET['user'] ? 'TRUE' : 'FALSE';
-                    empty($_GET['oPwd']) || $where[] = "`pwd` = MD5('{$_GET['oPwd']}')";
-                    empty($_GET['oAnswer']) || $where[] = "`find` = RPAD(CONCAT(
-                        SUBSTR(`find`, 1, LENGTH(SUBSTR(`find`, 1, POSITION('_' IN `find`))) + SUBSTR(`find`, 1, POSITION('_' IN `find`) - 1)), 
-                        MD5('{$_GET['oAnswer']}')
-                    ), 255, '\\0')";
+
+                    if (!empty($_GET['oPwd'])) {
+                        $temp = stripslashes($_GET['pwd']);
+                        $where[] = "`pwd` = MD5('{$temp}')";
+                    }
+                    if (!empty($_GET['oAnswer'])) {
+                        $temp = stripslashes($_GET['oAnswer']);
+                        $where[] = "`find` = RPAD(CONCAT(
+                            SUBSTR(`find`, 1, LENGTH(SUBSTR(`find`, 1, POSITION('_' IN `find`))) + SUBSTR(`find`, 1, POSITION('_' IN `find`) - 1)), 
+                            MD5('{$temp}')
+                        ), 255, '\\0')";
+                    }
                     //超级权限 && 完全控制
                     empty($where) || $index['realm'][$_GET['name']]['trust'] & 4 && $where[] = 'TRUE';
 
@@ -497,6 +567,32 @@ class of_base_sso_api {
 
         $json['ticket'] = &$index['realm'][$_GET['name']]['ticket'];
         echo of_base_com_data::json($json);
+    }
+
+    /**
+     * 描述 : 合并路径的get参数
+     * 参数 :
+     *      url : 待合并的URL
+     *      get : 整合的get数组
+     *      key : ''=不生成md5,字符串=md5的密钥
+     * 返回 :
+     *      合并后的url
+     * 作者 : Edgar.lee
+     */
+    public static function getUrl($url, $get = array(), $key = '') {
+        $url = $url ? 
+            parse_url(stripslashes($url)) : 
+            array('query' => $get ? '' : $_SERVER['QUERY_STRING']);
+        isset($url['host']) && empty($url['port']) && $url['port'] = '';
+        $url += of_base_com_net::$params;
+        $url['port'] && $url['port'] = ':' . $url['port'];
+        parse_str($url['query'], $url['query']);
+        $url['query'] = $get + $url['query'];
+        $key && $url['query']['md5'] = md5(join($url['query']) . $key);
+        //拼接URL
+        $url['query'] = $url['query'] ? '?' . http_build_query($url['query']) : '';
+        $url = "{$url['scheme']}://{$url['host']}{$url['port']}{$url['path']}{$url['query']}";
+        return $url;
     }
 
     /**
@@ -596,32 +692,6 @@ class of_base_sso_api {
                 }
             }
         }
-    }
-
-    /**
-     * 描述 : 合并路径的get参数
-     * 参数 :
-     *      url : 待合并的URL
-     *      get : 整合的get数组
-     *      key : ''=不生成md5,字符串=md5的密钥
-     * 返回 :
-     *      合并后的url
-     * 作者 : Edgar.lee
-     */
-    protected static function getUrl($url, $get = array(), $key = '') {
-        $url = $url ? 
-            parse_url(stripslashes($url)) : 
-            array('query' => $get ? '' : $_SERVER['QUERY_STRING']);
-        isset($url['host']) && empty($url['port']) && $url['port'] = '';
-        $url += of_base_com_net::$params;
-        $url['port'] && $url['port'] = ':' . $url['port'];
-        parse_str($url['query'], $url['query']);
-        $url['query'] = $get + $url['query'];
-        $key && $url['query']['md5'] = md5(join($url['query']) . $key);
-        //拼接URL
-        $url['query'] = $url['query'] ? '?' . http_build_query($url['query']) : '';
-        $url = "{$url['scheme']}://{$url['host']}{$url['port']}{$url['path']}{$url['query']}";
-        return $url;
     }
 
     /**
@@ -736,20 +806,6 @@ class of_base_sso_api {
             isset($list[$v]) && $v = $list[$v];
         }
         return join($code);
-    }
-
-    /**
-     * 描述 : 强制开启SESSION
-     * 作者 : Edgar.lee
-     */
-    private static function openSession() {
-        //安全开启SESSION
-        if (function_exists('session_status')) {
-            session_status() === 2 || (function_exists('session_open') ? session_open() : session_start());
-        //暴力开启SESSION
-        } else if (ini_get('session.auto_start') === '0') {
-            @session_start();
-        }
     }
 }
 

@@ -376,7 +376,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                             `syncLevel` = "0"';
                     //删除数据
                     } else {
-                        //防止同一消息运行过程中, 删除再创建导致并列执行
+                        //不直接删除是防止同一消息运行过程中, 删除再创建导致并列执行
                         $sql = 'UPDATE
                             `_of_com_mq`
                         SET
@@ -440,7 +440,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             //重置过期时间
             $index['expire'] = 600;
             //读取正在执行并发数据
-            $data = of_base_com_timer::data(true, true);
+            $data = of_base_com_timer::data(true, 1);
             //计算消息数据偏移量
             $index['limit'] = $data['info'][$cCid]['sort'] * $lots * 5;
         }

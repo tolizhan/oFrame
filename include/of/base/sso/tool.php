@@ -3,52 +3,58 @@
  * 描述 : API接口类
  * 作者 : Edgar.lee
  */
-class of_base_sso_tool extends of_base_sso_api {
+class of_base_sso_tool {
+    //默认空间
+    private static $space = 'default';
 
     /**
      * 描述 : 检查登录状态
      * 参数 :
      *      type  : 登录类型, false = 跳转登录, true = 接口登录
-     *      space : 验证登录的空间
+     *      space : 验证的空间, 指定时会更改默认空间, 默认default
      * 返回 :
      *      str=登录名,false=未登录,exit=未知
      * 作者 : Edgar.lee
      */
-    public static function check($type = true, $space = 'default') {
+    public static function check($type = true, $space = '') {
+        //指定空间 ? 设置默认空间 : 使用默认空间
+        $space ? self::$space = $space : $space = self::$space;
         //工具包session引用
-        $tool = &$_SESSION['_of']['of_base_sso']['tool'];
+        $tool = &self::session(1, $space);
         //引用配置文件
-        $config = &self::$config;
+        $config = &$tool['config'];
 
+        //跳转登录 && 跳转回写
         if (
-            !$type && 
-            isset($_SERVER['HTTP_REFERER']) && strpos($_SERVER['HTTP_REFERER'], '=of_base_sso_main') &&
-            isset($_POST['data'])
-        //跳转回写
+            !$type &&
+            isset($_SERVER['HTTP_REFERER']) &&
+            strpos($_SERVER['HTTP_REFERER'], '=of_base_sso_main') &&
+            isset($_REQUEST['data']) && isset($_REQUEST['md5'])
         ) {
             //去斜线
-            $_POST['data'][1] === '"' || $_POST['data'] = stripslashes($_POST['data']);
+            $data = $_REQUEST['data'][1] === '"' ?
+                $_REQUEST['data'] : stripslashes($_REQUEST['data']);
 
-            if (
-                isset($tool['check']) && isset($_POST['md5']) &&
-                md5($_POST['data'] . $tool['check'] . $config['key']) === $_POST['md5'] 
             //校验通过
+            if (
+                isset($tool['check']) && isset($_REQUEST['md5']) &&
+                md5($data . $tool['check'] . $config['key']) === $_REQUEST['md5']
             ) {
                 //解码json
-                $data = json_decode($_POST['data'], true);
+                $data = json_decode($data, true);
                 $tool['ticket'] = $data['ticket'];
-                unset($tool['check'], $data['state'], $data['ticket']);
-                //保存登录信息
-                $tool['online'][$space] = &$data;
                 //刷新当前页面
-                header('Refresh: 0');
+                header('Location: ?' . http_build_query(
+                    array_diff_key($_GET, array('data' => 1, 'md5' => 1))
+                ));
                 exit;
             //校验失败
             } else {
                 //跳转登录
-                header('Location: ' . of_base_sso_tool::login());
+                header('Location: ' . self::login('', $space));
                 exit;
             }
+        //接口登录 && 票据为空
         } else if ($type && empty($tool['ticket'])) {
             //接口回写
             if (isset($_COOKIE['of_base_sso']['ticket'][$space])) {
@@ -56,6 +62,15 @@ class of_base_sso_tool extends of_base_sso_api {
                 //删除票据
                 setcookie(rawurlencode('of_base_sso[ticket][' .$space. ']'), null, null, null);
             } else {
+                //计算服务端路径
+                $temp = of_base_sso_api::getUrl($config['url'], array(
+                    'a'        => 'ticket',
+                    'c'        => 'of_base_sso_api',
+                    'space'    => $space,
+                    'name'     => $config['name'],
+                    'callback' => 'callback'
+                ));
+
                 echo "<script>var callback = function (json) {
                     if (json.state === 200) {
                         document.cookie = encodeURIComponent('of_base_sso[ticket][{$space}]') + '=' + encodeURIComponent(json.ticket);
@@ -65,7 +80,7 @@ class of_base_sso_tool extends of_base_sso_api {
                         throw new Error('SSO system response error : ' + json.msg);
                     }
                 };</script>",
-                "<script src='{$config['url']}&a=ticket&space={$space}&name={$config['name']}&callback=callback'></script>";
+                "<script src='{$temp}'></script>";
                 exit;
             }
         }
@@ -100,13 +115,15 @@ class of_base_sso_tool extends of_base_sso_api {
      *      true=成功,false=失败,数组=出错{"state" : 状态码, "msg" : 错误信息}
      * 作者 : Edgar.lee
      */
-    public static function login($args = '', $space = 'default') {
+    public static function login($args = '', $space = '') {
+        //使用默认空间
+        $space || $space = self::$space;
+        //工具包session引用
+        $tool = &self::session(1, $space);
         //引用配置文件
-        $config = &self::$config;
+        $config = &$tool['config'];
         //本机请求参数
         $params = &of_base_com_net::$params;
-        //工具包session引用
-        $tool = &$_SESSION['_of']['of_base_sso']['tool'];
 
         $data = array(
             'a'      => 'check',
@@ -120,12 +137,11 @@ class of_base_sso_tool extends of_base_sso_api {
 
         //跳转模式的登录路径
         if (is_string($args)) {
-            empty($tool['check']) && $tool['check'] = uniqid();
             $data = array(
                 'a'       => 'index',
                 'c'       => 'of_base_sso_main',
                 'referer' => of_base_sso_api::getUrl($args),
-                'check'   => $tool['check'],
+                'check'   => $tool['check'] = uniqid(),
                 'name'    => &$config['name'],
             ) + $data;
             $data = of_base_sso_api::getUrl($config['url'], $data);
@@ -140,7 +156,6 @@ class of_base_sso_tool extends of_base_sso_api {
             }
 
             $data = &self::request($data, $space);
-            $tool = &$_SESSION['_of']['of_base_sso']['tool'];
             if ($data['state'] === 200) {
                 //用户未登录
                 if (empty($data['user'])) {
@@ -171,7 +186,10 @@ class of_base_sso_tool extends of_base_sso_api {
      *      space : ("default")登录的空间
      * 作者 : Edgar.lee
      */
-    public static function logout($space = 'default') {
+    public static function logout($space = '') {
+        //使用默认空间
+        $space || $space = self::$space;
+        //发送退出请求
         $params = array(
             'a'     => 'logout',
             'space' => &$space
@@ -180,7 +198,8 @@ class of_base_sso_tool extends of_base_sso_api {
 
         //解析成功
         if ($data['state'] === 200) {
-            unset($_SESSION['_of']['of_base_sso']['tool']['online'][$space]);
+            //退出登录
+            self::session(2, $space);
             return true;
         }
         return $data['msg'];
@@ -225,12 +244,15 @@ class of_base_sso_tool extends of_base_sso_api {
      *      }
      * 作者 : Edgar.lee
      */
-    public static function &user($key = null, $space = 'default') {
+    public static function &user($key = null, $space = '') {
+        //使用默认空间
+        $space || $space = self::$space;
+
         if (isset($_SESSION['_of']['of_base_sso']['tool']['online'][$space])) {
             $result = &$_SESSION['_of']['of_base_sso']['tool']['online'][$space];
             if (is_string($key)) {
                 isset($result[$key]) ?
-                    $result = &$result[$key] : $result = &$index;
+                    $result = &$result[$key] : $result = &$null;
             }
         }
 
@@ -242,10 +264,10 @@ class of_base_sso_tool extends of_base_sso_api {
      * 作者 : Edgar.lee
      */
     public static function state() {
-        if (
-            isset($_SESSION['_of']['of_base_sso']['tool']['ticket']) && 
-            $_SESSION['_of']['of_base_sso']['tool']['ticket'] === $_GET['ticket'] 
-        ) {
+        //工具包session引用
+        $tool = &self::session(1, $_GET['space']);
+
+        if (isset($tool['ticket']) && $tool['ticket'] === $_GET['ticket']) {
             self::login(null, $_GET['space']);
         }
     }
@@ -261,9 +283,12 @@ class of_base_sso_tool extends of_base_sso_api {
      *      true=有权限, false=无权限
      * 作者 : Edgar.lee
      */
-    public static function role($role, $space = 'default') {
-        $index = &$_SESSION['_of']['of_base_sso']['tool'];
-        return isset($index['online'][$space]) && !isset($index['online'][$space]['role']['deny']['func'][$role]);
+    public static function role($role, $space = '') {
+        //使用默认空间
+        $space || $space = self::$space;
+        //工具包session引用
+        $tool = &self::session(1, $space);
+        return isset($tool['online'][$space]) && !isset($tool['online'][$space]['role']['deny']['func'][$role]);
     }
 
     /**
@@ -275,10 +300,10 @@ class of_base_sso_tool extends of_base_sso_api {
      *      
      * 作者 : Edgar.lee
      */
-    public static function func($func = null, $data = array()) {
+    public static function func($func = null, $data = array(), $space = '') {
         $data['a'] = 'func';
         $data['type'] = &$func;
-        return self::request($data);
+        return self::request($data, $space ? $space : self::$space);
     }
 
     /**
@@ -289,14 +314,17 @@ class of_base_sso_tool extends of_base_sso_api {
      *      响应数据
      * 作者 : Edgar.lee
      */
-    private static function &request(&$params) {
+    private static function &request(&$params, $space) {
         static $mode = null;
+        //工具包session引用
+        $tool = &self::session(1, $space);
         //引用配置文件
-        $config = &self::$config;
+        $config = &$tool['config'];
 
         $params += array(
+            'c'      => 'of_base_sso_api',
             'name'   => &$config['name'], 
-            'ticket' => $_SESSION['_of']['of_base_sso']['tool']['ticket']
+            'ticket' => $tool['ticket']
         );
         $url = of_base_sso_api::getUrl($config['url'], $params, $config['key']);
         $mode === null && $mode = preg_match('@^\w+://' .of_base_com_net::$params['host']. '\b@', $url);
@@ -307,10 +335,12 @@ class of_base_sso_tool extends of_base_sso_api {
         //引用响应值
         $data = &$response['response'];
         //重启session
-        $mode && (function_exists('session_open') ? session_open() : session_start());
+        $mode && L::session();
+        //重置会话
+        $mode && self::session(8, $space);
 
         if ($response['state'] && $data = json_decode($data, true)) {
-            $_SESSION['_of']['of_base_sso']['tool']['ticket'] = &$data['ticket'];
+            isset($data['ticket']) && $tool['ticket'] = $data['ticket'];
             unset($data['ticket']);
         } else {
             $data = array(
@@ -320,7 +350,7 @@ class of_base_sso_tool extends of_base_sso_api {
         }
 
         if ($data['state'] >= 500) {
-            unset($_SESSION['_of']['of_base_sso']['tool']);
+            self::session(4, $space);
 
             if ($data['state'] !== 504) {
                 //相关校验信息未通过
@@ -329,6 +359,130 @@ class of_base_sso_tool extends of_base_sso_api {
             }
         }
         return $data;
+    }
+
+    /**
+     * 描述 : 操作会话数据
+     * 参数 :
+     *      order : 操作指令, 1=读取会话, 2=退出会话, 4=清空会话, 8=重置会话
+     *      space : 操作空间
+     * 返回 :
+     *      {
+     *          "config" :&SSO配置
+     *          "ticket" :&通信票据
+     *          "online" :&在线用户
+     *          "check"  :&票据校验
+     *      }
+     * 作者 : Edgar.lee
+     */
+    private static function &session($order, $space) {
+        //登录配置 {空间正则 : SSO配置, ...}
+        static $config = null;
+        //空间配置 {配置标识 : {"ticket" : 通信票据, "config" : SSO配置}, ...}
+        static $sConf = array();
+        //缓存结果集
+        static $result = null;
+
+        //初始化sso配置
+        if ($config === null) {
+            //加载接口类, 开启SESSION
+            class_exists('of_base_sso_api');
+            //读取sso配置
+            $config = of::config('_of.sso');
+            //追加重置会话
+            $order |= 8;
+
+            //单点配置客户端 || 单点配置服务端
+            if (isset($config['name']) || isset($config['dbPool'])) {
+                //格式sso配置=>{空间正则 : SSO配置, ...}
+                $config = array('@.@' => $config);
+            }
+
+            //生成空间配置
+            foreach ($config as $k => &$v) {
+                //含客户端配置
+                if (isset($v['name'])) {
+                    //初始服务器地址
+                    $v['url'] || $v['url'] = OF_URL . '/index.php';
+                    //计算服务端标识
+                    $v['digest'] = md5($v['url']);
+                    //通过标识引用配置
+                    $sConf[$v['digest']]['config'] = &$v;
+                //移除服务端配置
+                } else {
+                    unset($config[$k]);
+                }
+            }
+        }
+
+        //工具包session引用
+        $tool = &$_SESSION['_of']['of_base_sso']['tool'];
+
+        if ($order & 8) {
+            //初始化在线列表
+            isset($tool['online']) || $tool['online'] = array();
+            //初始客户端ticket列表
+            ($index = &$tool['client']) || $index = array();
+
+            //整理客户端连接
+            foreach ($index as $k => &$v) {
+                //空间配置存在
+                if (isset($sConf[$v['digest']])) {
+                    //共享相同配置的相同 ticket
+                    $sConf[$v['digest']]['ticket'] = &$v['ticket'];
+                //清理无效登录
+                } else {
+                    unset($tool['client'][$k], $tool['online'][$k]);
+                }
+            }
+        }
+
+        //空间连接不存在
+        if (empty($tool['client'][$space])) {
+            //匹配SSO登录配置
+            foreach ($config as $k => &$v) {
+                //空间匹配成功
+                if (preg_match($k, $space)) {
+                    $tool['client'][$space] = array(
+                        'digest' => &$v['digest'],
+                        'ticket' => &$sConf[$v['digest']]['ticket'],
+                        'check'  => ''
+                    );
+                    break ;
+                }
+            }
+        }
+
+        //客户端有效
+        if (isset($tool['client'][$space])) {
+            //引用框架客户端连接
+            $index = &$tool['client'][$space];
+
+            //退出会话
+            if ($order & 2) {
+                unset($tool['online'][$space]);
+            //清空会话
+            } else if ($order & 4) {
+                //清空所有共享的ticket
+                $index['ticket'] = null;
+                //清空所有共享ticket登录信息
+                foreach ($tool['online'] as $k => &$v) {
+                    if (!$tool['client'][$k]['ticket']) unset($tool['online'][$k]);
+                }
+            }
+
+            //修改空间会话数据
+            $result = array(
+                'config' => &$sConf[$index['digest']]['config'],
+                'ticket' => &$index['ticket'],
+                'online' => &$tool['online'],
+                'check'  => &$index['check'],
+            );
+            return $result;
+        //SSO空间无效
+        } else {
+            throw new Exception('SSO space is invalid: ' . $space);
+        }
     }
 }
 

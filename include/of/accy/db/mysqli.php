@@ -463,6 +463,9 @@ class of_accy_db_mysqli extends of_db {
 
         //加载的文件未变动
         while (!of_base_com_timer::renew()) {
+            //休眠5s重新缓存
+            sleep(5);
+
             //SQL执行成功
             if ($isOn && ($temp = of_db::sql($sql, __METHOD__)) !== false) {
                 //递归阻塞列表, 被阻数据
@@ -549,10 +552,9 @@ class of_accy_db_mysqli extends of_db {
                         unset($bList[$kb]);
                     }
                 }
+            } else {
+                break ;
             }
-
-            //休眠5s重新缓存
-            sleep(5);
         }
     }
 }

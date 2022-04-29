@@ -19,6 +19,7 @@ function initSql($params = null) {
         $index = &of::event('of_db::after', null);
         array_unshift($index['list'], array(
             'isCall' => true,
+            'isExec' => true,
             'event'  => array($this, 'afterSql'),
             'change' => false
         ));

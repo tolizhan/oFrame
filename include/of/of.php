@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200254);
+define('OF_VERSION', 200256);
 
 /**
  * 描述 : 控制层核心
@@ -21,7 +21,16 @@ class of {
          *          "file"  :o指定调用磁盘路径, 绝对路径
          *      }
          */
-        'getText' => 'public static function &getText($s) {return $s;}'
+        'getText' => 'public static function &getText($s) {return $s;}',
+
+        /**
+         * 描述 : 开关SESSION
+         * 参数 :
+         *      type : true=开启, false=关闭
+         */
+        'session' => 'public static function session($type = true) {
+            $type ? @session_start() : session_commit();
+        }'
     );
     //是否支持命名空间
     private static $isSpace = false;
@@ -974,6 +983,14 @@ class of {
             $_SERVER['QUERY_STRING'] && $_SERVER['REQUEST_URI'] .= '?' . $_SERVER['QUERY_STRING'];
             //本机IP
             isset($_SERVER['SERVER_ADDR']) || $_SERVER['SERVER_ADDR'] = '127.0.0.1';
+        //COOKIE重新解析键名含%xx的格式
+        } else if (isset($_SERVER['HTTP_COOKIE'])) {
+            parse_str(
+                str_replace(array('&', '; '), array('%26', '&'), $_SERVER['HTTP_COOKIE']),
+                $_COOKIE
+            );
+            //防注入格式化
+            ini_get('magic_quotes_gpc') && self::slashesDeep($_COOKIE);
         }
 
         //防注入处理的超全局变量
@@ -992,7 +1009,7 @@ class of {
         $config['_of'] = &self::arrayReplaceRecursive($of, $config['_of']);
 
         //默认节点名称
-        ($index = &$of['nodeName']) || $index = $_SERVER['SERVER_ADDR'] . php_uname();
+        isset($of['nodeName']) || $of['nodeName'] = $_SERVER['SERVER_ADDR'] . php_uname();
 
         //默认时区 框架时区>系统时区>PRC时区
         if (
