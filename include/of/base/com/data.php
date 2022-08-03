@@ -148,7 +148,7 @@ class of_base_com_data {
      *                          "list" : 枚举列表, [有效字符串, ...]
      *                          "min"  : 最少选项,
      *                          "max"  : 最多选项,
-     *                          "mode" : 校验类型, null(默认)=不校验, true=必须数组, false=必须标量
+     *                          "mode" : 校验类型, null(默认)=不校验, true=数组格式, false=标量格式
      *                      }
      *                      "mail"   : 验证邮箱, argv无参数
      *                      "call"   : 回调验证, null=验证成功, 其它=提示错误, argv参数符合回调结构, 接收参数 {
@@ -215,7 +215,7 @@ class of_base_com_data {
                                         $temp = $postr . strtr($k, $revert);
 
                                         //键名验证
-                                        isset($aKey['type']) && $list[] = array($k, &$aKey, $temp, null);
+                                        isset($aKey['type']) && $list[] = array($k, $aKey, $temp, null);
 
                                         //继续引导定位
                                         if ($vs['boot']) {
@@ -435,11 +435,12 @@ class of_base_com_data {
                                 break;
                             }
 
-                            if ($temp = array_diff($enum, $argv['list'])) {
-                                $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') .
-                                    " illegal, should be {$index['type']} : " .
-                                    json_encode($temp);
-                            }
+                            //比对差级
+                            $temp = array();
+                            foreach ($enum as &$v) in_array($v, $argv['list']) || $temp[] = &$v;
+                            $temp && $error[$shift[2]] = ($shift[3] === null ? 'Key' : 'Val') .
+                                " illegal, should be {$index['type']} : " .
+                                json_encode($temp);
                             break;
                         //邮件
                         case 'mail':

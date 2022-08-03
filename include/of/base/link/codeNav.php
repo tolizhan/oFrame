@@ -35,6 +35,9 @@ namespace of\accy\com\mq {
 
 namespace of\accy\db {
 
+    class mssqlPdo extends \of_accy_db_mssqlPdo {
+    }
+
     class mysql extends \of_accy_db_mysql {
     }
 
@@ -281,6 +284,14 @@ namespace {
 
         public static function rule(&$rule, $exit = true) {
             /*return of_base_link_request::rule($rule, $exit);*/
+        }
+
+        public static function &json($data, $mode = 1) {
+            /*return of_base_com_data::json($data, $mode);*/
+        }
+
+        public static function uniqid($prefix = '', $isShow = true, $minLen = 3) {
+            /*return of_base_com_str::uniqid($prefix, $isShow, $minLen);*/
         }
 
         public static function open($name) {

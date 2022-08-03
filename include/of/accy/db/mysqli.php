@@ -426,13 +426,13 @@ class of_accy_db_mysqli extends of_db {
 
         //获取基础属性(版本, 时区)
         $attr = of_db::sql(
-            'SELECT VERSION() ver, TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP, NOW()) tz',
+            'SELECT VERSION() ver, TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), NOW()) tz',
             __METHOD__
         );
         //跟随 SYSTEM_TIME_ZONE 时区
         of_db::sql('SET TIME_ZONE = "SYSTEM"', __METHOD__);
         //获取时区时间戳
-        $tz = of_db::sql('SELECT TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP, NOW()) stz', __METHOD__);
+        $tz = of_db::sql('SELECT TIMESTAMPDIFF(SECOND, UTC_TIMESTAMP(), NOW()) stz', __METHOD__);
         //计算系统时区[系统时区, 连接时区]
         $tz = array(
             (($tz = round($tz[0]['stz'], -2)) < 0 ? '-' : '+') . abs($tz / 3600) . ':00',

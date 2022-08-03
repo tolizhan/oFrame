@@ -13,8 +13,8 @@ class of_base_com_csv {
      *      row, col 为 数字=正负位置, null=结尾位置, false=插入操作, true=替换操作
      * 参数 :
      *      val : 数组=插入数据, false=删除数据
-     *      row : 指定行位置, 默认null
-     *      col : 指定列位置, 默认false
+     *      row : 指定行位置, 默认null, bool=对列操作
+     *      col : 指定列位置, 默认false, bool=对行操作
      * 作者 : Edgar.lee
      */
     public static function addRow($val, $row = null, $col = false) {
@@ -36,7 +36,7 @@ class of_base_com_csv {
             //初始化列
             $col === null && $col = $td['col'];
             //初始数据
-            for ($i = $col - count($val); $i > 0; $i--) $val[] = '';
+            for ($i = $td['row'] - count($val); $i > 0; $i--) $val[] = '';
 
             reset($fileArr);
             foreach ($val as &$v) {

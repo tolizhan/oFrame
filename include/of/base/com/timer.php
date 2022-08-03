@@ -1,6 +1,24 @@
 <?php
 /**
  * 描述 : 计划任务,定时回调
+ * 注明 :
+ *      磁盘结构 : {
+ *          "/concurrent"  : 并发任务列表 {
+ *              /任务ID     : 单个任务信息 {
+ *                  "/info.php" : 存储回调信息
+ *                  其它为数字  : 任务并发, 启动时加独享锁, 存储启动时间戳
+ *              },
+ *              /任务ID.php : 任务启动时加共享锁, 清理时加独享锁, 未存信息
+ *          },
+ *          "/taskTrigger" : 分布式节点信息 {
+ *              /节点ID : 单个节点信息 {
+ *                  "/nodeInfo.php" : 节点信息, _of.nodeName,
+ *                  "/taskLock"     : 任务进程, 启动时独享锁
+ *                  "/protected"    : 保护进程, 启动时独享锁
+ *              }, ...
+ *          }
+ *          "taskList.php" : 动态任务文件模式下存储的文件
+ *      }
  * 作者 : Edgar.lee
  */
 class of_base_com_timer {
@@ -505,6 +523,22 @@ class of_base_com_timer {
             'this' => &$cAvg
         );
 
+        //保护linux进程不被SIGTERM信号杀掉
+        if (function_exists('pcntl_signal')) {
+            //将回调转成"类名(::xx)?"的模式
+            if (is_array($class = $call['call'])) {
+                //{"asCall" : 回调, "params" : 参数} 结构
+                isset($class['asCall']) && $class = $class['asCall'];
+                //[对象或类名, 方法] 结构
+                is_array($class) && $class = $class[0];
+                //对象->类名
+                is_object($class) && $class = get_class($class);
+            }
+
+            //框架类回调 || 信号1~32(9 19 32 linux 无效, 17 mac 无效)
+            preg_match('@^\\\\?of(_|\b)@', $class) || pcntl_signal(15, SIG_IGN);
+        }
+
         //清理机制
         if (rand(0, 99) === 1) {
             $path = self::$config['path'] . '/concurrent';
@@ -585,21 +619,23 @@ class of_base_com_timer {
         //windows系统
         if ($config['osType'] === 'win') {
             //读取CPU使用率, 耗时1s
-            preg_match(
+            $rate = preg_match(
                 "@[0-9]+@",
-                fread(popen('WMIC CPU GET LOADPERCENTAGE /ALL', 'r'), 1024),
+                stream_get_contents(popen('WMIC CPU GET LOADPERCENTAGE /VALUE', 'r'), 1024),
                 $rate
-            );
-            $rate = intval((int)$rate[0] / 10);
+            ) ? intval((int)$rate[0] / 10) : 5;
         //类linux系统
         } else {
+            //区分mac(Darwin)与linux命令
+            $rate = $config['osType'] === 'dar' ?
+                'top -l 1 | grep "CPU usage"' :
+                'top -b -d 1 -n 2 | grep "Cpu(s)" | tail -n 1';
             //读取CPU使用率, 耗时1s
-            preg_match_all(
+            $rate = preg_match(
                 "@[^,]+id@",
-                fread(popen('top -b -d 1 -n 2 | grep -E "(Cpu\(s\))"', 'r'), 1024),
+                stream_get_contents(popen($rate, 'r'), 1024),
                 $rate
-            );
-            $rate = intval(10 - (int)$rate[0][1] / 10);
+            ) ? intval(10 - (int)$rate[0] / 10) : 5;
         }
 
         //CPU 占用 <= 50%
@@ -697,21 +733,6 @@ class of_base_com_timer {
                     //读取任务列表
                     $task = of_base_com_disk::file($fp, true, true);
 
-                    //删除上次计划日志
-                    if ($safe['task']) {
-                        foreach ($safe['task'] as &$v) {
-                            unset($task[$safe['time']][$v]);
-                        }
-
-                        //可能是空数组也可能已被其它并发删掉
-                        if (empty($task[$safe['time']])) unset($task[$safe['time']]);
-                        $call = true;
-                    }
-
-                    //重置保险时间
-                    $safe['time'] = $nowtime + 600;
-                    $safe['task'] = array();
-
                     //有到期任务
                     while (($time = key($task)) && $nowtime >= $time) {
                         foreach ($task[$time] as $k => &$v) {
@@ -728,12 +749,8 @@ class of_base_com_timer {
                             //更新剩余任务数
                             $mode -= $cNum;
 
-                            //并发已完全运行, 应执行数 > 已执行数
+                            //并发已完全运行, 应执行数 <= 已执行数
                             if ($tNum <= $v['rNum']) {
-                                //保存唯一键
-                                $safe['task'][] = $k;
-                                //计划任务切换到保险位置
-                                $task[$safe['time']][$k] = &$v;
                                 //删除完成的任务
                                 unset($task[$time][$k]);
                             }
@@ -769,19 +786,6 @@ class of_base_com_timer {
 
                 //是否有数据 && 读取详细信息
                 if (($result = !empty($temp)) && is_int($mode)) {
-                    //删除上次计划日志
-                    if ($safe['task']) {
-                        $sql = 'DELETE FROM
-                            `_of_com_timer`
-                        WHERE
-                            `hash` IN ("' .join('","', $safe['task']). '")';
-                        of_db::sql($sql, $config['params']['dbPool']);
-                    }
-
-                    //重置保险时间
-                    $safe['time'] = $nowtime + 600;
-                    $safe['task'] = array();
-
                     //读取所需数量任务
                     $sql = "SELECT
                         `hash`, `task`
@@ -818,11 +822,13 @@ class of_base_com_timer {
                                 `task` = "' .addslashes(serialize($call)). '"
                             WHERE
                                 `hash` = "' .$v['hash']. '"';
-                            of_db::sql($sql, $config['params']['dbPool']);
                         } else {
-                            //保存唯一键
-                            $safe['task'][] = $v['hash'];
+                            $sql = 'DELETE FROM
+                                `_of_com_timer`
+                            WHERE
+                                `hash` = "' .$v['hash']. '"';
                         }
+                        of_db::sql($sql, $config['params']['dbPool']);
 
                         //未指定并发 || 指定最大任务并发数
                         empty($call['cNum']) || $call['cNum'] = range(
@@ -833,14 +839,6 @@ class of_base_com_timer {
                         //所需任务为空, 结束后续列表
                         if (!$mode) break ;
                     }
-
-                    $sql = 'UPDATE
-                        `_of_com_timer`
-                    SET
-                        `time` = "' .$safe['time']. '"
-                    WHERE
-                        `hash` IN ("' .join('","', $safe['task']). '")';
-                    of_db::sql($sql, $config['params']['dbPool']);
                 }
 
                 //开启事务

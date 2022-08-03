@@ -135,6 +135,38 @@ of::link('&buffer', '$mode = true, $pool = null', 'return of_base_link_response:
 of::link('rule', '&$rule, $exit = true', 'return of_base_link_request::rule($rule, $exit);');
 
 /**
+ * 描述 : 安全的json
+ * 参数 :
+ *      data : 编码或解码的数据
+ *      mode : 位运算操作选项
+ *          0=解码
+ *              2=解码前去掉反斜杠
+ *          1=编码
+ *              2=编码后添加反斜杠
+ * 返回 :
+ *      编码解码后的数据
+ * 作者 : Edgar.lee
+ */
+of::link('&json', '$data, $mode = 1', 'return of_base_com_data::json($data, $mode);');
+
+/**
+ * 描述 : 获取更具唯一性的ID
+ * 参数 :
+ *      prefix : 编码前缀, 不同前缀并发互不影响, ''=全局32位小写唯一编码, 其它=系统级可排序唯一短编码
+ *      isShow : 功能操作,
+ *          数字   = 代替minLen参数,
+ *          布尔   = 显示前缀, true=显示, false=隐藏
+ *          字符串 = 时间结构, 用"\"转义, 默认"ymdHis", 如: "\y\m\dymd-"
+ *      minLen : 自增值最小长度, prefix不为空时有效, 默认3
+ * 返回 : 
+ *      prefix 为假时返回 32位小写字母
+ *      prefix 为真时返回 大写prefix + 两位年月日时分秒时间结构 + minLen计数
+ * 作者 : Edgar.lee
+ * 作者 : Edgar.lee
+ */
+of::link('uniqid', '$prefix = \'\', $isShow = true, $minLen = 3', 'return of_base_com_str::uniqid($prefix, $isShow, $minLen);');
+
+/**
  * 描述 : 加载集成插件
  * 参数 :
  *      name : 插件名称, 在 "/addin/config.php" 中定义的

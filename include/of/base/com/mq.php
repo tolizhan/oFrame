@@ -46,6 +46,19 @@
  *              }
  *          }
  *      }
+ *      磁盘结构 : {
+ *          "/queueTrigger" : 队列监听列表 {
+ *              /节点ID : 单个节点信息 {
+ *                  "/params.php" : {
+ *                      "tNum" : 队列位置,
+ *                      "node" : 节点信息, _of.nodeName
+ *                  },
+ *                  "/queueLock"  : 队列进程, 启动时独享锁,
+ *                  "/protected"  : 保护进程, 启动时独享锁
+ *              }, ...
+ *          },
+ *          "/triggerLock"  : 触发监听文件, 计算分布队列位置时加独享锁
+ *      }
  * 作者 : Edgar.lee
  */
 abstract class of_base_com_mq {
@@ -379,6 +392,8 @@ abstract class of_base_com_mq {
             $check = &$config['check'];
             //检查内存占用峰值
             $memory = $config['memory'] * 1048576;
+            //重置异常消息数据, 不用直等是为了防止多副本启动时间不同导致无法正常重置
+            $isFix = $data['this']['cCid'] % $thisMq['cNum'] === intval($thisMq['cNum'] > 1);
             //可以垃圾回收
             ($isGc = function_exists('gc_enable')) && gc_enable();
             //接收环境变化键名
@@ -399,6 +414,8 @@ abstract class of_base_com_mq {
                 'mqObj'    => &$mqObj
             );
 
+            //安装信号触发器
+            self::exitSignal();
             //重置自身消息数据
             self::resetPaincMqData(null);
 
@@ -414,9 +431,9 @@ abstract class of_base_com_mq {
                     !($check && of_base_com_timer::renew($check))
                 ) {
                     //重置未启动消息数据
-                    if ($data['this']['cCid'] % $thisMq['cNum'] === 1) {
-                        self::resetPaincMqData(2);
-                    }
+                    $isFix && self::resetPaincMqData(2);
+                    //检查退出信号
+                    self::exitSignal();
 
                     //存在消息
                     if ($mqObj->_fire($call, $data)) {
@@ -502,7 +519,9 @@ abstract class of_base_com_mq {
                     ), true);
 
                     //关闭监听触发锁
-                    flock($tLock, LOCK_UN);
+                    unset($tLock);
+                    //安装信号触发器
+                    self::exitSignal();
 
                     //监听标志存在
                     while (!of_base_com_timer::renew()) {
@@ -564,9 +583,12 @@ abstract class of_base_com_mq {
                                 of_base_com_timer::task($v);
                             }
 
-                            sleep(60);
                             //启动保护监听
                             self::listen('protected');
+                            sleep(60);
+
+                            //检查退出信号
+                            self::exitSignal();
                         //关闭监听器
                         } else {
                             //停止在运行的消息进程
@@ -582,8 +604,7 @@ abstract class of_base_com_mq {
             };
 
             //关闭监听触发锁
-            flock($tLock, LOCK_UN);
-            fclose($tLock);
+            unset($tLock);
         //成功占用监听
         } else if ($lock = self::lockListen($name)) {
             if ($type === null) {
@@ -776,17 +797,19 @@ abstract class of_base_com_mq {
         date_default_timezone_set($fireEnv['timezone']);
         //清空消息数据
         $fireEnv['mqData'] = &$null;
-        //计算返回数据
-        $return  = isset($result['code']) && is_int($result['code']) ?
-            $result['code'] < 400 : $result;
         //修改并发日志
-        $cLog['doneTime'] = date('Y-m-d H:i:s', time());
+        $cLog['doneTime'] = date('Y-m-d H:i:s', $time = time());
         //记录当前内存
         $cLog['useMemory'] = memory_get_peak_usage();
         //清空异常消息
         unset($cLog['quitData']);
         //记录监听数据
         of_base_com_timer::data(array('_mq' => &$cLog));
+
+        //计算返回数据(框架响应结构 ? 小于400 : (数字格式 > 5年 ? 指定时间 : 返回值))
+        $return  = isset($result['code']) && is_int($result['code']) ?
+            $result['code'] < 400 :
+            (is_int($result) && $result > 63072000 ? $result - $time : $result);
 
         //(返回false && 每5次报错) || (返回true && 事务未结束) || (非布尔 && 非数字)
         if (
@@ -953,6 +976,28 @@ abstract class of_base_com_mq {
         ) {
             //{队列池:{队列名:{}, ...}} 转成 {队列名:{}, ...}
             $config = $config[$pool];
+        }
+    }
+
+    /**
+     * 描述 : 注册并接收退出信号
+     * 作者 : Edgar.lee
+     */
+    private static function exitSignal($type = true) {
+        //初始化状态, null=未初始化, true=信号安装, false=不支持
+        static $init = null;
+
+        //首次运行
+        if ($init === null) {
+            //支持延迟触发信号 && 安装SIGTERM信号处理器
+            ($init = function_exists('pcntl_signal_dispatch')) &&
+                pcntl_signal(15, 'of_base_com_mq::exitSignal');
+        //信号处理
+        } else if (is_int($type)) {
+            exit;
+        //检查信号
+        } else if ($init) {
+            pcntl_signal_dispatch();
         }
     }
 

@@ -108,21 +108,40 @@ class of_base_com_disk {
     }
 
     /**
-     * 描述 : 为并发流程创建独占通道
+     * 描述 : 为并发流程创建独占通道, 工作中的锁会随工作结束而解锁
      * 参数 :
      *      name : 锁通道标识, 推荐使用一个"::"分组来提升性能
-     *      lock : 文件加锁方式 LOCK_EX, LOCK_SH, LOCK_UN, LOCK_NB
+     *      lock : 文件加锁方式 1=共享锁, 2=独享锁, 3=解除锁, 4=非堵塞(LOCK_NB)
      * 返回 :
      *      true=成功, false=失败
+     * 注明 :
+     *      静态结构($data) : {
+     *          "path" : 磁盘加锁路径
+     *          "list" : 加锁列表 {
+     *              锁标识 : {
+     *                  "lock" : 锁资源
+     *                  "wuid" : 工作ID
+     *              }, ...
+     *          }
+     *      }
      * 作者 : Edgar.lee
      */
-    public static function lock($name, $lock = LOCK_EX) {
+    public static function lock($name, $lock = 2) {
         static $data = null;
+
+        //工作完成回调
+        if (is_array($name)) {
+            foreach ($data['list'] as $k => &$v) {
+                //清理工作中的加锁数据
+                if ($v['wuid'] === $name['wuid']) unset($data['list'][$k]);
+            }
+            return ;
+        }
 
         //初始化结构
         $data === null && $data['path'] = ROOT_DIR . OF_DATA . '/_of/of_base_com_disk/lock';
-        //加锁文件名
-        $file = md5($name);
+        //加锁文件标识
+        $mark = md5($name);
         //计算加锁路径
         $dir = explode('::', $name, 2);
         $dir = $data['path'] . '/' . (isset($dir[1]) ? md5($dir[0]) : 'default');
@@ -136,9 +155,11 @@ class of_base_com_disk {
         ));
 
         //初始化连接
-        ($index = &$data['flie'][$file]) || $index = fopen($dir . '/' . $file, 'w');
+        ($index = &$data['list'][$mark]) || $index['lock'] = fopen($dir . '/' . $mark, 'w');
+        //记录工作ID && 处在工作中 && 添加工作完成回调
+        ($index['wuid'] = of::work('info', 'wuid')) && of::work('done', __METHOD__, __METHOD__);
         //解锁操作(加锁失败 || 解锁操作)
-        if (!($result = flock($index, $lock)) || $lock === LOCK_UN) unset($data['flie'][$file]);
+        if (!($result = flock($index['lock'], $lock)) || ($lock & 3) === 3) unset($data['list'][$mark]);
         //加锁操作
         return $result;
     }

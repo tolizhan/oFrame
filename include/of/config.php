@@ -29,10 +29,12 @@ return array(
     'db'          => array(
         #单数据库混合写法
         //*
-        //数据库连接方式(mysqlPdo, mysqli, mysql, tidb)
+        //数据库连接方式(mysqlPdo, mysqli, mysql, tidb, mssqlPdo)
         'adapter'        => 'mysqli',
         //数据库连接参数
         'params'         => array(
+            #mysql, tidb 模式
+            //*
             'host'       => '127.0.0.1',
             'port'       => 3306,
             'user'       => 'root',
@@ -53,6 +55,20 @@ return array(
             ),
             //是否长连接
             'persistent' => false
+            // */
+
+            #mssql 模式
+            /*
+            'host'       => '127.0.0.1',
+            'port'       => 1433,
+            'user'       => 'root',
+            'password'   => 'admin',
+            'database'   => 'test',
+            //设置隔离级别, ""=跟随系统, "READ UNCOMMITTED", "READ COMMITTED", "REPEATABLE READ", "SERIALIZABLE"
+            'isolation'  => 'READ COMMITTED',
+            //是否长连接
+            'persistent' => false
+            // */
         )
         // */
 

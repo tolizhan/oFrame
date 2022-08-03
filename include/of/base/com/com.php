@@ -749,7 +749,7 @@ class of_base_com_com {
      * 参数 :
      *     &data : 需排序的数组
      *      sort : 排序规则参数
-     *          type未空时, 按照sort键在data定位的值排序 {
+     *          type为空时, 按照sort键在data定位的值排序 {
      *              定位属性值'.'为分层'`'为转义符 : 去SORT_的array_multisort排序常量, 默认"ASC,REGULAR",
      *              ...
      *          }

@@ -1,3 +1,42 @@
+版本: 258
+作者: Edgar
+日期: 2022年8月3日 17:05:28
+信息:
+说明: + L类加两个方法,安全可读"json"与唯一值"uniqid"
+      + 保护cron与mq不被类linux系统的SIGTERM信号杀掉
+      + 增加数据库"SQL Server"连接, 适配器"mssqlPdo"
+      + 消费队列回调返回大于五年秒数时为指定时间重试
+      + of::work 产生500错误时data中含file和line信息
+      - 工作中of_base_com_disk::lock在工作结束时解锁
+      - 模版引擎__del功能中"$__del"变量改名为"$_vis"
+      * 修复宕机恢复时并发计划任务有概率多启动的问题
+      * 优化消息队列mysql表索引,解决消费潜在死锁问题
+      * 修复of_base_com_csv::addRow 添加列失败的问题
+      * 修复分布式并发任务负载时,不兼容MAC系统的问题
+      * 解决php >= 7.4异常日志回溯没有方法参数的问题
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/config/queue.php
+已增加 : /trunk/demo/tool/stopAsyncProcess
+已增加 : /trunk/demo/tool/stopAsyncProcess/stop.sh
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已增加 : /trunk/include/of/accy/db/mssqlPdo.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/csv.php
+已修改 : /trunk/include/of/base/com/data.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/link/codeNav.php
+已修改 : /trunk/include/of/base/link/setup.php
+已修改 : /trunk/include/of/base/test/toolBaseClass.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+
 版本: 256
 作者: Edgar
 日期: 2022年4月29日 11:24:31

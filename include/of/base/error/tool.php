@@ -56,7 +56,7 @@ class of_base_error_tool {
                 $data[$k]['_line'] = $index['line'];
                 //日志大于10M, 显示下载标识
                 $data[$k]['_mode'] = $v['offset']['len'] > 10485760 ?
-                    'DL' : '<input name="radio" type="radio">';
+                    'DL' : '<input name="' . $params['mode'] . 'Radio" type="radio">';
                 //截取100k摘要信息
                 $data[$k]['_info'] = '<pre>' . htmlspecialchars(iconv(
                     'UTF-8', 'UTF-8//IGNORE', substr($index['info'], 0, 102400)

@@ -127,21 +127,21 @@ class of_base_htmlTpl_engine {
                 //移除__del属性
                 $nodeObj->removeAttr($temp[0]);
 
-                //静态删除属性
-                if (strpos($temp[1], '$__del') === false) {
-                    foreach (explode(' ', $temp[1]) as $temp[2]) {
-                        $nodeObj->removeAttr($temp[2]);
-                    }
                 //动态删除节点
-                } else {
+                if (preg_match('@\$_vis|\$__del@', $temp[1])) {
                     //动态判断删除语句
-                    $temp[1] = '$__del = \'\'; ' . $temp[1] . '; if ($__del) {';
+                    $temp[1] = '$_vis = $__del = \'\'; ' . $temp[1] . '; if ($_vis || $__del) {';
                     //插入语法 if
                     $nodeObj->m("<!--{$config['tagKey'][0]} {$temp[1]} {$config['tagKey'][1]}-->\n")
                         ->insertBefore($nodeObj);
                     //结束语法 if
                     $nodeObj->m("<!--{$config['tagKey'][0]} } {$config['tagKey'][1]}-->\n")
                         ->insertAfter($nodeObj);
+                //静态删除属性
+                } else {
+                    foreach (explode(' ', $temp[1]) as $temp[2]) {
+                        $nodeObj->removeAttr($temp[2]);
+                    }
                 }
             //删除节点
             } else {

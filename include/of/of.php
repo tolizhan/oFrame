@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200256);
+define('OF_VERSION', 200258);
 
 /**
  * 描述 : 控制层核心
@@ -641,7 +641,10 @@ class of {
                 throw new Exception('Failed to commit transaction: ' . $ePool);
             //提交事务 && 存在错误, 发生内部错误
             } else if ($code && $iwErr[0]) {
-                self::work(500, 'An internal error occurred');
+                self::work(500, 'An internal error occurred', array(
+                    'file' => $iwErr[0]['file'],
+                    'line' => $iwErr[0]['line']
+                ));
             //一切正常移除栈列
             } else {
                 //是否提交事务, true=提交, false=回滚
@@ -747,12 +750,9 @@ class of {
 
             //处理捕获的异常
             if (is_object($code)) {
-                //已开启工作 && 回滚当前工作
-                isset($sList[0]) && self::work(false);
-
                 //是内置异常类
                 if (get_class($code) === $class) {
-                    return array(
+                    $result = array(
                         'code' => $code->getCode(),
                         'info' => $code->getMessage(),
                         'data' => &$code->data
@@ -760,12 +760,19 @@ class of {
                 //其它常规异常
                 } else {
                     of::event('of::error', true, $code);
-                    return array(
+                    $result = array(
                         'code' => 500,
                         'info' => L::getText('An internal error occurred', array('key' => __METHOD__)),
-                        'data' => array()
+                        'data' => array(
+                            'file' => self::$workErr[0]['file'],
+                            'line' => self::$workErr[0]['line']
+                        )
                     );
                 }
+
+                //已开启工作 && 回滚当前工作
+                isset($sList[0]) && self::work(false);
+                return $result;
             //抛出异常
             } else {
                 $code = new $class(L::getText($info, array(
@@ -840,15 +847,17 @@ class of {
                 'file' => &$error['file'], 'line' => &$error['line']
             );
 
-            //开发模式 && 显示错误信息
-            if (OF_DEBUG && $info !== false) {
+            //非直接存储
+            if ($info !== false) {
                 //格式化文件路径
                 $error['file'] = strtr(substr($error['file'], strlen(ROOT_DIR)), '\\', '/');
-                //打印日志
-                $info = htmlentities($error['info'], ENT_QUOTES, 'UTF-8');
-                echo '<pre style="color:#F00; font-weight:bold; margin: 0px;">',
-                    "[{$error['code']}] : \"{$info}\" in {$error['file']} on line {$error['line']}",
-                    '. Timestamp : ', time(), '</pre>';
+                //开发模式, 打印日志
+                if (OF_DEBUG) {
+                    $info = htmlentities($error['info'], ENT_QUOTES, 'UTF-8');
+                    echo '<pre style="color:#F00; font-weight:bold; margin: 0px;">',
+                        "[{$error['code']}] : \"{$info}\" in {$error['file']} on line {$error['line']}",
+                        '. Timestamp : ', time(), '</pre>';
+                }
             }
         }
     }
@@ -1082,6 +1091,8 @@ class of {
             'classPre' => 'of_', 'mapping' => substr(OF_DIR, strlen(ROOT_DIR) + 1) . '/'
         ), true);
 
+        //异常调用回溯"getTrace"方法, 返回参数 php>=7.4
+        ini_set('zend.exception_ignore_args', '0');
         //隐藏原生错误
         ini_set('display_errors', false);
         //防止禁用错误

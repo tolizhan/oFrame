@@ -355,8 +355,8 @@ class of_base_com_net {
                 $mode = true;
                 $data = array(
                     'type'    => 'POST',
-                    'data'    => serialize($data), 
-                    'header'  => '',
+                    'data'    => serialize($data),
+                    'header'  => 'Content-Type: text/plain',
                     'cookie'  => '',
                     'timeout' => array(30)
                 );

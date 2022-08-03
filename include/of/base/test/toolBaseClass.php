@@ -72,6 +72,8 @@ class of_base_test_toolBaseClass {
 
             //整理
             foreach ($data as $k => &$v) {
+                //跳过文件夹
+                if ($v) continue;
                 //加载配置
                 $temp = include $k;
                 //相对路径

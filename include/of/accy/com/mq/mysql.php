@@ -16,7 +16,7 @@
  *          `lockTime` timestamp NOT NULL DEFAULT '2000-01-01 00:00:00' COMMENT '锁定时间, 每 syncLevel * 5 分钟重试',
  *          `lockMark` char(32) NOT NULL COMMENT '锁定时生成的唯一ID',
  *          PRIMARY KEY (`type`,`mark`) USING BTREE,
- *          KEY `idx_consumer` (`type`,`lockTime`,`queue`) USING BTREE
+ *          KEY `idx_consumer` (`lockTime`,`type`,`queue`) USING BTREE
  *      ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='消息队列表'
  *      /*!50100 PARTITION BY KEY (`type`) PARTITIONS 251 * /;
  * 作者 : Edgar.lee
@@ -71,19 +71,21 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
         foreach ($msgs as &$v) {
             $keys = &$v['keys'];
             $mark = md5($this->vHost . "\1" . $v['queue'] . "\1" . $keys[0] . "\1" . $keys[1]);
+            //排序键, 与`_of_com_mq`主键顺序一致, 防止插入死锁
+            $sort = $keys[0] . ' ' . $mark;
             //触发时间
             $exeTime = date('Y-m-d H:i:s', $stamp + $keys[2]);
 
             //删除数据
             if ($v['data'] === null) {
-                $wait[$mark] = array(
+                $wait[$sort] = array(
                     'mode' => 'del',
                     'data' => "(`mark` = '{$mark}' AND `type` = '{$keys[0]}')"
                 );
             //增改数据
             } else {
                 $temp = addslashes(json_encode($v['data']));
-                $wait[$mark] = array(
+                $wait[$sort] = array(
                     'mode'  => 'set',
                     'data'  => "(
                         '{$mark}', '{$this->vHost}', '{$v['queue']}',
@@ -159,9 +161,9 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                 foreach ($marks as &$v) $v = $v['mark'];
                 $marks = join('\',\'', $marks);
 
-                //锁定数据
+                //锁定数据(指定主键索引, 防止Index Hints到idx_consumer上)
                 $sql = "UPDATE
-                    `_of_com_mq`
+                    `_of_com_mq` USE INDEX (PRIMARY)
                 SET
                     `syncCount` = `syncCount` + 1,
                     `syncLevel` = `syncLevel` + 1,
@@ -345,12 +347,14 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             //操作长度
             $sLen = 0;
             //操作列表
-            $list = array();
+            $list = $reset = array();
             //待处理列表
             $wait = &$this->waitList;
             ksort($wait);
             //增加结束标识
             $wait['']['data'] = '';
+            //重置待处理列表
+            $this->waitList = &$reset;
 
             foreach ($wait as $k => &$v) {
                 if (
@@ -401,8 +405,6 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                 $list[] = &$v['data'];
             }
 
-            //重置待处理列表
-            $wait = array();
             return of_db::pool($this->dbPool, 'state');
         } else {
             return $this->noTran || of_db::sql(true, $this->dbPool);

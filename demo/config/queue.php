@@ -1,6 +1,6 @@
 <?php
 return array(
-    //生产消息时会同时发给个队列
+    //生产消息时会同时发给多队列
     'queue1' => array(
         //队列模式, null=生产及消费, false=仅生产, true=仅消费
         'mode' => null,
