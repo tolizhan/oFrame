@@ -29,7 +29,7 @@ class of_accy_db_mysql extends of_db {
             $this->connection = $connection;
             //设置字体, GROUP_CONCAT最大长度
             $temp = "SET NAMES '{$params['charset']}', GROUP_CONCAT_MAX_LEN = 4294967295";
-            //设置严格模式
+            //设置严格模式, SQL_MODE = REPLACE(@@sql_mode, 'ONLY_FULL_GROUP_BY', '');
             OF_DEBUG === false || $temp .= ', SQL_MODE = "STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ZERO_DATE,NO_ZERO_IN_DATE,NO_ENGINE_SUBSTITUTION"';
             //设置时区
             $params['timezone'] && $temp .= ", TIME_ZONE = '{$params['timezone']}'";

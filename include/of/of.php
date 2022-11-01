@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200258);
+define('OF_VERSION', 200260);
 
 /**
  * 描述 : 控制层核心
@@ -371,7 +371,7 @@ class of {
 
      *     #工作信息(文本)
      *      code : 固定"info"
-     *      info : 获取指定"info"信息, 默认=获取全部, 字符串=全部项里的键名
+     *      info : 获取指定"info"信息, 默认=3(1 | 2), 1=工作ID, 2=监听数据库, 4=注入回调信息
 
      *     #延迟回调(文本) 在工作事务提交前按队列顺序执行
      *      code : 固定"defer"
@@ -421,8 +421,12 @@ class of {
 
      *     #工作信息("info")
      *      不在工作中返回 null
-     *      指定项存在, 返回项信息
-     *      否则返回全部项 {"wuid" : 工作ID, "list" : [监听连接池, ...]}
+     *      指定项存在, 返回项信息, 单项返回值, 多项返回数组 {
+     *              1"wuid"  : 工作ID,
+     *              2"list"  : [监听连接池, ...],
+     *              4"defer" :&{回调ID : 回调信息, ...}
+     *              4"done"  :&{回调ID : 回调信息, ...}
+     *          }
 
      *     #延迟回调("defer")
      *     #完成回调("done")
@@ -700,17 +704,21 @@ class of {
                 //info=工作信息
                 case 'info':
                     if (isset($sList[0])) {
-                        switch ($info) {
-                            case 'wuid':
-                                return $sList[0]['wuid'];
-                            case 'list':
-                                return array_keys($sList[0]['list']);
-                            default :
-                                return array(
-                                    'wuid' => $sList[0]['wuid'],
-                                    'list' => array_keys($sList[0]['list'])
-                                );
-                        }
+                        $info < 1 && $info = 3;
+                        $result = array();
+
+                        //工作ID
+                        $info & 1 && $result['wuid'] = $sList[0]['wuid'];
+                        //监听数据库
+                        $info & 2 && $result['list'] = array_keys($sList[0]['list']);
+                        //注入回调
+                        $info & 4 && $result += array(
+                            'defer' => &$sList[0]['defer'],
+                            'done' => &$sList[0]['done'],
+                        );
+
+                        //仅有一项 ? 返回单项数据 : 返回二维数据
+                        return count($result) === 1 ? reset($result) : $result;
                     } else {
                         return null;
                     }

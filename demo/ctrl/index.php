@@ -44,7 +44,7 @@ class ctrl_index extends L {
 
             //添加完成调用到工作结束前(在父级工作中)
             of::work('done', array(
-                'onWork' => of::work('info', 'list'),
+                'onWork' => of::work('info', 2),
                 'asCall' => 'var_dump',
                 'params' => array(
                     "\n<br>执行完成回调: "

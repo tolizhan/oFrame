@@ -141,7 +141,7 @@ class of_base_sso_tool {
                 'a'       => 'index',
                 'c'       => 'of_base_sso_main',
                 'referer' => of_base_sso_api::getUrl($args),
-                'check'   => $tool['check'] = uniqid(),
+                'check'   => $tool['check'],
                 'name'    => &$config['name'],
             ) + $data;
             $data = of_base_sso_api::getUrl($config['url'], $data);
@@ -446,6 +446,7 @@ class of_base_sso_tool {
                     $tool['client'][$space] = array(
                         'digest' => &$v['digest'],
                         'ticket' => &$sConf[$v['digest']]['ticket'],
+                        //不再使用uniqid(), 解决多iframe同时登录问题
                         'check'  => ''
                     );
                     break ;

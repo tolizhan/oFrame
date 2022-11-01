@@ -28,8 +28,8 @@ class of_base_com_disk {
         } else {
             //嵌套创建文件夹
             is_dir($temp = dirname($filePath)) || @mkdir($temp, 0777, true);
-            //读写方式打开
-            if ($fp = fopen($filePath, 'a+')) {
+            //读写方式打开, 不用"a+"是防止有些磁盘"a"写总是追加操作(不受fseek影响)
+            if ($fp = fopen($filePath, 'c+')) {
                 //读取文件 || 获得只读源
                 if (is_bool($data) || ($data === null && $protected === false)) {
                     //加共享锁
@@ -94,6 +94,9 @@ class of_base_com_disk {
                 fseek($fp, 0, SEEK_END);
             //常规写入
             } else {
+                //游标移到起始位置, 防止部分磁盘支持超过结尾补"\0"功能
+                fseek($fp, 0);
+                //清空文件
                 ftruncate($fp, 0);
                 //写入保护
                 $protected && fwrite($fp, '<?php exit; ?> ');
@@ -157,7 +160,7 @@ class of_base_com_disk {
         //初始化连接
         ($index = &$data['list'][$mark]) || $index['lock'] = fopen($dir . '/' . $mark, 'w');
         //记录工作ID && 处在工作中 && 添加工作完成回调
-        ($index['wuid'] = of::work('info', 'wuid')) && of::work('done', __METHOD__, __METHOD__);
+        ($index['wuid'] = of::work('info', 1)) && of::work('done', __METHOD__, __METHOD__);
         //解锁操作(加锁失败 || 解锁操作)
         if (!($result = flock($index['lock'], $lock)) || ($lock & 3) === 3) unset($data['list'][$mark]);
         //加锁操作
@@ -246,6 +249,32 @@ class of_base_com_disk {
         ksort($data);
         //返回结束信息
         return !$fail;
+    }
+
+    /**
+     * 描述 : 判断文件夹是否为空
+     * 参数 :
+     *      path : 磁盘目录
+     * 返回 :
+     *      true=不存在或空文件夹, false=非空文件夹
+     * 作者 : Edgar.lee
+     */
+    public static function none($path) {
+        //结果集
+        $result = true;
+
+        //文件夹存在 && 打开成功
+        if (is_dir($path) && $hd = opendir($path)) {
+            while (is_string($temp = readdir($hd))) {
+                if (trim($temp, '.')) {
+                    $result = false;
+                    break ;
+                }
+            }
+            closedir($hd);
+        }
+
+        return $result;
     }
 
     /**
@@ -346,7 +375,7 @@ class of_base_com_disk {
 
         if ($result && $clear) {
             //移除空文件夹
-            while (!glob(($sPath = dirname($sPath)) . '/*')) {
+            while (self::none($sPath = dirname($sPath))) {
                 rmdir($sPath) || $result = false;
             }
         }

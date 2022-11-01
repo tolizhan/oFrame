@@ -437,8 +437,10 @@ class of_base_com_timer {
                     if ($isSelf || !$isRun) {
                         //合并写入
                         if (is_array($data)) {
-                            //写入数据
-                            of_base_com_kv::set($dKey, $data + $index['data'], 86400, '_ofSelf');
+                            //合并数据
+                            $data += $index['data'];
+                            //数据不为空(防止读失败导致意外清空) && 写入数据
+                            $data && of_base_com_kv::set($dKey, $data, 86400, '_ofSelf');
                         //删除数据
                         } else if ($data === false) {
                             of_base_com_kv::del($dKey, '_ofSelf');
@@ -579,7 +581,7 @@ class of_base_com_timer {
             touch($temp, $_SERVER['REQUEST_TIME']);
 
             //打开并发文件
-            $fp = fopen($cDir . '/' . $cAvg['cCid'], 'a+');
+            $fp = fopen($cDir . '/' . $cAvg['cCid'], 'c+');
             //加锁成功
             if (flock($fp, LOCK_EX | LOCK_NB)) {
                 //清空文件内容
@@ -613,11 +615,19 @@ class of_base_com_timer {
      * 作者 : Edgar.lee
      */
     private static function getRunNum() {
+        //是否禁用popen, true=禁用, false=启用
+        static $offExec = null;
         //引用配置
         $config = &self::$config;
 
+        if (
+            $offExec ||
+            //未初始化 && popen禁用(安全模式 || 方法被禁用)
+            $offExec === null && $offExec = (ini_get('safe_mode') || !function_exists('popen'))
+        ) {
+            $rate = 5;
         //windows系统
-        if ($config['osType'] === 'win') {
+        } else if ($config['osType'] === 'win') {
             //读取CPU使用率, 耗时1s
             $rate = preg_match(
                 "@[0-9]+@",

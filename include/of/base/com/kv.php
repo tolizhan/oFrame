@@ -207,7 +207,7 @@ class of_base_com_kv {
      * 参数 :
      *      pool  : ('default') 连接池
      * 返回 :
-     *      返回原始资源
+     *      返回原始资源, 失败返回false
      * 作者 : Edgar.lee
      */
     final public static function link($pool = 'default') {
@@ -227,5 +227,6 @@ class of_base_com_kv {
     abstract protected function _del(&$name);                       //删除数据
     abstract protected function _set(&$name, &$value, &$time);      //设置数据
     abstract protected function _get(&$name);                       //读取数据
+    abstract protected function _link();                            //返回资源, 失败false
     abstract protected function _close();                           //关闭连接源// */
 }

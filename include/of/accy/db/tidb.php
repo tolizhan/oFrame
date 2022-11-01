@@ -1,4 +1,14 @@
 <?php
+/**
+ * 描述 : tidb连接
+ * 注明 :
+ *      特别注意 :
+ *          不支持共享锁 LOCK IN SHARE MODE
+ *          自增ID不能用作先后排序
+ *          REPEATABLE READ 隔离级别没有GAP锁
+ *          PARTITION 不支持 KEY 方式
+ * 作者 : Edgar.lee
+ */
 class of_accy_db_tidb extends of_db {
     //连接源
     private $connection = null;
@@ -28,7 +38,7 @@ class of_accy_db_tidb extends of_db {
             $this->connection = $connection;
             //设置字体, GROUP_CONCAT最大长度
             $temp = "SET NAMES '{$params['charset']}', GROUP_CONCAT_MAX_LEN = 4294967295";
-            //设置严格模式
+            //设置严格模式, SQL_MODE = REPLACE(@@sql_mode, 'ONLY_FULL_GROUP_BY', '');
             OF_DEBUG === false || $temp .= ', SQL_MODE = "STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ZERO_DATE,NO_ZERO_IN_DATE,NO_ENGINE_SUBSTITUTION"';
             //设置时区
             $params['timezone'] && $temp .= ", TIME_ZONE = '{$params['timezone']}'";
@@ -41,7 +51,7 @@ class of_accy_db_tidb extends of_db {
             ($index = &$params['errorTrace']) || $index = array();
             $index = (array)$index + array(0, '@.@');
             //事务回滚模式
-            $temp = 'SELECT 
+            $temp = 'SELECT
                 @@innodb_rollback_on_timeout outBack,
                 @@innodb_lock_wait_timeout timeout,
                 CONNECTION_ID() linkCid,

@@ -71,16 +71,20 @@ if (isset($_GET['c'])) {
             round(disk_free_space($path) / 1073741824, 1),
             round(disk_total_space($path) / 1073741824, 1)
         );
+        //提示 popen无法使用
+        $tips = ini_get('safe_mode') || !function_exists('popen') ?
+            'tips: <font color="red">safe_mode or popen() has been disabled</font><br>\n' : '';
 
         echo "<hr>\n",
             'OF: ', OF_VERSION, "<br>\n",
-            'PHP: ', PHP_VERSION,  "<br>\n",
+            'PHP: ', PHP_VERSION, ' x', PHP_INT_SIZE << 3, "<br>\n",
             'Server: ', $_SERVER['SERVER_SOFTWARE'], "<br>\n",
             'System: ', php_uname(), "<br>\n",
             'Time: ', date('Y-m-d H:i:s P e U', $_SERVER['REQUEST_TIME']), "<br>\n",
             'DiskSpace: ',
                 '<font', $disk[0] < 10 ? ' color="red"' : '', '>',
                     "{$disk[0]}/{$disk[1]}G ({$path})</font><br>\n",
+            $tips,
             'Extensions: <span style="font: caption;">', join(', ', $list), '</span>';
     }
 }

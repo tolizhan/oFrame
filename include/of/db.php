@@ -74,6 +74,7 @@ abstract class of_db {
      *     #检查连接是否正常(文本)
      *      key  : 连接池名称
      *      pool : 固定"ping"
+     *      val  : 默认null=未连接返回false, true=初始化连接
 
      *     #查询事务最终提交状态(文本), 当SQL执行失败, 状态自动改false
      *      key  : 连接池名称
@@ -93,7 +94,7 @@ abstract class of_db {
      *     #关闭并删除指定连接池(文本)
      *      key  : 连接池名称
      *      pool : 固定"clean"
-     *      val  : 清理方式, 默认null=全部清理, 1=仅清理事务
+     *      val  : 清理方式, 默认null=销毁连接池, 1=仅关闭连接
 
      *     #读取运行连接信息
      *      key  : 固定null
@@ -136,6 +137,11 @@ abstract class of_db {
                     break;
                 //检查连接是否正常
                 case 'ping':
+                    //尝试连接 && 未初始化
+                    if ($val && !isset($instList[$key]['inst'])) {
+                        self::pool($key);
+                        self::getConnect('write');
+                    }
                     if ($result = isset($instList[$key]['inst']) && $index = &$instList[$key]['inst']) {
                         $result = isset($index['write']) ?
                             $index['write']->_ping() : $index['read']->_ping();

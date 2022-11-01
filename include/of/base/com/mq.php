@@ -33,14 +33,15 @@
  *              "state" : 当前事务最终状态, true=提交, false=回滚
  *              "pools" : {
  *                  消息队列池名 : {
- *                      "level" : 内部事务层级, 0=不在事务里, 1=根事务, n=n层事务里
- *                      "state" : 内部事务最终提交状态, true=提交, false=回滚
- *                      "inst"  : 初始化的对象
- *                      "keys"  : 队列与键对应的配置路径 {
+ *                      "inst" : 初始化的对象
+ *                      "keys" : 队列与键对应的配置路径 {
  *                          队列名 : {
  *                              "mode" : 队列模式, null=生产及消费, false=仅生产, true=仅消费
  *                              "data" : 引用加载配置
  *                          }...
+ *                      }
+ *                      "msgs" : 待处理消息列表 {
+ *                          消息ID
  *                      }
  *                  }, ...
  *              }
@@ -57,6 +58,12 @@
  *                  "/protected"  : 保护进程, 启动时独享锁
  *              }, ...
  *          },
+ *          "/failedMsgs"   : 失败的消息列表 {
+ *              /连接池名 : {
+ *                  md5(队列名\0消息键\0消息ID).php 文件,
+ *                  ...
+ *              }
+ *          }
  *          "/triggerLock"  : 触发监听文件, 计算分布队列位置时加独享锁
  *      }
  * 作者 : Edgar.lee
@@ -127,16 +134,24 @@ abstract class of_base_com_mq {
                 of_base_com_disk::each($path, $tasks, null);
                 //遍历发送重置命令
                 foreach ($tasks as $kt => &$vt) {
-                    $vt && of_base_com_kv::del('of_base_com_mq::command-' . basename($kt), '_ofSelf');
+                    $vt && of_base_com_kv::del('of_base_com_mq::command::' . basename($kt), '_ofSelf');
                 }
             //展示并发列表
             } else {
+                //显示重启按钮
                 echo '<input type="button" onclick="',
                     'window.location.href=\'?c=of_base_com_mq&type=reload',
                     $debug,
-                    '\'" value="Reload the message queue">';
+                    '\'" value="Reload the message queue"><pre>';
 
-                echo '<pre><hr>Concurrent Running : ';
+                //显示异常队列池
+                if ($list = self::getFailPools(null)) {
+                    echo 'Failed queue(', OF_DATA, '/_of/of_base_com_mq/failedMsgs): ',
+                        '<font color="red">/', join(', /', $list), '</font>';
+                }
+
+                //显示运行中队列
+                echo '<hr>Concurrent Running : ';
 
                 //消费超过24小时数量
                 $nums = 0;
@@ -154,8 +169,10 @@ abstract class of_base_com_mq {
 
                         //读取消息状态信息
                         foreach ($v['list'] as $kl => &$vl) {
-                            $index = &of_base_com_timer::data(true, array($kl), '/' . $k);
-                            $index = &$index['info'][$kl]['data']['_mq'];
+                            //为节省磁盘性能不用 of_base_com_timer::data(true, array($kl), '/' . $k);
+                            $temp = 'of_base_com_timer::data-' . $k . '.' . $kl;
+                            $temp = of_base_com_kv::get($temp, array(), '_ofSelf');
+                            $index = &$temp['_mq'];
 
                             //格式化执行信息
                             if ($index === null) {
@@ -263,37 +280,53 @@ abstract class of_base_com_mq {
 
             //内部事务
             if ($bind === '') {
+                //引用当前消息队列
+                $nowMqList = &$mqList[''];
                 //引用当前操作的消息块
                 $mqArr = &$mqList[$bind]['pools'][$pool];
 
                 //开启事务
                 if ($keys === null) {
                     //开启失败
-                    if ($mqArr['level'] === 0 && !$mqArr['inst']->_begin()) {
+                    if ($nowMqList['level'] === 0 && !$mqArr['inst']->_begin()) {
                         return false;
                     //开启成功
                     } else {
-                        $mqArr['level'] += 1;
+                        $nowMqList['level'] += 1;
                     }
                 //真实提交或回滚事务
-                } else if ($mqArr['level'] === 1) {
+                } else if ($nowMqList['level'] === 1) {
                     //true ? 提交事务 : 回滚事务
-                    $temp = $keys && $mqArr['state'] ? '_commit' : '_rollBack';
-                    $mqArr['inst']->$temp('before');
-                    $temp = $mqArr['inst']->$temp('after');
+                    $func = $keys && $nowMqList['state'] ? '_commit' : '_rollBack';
+                    //提交回滚准备, 失败后$nowMqList['state']设为false
+                    self::execMqObjTran('before', '', $func);
+                    //true ? 提交事务 : 回滚事务
+                    $func = $keys && $nowMqList['state'] ? '_commit' : '_rollBack';
+
+                    //在工作结束后执行消息写入, 事务为提交 && 在工作中
+                    if ($func === '_commit' && $call = of::work('info', 4)) {
+                        $call['done'] = array('of_base_com_mq::execMqObjTran-' => array(
+                            'onWork' => null,
+                            'asCall' => 'of_base_com_mq::execMqObjTran',
+                            'params' => array('after', '', '_commit')
+                        )) + $call['done'];
+                    //直接执行消息事务
+                    } else {
+                        self::execMqObjTran('after', '', $func);
+                    }
 
                     //执行回滚 || 事务操作成功 && 最终提交
-                    $result = $keys === false || $temp && $mqArr['state'];
+                    $result = $keys === false || $nowMqList['state'];
                     //重置事务层级
-                    $mqArr['level'] = 0;
+                    $nowMqList['level'] = 0;
                     //重置最终提交状态
-                    $mqArr['state'] = true;
+                    $nowMqList['state'] = true;
 
                     return $result;
-                } else if ($mqArr['level']) {
-                    $mqArr['level'] -= 1;
+                } else if ($nowMqList['level']) {
+                    $nowMqList['level'] -= 1;
                     //嵌套事务回滚 || 最终回滚
-                    $keys || $mqArr['state'] = false;
+                    $keys || $nowMqList['state'] = false;
                 } else {
                     return false;
                 }
@@ -316,43 +349,74 @@ abstract class of_base_com_mq {
             }
 
             //待处理的消息列表
-            $wMsges = array();
+            $wMsges = $moveMq = array();
             //当前模块配置
             $config = &self::pool($pool, $bind);
             //待触发队列表
             $fireMq = &self::$fireMq;
             //引用当前操作的消息块
             $mqArr = &$mqList[$bind]['pools'][$pool];
+            //引用待处理消息列表
+            $msgs = &$mqArr['msgs'];
 
             //批量创建消息
             foreach ($keys as &$vk) {
                 //格式化消息键
                 $key = &$vk['keys'];
                 is_array($key) || $key = array($key);
-                isset($key[1]) || $key[1] = of_base_com_str::uniqid();
+                //指定了消息ID
+                $isFxId = isset($key[1]);
+                //是否迁移消息
+                $isMove = $isFxId && isset($config['moveMq']);
+                //生成随机ID
+                $isFxId || $key[1] = of_base_com_str::uniqid();
+                //默认延迟时间
                 isset($key[2]) || $key[2] = 0;
 
-                //消息赋值到多个队列
-                foreach ($config['queues'] as $k => &$v) {
+                //同步的队列
+                $queues = isset($vk['queue']) ?
+                    (isset($config['queues'][$vk['queue']]) ? array(
+                        $vk['queue'] => &$config['queues'][$vk['queue']]
+                    ) : array()) : $config['queues'];
+
+                //消息赋值到各队列
+                foreach ($queues as $k => &$v) {
                     //可生产数据 && 有效的键值
                     if (empty($v['mode']) && isset($v['keys'][$key[0]])) {
-                        //标记监听触发
-                        $fireMq = true;
                         //生成处理消息
                         $wMsges[] = array(
                             'keys'  => &$key,
                             'data'  => &$vk['data'],
+                            //true=随机ID, false=指定ID
+                            'unid'  => !$isFxId,
                             'pool'  => &$pool,
                             'bind'  => &$bind,
                             'queue' => $k
                         );
+
+                        //指定了消息ID
+                        if ($isFxId) {
+                            //记录到容灾消息中
+                            $msgs[$temp = "{$k}\0{$key[0]}\0{$key[1]}"] = array(
+                                'keys'  => &$key,
+                                'data'  => null,
+                                'queue' => $k
+                            );
+                            //启动了迁移消息 && 记录到迁移队列
+                            $isMove && $moveMq[] = $msgs[$temp];
+                        }
                     }
                 }
             }
 
             if ($wMsges) {
+                //标记监听触发
+                $fireMq = true;
                 //开启事务
                 self::set(null, $pool, $bind);
+                //迁移队列 && 向迁移队列发送删除通知
+                $moveMq && self::set($moveMq, $config['moveMq'], $bind);
+                //设置消息队列
                 $temp = !!$mqArr['inst']->_sets($wMsges);
                 //结束事务(成功提交 && 失败回滚) && 执行是否成功
                 $temp = self::set($temp, $pool, $bind) && $temp;
@@ -397,7 +461,7 @@ abstract class of_base_com_mq {
             //可以垃圾回收
             ($isGc = function_exists('gc_enable')) && gc_enable();
             //接收环境变化键名
-            $cKey = 'of_base_com_mq::command-' . md5(of::config('_of.nodeName'));
+            $cKey = 'of_base_com_mq::command::' . md5(of::config('_of.nodeName'));
             //消息队列实例对象
             $mqObj = &self::$mqList[$bind]['pools'][$data['pool']]['inst'];
             //初始化环境变量
@@ -483,9 +547,11 @@ abstract class of_base_com_mq {
                     //已绑定的监听ID
                     $tNum = array(0);
                     //命令配置键名
-                    $cKey = 'of_base_com_mq::command-' . md5(of::config('_of.nodeName'));
+                    $cKey = 'of_base_com_mq::command::' . md5(of::config('_of.nodeName'));
                     //队列监听列表
                     $qPath = self::$mqDir . '/queueTrigger';
+                    //失败消息列表
+                    $fPath = self::$mqDir . '/failedMsgs';
 
                     //遍历并发任务目录
                     of_base_com_disk::each($qPath, $tasks, null);
@@ -532,6 +598,8 @@ abstract class of_base_com_mq {
                         $config = of::config('_of.com.mq', array(), 4);
                         //待回调列表
                         $waitCall = array();
+                        //失败队列路径
+                        $failDirs = array();
 
                         //任务ID相同
                         if ($cmd['taskPid'] === $tPid && $config) {
@@ -542,6 +610,9 @@ abstract class of_base_com_mq {
 
                                 //查找待触发的回调
                                 foreach ($ve['queues'] as $kq => &$vq) {
+                                    //记录有效失败队列目录
+                                    $failDirs["{$fPath}/{$ke}/{$kq}"] = $ke;
+
                                     //可消费
                                     if (!isset($vq['mode']) || $vq['mode']) {
                                         foreach ($vq['keys'] as $kk => &$vk) {
@@ -589,6 +660,8 @@ abstract class of_base_com_mq {
 
                             //检查退出信号
                             self::exitSignal();
+                            //恢复失败消息
+                            self::restoreMsgs($failDirs);
                         //关闭监听器
                         } else {
                             //停止在运行的消息进程
@@ -656,10 +729,8 @@ abstract class of_base_com_mq {
         //事务操作
         } else if (
             $params['pool'] &&
-            isset($mqList[$params['pool']]) && (
-                $params['sql'] === null || 
-                is_bool($params['sql'])
-            )
+            isset($mqList[$params['pool']]) &&
+            ($params['sql'] === null || is_bool($params['sql']))
         ) {
             $nowMqList = &$mqList[$params['pool']];
             //同步事务等级
@@ -691,17 +762,92 @@ abstract class of_base_com_mq {
                 return ;
             }
 
-            //批量触发事务
-            foreach ($nowMqList['pools'] as $k => &$v) {
-                $temp = $v['inst']->$tFunc($type);
-                $nowState && $nowState = $temp;
+            //在工作结束后执行消息写入, 事务为提交 && 提交二阶段 && 在工作中
+            if ($tFunc === '_commit' && $type === 'after' && $call = of::work('info', 4)) {
+                $call['done'] = array('of_base_com_mq::execMqObjTran-' . $params['pool'] => array(
+                    'onWork' => null,
+                    'asCall' => 'of_base_com_mq::execMqObjTran',
+                    'params' => array($type, $params['pool'], '_commit')
+                )) + $call['done'];
+            //直接执行消息事务
+            } else {
+                self::execMqObjTran($type, $params['pool'], $tFunc);
+            }
+        }
+    }
+
+    /**
+     * 描述 : 调用消息事务
+     * 作者 : Edgar.lee
+     */
+    public static function execMqObjTran($type, $pool, $func) {
+        //引用当前消息队列
+        $nowMqList = &self::$mqList[$pool];
+        //当前事务最终状态
+        $nowState = &$nowMqList['state'];
+        //是否执行异常清理
+        $isClear = $func === '_commit' && $type === 'after';
+        //失败消息磁盘路径
+        $isClear && $path = self::$mqDir . '/failedMsgs';
+
+        //批量触发事务
+        foreach ($nowMqList['pools'] as $kp => &$vp) {
+            //事务提交之后执行失败消息的清理
+            if ($isClear && isset($vp['msgs'])) {
+                //非正常状态, 0=未知状态, -1=无失败消息, 1=有失败信息
+                if (of_base_com_kv::get('of_base_com_mq::failed::' . $kp, 0, '_ofSelf') >= 0) {
+                    //屏蔽错误
+                    $errNo = error_reporting(0);
+                    //清理失败消息
+                    foreach ($vp['msgs'] as $k => &$v) {
+                        $file = "{$path}/{$kp}/{$v['queue']}/" . md5($k) . '.php';
+                        is_file($file) && unlink($file);
+                    }
+                    //恢复错误
+                    error_reporting($errNo);
+                }
+                //清理指定ID的消息
+                unset($vp['msgs']);
+            //回滚事务, 清理指定ID的消息
+            } else if ($func === '_rollBack') {
+                unset($vp['msgs']);
             }
 
-            //提交事务前 && 消息队列执行失败
-            if ($type === 'before' && !$nowState) {
-                //强制主事务回滚, 保持数据一致性
-                of_db::pool($params['pool'], 'state', false);
+            //执行事务对应方法
+            $return = $vp['inst']->$func($type);
+
+            //提交操作(!_commit::after)成功状态
+            if (!$isClear) {
+                $nowState && $nowState = $return;
+            //提交事务之后(_commit::after)返回失败消息列表
+            } else if ($return) {
+                //失败时间
+                $time = time();
+                //异常状态标记
+                $fKey = 'of_base_com_mq::failed::' . $kp;
+                //标记存在失败消息
+                of_base_com_kv::set($fKey, 1, 86400, '_ofSelf');
+                //记录失败消息
+                foreach ($return as &$v) {
+                    //记录失败时间
+                    $v['time'] = &$time;
+                    //失败消息路径
+                    $file = "{$path}/{$kp}/{$v['queue']}/" .
+                        md5("{$v['queue']}\0{$v['keys'][0]}\0{$v['keys'][1]}") . '.php';
+                    //存储失败消息
+                    of_base_com_disk::file($file, $v, true);
+                }
+                //标记存在失败消息
+                of_base_com_kv::set($fKey, 1, 86400, '_ofSelf');
+                //抛出错误
+                trigger_error('Failed to produce message: ' . $kp);
             }
+        }
+
+        //提交事务前 && 消息队列执行失败
+        if ($pool && $type === 'before' && !$nowState) {
+            //强制主事务回滚, 保持数据一致性
+            of_db::pool($pool, 'state', false);
         }
     }
 
@@ -855,6 +1001,30 @@ abstract class of_base_com_mq {
     }
 
     /**
+     * 描述 : 获取队列配置
+     * 参数 :
+     *     &path : 队列配置文件路径
+     *     &pool : 队列连接池
+     * 作者 : Edgar.lee
+     */
+    protected static function getQueueConfig(&$config, &$pool) {
+        //加载最新队列配置
+        is_string($config) && $config = include ROOT_DIR . $config;
+
+        if (
+            //可能是 {队列池:{队列名:{}, ...}} 方式
+            isset($config[$pool]) &&
+            //获取第一个队列成功
+            is_array($temp = current($config[$pool])) &&
+            //回调中cNum必须存在, 并且是数字
+            (!isset($temp['keys']['cNum']) || is_array($temp['keys']['cNum']))
+        ) {
+            //{队列池:{队列名:{}, ...}} 转成 {队列名:{}, ...}
+            $config = $config[$pool];
+        }
+    }
+
+    /**
      * 描述 : 获取队列池
      * 参数 :
      *     &pool : 消息队列池
@@ -881,8 +1051,8 @@ abstract class of_base_com_mq {
 
             //绑定事务初始化
             if (!isset($mqList[$bind]['level'])) {
-                $mqList[$bind]['level'] = of_db::pool($bind, 'level');
-                $mqList[$bind]['state'] = of_db::pool($bind, 'state');
+                $mqList[$bind]['level'] = $bind ? of_db::pool($bind, 'level') : 0;
+                $mqList[$bind]['state'] = $bind ? of_db::pool($bind, 'state') : true;
             }
 
             //初始化消息队列
@@ -903,11 +1073,6 @@ abstract class of_base_com_mq {
                         'data' => &$v['keys']
                     );
                 }
-
-                //内部事务层级
-                $mqArr['level'] = 0;
-                //最终提交状态
-                $mqArr['state'] = true;
 
                 //初始化适配器
                 $mqArr['inst'] = 'of_accy_com_mq_' . $config[$pool]['adapter'];
@@ -952,30 +1117,6 @@ abstract class of_base_com_mq {
         } else {
             fclose($fp);
             return false;
-        }
-    }
-
-    /**
-     * 描述 : 获取队列配置
-     * 参数 :
-     *     &path : 队列配置文件路径
-     *     &pool : 队列连接池
-     * 作者 : Edgar.lee
-     */
-    private static function getQueueConfig(&$config, &$pool) {
-        //加载最新队列配置
-        is_string($config) && $config = include ROOT_DIR . $config;
-
-        if (
-            //可能是 {队列池:{队列名:{}, ...}} 方式
-            isset($config[$pool]) &&
-            //获取第一个队列成功
-            is_array($temp = current($config[$pool])) &&
-            //回调中cNum必须存在, 并且是数字
-            (!isset($temp['keys']['cNum']) || is_array($temp['keys']['cNum']))
-        ) {
-            //{队列池:{队列名:{}, ...}} 转成 {队列名:{}, ...}
-            $config = $config[$pool];
         }
     }
 
@@ -1032,6 +1173,103 @@ abstract class of_base_com_mq {
                 }
             }
         }
+    }
+
+    /**
+     * 描述 : 恢复失败的消息
+     * 作者 : Edgar.lee
+     */
+    private static function restoreMsgs(&$fDirs) {
+        static $time = 0;
+
+        //每5分钟执行一次清理
+        if ($time + 300 > ($temp = time())) return ;
+        //更新当前时间
+        $time = $temp;
+        //恢复失败清单{连接池 : true, ...}
+        $done = array_fill_keys($fDirs, true);
+
+        //恢复失败消息信息
+        foreach ($fDirs as $kf => &$vf) {
+            if (
+                //队列目录存在
+                is_dir($kf) &&
+                //尝试加锁成功
+                flock($fp = fopen("{$kf}.lock", 'a'), LOCK_EX | LOCK_NB)
+            ) {
+                //异常状态标记
+                $fKey = 'of_base_com_mq::failed::' . $vf;
+
+                //存在失败消息, 0=未知状态, -1=无失败消息, 1=有失败信息
+                if (of_base_com_kv::get($fKey, 0, '_ofSelf') > 0) {
+                    //标记消息失败状态失效
+                    of_base_com_kv::del($fKey, '_ofSelf');
+                }
+
+                //批量读取失败消息
+                while (of_base_com_disk::each($kf, $list, true)) {
+                    //标记消息失败状态失效
+                    of_base_com_kv::del($fKey, '_ofSelf');
+                    //恢复的消息列表
+                    $msgs = array();
+                    //遍历恢复消息
+                    foreach ($list as $k => &$v) {
+                        //可以恢复 失败时间 < 当前时间
+                        if (($temp = filemtime($k)) && $temp < $time) {
+                            $index = &of_base_com_disk::file($k, true, true);
+
+                            //计算延期时间 (失败 + 延迟 - 当前) < 0 && 延迟置0
+                            ($temp = $index['time'] + $index['keys'][2] - $time) < 0 && $temp = 0;
+                            $index['keys'][2] = $temp;
+
+                            $msgs[] = &$index;
+                        //标记有消息无法恢复
+                        } else {
+                            unset($done[$vf]);
+                        }
+                    }
+                    //批量恢复消息, 恢复时会自动删除问题消息
+                    $msgs && of_base_com_mq::set($msgs, $vf);
+                }
+                //解锁并销毁资源
+                unset($fp);
+            }
+        }
+
+        //标记消息状态异常
+        foreach ($done as $kd => &$vd) {
+            //存在异常消息 || 标记状态正常
+            self::getFailPools($kd) ||
+                of_base_com_kv::set('of_base_com_mq::failed::' . $kd, -1, 86400, '_ofSelf');
+        }
+    }
+
+    /**
+     * 描述 : 获取失败的池信息
+     * 作者 : Edgar.lee
+     */
+    private static function getFailPools($pool) {
+        $result = array();
+        $pool === null ?
+            of_base_com_disk::each(self::$mqDir . '/failedMsgs', $dirs) :
+            $dirs = array(self::$mqDir . '/failedMsgs/' . $pool => true);
+
+        //遍历消息池列表
+        foreach ($dirs as $kd => &$vd) {
+            //遍历对应消息池下的队列列表
+            of_base_com_disk::each($kd, $list);
+            //遍历队列列表
+            foreach ($list as $k => &$v) {
+                //是队列文件夹 && 存在失败消息
+                if ($vd && !of_base_com_disk::none($k)) {
+                    //读取消息池名称
+                    $result[] = basename($kd);
+                    continue 2;
+                }
+            }
+        }
+
+        return $result;
     }
 
     /**

@@ -31,6 +31,9 @@ namespace of\accy\com\mq {
     class mysql extends \of_accy_com_mq_mysql {
     }
 
+    class redis extends \of_accy_com_mq_redis {
+    }
+
 }
 
 namespace of\accy\db {
@@ -45,6 +48,9 @@ namespace of\accy\db {
     }
 
     class mysqli extends \of_accy_db_mysqli {
+    }
+
+    class polar extends \of_accy_db_polar {
     }
 
     class tidb extends \of_accy_db_tidb {

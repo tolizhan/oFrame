@@ -629,6 +629,9 @@ var toolObj = {
             listJobj.attr('page', '1');
             //请求日志数据
             listNode.paging({'path' : logPath, 'md5Key' : md5key});
+        } else {
+            //重新计算分页
+            listNode.paging('+0', true);
         }
     },
 

@@ -44,7 +44,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             $this->dbPool = $fire['bind'];
         //不相同
         } else {
-            $this->dbPool = 'of_accy_com_mq_mysql::' . of_base_com_str::uniqid();
+            $this->dbPool = 'of_accy_com_mq_mysql::' . $fire['pool'];
             //复制连接
             of_db::pool($this->dbPool, of_db::pool($params['params']['dbPool']));
         }
@@ -80,7 +80,8 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             if ($v['data'] === null) {
                 $wait[$sort] = array(
                     'mode' => 'del',
-                    'data' => "(`mark` = '{$mark}' AND `type` = '{$keys[0]}')"
+                    'data' => "(`mark` = '{$mark}' AND `type` = '{$keys[0]}')",
+                    'oMsg' => &$v
                 );
             //增改数据
             } else {
@@ -92,7 +93,8 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                         '{$keys[0]}', '{$keys[1]}', '{$temp}',
                         '0', '{$exeTime}', '{$nowTime}',
                         '0', '{$exeTime}', ''
-                    )"
+                    )",
+                    'oMsg' => &$v
                 );
             }
         }
@@ -142,7 +144,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             $sql = "SELECT
                 `mark`
             FROM
-                `_of_com_mq`
+                `_of_com_mq` IGNORE INDEX (PRIMARY)
             WHERE
                 `vHost` = '{$this->vHost}'
             AND `queue` = '{$data['queue']}'
@@ -260,8 +262,9 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                 count($data['extra']['mark']) === $temp || of_db::sql("UPDATE
                         `_of_com_mq`
                     SET
-                        `lockTime` = `updateTime`,
-                        `lockMark` = ''
+                        `syncCount` = '0',
+                        `lockTime`  = `updateTime`,
+                        `lockMark`  = ''
                     WHERE
                         `type` = '{$data['key']}'
                     AND `mark` IN ('{$mark}')
@@ -331,7 +334,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
      * 作者 : Edgar.lee
      */
     protected function _begin() {
-        return $this->noTran || of_db::sql(null, $this->dbPool);
+        return $this->noTran || of_db::pool($this->dbPool, 'ping', true);
     }
 
     /**
@@ -342,12 +345,16 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
      */
     protected function _commit($type) {
         if ($type === 'before') {
+            return $this->noTran || of_db::pool($this->dbPool, 'ping', true);
+        } else {
+            of_db::sql(null, $this->dbPool);
+
             //操作模式
             $mode = '';
             //操作长度
             $sLen = 0;
-            //操作列表
-            $list = $reset = array();
+            //结果列表, 操作列表, 重置列表
+            $result = $list = $reset = array();
             //待处理列表
             $wait = &$this->waitList;
             ksort($wait);
@@ -403,11 +410,12 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                 $sLen += strlen($v['data']) + 4;
                 //记录操作数据
                 $list[] = &$v['data'];
+                //记录原始消息
+                $result[$k] = &$v['oMsg'];
             }
 
-            return of_db::pool($this->dbPool, 'state');
-        } else {
-            return $this->noTran || of_db::sql(true, $this->dbPool);
+            unset($result['']);
+            return of_db::sql(true, $this->dbPool) ? array() : $result;
         }
     }
 
@@ -417,12 +425,8 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
      * 作者 : Edgar.lee
      */
     protected function _rollBack($type) {
-        if ($type === 'after') {
-            $this->waitList = array();
-            return $this->noTran || of_db::sql(false, $this->dbPool);
-        } else {
-            return true;
-        }
+        $type === 'after' && $this->waitList = array();
+        return true;
     }
 
     /**
@@ -441,10 +445,11 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             $index['time'] = $time;
             //重置过期时间
             $index['expire'] = 600;
-            //读取正在执行并发数据
-            $data = of_base_com_timer::data(true, 1);
-            //计算消息数据偏移量
-            $index['limit'] = $data['info'][$cCid]['sort'] * $lots * 5;
+            //读取正在执行并发数据, 第一位为0
+            $sort = of_base_com_timer::data(true, 1);
+            $sort = $sort['info'][$cCid]['sort'];
+            //计算消息数据偏移量(阶加公式=lots * (sort+1) * 并行概率 * sort/2
+            $index['limit'] = (int)ceil($lots * ($sort + 1) * 0.7 * $sort / 2);
         }
 
         return $index['limit'];

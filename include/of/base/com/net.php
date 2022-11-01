@@ -272,12 +272,25 @@ class of_base_com_net {
 
             //web是否支持命令操作
             if (!isset($config['isExec'])) {
-                //类linux系统 && 非安全模式 && 函数启用
-                $config['isExec'] = PHP_SAPI === 'cli' || (
-                    $osType !== 'win' &&
-                    !ini_get('safe_mode') &&
-                    !preg_match('@\bpopen\b@', ini_get('disable_functions'))
-                );
+                //命令行模式
+                if (PHP_SAPI === 'cli') {
+                    $config['isExec'] = true;
+                //未启用popen方法 || windows开发模式
+                } else if (
+                    ini_get('safe_mode') ||
+                    !function_exists('popen') ||
+                    of::config('_of.debug') === true && $osType === 'win'
+                ) {
+                    $config['isExec'] = false;
+                //php命令不可执行
+                } else if (!$config['isExec'] = strpos(
+                    $temp = stream_get_contents(popen('php -r "echo 12345;" 2>&1', 'r'), 2048),
+                    '2345'
+                )) {
+                    $osType === 'win' || trigger_error(
+                        "Command error: php -r \"echo 12345;\" 2>&1\n\n{$temp}"
+                    );
+                }
             }
 
             //命令行操作
@@ -287,65 +300,29 @@ class of_base_com_net {
                 //执行参数
                 $exec = array(
                     'php',
-                    OF_DIR . '/index.php',
+                    OF_DIR  . '/index.php',
                     'get:a=request&c=of_base_com_net',
-                    '_tz:' . date_default_timezone_get(),
-                    '_ip:' . $_SERVER['SERVER_ADDR'],
-                    '_rl:' . ROOT_URL
+                    '_tz:'  . date_default_timezone_get(),
+                    '_ip:'  . $_SERVER['SERVER_ADDR'],
+                    '_rl:'  . ROOT_URL,
+                    'data:' . rawurlencode(serialize($data))
                 );
 
                 //Windows
                 if ($osType === 'win') {
-                    //win 异步数据结构
-                    $exec[] = 'data:' . rawurlencode(serialize($data));
-
-                    if (empty($config['exeDir'])) {
-                        $temp = 'wmic process where processid=' . getmypid() . ' get ExecutablePath';
-
-                        //通道打开
-                        if ($pp = popen($temp, 'r')) {
-                            $temp = explode("\n", stream_get_contents($pp, 2048));
-                            $config['exeDir'] = trim($temp[1]);
-                            pclose($pp);
-                        //执行错误
-                        } else {
-                            trigger_error($temp = "Command error: {$temp}");
-                            //状态,内容
-                            $res = array('state' => false, 'errno' => 1, 'errstr' => &$temp);
-                        }
-                    }
-
-                    if (isset($config['exeDir'])) {
-                        //真实php执行文件路径
-                        $exec[0] = &$config['exeDir'];
-                        //真实执行命令
-                        $exec = str_replace('"', '""', '"' . join('" "', $exec) . '"');
-                        //异步执行命令
-                        $exec = "SET data=\"{$exec}\" && cscript //E:vbscript \"" .
-                            strtr(OF_DIR, '/', '\\') . '\accy\com\net\asyncProc.bin"';
-
-                        //兼容win php < 5.3
-                        version_compare(PHP_VERSION, '5.3.0', '<') && $exec = '"' . $exec . '"';
-                    }
+                    //真实执行命令
+                    $exec = str_replace('"', '""', '"' . join('" "', $exec) . '"');
+                    //异步执行命令
+                    $exec = "SET data=\"{$exec}\" && cscript //E:vbscript \"" .
+                        strtr(OF_DIR, '/', '\\') . '\accy\com\net\asyncProc.bin"';
+                    //兼容win php < 5.3
+                    version_compare(PHP_VERSION, '5.3.0', '<') && $exec = '"' . $exec . '"';
                 //类 linux
                 } else {
                     //异步前缀, 是mac系统 || linux 使用 nohup
                     $aPre = $osType === 'dar' ? '' : 'nohup ';
-                    //校验有效命令
-                    $check = $aPre . 'php -r "echo 1;" 0>/dev/null 2>&1';
-
-                    //命令校验成功
-                    if (($temp = fgets(popen($check, 'r'))) === '1') {
-                        //linux 异步数据结构
-                        $exec[] = 'data:' . rawurlencode(serialize($data));
-                        //拼成异步命令
-                        $exec = $aPre . '"' . join('" "', $exec) . '" >/dev/null 2>&1 &';
-                    //命令校验失败
-                    } else {
-                        trigger_error($temp = "Command error: {$temp}");
-                        //状态,内容
-                        $res = array('state' => false, 'errno' => 1, 'errstr' => &$temp);
-                    }
+                    //拼成异步命令
+                    $exec = $aPre . '"' . join('" "', $exec) . '" >/dev/null 2>&1 &';
                 }
 
                 //管道执行命令

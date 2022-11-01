@@ -1,5 +1,5 @@
 <?php
-class of_accy_db_mysqli extends of_db {
+class of_accy_db_polar extends of_db {
     //连接源
     private $connection = null;
     //事务状态(true=已开启, false=未开启)
@@ -76,48 +76,22 @@ class of_accy_db_mysqli extends of_db {
 
         //INNODB可能锁超时(1205) || 死锁(1213)
         if ($errno === 1205 || $errno === 1213) {
-            //初始化回滚属性
-            if ($rollback === null) {
-                //判断进程权限
-                $temp = 'SELECT
-                    1 c
-                FROM
-                    information_schema.`USER_PRIVILEGES`
-                WHERE
-                    `USER_PRIVILEGES`.GRANTEE = CONCAT(    /*用户名*/
-                        "\'",
-                        LEFT(
-                            CURRENT_USER,
-                            LENGTH(CURRENT_USER) - LENGTH(SUBSTRING_INDEX(CURRENT_USER, "@", -1)) - 1
-                        ),
-                        "\'@\'",
-                        SUBSTRING_INDEX(CURRENT_USER, "@", -1),
-                        "\'"
-                    )
-                AND `USER_PRIVILEGES`.PRIVILEGE_TYPE = "PROCESS"';
+            //死锁日志
+            if ($errno === 1213) {
+                $temp = 'SHOW ENGINE INNODB STATUS';
                 $this->_query($temp);
-                //事务进程权限
-                $rollback['lockLog'] = $this->_fetch();
-
-                //事务回滚模式
-                $rollback['enable'] = version_compare($this->dbVar['version'], '5.7', '>=');
-                $rollback['outBack'] = $this->dbVar['outBack'] === '1';
+                $temp = &$this->_fetch();
+                ($note = &$temp['Status']) && of_accy_db_polar::getNote($this, $note);
+            //超时日志
+            } else {
+                of_accy_db_polar::getNote($this, $note);
             }
 
-            //读取锁日志
-            if ($rollback['lockLog']) {
-                //死锁日志
-                if ($errno === 1213) {
-                    $temp = 'SHOW ENGINE INNODB STATUS';
-                    $this->_query($temp);
-                    $temp = &$this->_fetch();
-                    ($note = &$temp['Status']) && of_accy_db_mysqli::getNote($this, $note);
-                //超时日志
-                } else {
-                    of_accy_db_mysqli::getNote($this, $note);
-                }
-            }
-
+            //初始化回滚属性 && 事务回滚模式
+            $rollback === null && $rollback === array(
+                'enable' => version_compare($this->dbVar['version'], '5.7', '>='),
+                'outBack' => $this->dbVar['outBack'] === '1'
+            );
             //mysql版本>=5.7回滚事务后需手动重启事务
             $rollback['enable'] &&
             //处于开启事务中
@@ -156,7 +130,7 @@ class of_accy_db_mysqli extends of_db {
 
         if ($this->transState = mysqli_query($this->connection, 'START TRANSACTION')) {
             //记录逻辑回溯
-            of_accy_db_mysqli::setNote($this);
+            of_accy_db_polar::setNote($this);
 
             return true;
         } else {
@@ -235,7 +209,7 @@ class of_accy_db_mysqli extends of_db {
     protected function _query(&$sql) {
         if ($this->_ping()) {
             //记录加锁SQL
-            of_accy_db_mysqli::setNote($this, $sql);
+            of_accy_db_polar::setNote($this, $sql);
 
             return mysqli_multi_query($this->connection, $sql);
         } else {
@@ -289,8 +263,8 @@ class of_accy_db_mysqli extends of_db {
                     //开启超时监听
                     of_base_com_timer::task(array(
                         'call' => array(
-                            'asCall' => 'of_accy_db_mysqli::listenLockTimeout',
-                            'params' => array(&$obj->params, 'mysqli')
+                            'asCall' => 'of_accy_db_polar::listenLockTimeout',
+                            'params' => array(&$obj->params, 'polar')
                         ),
                         'cNum' => 1
                     ));

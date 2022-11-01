@@ -1,3 +1,43 @@
+版本: 260
+作者: Edgar
+日期: 2022年11月1日 9:51:59
+信息:
+说明: + 支持redis消息队列, 建议用分布式数组
+      + 支持无缝迁移队列, 队列连接池.moveMq
+      + 生产消息失败时转存到磁盘 并自动恢复
+      + 支持"polarDBx"数据库, 适配器"polar"
+      + of_db::pool(x,'ping',true) 尝试连接
+      + of_base_com_disk::none 判断空文件夹
+      - of::work('info', 改为数字) 获取单项
+      * 解决SSO多iframe同时登录循环刷新问题
+      * 错误日志-进入分组列表时重新计算总页
+      * 优化work中消息队列 在工作结束后提交
+      * 优化 of_base_com_disk::file写入代码
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/config/config.php
+已修改 : /trunk/demo/ctrl/index.php
+已修改 : /trunk/include/of/accy/com/kv/redis.php
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已增加 : /trunk/include/of/accy/com/mq/redis.php
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqlPdo.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已增加 : /trunk/include/of/accy/db/polar.php
+已修改 : /trunk/include/of/accy/db/tidb.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/link/codeNav.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/of.php
+
 版本: 258
 作者: Edgar
 日期: 2022年8月3日 17:05:28
