@@ -269,29 +269,8 @@ class of_base_com_net {
             $data['remoteAddr'] = &$_SERVER['SERVER_ADDR'];
             //操作系统类型(WINNT:windows, Darwin:mac, 其它:linux)
             $osType = strtolower(substr(PHP_OS, 0, 3));
-
             //web是否支持命令操作
-            if (!isset($config['isExec'])) {
-                //命令行模式
-                if (PHP_SAPI === 'cli') {
-                    $config['isExec'] = true;
-                //未启用popen方法 || windows开发模式
-                } else if (
-                    ini_get('safe_mode') ||
-                    !function_exists('popen') ||
-                    of::config('_of.debug') === true && $osType === 'win'
-                ) {
-                    $config['isExec'] = false;
-                //php命令不可执行
-                } else if (!$config['isExec'] = strpos(
-                    $temp = stream_get_contents(popen('php -r "echo 12345;" 2>&1', 'r'), 2048),
-                    '2345'
-                )) {
-                    $osType === 'win' || trigger_error(
-                        "Command error: php -r \"echo 12345;\" 2>&1\n\n{$temp}"
-                    );
-                }
-            }
+            isset($config['isExec']) || self::isExec();
 
             //命令行操作
             if ($config['isExec']) {
@@ -742,6 +721,45 @@ class of_base_com_net {
                 unset($cookie[$domain][$path][$config['name']]);
             }
         }
+    }
+
+    /**
+     * 描述 : 是否支持执行php命令
+     * 返回 :
+     *      true=支持, false=不支持
+     * 作者 : Edgar.lee
+     */
+    public static function isExec() {
+        //配置引用
+        $config = &self::$config;
+
+        //web是否支持命令操作
+        if (!isset($config['isExec'])) {
+            //是否为windows操作系统
+            $isWin = !strncasecmp(PHP_OS, 'win', 3);
+
+            //命令行模式
+            if (PHP_SAPI === 'cli') {
+                $config['isExec'] = true;
+            //未启用popen方法 || windows开发模式
+            } else if (
+                ini_get('safe_mode') ||
+                !function_exists('popen') ||
+                of::config('_of.debug') === true && $isWin
+            ) {
+                $config['isExec'] = false;
+            //php命令不可执行
+            } else if (!$config['isExec'] = strpos(
+                $temp = stream_get_contents(popen('php -r "echo 12345;" 2>&1', 'r'), 2048),
+                '2345'
+            )) {
+                $isWin || trigger_error(
+                    "Command error: php -r \"echo 12345;\" 2>&1\n\n{$temp}"
+                );
+            }
+        }
+
+        return $config['isExec'];
     }
 
     /**

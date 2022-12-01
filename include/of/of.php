@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200260);
+define('OF_VERSION', 200262);
 
 /**
  * 描述 : 控制层核心
@@ -949,11 +949,8 @@ class of {
         ini_get('expose_php') && header('X-Powered-By: OF/' . OF_VERSION);
         //of磁盘路径
         define('OF_DIR', strtr(dirname(__FILE__), '\\', '/'));
-
-        //加载全局配置文件
-        $of = (include OF_DIR . '/config.php') + array('debug' => false, 'config' => array());
-        //站点根目录,ROOT_DIR
-        define('ROOT_DIR', $of['rootDir']);
+        //强制框架配置
+        $of = array();
 
         //解析cli模式下的请求参数
         if (PHP_SAPI === 'cli') {
@@ -987,17 +984,6 @@ class of {
                     }
                 }
             }
-            //设置项目跟目录
-            $_SERVER['DOCUMENT_ROOT'] = ROOT_DIR;
-            //计算一些路径
-            $temp = get_included_files();
-            $_SERVER['SCRIPT_FILENAME'] = strtr($temp[0], '\\', '/');
-            isset($_SERVER['PATH_INFO']) || $_SERVER['PATH_INFO'] = '';
-            $_SERVER['QUERY_STRING'] = empty($_SERVER['QUERY_STRING']) ? '' : join('&', $_SERVER['QUERY_STRING']);
-            $_SERVER['SCRIPT_NAME'] = substr($_SERVER['SCRIPT_FILENAME'], strlen(ROOT_DIR));
-            $_SERVER['REQUEST_URI'] = $_SERVER['PHP_SELF'] = $_SERVER['SCRIPT_NAME'] . $_SERVER['PATH_INFO'];
-            $_SERVER['PATH_TRANSLATED'] = ROOT_DIR . $_SERVER['PATH_INFO'];
-            $_SERVER['QUERY_STRING'] && $_SERVER['REQUEST_URI'] .= '?' . $_SERVER['QUERY_STRING'];
             //本机IP
             isset($_SERVER['SERVER_ADDR']) || $_SERVER['SERVER_ADDR'] = '127.0.0.1';
         //COOKIE重新解析键名含%xx的格式
@@ -1009,6 +995,11 @@ class of {
             //防注入格式化
             ini_get('magic_quotes_gpc') && self::slashesDeep($_COOKIE);
         }
+
+        //加载全局配置文件
+        $of += (include OF_DIR . '/config.php') + array('debug' => false, 'config' => array());
+        //站点根目录,ROOT_DIR
+        define('ROOT_DIR', $of['rootDir']);
 
         //防注入处理的超全局变量
         $temp = array(&$_GET, &$_POST, &$_COOKIE);
@@ -1038,30 +1029,38 @@ class of {
         }
         $index = date('P', $_SERVER['REQUEST_TIME']);
 
-        //自动计算ROOT_URL
-        if (!isset($config['_of']['rootUrl'])) {
-            //cli模式
-            if (PHP_SAPI === 'cli') {
-                $config['_of']['rootUrl'] = '';
-            //web模式
-            } else {
-                $temp = $_SERVER['SCRIPT_NAME'];
-                $scriptFilename = strtr($_SERVER['SCRIPT_FILENAME'], '\\', '/');
-                while (true) {
-                    if ($temp === substr($scriptFilename, -strlen($temp))) {
-                        //除虚拟目录外执行脚本所在路径的长度
-                        $scriptNameLen = strlen($temp);
-                        break;
-                    } else {
-                        $temp = substr($temp, strcspn($temp, '/', 1) + 1);
-                    }
+        //cli模式初始化环境信息
+        if (PHP_SAPI === 'cli') {
+            //设置项目跟目录
+            $_SERVER['DOCUMENT_ROOT'] = ROOT_DIR;
+            //计算一些路径
+            $temp = get_included_files();
+            $_SERVER['SCRIPT_FILENAME'] = strtr($temp[0], '\\', '/');
+            isset($_SERVER['PATH_INFO']) || $_SERVER['PATH_INFO'] = '';
+            $_SERVER['QUERY_STRING'] = empty($_SERVER['QUERY_STRING']) ? '' : join('&', $_SERVER['QUERY_STRING']);
+            $_SERVER['SCRIPT_NAME'] = substr($_SERVER['SCRIPT_FILENAME'], strlen(ROOT_DIR));
+            $_SERVER['REQUEST_URI'] = $_SERVER['PHP_SELF'] = $_SERVER['SCRIPT_NAME'] . $_SERVER['PATH_INFO'];
+            $_SERVER['PATH_TRANSLATED'] = ROOT_DIR . $_SERVER['PATH_INFO'];
+            $_SERVER['QUERY_STRING'] && $_SERVER['REQUEST_URI'] .= '?' . $_SERVER['QUERY_STRING'];
+            isset($config['_of']['rootUrl']) || $config['_of']['rootUrl'] = '';
+        //web模式自动计算ROOT_URL
+        } else if (!isset($config['_of']['rootUrl'])) {
+            $temp = $_SERVER['SCRIPT_NAME'];
+            $scriptFilename = strtr($_SERVER['SCRIPT_FILENAME'], '\\', '/');
+            while (true) {
+                if ($temp === substr($scriptFilename, -strlen($temp))) {
+                    //除虚拟目录外执行脚本所在路径的长度
+                    $scriptNameLen = strlen($temp);
+                    break;
+                } else {
+                    $temp = substr($temp, strcspn($temp, '/', 1) + 1);
                 }
-                //非英文路径解析
-                $config['_of']['rootUrl'] = str_replace('%2F', '/', rawurlencode(
-                    substr($_SERVER['SCRIPT_NAME'], 0, -$scriptNameLen) .
-                    substr(ROOT_DIR, strlen(substr($scriptFilename, 0, -$scriptNameLen)))
-                ));
             }
+            //非英文路径解析
+            $config['_of']['rootUrl'] = str_replace('%2F', '/', rawurlencode(
+                substr($_SERVER['SCRIPT_NAME'], 0, -$scriptNameLen) .
+                substr(ROOT_DIR, strlen(substr($scriptFilename, 0, -$scriptNameLen)))
+            ));
         }
 
         //站点根路径,ROOT_URL

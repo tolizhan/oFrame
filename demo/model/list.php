@@ -56,7 +56,7 @@ class ctrl_list {
                 //解析文件存在
                 if (is_file($path)) {
                     preg_match($matchFunc, file_get_contents($path), $match);
-                    echo '<br><br><hr>';
+                    echo str_repeat("\n", 100), '<br><br><hr>';
                     highlight_string("<?php    源码如下 : \n" . $match[0] . "\n?>");
                 }
             }

@@ -29,6 +29,7 @@
  *      }
  *      消息队列列表($mqList) : {
  *          事务数据库连接池名 : {
+ *              "isSet" : 执行过队列信息, true=调用过set, false=未调用过
  *              "level" : 当前数据库池等级, 0=不在事务里, 1=根事务, n=n层事务里
  *              "state" : 当前事务最终状态, true=提交, false=回滚
  *              "pools" : {
@@ -414,6 +415,8 @@ abstract class of_base_com_mq {
                 $fireMq = true;
                 //开启事务
                 self::set(null, $pool, $bind);
+                //标记调用set
+                $mqList[$bind]['isSet'] = true;
                 //迁移队列 && 向迁移队列发送删除通知
                 $moveMq && self::set($moveMq, $config['moveMq'], $bind);
                 //设置消息队列
@@ -538,6 +541,8 @@ abstract class of_base_com_mq {
             return ;
         //开始监听
         } else if ($type === true && $name === 'queueLock') {
+            //防止self::restoreMsgs恢复时内存溢出
+            ini_set('memory_limit', -1);
             //打开监听触发锁
             $tLock = fopen(self::$mqDir . '/triggerLock', 'a+');
             //加锁监听触发锁
@@ -764,11 +769,16 @@ abstract class of_base_com_mq {
 
             //在工作结束后执行消息写入, 事务为提交 && 提交二阶段 && 在工作中
             if ($tFunc === '_commit' && $type === 'after' && $call = of::work('info', 4)) {
-                $call['done'] = array('of_base_com_mq::execMqObjTran-' . $params['pool'] => array(
-                    'onWork' => null,
-                    'asCall' => 'of_base_com_mq::execMqObjTran',
-                    'params' => array($type, $params['pool'], '_commit')
-                )) + $call['done'];
+                //执行过队列信息 && 注入工作结束回调
+                $nowMqList['isSet'] && $call['done'] = array(
+                    'of_base_com_mq::execMqObjTran-' . $params['pool'] => array(
+                        'onWork' => null,
+                        'asCall' => 'of_base_com_mq::execMqObjTran',
+                        'params' => array($type, $params['pool'], '_commit')
+                    )
+                ) + $call['done'];
+                //标记未执行消息状态
+                $nowMqList['isSet'] = false;
             //直接执行消息事务
             } else {
                 self::execMqObjTran($type, $params['pool'], $tFunc);
@@ -1051,6 +1061,7 @@ abstract class of_base_com_mq {
 
             //绑定事务初始化
             if (!isset($mqList[$bind]['level'])) {
+                $mqList[$bind]['isSet'] = false;
                 $mqList[$bind]['level'] = $bind ? of_db::pool($bind, 'level') : 0;
                 $mqList[$bind]['state'] = $bind ? of_db::pool($bind, 'state') : true;
             }
@@ -1217,12 +1228,17 @@ abstract class of_base_com_mq {
                         //可以恢复 失败时间 < 当前时间
                         if (($temp = filemtime($k)) && $temp < $time) {
                             $index = &of_base_com_disk::file($k, true, true);
+                            $msgs[] = &$index;
 
                             //计算延期时间 (失败 + 延迟 - 当前) < 0 && 延迟置0
                             ($temp = $index['time'] + $index['keys'][2] - $time) < 0 && $temp = 0;
                             $index['keys'][2] = $temp;
 
-                            $msgs[] = &$index;
+                            //控制最大内存
+                            if (isset($msgs[999])) {
+                                of_base_com_mq::set($msgs, $vf);
+                                $msgs = array();
+                            }
                         //标记有消息无法恢复
                         } else {
                             unset($done[$vf]);

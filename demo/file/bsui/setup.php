@@ -9,8 +9,9 @@ class demo_file_bsui_setup {
      * 作者 : Edgar.lee
      */
     public static function dispatch(&$params) {
-        //不是框架层 && 不是IE
+        //web访问 && 不是框架层 && 不是IE
         if (
+            isset($_SERVER["HTTP_USER_AGENT"]) &&
             strncmp('of_', $params['class'], 3) &&
             !strpos($_SERVER["HTTP_USER_AGENT"], 'MSIE')
         ) {

@@ -1,3 +1,21 @@
+版本: 262
+作者: Edgar
+日期: 2022年12月1日 9:19:14
+信息:
+说明: + of_base_com_timer::task()第二参数可获取任务数据
+      + 判断是否可执行php命令 of_base_com_net::isExec()
+      * 修复mysql队列在work中死循环问题(上一版重大问题)
+      * 解决消息队列设置消息失败时,消息恢复内存溢出问题
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/ctrl/index.php
+已修改 : /trunk/demo/file/bsui/setup.php
+已修改 : /trunk/demo/model/list.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/of.php
+
 版本: 260
 作者: Edgar
 日期: 2022年11月1日 9:51:59

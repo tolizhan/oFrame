@@ -107,6 +107,29 @@ class ctrl_index extends L {
     }
 
     /**
+     * 描述 : 任务回调测试
+     * 作者 : Edgar.lee
+     */
+    public function task($r = null) {
+        if ($r) {
+            sleep(5);
+            return '回调返回时间: ' . date('Y-m-d H:i:s', time());
+        } else {
+            echo '任务开始创建: ' . date('Y-m-d H:i:s', time()), "<br>\n";
+            of_base_com_timer::task(array(
+                'call' => array($this, __FUNCTION__)
+            ), $task);
+            echo '任务创建完成: ' . date('Y-m-d H:i:s', time()), "<br><br>\n\n";
+
+            echo '异步读取数据: ' . var_export($task->result(0), true), "<br>\n";
+            echo '异步取出时间: ' . date('Y-m-d H:i:s', time()), "<br><br>\n\n";
+
+            echo '同步读取数据: ' . var_export($task->result(), true), "<br>\n";
+            echo '同步取出时间: ' . date('Y-m-d H:i:s', time()), "<br>\n";
+        }
+    }
+
+    /**
      * 描述 : 演示消息队列
      * 作者 : Edgar.lee
      */
