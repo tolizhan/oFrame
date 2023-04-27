@@ -14,6 +14,7 @@
  * 作者 : Edgar.lee
  */
 class of_base_com_kv {
+    protected $params;
     private static $config = null;
     private static $instList = null;
 

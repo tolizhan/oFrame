@@ -17,7 +17,7 @@
  *          `lockMark` char(32) NOT NULL COMMENT '锁定时生成的唯一ID',
  *          PRIMARY KEY (`type`,`mark`) USING BTREE,
  *          KEY `idx_consumer` (`lockTime`,`type`,`queue`) USING BTREE
- *      ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='消息队列表'
+ *      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息队列表'
  *      /*!50100 PARTITION BY KEY (`type`) PARTITIONS 251 * /;
  * 作者 : Edgar.lee
  */
@@ -233,14 +233,11 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             $data['extra'] = array('lock'  => $uniqid);
             //解析消费数据
             foreach ($msgs as $k => &$v) {
-                $data['count'][] = $v['syncLevel'];
+                $data['count'][$v['msgId']] = $v['syncLevel'];
                 $data['msgId'][] = $v['msgId'];
                 $data['data'][$v['msgId']] = json_decode($v['data'], true);
                 $data['extra']['mark'][] = $v['mark'];
             }
-
-            //格式化消费数据
-            $data['count'] = max($data['count']);
 
             //回调结果
             $return = self::callback($call, $data);

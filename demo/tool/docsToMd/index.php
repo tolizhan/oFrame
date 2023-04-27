@@ -31,6 +31,7 @@ $htmlInLen = strlen($htmlIn);
 $utf8Bom = chr(239) . chr(187) . chr(191);
 //markdown 特殊符号
 $specialChar = array(
+    ' ' => '&nbsp;', '`' => '&#096;'
     // '{' => '\{', '}' => '\}', '[' => '\[', ']' => '\]',
     // '(' => '\(', ')' => '\)', '\\' => '\\\\',
     // '#' => '\#', '+' => '\+', '-' => '\-', '.' => '\.',
@@ -88,7 +89,7 @@ foreach ($dirs as $k => &$v) {
 
             //查找以PRE标签
             $hKeys = of_base_com_hParse::selectors($oKeys, 'pre');
-            //将PRE标签中直接文本节点" "改成"&nbsp;"
+            //将PRE标签中直接文本节点特殊字符替换
             foreach ($hKeys as &$vh) {
                 //获取子元素键
                 $cKeys = of_base_com_hParse::nodeConn($vh, 'child', false, true);
@@ -99,8 +100,8 @@ foreach ($dirs as $k => &$v) {
                     if (of_base_com_hParse::nodeAttr($vc, 'tagName') === '!text') {
                         //读取文本内容
                         $temp = of_base_com_hParse::nodeAttr($vc, '');
-                        //转义markdown特殊字符 && " "换成"&nbsp;"
-                        $temp = str_replace(' ', '&nbsp;', strtr($temp, $specialChar));
+                        //转义markdown特殊字符
+                        $temp = strtr($temp, $specialChar);
                         //回写文本内容
                         of_base_com_hParse::nodeAttr($vc, '', $temp);
                     }

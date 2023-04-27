@@ -3,6 +3,7 @@
  * 描述 : html模板引擎,实现UI,开发人员分离
  * 注明 :
  *      配置变量(config) : 配置变量(注释前*代表有默认值修改时要慎重, x代表不能修改) {
+ *          "dynamic" :*自动更新变动模板, true=检查模板修改时间自动更新, false=通过控制台手动更新
  *          "tagKey"  :*默认=['<?', '?>', '<\?(.*)\?>'],注释标签标识符 <!--标识符[0] php代码 标识符[1]-->
  *          "attrPre" :*默认='_',属性的前缀 _value 相当于 value
  *          "funcPre" :*默认='__',功能的前缀 __del 代表删除 当前标签
@@ -15,6 +16,8 @@
 class of_base_htmlTpl_engine {
     //html模板解析引擎
     private static $config = array(
+        //自动更新变动模板, true=检查模板修改时间自动更新, false=通过控制台手动更新
+        'dynamic' => true,
         //注释标签标识符 <!--标识符[0] php代码 标识符[1]-->
         'tagKey'  => array('<?', '?>', '<\?(.*)\?>'),
         //属性的前缀 _value 相当于 value
@@ -31,6 +34,7 @@ class of_base_htmlTpl_engine {
         //引用配置文件
         $config = &self::$config;
         $config = of::config('_of.htmlTpl', array()) + $config;
+        $config['dynamic'] || $config['dynamic'] = OF_DEBUG !== false;
 
         //初始化注释标识符
         $index = &$config['tagKey'];
@@ -72,8 +76,8 @@ class of_base_htmlTpl_engine {
             if (
                 //编译文件存在
                 is_file($comFile) ?
-                    //debug && 模板存在 && 模板有变动
-                    OF_DEBUG !== false && is_file($tplFile) && filemtime($tplFile) !== filemtime($comFile) :
+                    //动态编译 && 模板存在 && 模板有变动
+                    $config['dynamic'] && is_file($tplFile) && filemtime($tplFile) !== filemtime($comFile) :
                     //模板存在
                     is_file($tplFile)
             ) {

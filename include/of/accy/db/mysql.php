@@ -157,7 +157,7 @@ class of_accy_db_mysql extends of_db {
 
         if ($this->transState = mysql_query('START TRANSACTION', $this->connection)) {
             //记录逻辑回溯
-            of_accy_db_mysqli::setNote($this);
+            of_accy_db_mysqli::setNote($this, 'mysql');
 
             return true;
         } else {
@@ -297,7 +297,7 @@ class of_accy_db_mysql extends of_db {
 
         if ($this->_ping()) {
             //记录加锁SQL
-            of_accy_db_mysqli::setNote($this, $sql);
+            of_accy_db_mysqli::setNote($this, 'mysql', $sql);
 
             foreach ($sqlList as &$v) {
                 //执行成功

@@ -1,3 +1,35 @@
+版本: 264
+作者: Edgar
+日期: 2023年4月27日 11:25:26
+信息:
+说明: + of_base_com_net::request支持代理context.proxy
+      + 生产环境模板自动编译由_of.htmlTpl.dynamic控制
+      + 扩展可以匹配"of_index::index"来注入框架控制台
+      + 消息队列moveMq支持死循环配置方式,方便反向迁移
+      - 消息队列回调在lots>1时count为对应消息ID的数组
+      - of_base_com_mq::set设置消息成功时返回数组结果
+      * 隐藏控制台中数据库死锁监控进程数据库连接信息
+      * 兼容 PHP 8.2
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/tool/docsToMd/index.php
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/accy/com/mq/redis.php
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqlPdo.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/polar.php
+已修改 : /trunk/include/of/accy/db/tidb.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+已修改 : /trunk/license.txt
+
 版本: 262
 作者: Edgar
 日期: 2022年12月1日 9:19:14

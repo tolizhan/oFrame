@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200262);
+define('OF_VERSION', 200264);
 
 /**
  * 描述 : 控制层核心
@@ -753,7 +753,7 @@ class of {
             //创建内置异常类
             if ($class === null) {
                 $class = '_' . uniqid();
-                eval("class {$class} extends Exception {}");
+                eval("class {$class} extends Exception {public \$data;}");
             }
 
             //处理捕获的异常

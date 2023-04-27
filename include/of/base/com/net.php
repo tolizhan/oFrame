@@ -88,6 +88,10 @@ class of_base_com_net {
      *              数字=连接超时
      *              数组=[连接超时(10), 响应超时(default_socket_timeout)],
      *          "context" : 配置上下文, 默认={
+     *              "proxy" : 代理配置 {
+     *                  "addr" : 代理地址, tcp://xxx:port
+     *                  "user" : 用户密码, user:password
+     *              },
      *              "ssl" : 关闭 ssl 证书验证 {
      *                  "verify_peer_name" : false
      *              }
@@ -329,29 +333,80 @@ class of_base_com_net {
             }
         }
 
-        //创建连接
-        $fp = stream_socket_client(
-            //请求路径
-            ($data['pUrl']['scheme'] === 'https' ? 'ssl://' : '') .
-                $data['pUrl']['host'] . ':' . ($index = &$data['pUrl']['port']),
-            //基础参数
-            $errno, $errstr, $data['timeout'][0], STREAM_CLIENT_CONNECT,
-            //配置上下文
-            stream_context_create(
-                (isset($data['context']) ? $data['context'] : array()) + array(
-                    'ssl' => array(
-                        'verify_peer_name' => false
-                    )
+        //创建上下文资源流
+        $cRes = stream_context_create(
+            (isset($data['context']) ? $data['context'] : array()) + array(
+                'ssl' => array(
+                    'verify_peer_name' => false
                 )
             )
         );
+
+        //代理请求
+        if (isset($data['context']['proxy']['addr'])) {
+            //引用代理参数
+            $index = &$data['context']['proxy'];
+
+            //连接代理
+            $fp = stream_socket_client(
+                //请求路径
+                $index['addr'],
+                //基础参数
+                $errno, $errstr, $data['timeout'][0], STREAM_CLIENT_CONNECT,
+                //配置上下文
+                $cRes
+            );
+
+            //代理连接完成
+            if ($fp) {
+                //授权用户
+                $temp = isset($index['user']) ? base64_encode($index['user']) : '';
+                //开启隧道 Tunnel
+                fwrite($fp, join("\r\n", array(
+                    "CONNECT {$data['pUrl']['host']}:{$data['pUrl']['port']} HTTP/1.1",
+                    "Host: {$data['pUrl']['host']}:{$data['pUrl']['port']}",
+                    "Proxy-Authorization: Basic {$temp}",
+                    "Connection: keep-alive\r\n\r\n"
+                )));
+
+                //读取响应头
+                while ($temp = fgets($fp, 2048)) {
+                    if ($temp === "\r\n") {
+                        break ;
+                    } else {
+                        $tHead[] = $temp;
+                    }
+                }
+
+                //代理成功
+                if (preg_match('/.* (\d+) .*/', join($tHead), $temp) && $temp[1] === '200') {
+                    //ssl协议 && 开启加密
+                    $data['pUrl']['scheme'] === 'https' &&
+                        stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
+                //代理失败
+                } else {
+                    $fp = false;
+                }
+            }
+        //创建连接
+        } else {
+            $fp = stream_socket_client(
+                //请求路径
+                ($data['pUrl']['scheme'] === 'https' ? 'ssl://' : '') .
+                    $data['pUrl']['host'] . ':' . $data['pUrl']['port'],
+                //基础参数
+                $errno, $errstr, $data['timeout'][0], STREAM_CLIENT_CONNECT,
+                //配置上下文
+                $cRes
+            );
+        }
 
         //连接成功
         if ($fp) {
             //设置内存不溢出
             $memory = ini_set('memory_limit', -1);
             //简单标准化处理 https(443) 和 http(80) 默认不传端口
-            $port = $index === 443 || $index === 80 ? '' : ':' . $index;
+            $port = ($port = $data['pUrl']['port']) === 443 || $port === 80 ? '' : ':' . $port;
             //附件分界线
             $line = '----ofFormBoundaryTCG418T3MwECCs03----';
             //报文数据长度
@@ -501,7 +556,7 @@ class of_base_com_net {
                     while ($temp = rtrim(fgets($fp, 2048))) {
                         self::getLenStr($fp, hexdec($temp), $res['response']);
                         //跳过\r\n
-                        fread($fp, 2);
+                        self::getLenStr($fp, 2);
                     }
                 //Length传输
                 } else if (preg_match('@Content-Length:\s*(\d+)@i', $res['header'], $temp)) {
@@ -766,7 +821,7 @@ class of_base_com_net {
      * 描述 : 获取指定长度响应数据
      * 作者 : Edgar.lee
      */
-    private static function getLenStr(&$fp, $len, &$res) {
+    private static function getLenStr(&$fp, $len, &$res = array()) {
         while ($len > 0) {
             //每次最多仅读"0.5M"数据
             $temp = fread($fp, $len > 524288 ? 524288 : $len);

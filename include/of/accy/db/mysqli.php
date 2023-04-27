@@ -156,7 +156,7 @@ class of_accy_db_mysqli extends of_db {
 
         if ($this->transState = mysqli_query($this->connection, 'START TRANSACTION')) {
             //记录逻辑回溯
-            of_accy_db_mysqli::setNote($this);
+            of_accy_db_mysqli::setNote($this, 'mysqli');
 
             return true;
         } else {
@@ -235,7 +235,7 @@ class of_accy_db_mysqli extends of_db {
     protected function _query(&$sql) {
         if ($this->_ping()) {
             //记录加锁SQL
-            of_accy_db_mysqli::setNote($this, $sql);
+            of_accy_db_mysqli::setNote($this, 'mysqli', $sql);
 
             return mysqli_multi_query($this->connection, $sql);
         } else {
@@ -266,10 +266,11 @@ class of_accy_db_mysqli extends of_db {
      * 描述 : 设置SQL锁备注信息
      * 参数 :
      *      obj : 连接对象
+     *      dba : 数据库适配名
      *     &sql : null=记录逻辑回溯, str=记录加锁SQL
      * 作者 : Edgar.lee
      */
-    public static function setNote($obj, &$sql = null) {
+    public static function setNote($obj, $dba, &$sql = null) {
         //开启锁超时日志
         if ($obj->params['errorTrace'][0]) {
             try {
@@ -287,10 +288,12 @@ class of_accy_db_mysqli extends of_db {
                     $temp = 'of_accy_db_mysql::trace-' . $obj->dbVar['linkMark'];
                     of_base_com_kv::set($temp, array_slice(debug_backtrace(), 2), 3600, '_ofSelf');
                     //开启超时监听
+                    $pMd5 = md5("{$obj->params['user']}@{$obj->params['host']}:{$obj->params['port']}");
+                    of_base_com_kv::set('of_accy_db_mysql::pool-' . $pMd5, $obj->params, 3600, '_ofSelf');
                     of_base_com_timer::task(array(
                         'call' => array(
                             'asCall' => 'of_accy_db_mysqli::listenLockTimeout',
-                            'params' => array(&$obj->params, 'mysqli')
+                            'params' => array($pMd5, $dba)
                         ),
                         'cNum' => 1
                     ));
@@ -399,8 +402,8 @@ class of_accy_db_mysqli extends of_db {
     /**
      * 描述 : 记录MySql锁超时阻塞列表
      * 参数 :
-     *      dbArgv : 数据库连接参数
-     *      dbName : 数据库连接对象
+     *      pool : 数据库连接参数
+     *      name : 数据库连接对象
      * 注明 :
      *      被阻列表结构($bList) : {
      *          被阻ID : {
@@ -417,11 +420,13 @@ class of_accy_db_mysqli extends of_db {
      *      }
      * 作者 : Edgar.lee
      */
-    public static function listenLockTimeout($dbArgv, $dbName) {
+    public static function listenLockTimeout($pool, $name) {
+        //连接池配置
+        $pool = of_base_com_kv::get('of_accy_db_mysql::pool-' . $pool, null, '_ofSelf');
         //配置连接池
         of_db::pool(__METHOD__, array(
-            'adapter' => &$dbName,
-            'params'  => &$dbArgv
+            'adapter' => $name,
+            'params'  => $pool
         ));
 
         //获取基础属性(版本, 时区)
@@ -566,7 +571,7 @@ class of_accy_db_mysqli extends of_db {
                     if (isset($bData[$kb])) {
                         //被阻列表缓存5分钟
                         $temp = 'of_accy_db_mysql::waits-' .
-                            "{$kb}@{$dbArgv['host']}:{$dbArgv['port']}";
+                            "{$kb}@{$pool['host']}:{$pool['port']}";
                         of_base_com_kv::set($temp, $vb, 300, '_ofSelf');
                     //释放无效内存
                     } else {

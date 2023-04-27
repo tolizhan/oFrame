@@ -262,10 +262,10 @@ abstract class of_base_com_mq {
      *          bind : ""=绑定到内部事务, 字符串=绑定数据池同步事务
      *      生产消息, 批量模式 :
      *          keys : 批量消息, [{"keys" : 单条模式keys结构, "data" : 单条模式data结构}]
-     *          data : 指定消息队列池
      *          pool : 指定数据库连接池
      * 返回 :
-     *      成功=true, 失败=false
+     *      事务操作 : 成功=true, 失败=false
+     *      消息操作 : 成功=数组结果, 失败=false
      * 作者 : Edgar.lee
      */
     public static function set($keys, $data = null, $pool = 'default', $bind = null) {
@@ -349,6 +349,8 @@ abstract class of_base_com_mq {
                 $keys = array(array('keys' => $keys, 'data' => &$data));
             }
 
+            //数组转换成变量
+            is_array($pool) && extract($pool, EXTR_OVERWRITE | EXTR_REFS);
             //待处理的消息列表
             $wMsges = $moveMq = array();
             //当前模块配置
@@ -417,15 +419,27 @@ abstract class of_base_com_mq {
                 self::set(null, $pool, $bind);
                 //标记调用set
                 $mqList[$bind]['isSet'] = true;
-                //迁移队列 && 向迁移队列发送删除通知
-                $moveMq && self::set($moveMq, $config['moveMq'], $bind);
+
+                //迁移队列 && 通过死循环检查
+                if ($moveMq && !isset($move[$config['moveMq']])) {
+                    //加入迁移清单
+                    $move[$pool] = $move[$config['moveMq']] = true;
+                    //向迁移队列发送删除通知
+                    self::set($moveMq, array(
+                        'pool' => &$config['moveMq'],
+                        'bind' => &$bind,
+                        'move' => &$move
+                    ));
+                }
+
                 //设置消息队列
                 $temp = !!$mqArr['inst']->_sets($wMsges);
                 //结束事务(成功提交 && 失败回滚) && 执行是否成功
                 $temp = self::set($temp, $pool, $bind) && $temp;
-                return $temp;
+                //成功返回 ? 数组结果 : false
+                return $temp ? array('setMsges' => $wMsges) : false;
             } else {
-                return true;
+                return array('setMsges' => array());
             }
         }
     }
@@ -892,8 +906,14 @@ abstract class of_base_com_mq {
      *              "cMd5" : 回调唯一值
      *              "cCid" : 当前并发值
      *          }
-     *          "count" : 调用计数, 首次为 1
-     *          "msgId" : 消息ID列表, [消息ID, ...]
+     *          "msgId" : 消息ID列表, [
+     *              消息ID,
+     *              ...
+     *          ]
+     *          "count" : 调用计数 {
+     *              消息ID : 首次为 1,
+     *              ...
+     *          }
      *          "data"  : 消息数据 {
      *              消息ID : 消息数据,
      *              ...
@@ -909,6 +929,8 @@ abstract class of_base_com_mq {
 
         //记录消息数据
         $fireEnv['mqData'] = &$data;
+        //计数列表
+        $cList = $data['count'];
         //生成并发日志
         $cLog = array(
             'msgId'     => $data['msgId'],
@@ -929,6 +951,7 @@ abstract class of_base_com_mq {
             if ($data['lots'] === 1) {
                 $data['msgId'] = &$data['msgId'][0];
                 $data['data'] = &$data['data'][$data['msgId']];
+                $data['count'] = &$data['count'][$data['msgId']];
             }
             //处理消息
             $result = &of::callFunc($call, $data);
@@ -967,9 +990,20 @@ abstract class of_base_com_mq {
             $result['code'] < 400 :
             (is_int($result) && $result > 63072000 ? $result - $time : $result);
 
+        //返回false, 每5次报错
+        if ($return === false) {
+            $tipErr = false;
+            foreach ($cList as $k => &$v) {
+                if ($v % 5 === 3) {
+                    $tipErr = true;
+                    break ;
+                }
+            }
+        }
+
         //(返回false && 每5次报错) || (返回true && 事务未结束) || (非布尔 && 非数字)
         if (
-            $return === false && $data['count'] % 5 === 3 ||
+            $return === false && $tipErr ||
             $return === true && $trxs ||
             !is_bool($return) && !is_int($return)
         ) {
@@ -1141,9 +1175,12 @@ abstract class of_base_com_mq {
 
         //首次运行
         if ($init === null) {
-            //支持延迟触发信号 && 安装SIGTERM信号处理器
-            ($init = function_exists('pcntl_signal_dispatch')) &&
-                pcntl_signal(15, 'of_base_com_mq::exitSignal');
+            //支持延迟触发信号
+            ($init = function_exists('pcntl_signal_dispatch')) ?
+                //安装SIGTERM信号处理器
+                pcntl_signal(15, 'of_base_com_mq::exitSignal') :
+                //恢复linux进程对SIGTERM信号处理
+                function_exists('pcntl_signal') && pcntl_signal(15, SIG_DFL);
         //信号处理
         } else if (is_int($type)) {
             exit;

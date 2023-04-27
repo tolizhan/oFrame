@@ -424,7 +424,7 @@ class of_accy_com_mq_redis extends of_base_com_mq {
             $data['extra'] = array('lock'  => $uniqid);
             //解析消费数据
             foreach ($msgs as &$v) {
-                $data['count'][] = $v['attr']['syncLevel'];
+                $data['count'][$v['attr']['msgId']] = $v['attr']['syncLevel'];
                 $data['msgId'][] = $v['attr']['msgId'];
                 $data['data'][$v['attr']['msgId']] = json_decode($v['attr']['data'], true);
                 $data['extra']['msgs'][] = array(
@@ -432,9 +432,6 @@ class of_accy_com_mq_redis extends of_base_com_mq {
                     'slot' => $v['slot']
                 );
             }
-
-            //格式化消费数据
-            $data['count'] = max($data['count']);
 
             //回调结果
             $return = self::callback($call, $data);
@@ -832,7 +829,7 @@ class of_accy_com_mq_redis extends of_base_com_mq {
             try {
                 //通过重试可以判断是否真的异常并返回预期数据
                 $result = call_user_func_array(array($this->redis, $func), $argv);
-            } catch (Exception $e) {
+            } catch (Exception $r) {
                 $result = null;
                 trigger_error('Function failed to execute: ' . $e->getMessage());
             }

@@ -29,7 +29,7 @@ return array(
     'db'          => array(
         #单数据库混合写法
         //*
-        //数据库连接方式(mysqlPdo, mysqli, mysql, tidb, mssqlPdo)
+        //数据库连接方式(mysqlPdo, mysqli, mysql, polar, tidb, mssqlPdo)
         'adapter'        => 'mysqli',
         //数据库连接参数
         'params'         => array(
@@ -232,6 +232,8 @@ return array(
     'htmlTpl'     => array(
         //编译模版存储路径
         'path'    => '/data/_of/of_base_htmlTpl_engine',
+        //自动更新变动模板, true=检查模板修改时间自动更新, false=通过控制台手动更新
+        'dynamic' => true,
         //注释脚本标识 <!--标识[0] php代码 标识[1]-->, [2]脚本匹配正则如'(?:\<\?|_)(.*?)(?:\?\>|)'
         'tagKey'  => array('<?', '?>'),
         //属性的前缀 _value 相当于 value

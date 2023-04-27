@@ -3,7 +3,7 @@
  * 描述 : 视图层核心
  * 作者 : Edgar.lee
  */
-class of_view {
+class of_view extends stdClass {
     //实例化对象
     private static $instanceObj = null;
 

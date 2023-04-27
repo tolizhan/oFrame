@@ -167,7 +167,7 @@ class of_accy_db_mysqlPdo extends of_db {
         //因自带方法 beginTransaction 无法二次打开, 故 mysql >= 5.7 在死锁回滚时无法重开事务
         if ($this->transState = !!$this->connection->query('START TRANSACTION')) {
             //记录逻辑回溯
-            of_accy_db_mysqli::setNote($this);
+            of_accy_db_mysqli::setNote($this, 'mysqlPdo');
 
             return true;
         } else {
@@ -236,7 +236,7 @@ class of_accy_db_mysqlPdo extends of_db {
 
         if ($this->_ping()) {
             //记录加锁SQL
-            of_accy_db_mysqli::setNote($this, $sql);
+            of_accy_db_mysqli::setNote($this, 'mysqlPdo', $sql);
 
             return !!$this->query = $this->connection->query($sql, PDO::FETCH_ASSOC);
         } else {
