@@ -1,3 +1,55 @@
+版本: 266
+作者: Edgar
+日期: 2023年7月6日 9:31:13
+信息:
+说明: + of_base_com_timer::task 可同时创建一组任务
+      + of::work('block', {}) 全局性排除监控数据库
+      + 框架配置_of.com.data.lock 支持分布式数据锁
+      + 数据锁第三个参数可设置同名锁冲突的命名空间
+      + of::work('error') 结果新增uuid方便比对错误
+      - of_base_com_disk::lock改类of_base_com_data
+      - 抽象方法of_db::_ping()新增参数尝试重新连接
+      * of_db::pool(str) 返回统一格式的连接池配置
+      * 提升消息队列与计划任务性能, 依赖KV与数据锁
+      * of_base_com_data::json编解码失败时抛出异常
+      * 解决of_base_com_net::request无GET带"?"问题
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/extend/sqlProfiling/main/main.php
+已增加 : /trunk/include/of/accy/com/data
+已增加 : /trunk/include/of/accy/com/data/lock
+已增加 : /trunk/include/of/accy/com/data/lock/files.php
+已修改 : /trunk/include/of/accy/com/kv/files.php
+已修改 : /trunk/include/of/accy/com/kv/memcache.php
+已修改 : /trunk/include/of/accy/com/kv/redis.php
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/accy/db/mssqlPdo.php
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqlPdo.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/polar.php
+已修改 : /trunk/include/of/accy/db/tidb.php
+已修改 : /trunk/include/of/accy/session/files.php
+已修改 : /trunk/include/of/accy/session/kv.php
+已修改 : /trunk/include/of/base/com/_meta.php
+已修改 : /trunk/include/of/base/com/data.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/link/codeNav.php
+已修改 : /trunk/include/of/base/link/setup.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/test/case.php
+已修改 : /trunk/include/of/base/test/tool.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+
 版本: 264
 作者: Edgar
 日期: 2023年4月27日 11:25:26

@@ -31,36 +31,31 @@ class of_accy_db_mysqlPdo extends of_db {
                 )
             );
 
-            if ($this->_ping(false)) {
-                //设置字体, GROUP_CONCAT最大长度
-                $temp = "SET NAMES '{$params['charset']}', GROUP_CONCAT_MAX_LEN = 4294967295";
-                //设置严格模式, SQL_MODE = REPLACE(@@sql_mode, 'ONLY_FULL_GROUP_BY', '');
-                OF_DEBUG === false || $temp .= ', SQL_MODE = "STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ZERO_DATE,NO_ZERO_IN_DATE,NO_ENGINE_SUBSTITUTION"';
-                //设置时区
-                $params['timezone'] && $temp .= ", TIME_ZONE = '{$params['timezone']}'";
-                $this->connection->query($temp);
-                //设置事务隔离级别
-                empty($params['isolation']) || $this->connection->query(
-                    'SET SESSION TRANSACTION ISOLATION LEVEL ' . $params['isolation']
-                );
-                //是否开启锁超时日志
-                ($index = &$params['errorTrace']) || $index = array();
-                $index = (array)$index + array(0, '@.@');
-                //事务回滚模式
-                $temp = 'SELECT 
-                    @@innodb_rollback_on_timeout outBack,
-                    @@innodb_lock_wait_timeout timeout,
-                    CONNECTION_ID() linkCid,
-                    VERSION() version';
-                $this->_query($temp);
-                $this->dbVar = $this->_fetch();
-                //连接标识
-                $this->dbVar['linkMark'] = "{$this->dbVar['linkCid']}@{$params['host']}:{$params['port']}";
-                return true;
-            } else {
-                $this->connection = null;
-                return false;
-            }
+            //设置字体, GROUP_CONCAT最大长度
+            $temp = "SET NAMES '{$params['charset']}', GROUP_CONCAT_MAX_LEN = 4294967295";
+            //设置严格模式, SQL_MODE = REPLACE(@@sql_mode, 'ONLY_FULL_GROUP_BY', '');
+            OF_DEBUG === false || $temp .= ', SQL_MODE = "STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ZERO_DATE,NO_ZERO_IN_DATE,NO_ENGINE_SUBSTITUTION"';
+            //设置时区
+            $params['timezone'] && $temp .= ", TIME_ZONE = '{$params['timezone']}'";
+            $this->connection->query($temp);
+            //设置事务隔离级别
+            empty($params['isolation']) || $this->connection->query(
+                'SET SESSION TRANSACTION ISOLATION LEVEL ' . $params['isolation']
+            );
+            //是否开启锁超时日志
+            ($index = &$params['errorTrace']) || $index = array();
+            $index = (array)$index + array(0, '@.@');
+            //事务回滚模式
+            $temp = 'SELECT 
+                @@innodb_rollback_on_timeout outBack,
+                @@innodb_lock_wait_timeout timeout,
+                CONNECTION_ID() linkCid,
+                VERSION() version';
+            $this->_query($temp);
+            $this->dbVar = $this->_fetch();
+            //连接标识
+            $this->dbVar['linkMark'] = "{$this->dbVar['linkCid']}@{$params['host']}:{$params['port']}";
+            return true;
         } catch (Exception $e) {
             trigger_error($e->getMessage());
             return false;
@@ -162,7 +157,7 @@ class of_accy_db_mysqlPdo extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _begin() {
-        $this->_ping();
+        $this->_ping(true);
 
         //因自带方法 beginTransaction 无法二次打开, 故 mysql >= 5.7 在死锁回滚时无法重开事务
         if ($this->transState = !!$this->connection->query('START TRANSACTION')) {
@@ -234,7 +229,7 @@ class of_accy_db_mysqlPdo extends of_db {
     protected function _query(&$sql) {
         $this->query = false;
 
-        if ($this->_ping()) {
+        if ($this->_ping(true)) {
             //记录加锁SQL
             of_accy_db_mysqli::setNote($this, 'mysqlPdo', $sql);
 
@@ -247,20 +242,18 @@ class of_accy_db_mysqlPdo extends of_db {
     /**
      * 描述 : 检测连接有效性
      * 参数 :
-     *      restLink : 是否重新连接,true(默认)=是,false=否
+     *      mode : false=判断并延长时效, true=非事务尝试重连
+     * 返回 :
+     *      true=连接, false=断开
      * 作者 : Edgar.lee
      */
-    protected function _ping($restLink = true) {
-        if (
-            //事务状态下不重新检查
-            $this->transState ||
-            ($temp = @$this->connection->getAttribute(PDO::ATTR_SERVER_INFO)) &&
-            $temp !== 'MySQL server has gone away' ||
-            $restLink && $this->_connect()
-        ) {
-            return true;
+    protected function _ping($mode) {
+        //事务状态下不重新检查
+        if ($mode) {
+            return $this->transState || @$this->connection->query('SELECT 1') || $this->_connect();
+        //判断连接并延长连接时效
         } else {
-            return false;
+            return !!@$this->connection->query('SELECT 1');
         }
     }
 }

@@ -27,16 +27,11 @@ class of_accy_db_mssqlPdo extends of_db {
                 )
             );
 
-            if ($this->_ping(false)) {
-                //设置事务隔离级别
-                empty($params['isolation']) || $this->connection->query(
-                    'SET TRANSACTION ISOLATION LEVEL ' . $params['isolation']
-                );
-                return true;
-            } else {
-                $this->connection = null;
-                return false;
-            }
+            //设置事务隔离级别
+            empty($params['isolation']) || $this->connection->query(
+                'SET TRANSACTION ISOLATION LEVEL ' . $params['isolation']
+            );
+            return true;
         } catch (Exception $e) {
             trigger_error($e->getMessage());
             return false;
@@ -84,7 +79,7 @@ class of_accy_db_mssqlPdo extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _begin() {
-        $this->_ping();
+        $this->_ping(true);
 
         //开启事务
         if ($this->transState = !!$this->connection->beginTransaction()) {
@@ -151,7 +146,7 @@ class of_accy_db_mssqlPdo extends of_db {
     protected function _query(&$sql) {
         $this->query = false;
 
-        if ($this->_ping()) {
+        if ($this->_ping(true)) {
             return !!$this->query = $this->connection->query($sql, PDO::FETCH_ASSOC);
         } else {
             return false;
@@ -161,19 +156,18 @@ class of_accy_db_mssqlPdo extends of_db {
     /**
      * 描述 : 检测连接有效性
      * 参数 :
-     *      restLink : 是否重新连接,true(默认)=是,false=否
+     *      mode : false=判断并延长时效, true=非事务尝试重连
+     * 返回 :
+     *      true=连接, false=断开
      * 作者 : Edgar.lee
      */
-    protected function _ping($restLink = true) {
-        if (
-            //事务状态下不重新检查
-            $this->transState ||
-            @$this->connection->getAttribute(PDO::ATTR_SERVER_INFO) ||
-            $restLink && $this->_connect()
-        ) {
-            return true;
+    protected function _ping($mode) {
+        //事务状态下不重新检查
+        if ($mode) {
+            return $this->transState || @$this->connection->query('SELECT 1') || $this->_connect();
+        //判断连接并延长连接时效
         } else {
-            return false;
+            return !!@$this->connection->query('SELECT 1');
         }
     }
 }

@@ -21,6 +21,7 @@
  *              "inst" : 初始化的连接源对象 {
  *                  "write' : 写入连接源,
  *                  "read"  : 读取连接源,
+ *                  "ping"  : 保持事务连接的连接
  *                  "back"  : read的备份, 启动事务时有效
  *                  "level" : 嵌套的层次, 启动事务时有效
  *                  "state" : 嵌套未回滚, 启动事务时有效
@@ -144,7 +145,7 @@ abstract class of_db {
                     }
                     if ($result = isset($instList[$key]['inst']) && $index = &$instList[$key]['inst']) {
                         $result = isset($index['write']) ?
-                            $index['write']->_ping() : $index['read']->_ping();
+                            $index['write']->_ping($val) : $index['read']->_ping($val);
                     }
                     break;
                 //查询当前提交状态
@@ -219,6 +220,19 @@ abstract class of_db {
                     }
                 }
 
+                //非读写分离 && 格式为读写分离
+                empty($pool['write']) && empty($pool['read']) && $pool = array(
+                    'write' => $pool, 'read' => $pool
+                );
+                //引用读 && 已设置 || 复制写
+                ($index = &$pool['read']) || $index = $pool['write'];
+                //是单从转多从格式
+                isset($index['adapter']) && $index = array($index);
+                //引用写 && 已设置 || 复制读
+                ($index = &$pool['write']) || $index = $pool['read'];
+                //是单主转多主格式
+                isset($index['adapter']) && $index = array($index);
+
                 //引用连接
                 $instList[$key] = array('pool' => &$pool);
             }
@@ -259,8 +273,12 @@ abstract class of_db {
         //读模式列表
         static $rAw = array('SHOW' => true, 'SELECT' => true, 'DESCRIBE' => true, 'EXPLAIN' => true);
         //事务 回滚, 提交, 开启
-        static $fun = array('_rollBack', '_commit', '' => '_begin');
+        static $fun = array('_rollBack', '_commit');
+        //连接维持间隔数
+        static $num = 0;
 
+        //引用实例列表
+        $instList = &self::$instList;
         //返回结果
         $result = false;
         //执行成功, false=执行失败, true=执行成功
@@ -278,6 +296,7 @@ abstract class of_db {
 
             //获取读写分离连接
             if ($dbObj = &self::getConnect(isset($rAw[$tags]) ? 'read' : 'write')) {
+                //执行SQL, 根据类型返回结果
                 if ($result = $dbObj->_query($sql)) {
                     switch ($tags) {
                         case 'SHOW':
@@ -300,15 +319,17 @@ abstract class of_db {
                     }
                 }
 
+                //标记下一轮不发心跳包
+                $instList[$pool]['inst']['ping'] = false;
                 //SQL执行失败 && 事务最终回滚
                 if (!$isDone = $result !== false) {
-                    self::$instList[$pool]['inst']['state'] = false;
+                    $instList[$pool]['inst']['state'] = false;
                 }
             }
         //事务处理
         } else if ($dbObj = &self::getConnect('write')) {
             //引用连接池
-            $index = &self::$instList[$pool]['inst'];
+            $index = &$instList[$pool]['inst'];
 
             //启动事务
             if ($sql === null) {
@@ -348,6 +369,22 @@ abstract class of_db {
             }
         }
 
+        //隔一段时间, 向事务中的连接池发送心跳包, 保持连接活性
+        if (++$num > 5000) {
+            //遍历连接池
+            foreach ($instList as &$v) {
+                //在事务中
+                if (!empty($v['inst']['level'])) {
+                    //不发心跳包 || 发送心跳包
+                    empty($v['inst']['ping']) || $v['inst']['write']->_ping(false);
+                    //标记下一轮发送心跳包
+                    $v['inst']['ping'] = true;
+                }
+            }
+            //重置间隔
+            $num = 0;
+        }
+
         //SQL 执行错误
         $isDone || of::event('of_db::error', true, $dbObj->_error() + array(
             'sql' => &$sql, 'pool' => &$pool
@@ -376,13 +413,10 @@ abstract class of_db {
         if ($dbLink === null) {
             //引用连接池
             $pool = &$config['pool'];
-            //分离模式 || 可能是单个或混合
-            ($isMix = isset($pool[$type])) || $pool = array('write' => $pool, 'read' => $pool);
-
+            //是否为读写分离(读写不同配置为读写分离)
+            $isMix = $pool['write'] !== $pool['read'];
             //引用读写分离
             $pool = &$pool[$type];
-            //是单个的
-            isset($pool['adapter']) && $pool = array($pool);
 
             do {
                 //随机读取一连接
@@ -401,11 +435,11 @@ abstract class of_db {
                 if (($temp = $dbLink->_connect()) || empty($pool[1])) {
                     //读取失败
                     if ($temp === false) {
-                        //分离模式 && 读取模式
+                        //读写分离 && 读取模式
                         $dbLink = $isMix && $type === 'read' ? self::getConnect('write') : false;
                     }
 
-                    //分离模式 || 整合一起
+                    //读写分离 || 整合一起
                     $isMix || $config['inst'] = array(
                         'write' => &$dbLink,
                         'read'  => &$dbLink
@@ -433,8 +467,8 @@ abstract class of_db {
     //关闭连接源
     abstract protected function _close();
 
-    //检查连接是否正常, true=已连接, false=未连接
-    abstract protected function _ping();
+    //检查连接是否正常, false=判断并延长时效, true=非事务尝试重连
+    abstract protected function _ping($mode);
 
     //读取当前错误,返回 {"code" : 错误编码, "info" : 错误信息, "note" : 详细日志)
     abstract protected function _error();

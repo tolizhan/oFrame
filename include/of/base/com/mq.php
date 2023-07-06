@@ -42,30 +42,34 @@
  *                          }...
  *                      }
  *                      "msgs" : 待处理消息列表 {
- *                          消息ID
+ *                          消息唯一标识"队列名\0类型\0消息ID" : {
+ *                              "keys"  : [类型, 消息ID, 延迟]
+ *                              "data"  : null
+ *                              "queue" : 队列名
+ *                          }, ...
  *                      }
  *                  }, ...
  *              }
  *          }
  *      }
- *      磁盘结构 : {
- *          "/queueTrigger" : 队列监听列表 {
- *              /节点ID : 单个节点信息 {
- *                  "/params.php" : {
- *                      "tNum" : 队列位置,
- *                      "node" : 节点信息, _of.nodeName
- *                  },
- *                  "/queueLock"  : 队列进程, 启动时独享锁,
- *                  "/protected"  : 保护进程, 启动时独享锁
+ *      键值结构 : 已"of_base_com_mq::"为前缀的键名
+ *          "nodeList" : 完整分布式节点(永不过期), 记录不同"_of.nodeName"节点, 失效时定期清理 {
+ *              节点ID : 节点信息 {
+ *                  "tNum" : 队列位置,
  *              }, ...
- *          },
+ *          }
+ *      加锁逻辑 : 已"of_base_com_mq::"为前缀
+ *          "nodeList" : 当新插入或清理节点时加独享锁
+ *          nodeLock#节点ID : 节点进程, 启动时独享锁
+ *          daemon#节点ID : 守护进程, 启动时独享锁
+
+ *      磁盘结构 : {
  *          "/failedMsgs"   : 失败的消息列表 {
  *              /连接池名 : {
  *                  md5(队列名\0消息键\0消息ID).php 文件,
  *                  ...
  *              }
  *          }
- *          "/triggerLock"  : 触发监听文件, 计算分布队列位置时加独享锁
  *      }
  * 作者 : Edgar.lee
  */
@@ -80,8 +84,8 @@ abstract class of_base_com_mq {
     private static $fireMq = false;
     //依赖根路径
     private static $mqDir = null;
-    //队列监听路径
-    private static $tPath = null;
+    //当前节点ID
+    private static $nodeId = '';
     //触发时变量 {"memory" : 最大内存, "timezone" : 当前时区, "mqData" : 当前消息, "mqClass" : 消费类名}
     private static $fireEnv = null;
 
@@ -92,6 +96,8 @@ abstract class of_base_com_mq {
     public static function init() {
         self::$config = of::config('_of.com.mq');
         self::$mqDir = ROOT_DIR . OF_DATA . '/_of/of_base_com_mq';
+        //初始节点ID
+        ($nodeName = of::config('_of.nodeName')) && self::$nodeId = md5($nodeName);
 
         of::event('of::halt', 'of_base_com_mq::ofHalt');
         of::event('of_db::rename', array(
@@ -106,12 +112,6 @@ abstract class of_base_com_mq {
             'asCall' => 'of_base_com_mq::dbEvent',
             'params' => array('after')
         ));
-
-        //空节点名称不生成队列监听路径
-        if ($nodeName = of::config('_of.nodeName')) {
-            self::$tPath = self::$mqDir . '/queueTrigger/' . md5(of::config('_of.nodeName'));
-            is_dir(self::$tPath) || @mkdir(self::$tPath, 0777, true);
-        }
 
         //web访问开启消息队列
         if (of::dispatch('class') === 'of_base_com_mq') {
@@ -129,13 +129,11 @@ abstract class of_base_com_mq {
                 exit("<br>\nAccess denied: production mode.");
             //重启消息队列
             } else if ($reload) {
-                //队列监听列表
-                $path = self::$mqDir . '/queueTrigger';
-                //遍历并发任务目录
-                of_base_com_disk::each($path, $tasks, null);
+                //读取全局节点列表
+                $nodes = of_base_com_kv::get('of_base_com_mq::nodeList', array(), '_ofSelf');
                 //遍历发送重置命令
-                foreach ($tasks as $kt => &$vt) {
-                    $vt && of_base_com_kv::del('of_base_com_mq::command::' . basename($kt), '_ofSelf');
+                foreach ($nodes as $kt => &$vt) {
+                    of_base_com_kv::del('of_base_com_mq::command::' . basename($kt), '_ofSelf');
                 }
             //展示并发列表
             } else {
@@ -225,26 +223,29 @@ abstract class of_base_com_mq {
      * 作者 : Edgar.lee
      */
     public static function state($start = true) {
-        //队列监听列表
-        $path = self::$mqDir . '/queueTrigger';
-        //遍历并发任务目录
-        of_base_com_disk::each($path, $tasks, null);
         //最终运行状态
         $result = false;
+        //全局节点列表键
+        $listKey = 'of_base_com_mq::nodeList';
+        //读取全局节点列表
+        $nodes = of_base_com_kv::get($listKey, array(), '_ofSelf');
+
         //判断所有监听, 一个运行便为运行
-        foreach ($tasks as $kt => &$vt) {
-            //是目录 && 当前任务磁盘目录 && 任务已运行
-            if (
-                $vt &&
-                is_file($temp = $kt . '/queueLock') &&
-                ($result = !flock(fopen($temp, 'r+'), LOCK_EX | LOCK_NB))
-            ) {
+        foreach ($nodes as $kt => &$vt) {
+            //节点进程锁
+            $nodeLock = 'of_base_com_mq::nodeLock#' . $kt;
+            //队列监听未启动
+            if (of_base_com_data::lock($nodeLock, 6)) {
+                of_base_com_data::lock($nodeLock, 3);
+            //队列监听已启动
+            } else {
+                $result = true;
                 break ;
             }
         }
 
         //需要开启 && 尝试开启
-        $start && self::listen('queueLock');
+        $start && self::listen('nodeLock');
         return $result;
     }
 
@@ -262,7 +263,7 @@ abstract class of_base_com_mq {
      *          bind : ""=绑定到内部事务, 字符串=绑定数据池同步事务
      *      生产消息, 批量模式 :
      *          keys : 批量消息, [{"keys" : 单条模式keys结构, "data" : 单条模式data结构}]
-     *          pool : 指定数据库连接池
+     *          data : 指定数据库连接池
      * 返回 :
      *      事务操作 : 成功=true, 失败=false
      *      消息操作 : 成功=数组结果, 失败=false
@@ -496,9 +497,11 @@ abstract class of_base_com_mq {
             );
 
             //安装信号触发器
-            self::exitSignal();
+            of_base_com_timer::exitSignal();
             //重置自身消息数据
             self::resetPaincMqData(null);
+            //重置未启动消息数据
+            $isFix && self::resetPaincMqData(2);
 
             while (true) {
                 $cmd = of_base_com_kv::get($cKey, array('taskPid' => '', 'compare' => ''), '_ofSelf');
@@ -511,10 +514,8 @@ abstract class of_base_com_mq {
                     //!(验证文件 && 文件变动)
                     !($check && of_base_com_timer::renew($check))
                 ) {
-                    //重置未启动消息数据
-                    $isFix && self::resetPaincMqData(2);
                     //检查退出信号
-                    self::exitSignal();
+                    of_base_com_timer::exitSignal();
 
                     //存在消息
                     if ($mqObj->_fire($call, $data)) {
@@ -549,158 +550,158 @@ abstract class of_base_com_mq {
      * 描述 : 消息队列监听, 负责启动调度消息
      * 作者 : Edgar.lee
      */
-    public static function listen($name = 'queueLock', $type = null) {
-        //空监听路径(空节点名称)不触发队列监听路径
-        if (!self::$tPath) {
-            return ;
+    public static function listen($name = 'nodeLock', $type = null) {
+        //空监听路径(空节点ID)不触发队列监听路径
+        if (!$nodeId = &self::$nodeId) return ;
+        //节点进程锁
+        $lock = "of_base_com_mq::{$name}#{$nodeId}";
+
         //开始监听
-        } else if ($type === true && $name === 'queueLock') {
+        if ($type === true && $name === 'nodeLock') {
             //防止self::restoreMsgs恢复时内存溢出
             ini_set('memory_limit', -1);
-            //打开监听触发锁
-            $tLock = fopen(self::$mqDir . '/triggerLock', 'a+');
-            //加锁监听触发锁
-            if (flock($tLock, LOCK_EX)) {
-                //监听加锁成功
-                if ($lock = self::lockListen($name)) {
-                    //已绑定的监听ID
-                    $tNum = array(0);
-                    //命令配置键名
-                    $cKey = 'of_base_com_mq::command::' . md5(of::config('_of.nodeName'));
-                    //队列监听列表
-                    $qPath = self::$mqDir . '/queueTrigger';
-                    //失败消息列表
-                    $fPath = self::$mqDir . '/failedMsgs';
 
-                    //遍历并发任务目录
-                    of_base_com_disk::each($qPath, $tasks, null);
-                    //读取已启动的监听数据
-                    foreach ($tasks as $kt => &$vt) {
-                        //是文件夹 && 不是当前监听
-                        if ($vt && $kt !== self::$tPath) {
-                            //队列监听未启动
-                            if (flock(fopen($kt . '/queueLock', 'a+'), LOCK_EX | LOCK_NB)) {
-                                //清理未启动队列
-                                of_base_com_disk::delete($kt);
-                            //队列监听已启动
-                            } else {
-                                //已绑定的监听ID
-                                $temp = of_base_com_disk::file($kt . '/params.php', true, true);
-                                $tNum[] = $temp['tNum'];
-                            }
+            //全局节点列表键
+            $listKey = 'of_base_com_mq::nodeList';
+            //加锁全局节点列表
+            of_base_com_data::lock($listKey, 2);
+
+            //监听加锁成功
+            if (of_base_com_data::lock($lock, 6)) {
+                //已绑定的监听ID
+                $tNum = array(0);
+                //命令配置键名
+                $cKey = 'of_base_com_mq::command::' . md5(of::config('_of.nodeName'));
+                //失败消息列表
+                $fPath = self::$mqDir . '/failedMsgs';
+                //读取全局节点列表
+                $nodes = of_base_com_kv::get($listKey, array(), '_ofSelf');
+
+                //读取已启动的监听数据
+                foreach ($nodes as $kt => &$vt) {
+                    //是文件夹 && 不是当前监听
+                    if ($kt !== $nodeId) {
+                        //节点进程锁
+                        $nodeLock = 'of_base_com_mq::nodeLock#' . $kt;
+                        //队列监听未启动
+                        if (of_base_com_data::lock($nodeLock, 6)) {
+                            //解除节点进程锁
+                            of_base_com_data::lock($nodeLock, 3);
+                            //清理未启动队列
+                            unset($nodes[$kt]);
+                        //队列监听已启动
+                        } else {
+                            //已绑定的监听ID
+                            $tNum[] = $vt['tNum'];
                         }
                     }
+                }
 
-                    //计算最小未绑定的监听ID
-                    $tNum = array_diff(range(1, max($tNum) + 1), $tNum);
-                    $tNum = reset($tNum);
+                //计算最小未绑定的监听ID
+                $tNum = array_diff(range(1, max($tNum) + 1), $tNum);
+                $tNum = reset($tNum);
+                //回写监听参数数据
+                $nodes[$nodeId] = array('tNum' => $tNum);
 
-                    //回写监听参数数据
-                    of_base_com_disk::file(self::$tPath . '/params.php', array(
-                        //监听编号
-                        'tNum' => $tNum,
-                        //节点名称
-                        'node' => of::config('_of.nodeName')
-                    ), true);
+                //回写全局节点列表(永不过期)
+                of_base_com_kv::set($listKey, $nodes, 0, '_ofSelf');
+                //解锁全局节点列表
+                of_base_com_data::lock($listKey, 3);
+                //安装信号触发器
+                of_base_com_timer::exitSignal();
 
-                    //关闭监听触发锁
-                    unset($tLock);
-                    //安装信号触发器
-                    self::exitSignal();
+                //监听标志存在
+                while (!of_base_com_timer::renew()) {
+                    //读取命令
+                    $cmd = of_base_com_kv::get($cKey, array('taskPid' => '', 'compare' => ''), '_ofSelf');
+                    isset($tPid) || $tPid = $cmd['taskPid'];
+                    //加载最新配置文件
+                    $config = of::config('_of.com.mq', array(), 4);
+                    //待回调列表
+                    $waitCall = array();
+                    //失败队列路径
+                    $failDirs = array();
 
-                    //监听标志存在
-                    while (!of_base_com_timer::renew()) {
-                        //读取命令
-                        $cmd = of_base_com_kv::get($cKey, array('taskPid' => '', 'compare' => ''), '_ofSelf');
-                        isset($tPid) || $tPid = $cmd['taskPid'];
-                        //加载最新配置文件
-                        $config = of::config('_of.com.mq', array(), 4);
-                        //待回调列表
-                        $waitCall = array();
-                        //失败队列路径
-                        $failDirs = array();
+                    //任务ID相同
+                    if ($cmd['taskPid'] === $tPid && $config) {
+                        //遍历配置文件 队列池 => 参数
+                        foreach ($config as $ke => &$ve) {
+                            //加载外部配置文件
+                            self::getQueueConfig($ve['queues'], $ke);
 
-                        //任务ID相同
-                        if ($cmd['taskPid'] === $tPid && $config) {
-                            //遍历配置文件 队列池 => 参数
-                            foreach ($config as $ke => &$ve) {
-                                //加载外部配置文件
-                                self::getQueueConfig($ve['queues'], $ke);
+                            //查找待触发的回调
+                            foreach ($ve['queues'] as $kq => &$vq) {
+                                //记录有效失败队列目录
+                                $failDirs["{$fPath}/{$ke}/{$kq}"] = $ke;
 
-                                //查找待触发的回调
-                                foreach ($ve['queues'] as $kq => &$vq) {
-                                    //记录有效失败队列目录
-                                    $failDirs["{$fPath}/{$ke}/{$kq}"] = $ke;
-
-                                    //可消费
-                                    if (!isset($vq['mode']) || $vq['mode']) {
-                                        foreach ($vq['keys'] as $kk => &$vk) {
-                                            //并发起始进程ID
-                                            $temp = ($tNum - 1) * $vk['cNum'] + 1;
-                                            //待回调列表
-                                            $vk['cNum'] > 0 && $waitCall[] = array(
-                                                'time' => 0,
-                                                'cNum' => range(
-                                                    $temp,
-                                                    $temp + $vk['cNum'] - 1
-                                                ),
-                                                'call' => array(
-                                                    'asCall' => 'of_base_com_mq::fireQueue',
-                                                    'params' => array(array(
-                                                        'fire' => array(
-                                                            'pool'  => $ke,
-                                                            'queue' => $kq,
-                                                            'key'   => $kk
-                                                        )
-                                                    ))
-                                                )
-                                            );
-                                        }
+                                //可消费
+                                if (!isset($vq['mode']) || $vq['mode']) {
+                                    foreach ($vq['keys'] as $kk => &$vk) {
+                                        //并发起始进程ID
+                                        $temp = ($tNum - 1) * $vk['cNum'] + 1;
+                                        //待回调列表
+                                        $vk['cNum'] > 0 && $waitCall[] = array(
+                                            'time' => 0,
+                                            'cNum' => range(
+                                                $temp,
+                                                $temp + $vk['cNum'] - 1
+                                            ),
+                                            'call' => array(
+                                                'asCall' => 'of_base_com_mq::fireQueue',
+                                                'params' => array(array(
+                                                    'fire' => array(
+                                                        'pool'  => $ke,
+                                                        'queue' => $kq,
+                                                        'key'   => $kk
+                                                    )
+                                                ))
+                                            )
+                                        );
                                     }
                                 }
                             }
-
-                            //比对配置文件变化(更新后所有当前消息队列停止)
-                            $temp = of_base_com_data::digest($config);
-                            if ($cmd['compare'] !== $temp) {
-                                $cmd['compare'] = $temp;
-                                $cmd['taskPid'] = $tPid = of_base_com_str::uniqid();
-                            }
-                            of_base_com_kv::set($cKey, $cmd, 86400, '_ofSelf');
-
-                            //激活消息队列
-                            foreach ($waitCall as &$v) {
-                                of_base_com_timer::task($v);
-                            }
-
-                            //启动保护监听
-                            self::listen('protected');
-                            sleep(60);
-
-                            //检查退出信号
-                            self::exitSignal();
-                            //恢复失败消息
-                            self::restoreMsgs($failDirs);
-                        //关闭监听器
-                        } else {
-                            //停止在运行的消息进程
-                            $config || of_base_com_kv::del($cKey, '_ofSelf');
-                            break ;
                         }
+
+                        //比对配置文件变化(更新后所有当前消息队列停止)
+                        $temp = of_base_com_data::digest($config);
+                        if ($cmd['compare'] !== $temp) {
+                            $cmd['compare'] = $temp;
+                            $cmd['taskPid'] = $tPid = of_base_com_str::uniqid();
+                        }
+                        of_base_com_kv::set($cKey, $cmd, 86400, '_ofSelf');
+
+                        //激活消息队列
+                        foreach ($waitCall as &$v) {
+                            of_base_com_timer::task($v);
+                        }
+
+                        sleep(60);
+                        //启动保护监听
+                        self::listen('daemon');
+
+                        //检查退出信号
+                        of_base_com_timer::exitSignal();
+                        //恢复失败消息
+                        self::restoreMsgs($failDirs);
+                    //关闭监听器
+                    } else {
+                        //停止在运行的消息进程
+                        $config || of_base_com_kv::del($cKey, '_ofSelf');
+                        break ;
                     }
-
-                    //关闭锁
-                    flock($lock, LOCK_UN);
-                    fclose($lock);
                 }
-            };
 
-            //关闭监听触发锁
-            unset($tLock);
+                //关闭锁
+                of_base_com_data::lock($lock, 3);
+            } else {
+                //解锁全局节点列表
+                of_base_com_data::lock($listKey, 3);
+            }
         //成功占用监听
-        } else if ($lock = self::lockListen($name)) {
+        } else if (of_base_com_data::lock($lock, 6)) {
             if ($type === null) {
-                flock($lock, LOCK_UN);
+                //关闭锁
+                of_base_com_data::lock($lock, 3);
                 //加载定时器
                 of_base_com_timer::task(array(
                     'call' => array(
@@ -708,25 +709,23 @@ abstract class of_base_com_mq {
                         'params' => array($name, true)
                     )
                 ));
-            } else if ($name === 'protected') {
-                //打开连接
-                $fp = fopen(self::$tPath . '/queueLock', 'a');
+            //$name === 'daemon'
+            } else {
+                //恢复linux进程对SIGTERM信号处理
+                function_exists('pcntl_signal') && pcntl_signal(15, SIG_DFL);
+                //节点进程锁
+                $nodeLock = 'of_base_com_mq::nodeLock#' . $nodeId;
                 //连接加锁(非阻塞) 兼容 glusterfs 网络磁盘
-                while (!flock($fp, LOCK_EX | LOCK_NB)) {
-                    usleep(200);
+                while (!of_base_com_timer::renew() && !of_base_com_data::lock($nodeLock, 6)) {
+                    sleep(1);
                 }
                 //连接解锁
-                flock($fp, LOCK_UN);
+                of_base_com_data::lock($nodeLock, 3);
                 //关闭锁
-                fclose($fp);
-
+                of_base_com_data::lock($lock, 3);
                 //启动监听
-                self::listen('queueLock');
+                self::listen('nodeLock');
             }
-
-            //关闭锁
-            flock($lock, LOCK_UN);
-            fclose($lock);
         }
     }
 
@@ -881,9 +880,13 @@ abstract class of_base_com_mq {
      */
     public static function ofHalt() {
         //有新的队列 && 启动监听
-        self::$fireMq && self::listen('queueLock');
+        self::$fireMq && self::listen('nodeLock');
         //回调函数意外退出
         if ($index = &self::$fireEnv['mqData']) {
+            //意外退出回调
+            self::$fireEnv['mqObj']->_quit($index);
+            //重置当前并发数据
+            of_base_com_timer::data(array('_mq' => array()));
             //记录异常日志
             of::event('of::error', true, array(
                 'type' => "{$index['key']}.{$index['queue']}.{$index['pool']}",
@@ -962,8 +965,11 @@ abstract class of_base_com_mq {
 
         //回滚未结束事务
         $trxs = of_db::pool(null);
+        //黑名单列表
+        $temp = of::work('block', array());
+        //筛选事务未结束且不在黑名单的事务
         foreach ($trxs as $k => &$v) {
-            if ($v['level']) {
+            if ($v['level'] && empty($temp[$k])) {
                 of_db::pool($k, 'clean', 1);
             } else {
                 unset($trxs[$k]);
@@ -979,7 +985,7 @@ abstract class of_base_com_mq {
         //修改并发日志
         $cLog['doneTime'] = date('Y-m-d H:i:s', $time = time());
         //记录当前内存
-        $cLog['useMemory'] = memory_get_peak_usage();
+        $cLog['useMemory'] = memory_get_usage();
         //清空异常消息
         unset($cLog['quitData']);
         //记录监听数据
@@ -1146,79 +1152,27 @@ abstract class of_base_com_mq {
     }
 
     /**
-     * 描述 : 打开并尝试加锁监听
-     * 返回 :
-     *      成功返回IO流, 失败返回false
-     * 作者 : Edgar.lee
-     */
-    private static function lockListen(&$name = 'queueLock') {
-        is_dir(self::$tPath) || @mkdir(self::$tPath, 0777, true);
-        $fp = fopen(self::$tPath . "/{$name}", 'a+');
-
-        //成功加锁
-        if (flock($fp, LOCK_EX | LOCK_NB)) {
-            return $fp;
-        //加锁失败
-        } else {
-            fclose($fp);
-            return false;
-        }
-    }
-
-    /**
-     * 描述 : 注册并接收退出信号
-     * 作者 : Edgar.lee
-     */
-    private static function exitSignal($type = true) {
-        //初始化状态, null=未初始化, true=信号安装, false=不支持
-        static $init = null;
-
-        //首次运行
-        if ($init === null) {
-            //支持延迟触发信号
-            ($init = function_exists('pcntl_signal_dispatch')) ?
-                //安装SIGTERM信号处理器
-                pcntl_signal(15, 'of_base_com_mq::exitSignal') :
-                //恢复linux进程对SIGTERM信号处理
-                function_exists('pcntl_signal') && pcntl_signal(15, SIG_DFL);
-        //信号处理
-        } else if (is_int($type)) {
-            exit;
-        //检查信号
-        } else if ($init) {
-            pcntl_signal_dispatch();
-        }
-    }
-
-    /**
      * 描述 : 重置异常消息数据
      * 参数 :
      *      type : 指定任务中的并发ID, null=重置自身, 2=重置停止
      * 作者 : Edgar.lee
      */
     private static function resetPaincMqData($type = 2) {
-        static $resetTime = 0;
-
-        //每间隔5s执行一次
-        if (($time = time()) - $resetTime > 4) {
-            //更新重置时间
-            $type && $resetTime = $time;
-            //引用环境
-            $fireEnv = &self::$fireEnv;
-            //重置自身及未启动消息数据
-            $index = &of_base_com_timer::data(array('_mq' => array()), $type);
-            //遍历处理异常消息
-            foreach ($index['info'] as $k => &$v) {
-                if (
-                    //自身进程 || 未运行进程
-                    ($type === null || !$v['isRun']) &&
-                    //存在异常消息
-                    ($v = &$v['data']['_mq']['quitData']) &&
-                    //消费类相同
-                    $v['class'] === $fireEnv['mqClass']
-                ) {
-                    $fireEnv['mqObj']->_quit($v['data']);
-                }
+        //引用环境
+        $fireEnv = &self::$fireEnv;
+        //重置自身及未启动消息数据
+        $index = &of_base_com_timer::data(array('_mq' => array()), $type);
+        //遍历处理异常消息
+        foreach ($index['info'] as $k => &$v) {
+            if (
+                //自身进程 || 未运行进程
+                ($type === null || !$v['isRun']) &&
+                //存在异常消息
+                ($v = &$v['data']['_mq']['quitData']) &&
+                //消费类相同
+                $v['class'] === $fireEnv['mqClass']
+            ) {
+                $fireEnv['mqObj']->_quit($v['data']);
             }
         }
     }

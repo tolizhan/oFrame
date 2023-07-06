@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200264);
+define('OF_VERSION', 200266);
 
 /**
  * 描述 : 控制层核心
@@ -34,7 +34,7 @@ class of {
     );
     //是否支持命名空间
     private static $isSpace = false;
-    //工作流程错误队列 [{"code" : 编码, "info" : 错误, "file" : 路径, "line" : 行数, ...}, ...]
+    //工作流程错误队列 [{"code" : 编码, "info" : 错误, "file" : 路径, "line" : 行数, "uuid" : 标识}, ...]
     private static $workErr = array(null);
 
     /**
@@ -257,6 +257,8 @@ class of {
                             $result[$k] = &self::callFunc($v['event'], $params);
                         } catch (Exception $e) {
                             of::event('of::error', true, $e);
+                        } catch (Error $e) {
+                            of::event('of::error', true, $e);
                         }
                         $v['isExec'] = true;
                     }
@@ -275,19 +277,29 @@ class of {
             $event === false ? $index = &$params : $index = &$event;
             //删除事件
             foreach ($nList as $k => &$v) {
+                //定位到事件
                 if ($v['event'] == $index) {
-                    if (
-                        //正在执行事件 && 执行事件为删除事件
-                        isset($waitExec[0]) && $waitExec[0]['type'] === $type &&
-                        //执行事件在删除的事件之后
-                        key(array_slice($nList, $waitExec[0]['offset'], 1, true)) >= $k
-                    ) {
-                        //执行偏移减一
-                        $waitExec[0]['offset'] -= 1;
+                    //删除事件
+                    if ($event === false) {
+                        if (
+                            //正在执行事件 && 执行事件为删除事件
+                            isset($waitExec[0]) && $waitExec[0]['type'] === $type &&
+                            //执行事件在删除的事件之后
+                            key(array_slice($nList, $waitExec[0]['offset'], 1, true)) >= $k
+                        ) {
+                            //执行偏移减一
+                            $waitExec[0]['offset'] -= 1;
+                        }
+
+                        $eventList[$type]['change'] = true;
+                        unset($nList[$k]);
+                    //添加事件(仅修改不需额外添加)
+                    } else {
+                        $v['isCall'] = !$params;
+                        $event = false;
                     }
 
-                    $eventList[$type]['change'] = true;
-                    unset($nList[$k]);
+                    //跳出事件循环
                     break;
                 }
             }
@@ -369,6 +381,13 @@ class of {
      *      code : 固定"error"
      *      info : 默认true=获取错误, false=清除错误
 
+     *     #全局排除监听(文本)
+     *      code : 固定"block"
+     *      info : 排查的监听列表, {
+     *          "数据库连接池" : true=排除, false=移除
+     *          ...
+     *      }
+
      *     #工作信息(文本)
      *      code : 固定"info"
      *      info : 获取指定"info"信息, 默认=3(1 | 2), 1=工作ID, 2=监听数据库, 4=注入回调信息
@@ -416,6 +435,12 @@ class of {
      *          "info" : 错误,
      *          "file" : 路径,
      *          "line" : 行数,
+     *          "uuid" : 标识
+     *      }
+
+     *     #全局排除监听("block")
+     *      排查的监听列表 {
+     *          "数据库连接池" : true
      *          ...
      *      }
 
@@ -459,6 +484,8 @@ class of {
         static $class = null;
         //监听栈列表
         static $sList = array();
+        //黑名单列表
+        static $block = array();
         //数组传参模式
         $code === 'extr' && extract($info, EXTR_REFS);
 
@@ -512,6 +539,7 @@ class of {
                     ),
                     'unify' => $temp,
                     'list'  => array(),
+                    'back'  => array(),
                     'defer' => array(),
                     'done'  => array()
                 ));
@@ -523,8 +551,8 @@ class of {
 
             //遍历开启事务
             foreach ($code as &$v) {
-                //去重数据库连接池
-                if (empty($index[$v])) {
+                //去重数据库连接池 && 不在黑名单中
+                if (empty($index[$v]) && empty($block[$v])) {
                     //连接池在事务中 ? 克隆连接池, 返回原连接池新名称 : null
                     $temp = of_db::pool($v, 'level') ? of_db::pool($v, 'clone', $v) : null;
                     //克隆名不冲突 && 记录默认连接源
@@ -585,8 +613,9 @@ class of {
                     //多个连接池 && 连接池已断开
                     if ($temp && !of_db::pool($k, 'ping')) {
                         throw new Exception('Can not connect to database: ' . $k);
+                    }
                     //连接池事务层级错误
-                    } else if (of_db::pool($k, 'level') !== 1) {
+                    if (of_db::pool($k, 'level') !== 1) {
                         throw new Exception('Database transaction level error: ' . $k);
                     }
                 }
@@ -635,8 +664,8 @@ class of {
             foreach ($index['list'] as $k => &$v) {
                 //事务提交失败 && 接下的事务回滚
                 !of_db::sql($isOk, $k) && $isOk && $isOk = !$ePool = $k;
-                //恢复原连接池 && 清除克隆连接池
-                $k === $v ? of_db::pool($v, 'clean', 1) : of_db::pool($v, 'rename', $k);
+                //切到恢复列表
+                $index['back'][$k] = &$v;
             }
             $index['list'] = array();
 
@@ -679,6 +708,12 @@ class of {
                         }
                     }
                 }
+
+                //恢复原连接池
+                foreach ($index['back'] as $k => &$v) {
+                    //回滚事务事务 && 清除克隆连接池
+                    $k === $v ? of_db::pool($v, 'clean', 1) : of_db::pool($v, 'rename', $k);
+                }
             }
         //文本=功能操作
         } else if (is_string($code)) {
@@ -695,12 +730,20 @@ class of {
                     } else {
                         throw new Exception('Did not start work');
                     }
-                    break;
                 //error=操作错误
                 case 'error':
                     $info === false && self::$workErr[0] = null;
                     return self::$workErr[0];
-                    break;
+                //block=排除监听
+                case 'block':
+                    foreach ($info as $k => &$v) {
+                        if ($v) {
+                            $block[$k] = true;
+                        } else {
+                            unset($block[$k]);
+                        }
+                    }
+                    return $block;
                 //info=工作信息
                 case 'info':
                     if (isset($sList[0])) {
@@ -719,8 +762,6 @@ class of {
 
                         //仅有一项 ? 返回单项数据 : 返回二维数据
                         return count($result) === 1 ? reset($result) : $result;
-                    } else {
-                        return null;
                     }
                     break;
                 //defer=延迟回调
@@ -852,7 +893,8 @@ class of {
             //记录最后一次错误
             self::$workErr[0] = array(
                 'code' => &$error['code'], 'info' => &$error['info'],
-                'file' => &$error['file'], 'line' => &$error['line']
+                'file' => &$error['file'], 'line' => &$error['line'],
+                'uuid' => uniqid()
             );
 
             //非直接存储

@@ -63,7 +63,7 @@ class of_base_test_tool {
                     //兼容IE6 7 8
                     array("\n", ' '), array('<br>', '&nbsp;'),
                     //防止非UTF8不显示
-                    iconv(
+                    @iconv(
                         'UTF-8', 'UTF-8//IGNORE',
                         htmlspecialchars(print_r($v, true))
                     )

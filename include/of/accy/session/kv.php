@@ -22,7 +22,7 @@ class of_accy_session_kv extends of_base_session_base {
         $timeout = ($timeout = ini_get('max_execution_time')) ? $timeout - 2 : 600;
 
         //加锁
-        if (of_base_com_disk::lock($params['lock'])) {
+        if (of_base_com_data::lock($params['lock'], 2)) {
             //读取
             $data = of_base_com_kv::get($params['sKey'], '', $params['kvPool']);
         }
@@ -44,7 +44,7 @@ class of_accy_session_kv extends of_base_session_base {
 
     protected static function _close() {
         //解锁通道
-        of_base_com_disk::lock(self::$params['lock'], LOCK_UN);
+        of_base_com_data::lock(self::$params['lock'], 3);
     }
 
     protected static function _gc() {

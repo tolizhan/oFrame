@@ -276,6 +276,19 @@ return array(
             //检查是否有权限调用分页, @开头的字符串=正则验证, 否则=遵循回调规则(返回true=通过)
             'check' => '@paging$@i'
         ),
+        //磁盘操作
+        'data' => array(
+            'lock' => array(
+                //适配文件 of_accy_com_data_lock_xxx
+                'adapter' => 'files',
+                //对应的配置
+                'params'  => array(
+                    #files 模式
+                    //slot > 0, 多网盘挂在"/data/_of/of_accy_com_data_lock_files/n"下, 0>= n < slot
+                    'slot' => 1
+                )
+            )
+        ),
         //网络请求
         'net' => array(
             //异步请求方案, ""=当前网址, url=带端口的网址

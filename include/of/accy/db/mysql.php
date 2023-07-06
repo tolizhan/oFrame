@@ -153,7 +153,7 @@ class of_accy_db_mysql extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _begin() {
-        $this->_ping();
+        $this->_ping(true);
 
         if ($this->transState = mysql_query('START TRANSACTION', $this->connection)) {
             //记录逻辑回溯
@@ -295,7 +295,7 @@ class of_accy_db_mysql extends of_db {
             $sqlList[] = $sql;
         }
 
-        if ($this->_ping()) {
+        if ($this->_ping(true)) {
             //记录加锁SQL
             of_accy_db_mysqli::setNote($this, 'mysql', $sql);
 
@@ -320,19 +320,18 @@ class of_accy_db_mysql extends of_db {
     /**
      * 描述 : 检测连接有效性
      * 参数 :
-     *      restLink : 是否重新连接,true(默认)=是,false=否
+     *      mode : false=判断并延长时效, true=非事务尝试重连
+     * 返回 :
+     *      true=连接, false=断开
      * 作者 : Edgar.lee
      */
-    protected function _ping($restLink = true) {
-        if (
-            //事务状态下不重新检查
-            $this->transState ||
-            @mysql_ping($this->connection) ||
-            ($restLink && $this->_connect())
-        ) {
-            return true;
+    protected function _ping($mode) {
+        //事务状态下不重新检查
+        if ($mode) {
+            return $this->transState || @mysql_ping($this->connection) || $this->_connect();
+        //判断连接并延长连接时效
         } else {
-            return false;
+            return !!@mysql_query($this->connection, 'SELECT 1');
         }
     }
 }

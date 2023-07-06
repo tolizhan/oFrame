@@ -98,8 +98,8 @@ of::link('header', '$code, $text = null', 'return of_base_link_response::header(
 /**
  * 描述 : 输出缓冲控制
  * 参数 :
- *      mode : (false)true=永久缓冲,false=关闭缓冲,null=清除缓冲,字符串=添加缓存内容
- *      pool : (null)null=使用上次级别,字符串=对应缓冲池
+ *      mode : true=永久缓冲,false=关闭缓冲,null=清除缓冲,字符串=添加缓存内容
+ *      pool : null=使用上次级别,字符串=对应缓冲池
  * 返回 :
  *      mode=true              : 保存并返回在服务器中的缓存内容
  *      mode=false             : 保存并返回在服务器中的缓存内容, 同时输出pool缓冲池的内容

@@ -468,7 +468,9 @@ class of_base_com_net {
             }
 
             //组合请求数据
-            $out[] = $data['type'] . " {$data['pUrl']['path']}?{$data['pUrl']['query']} HTTP/1.1";
+            $out[] = "{$data['type']} {$data['pUrl']['path']}" .
+                (($index = &$data['pUrl']['query']) ? "?{$index}" : '') .
+                ' HTTP/1.1';
             $out[] = 'Host: ' . $data['pUrl']['host'] . $port;
             //缓存连接
             $out[] = 'Connection: keep-alive';
@@ -796,18 +798,18 @@ class of_base_com_net {
             //命令行模式
             if (PHP_SAPI === 'cli') {
                 $config['isExec'] = true;
-            //未启用popen方法 || windows开发模式
+            //未启用popen方法 || windows开发模式(web服务器重启时并发需停止方便调试)
             } else if (
                 ini_get('safe_mode') ||
                 !function_exists('popen') ||
-                of::config('_of.debug') === true && $isWin
+                OF_DEBUG && $isWin
             ) {
                 $config['isExec'] = false;
             //php命令不可执行
-            } else if (!$config['isExec'] = strpos(
+            } else if (!$config['isExec'] = is_int(strpos(
                 $temp = stream_get_contents(popen('php -r "echo 12345;" 2>&1', 'r'), 2048),
                 '2345'
-            )) {
+            ))) {
                 $isWin || trigger_error(
                     "Command error: php -r \"echo 12345;\" 2>&1\n\n{$temp}"
                 );

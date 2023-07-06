@@ -611,7 +611,7 @@ class of_base_sso_api {
         //插入订单日志
         of_db::sql($sql, self::$config['dbPool']);
 
-        if (rand(0, 10) === 1) {
+        if (rand(0, 9999) === 1) {
             //90 天有效期
             $sql = date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME'] - 7776000);
             $sql = "DELETE FROM 

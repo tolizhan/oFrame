@@ -206,7 +206,7 @@ class of_base_error_writeLog {
             'environment'   => array(
                 'type'      => $params['pool'] . ':' . $params['code'],
                 'info'      => "{$params['info']}\n\n" .
-                    (is_string($params['sql']) ? $params['sql'] : var_export(null, true)),
+                    (is_string($params['sql']) ? $params['sql'] : var_export($params['sql'], true)),
                 'code'      => &$params['code'],
                 'file'      => '(',
                 'line'      => 0,
@@ -325,7 +325,7 @@ class of_base_error_writeLog {
         }
 
         //日志有时限 && 1%的机会清理
-        if ($isSave && ($index = &$config['gcTime']) > 0 && rand(0, 99) === 1) {
+        if ($isSave && ($index = &$config['gcTime']) > 0 && rand(0, 9999) === 1) {
             //日志生命期
             $gcTime = $logData['time'] - $index * 86400;
 
@@ -474,18 +474,22 @@ class of_base_error_writeLog {
                 if (isset($v['args'])) {
                     //临时参数拷贝数组
                     $temp = array();
+                    //遍历格式化参数
                     foreach ($v['args'] as &$arg) {
-                        //是一个标量,资源,null
-                        if (is_scalar($arg) || is_resource($arg) || $arg === null) {
-                            $temp[] = gettype($arg) . ' (' . var_export($arg, true) . ')';
+                        //资源
+                        if (is_resource($arg)) {
+                            $temp[] = print_r($arg, true);
                         //对象
                         } else if (is_object($arg)) {
                             $temp[] = 'object (' . get_class($arg) . ')';
-                        //数组
-                        } else if (is_array($arg)) {
+                        //数组 标量 null && 存在递归引用时
+                        } else if (strpos(print_r($arg, true), '*RECURSION*')) {
+                            $temp[] = $arg;
+                        } else {
                             $temp[] = var_export($arg, true);
                         }
                     }
+                    //原参数为引用方式, 直接修改会出现递归现象
                     $v['args'] = $temp;
                 }
             }

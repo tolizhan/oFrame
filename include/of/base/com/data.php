@@ -1,4 +1,8 @@
 <?php
+/**
+ * 描述 : 提供数据相关封装
+ * 作者 : Edgar.lee
+ */
 class of_base_com_data {
     protected static $rule = array(
         'return' => true,
@@ -24,6 +28,8 @@ class of_base_com_data {
      */
     public static function &json($data, $mode = 1) {
         static $isUcs = null;
+        //原始错误信息
+        $oErr = of::work('error');
 
         if ($mode & 1) {
             $isUcs === null && $isUcs = version_compare(PHP_VERSION, '5.4', '>=');
@@ -41,13 +47,23 @@ class of_base_com_data {
                 $result = str_replace(array('<', '>'), array('\u003C', '\u003E'), $result);
             }
 
+            //执行失败 || 产生错误
+            if ($result === false || $oErr !== of::work('error')) {
+                throw new Exception('json_encode(): error detected');
             //额外添加反斜杠
-            $mode & 2 && $result = addslashes($result);
+            } else if ($mode & 2) {
+                $result = addslashes($result);
+            }
         } else {
             //额外去掉反斜杠
             $mode & 2 && $data = stripslashes($data);
-
+            //解码为数组
             $result = json_decode($data, true);
+
+            //产生错误
+            if ($oErr !== of::work('error')) {
+                throw new Exception('json_decode(): error detected');
+            }
         }
 
         return $result;
@@ -97,6 +113,79 @@ class of_base_com_data {
 
         //数据摘要
         return md5(json_encode($data));
+    }
+
+    /**
+     * 描述 : 数据锁, 为并发流程创建独占通道, 工作中的锁会随工作结束而解锁
+     * 参数 :
+     *      name : 锁通道标识
+     *      lock : 文件加锁方式 1=共享锁, 2=独享锁, 3=解除锁, 4=非堵塞(LOCK_NB)
+     *      argv : 操作参数 {
+     *          "space" : 命名空间, 默认"", 空间之间同名锁冲突
+     *      }
+     * 返回 :
+     *      true=成功, false=失败
+     * 注明 :
+     *      加锁列表($locks) : {
+     *          空间锁标识 : {
+     *              "name" : 锁名称
+     *              "mark" : 锁标识
+     *              "wuid" : 工作ID
+     *              "data" : 锁资源
+     *          }, ...
+     *      }
+     * 作者 : Edgar.lee
+     */
+    public static function &lock($name, $lock = 2, $argv = array()) {
+        static $locks = array();
+        static $class = null;
+
+        //初始化回调类
+        $class || $class = 'of_accy_com_data_lock_' . of::config('_of.com.data.lock.adapter', 'files');
+        //待操作列表
+        $wList = array();
+
+        //工作完成, 结束工作锁
+        if (is_array($name)) {
+            foreach ($locks as $k => &$v) {
+                //清理工作中的加锁数据 && 记录到处理列表
+                $v['wuid'] === $name['wuid'] && $wList[$k] = array(
+                    $v['name'], 3, $v['mark'], &$v['data']
+                );
+            }
+        //单锁操作
+        } else {
+            //初始参数
+            $argv += array('space' => '');
+            //加锁文件标识
+            $mark = md5($name);
+            //空间锁标识
+            $space = $argv['space'] . $mark;
+
+            //初始化锁信息
+            ($index = &$locks[$space]) || $index = array('name' => &$name, 'mark' => &$mark);
+            //记录工作ID && 处在工作中 && 添加工作完成回调
+            ($index['wuid'] = of::work('info', 1)) && of::work('done', __METHOD__, __METHOD__);
+
+            //记录到处理列表
+            $wList[$space] = array($name, $lock, $mark, &$index['data']);
+        }
+
+        //批量操作
+        foreach ($wList as $k => &$v) {
+            //触发回调
+            $result = call_user_func_array("{$class}::_lock", $v);
+            //解锁操作(加锁失败 || 解锁操作)
+            if (!$result || ($v[1] & 3) === 3) {
+                //删除加锁列表
+                unset($locks[$k]);
+                //阻塞加锁失败, 非 4 | (1 || 2) 模式
+                if (($v[1] & 7) < 3) throw new Exception('Lock failed: ' . $v[0]);
+            }
+        }
+
+        //加锁操作
+        return $result;
     }
 
     /**

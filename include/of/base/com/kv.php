@@ -99,7 +99,7 @@ class of_base_com_kv {
      *      name  : 指定操作的键名, 可为数组 {
      *          "name"  : 指定键名
      *          "value" : 默认值, 默认false
-     *          "time"  : 过期时间秒, 默认86400
+     *          "time"  : 过期时间秒, 默认86400, 0为永久有效
      *          "pool"  : 连接池, 默认'default'
      *          "json"  : 数据是否为json, 默认true,
      *          "retry" : 尝试重试到成功, 0=不尝试
@@ -122,7 +122,7 @@ class of_base_com_kv {
         $retry += time();
 
         do {
-            $result = $index->_add($name, $value, self::formatTime($time));
+            $result = $index->_add($name, $value, $time);
             if ($result || $retry <= time()) {
                 break ;
             } else {
@@ -154,7 +154,7 @@ class of_base_com_kv {
      *      name  : 指定操作的键名, 可为数组 {
      *          "name"  : 指定键名
      *          "value" : 默认值, 默认false
-     *          "time"  : 过期时间秒, 默认86400
+     *          "time"  : 过期时间秒, 默认86400, 0为永久有效
      *          "pool"  : 连接池, 默认'default'
      *          "json"  : 数据是否为json, 默认true
      *      }
@@ -171,7 +171,7 @@ class of_base_com_kv {
         self::pool($pool);
 
         $json && $value = &of_base_com_data::json($value);
-        return self::$instList[$pool]['inst']->_set($name, $value, self::formatTime($time));
+        return self::$instList[$pool]['inst']->_set($name, $value, $time);
     }
 
     /**
@@ -214,12 +214,6 @@ class of_base_com_kv {
     final public static function link($pool = 'default') {
         self::pool($pool);
         return self::$instList[$pool]['inst']->_link();
-    }
-
-    private static function &formatTime(&$time) {
-        $time || $time = 2147483647;
-        $time < 63072000 && $time += time();
-        return $time;
     }
 
     /* '/of/accy/kv/xx.php' 文件使用继承该类,并实现以下方法

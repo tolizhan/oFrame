@@ -60,7 +60,7 @@ class of_accy_com_kv_redis extends of_base_com_kv {
         $redis = $this->_link(false, false);
 
         try {
-            ($result = $redis->setnx($name, $value)) && $redis->expireAt($name, $time);
+            ($result = $redis->setnx($name, $value)) && $time && $redis->expire($name, $time);
         } catch (Exception $e) {
             $result = false;
         }
@@ -96,7 +96,7 @@ class of_accy_com_kv_redis extends of_base_com_kv {
         $redis = $this->_link(false, false);
 
         try {
-            $result = $redis->setEx($name, $time - time(), $value);
+            $result = $time ? $redis->setEx($name, $time, $value) : $redis->set($name, $value);
         } catch (Exception $e) {
             $result = false;
         }

@@ -319,7 +319,7 @@ class of_base_test_case {
         $handle = null;
 
         //日志有时限 && 1%的机会清理
-        if (rand(0, 99) === 1) {
+        if (rand(0, 9999) === 1) {
             //日志生命期
             $gcTime = $lData['time'] - 30 * 86400;
             //执行清理

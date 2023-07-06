@@ -58,7 +58,7 @@ class of_base_error_tool {
                 $data[$k]['_mode'] = $v['offset']['len'] > 10485760 ?
                     'DL' : '<input name="' . $params['mode'] . 'Radio" type="radio">';
                 //截取100k摘要信息
-                $data[$k]['_info'] = '<pre>' . htmlspecialchars(iconv(
+                $data[$k]['_info'] = '<pre>' . htmlspecialchars(@iconv(
                     'UTF-8', 'UTF-8//IGNORE', substr($index['info'], 0, 102400)
                 )) . '</pre>';
                 //异步加载详细信息
@@ -134,7 +134,7 @@ class of_base_error_tool {
 
         $info = of_base_error_toolBaseClass::getLogDetaile($_GET['log'], $_GET['pos']);
         $info = &$info['environment'];
-        echo iconv('UTF-8', 'UTF-8//IGNORE', print_r($info, true));
+        echo @iconv('UTF-8', 'UTF-8//IGNORE', print_r($info, true));
     }
 
     /**

@@ -22,6 +22,8 @@ class of_accy_com_kv_memcache extends of_base_com_kv {
      * 作者 : Edgar.lee
      */
     protected function _add(&$name, &$value, &$time) {
+        //大于30天的秒 && memcache按时间戳处理
+        $time > 2592000 && $time += time();
         return $this->memcache->add($name, $value, false, $time);
     }
 
@@ -38,6 +40,8 @@ class of_accy_com_kv_memcache extends of_base_com_kv {
      * 作者 : Edgar.lee
      */
     protected function _set(&$name, &$value, &$time) {
+        //大于30天的秒 && memcache按时间戳处理
+        $time > 2592000 && $time += time();
         return $this->memcache->set($name, $value, false, $time);
     }
 

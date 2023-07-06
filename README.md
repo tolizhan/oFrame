@@ -1,11 +1,11 @@
 # orange-framework 模块化轻量级php框架
 
-框架本身是套解决方案, 兼容全浏览器及[php5.2~8.1.x](http://doc.phpof.net/?oFrame/FAQ/namespace.html,oFrame/navigation.html)<br>
+框架本身是套解决方案, 兼容全浏览器及[php5.2~8.2.x](http://doc.phpof.net/?oFrame/FAQ/namespace.html,oFrame/navigation.html)<br>
 它基于MVCS, 同时[支持多种设计模式](http://doc.phpof.net/?oFrame/FAQ/architect.html,oFrame/navigation.html)<br>
-它拥有简洁的[开发方式](http://doc.phpof.net/?oFrame/helpManual/controller.html,oFrame/navigation.html,work), 巧思的[模板引擎](http://doc.phpof.net/?oFrame/helpManual/htmlTpl.html,oFrame/navigation.html)<br>
-它支持原生的[并发操作](http://doc.phpof.net/?oFrame/components/timer.html,oFrame/navigation.html), 分布式[消息队列](http://doc.phpof.net/?oFrame/components/mq.html,oFrame/navigation.html)<br>
+它拥有简洁的[开发方式](http://doc.phpof.net/?oFrame/helpManual/controller.html,oFrame/navigation.html,work), 简单的[模板引擎](http://doc.phpof.net/?oFrame/helpManual/htmlTpl.html,oFrame/navigation.html)<br>
+它支持原生的[异步操作](http://doc.phpof.net/?oFrame/components/timer.html,oFrame/navigation.html), 分布式[消息队列](http://doc.phpof.net/?oFrame/components/mq.html,oFrame/navigation.html)<br>
 它包含完整的[错误日志](http://doc.phpof.net/?oFrame/helpManual/error.html,oFrame/navigation.html), 丰富的[扩展接口](http://doc.phpof.net/?oFrame/FAQ/baseExtends.html,oFrame/navigation.html)<br>
-它的思想是易部署, 易扩展, 易迁移
+它的理念是易部署, 易扩展, [易伸缩](http://doc.phpof.net/?oFrame/FAQ/issue.html,oFrame/navigation.html,scaling)
 
 手册地址 http://doc.phpof.net/ 或 wiki<br>
 问题反馈 tolizhan@qq.com

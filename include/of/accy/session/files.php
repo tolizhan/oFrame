@@ -8,9 +8,8 @@ class of_accy_session_files extends of_base_session_base {
     private static $fpl = null;
 
     protected static function _read(&$sessionId, &$data) {
-        ($temp = of::config('_of.session.params.path', OF_DATA . '/_of/of_accy_session_files', 'dir')) || 
-            $temp = ROOT_DIR . OF_DATA . '/_of/of_accy_session_files';
         //session存储路径
+        $temp = of::config('_of.session.params.path', OF_DATA . '/_of/of_accy_session_files', 'dir');
         $temp .= '/' . $sessionId . '.php';
 
         self::$fpl = of_base_com_disk::file($temp, null, null);
@@ -34,17 +33,13 @@ class of_accy_session_files extends of_base_session_base {
     }
 
     protected static function _gc($maxlifetime) {
-        ($dir = of::config('_of.session.params.path', OF_DATA . '/_of/of_accy_session_files', 'dir')) === null &&
-        $dir = ROOT_DIR . OF_DATA . '/_of/of_accy_session_files';
+        //SESSION磁盘存储路径
+        $dir = of::config('_of.session.params.path', OF_DATA . '/_of/of_accy_session_files', 'dir');
         //过期时间戳
         $timestamp = $_SERVER['REQUEST_TIME'] - $maxlifetime;
 
-        //打开加锁文件
-        $lock = fopen($path = $dir . '/lock.gc', 'a');
-        //修改访问时间
-        touch($path, $_SERVER['REQUEST_TIME']);
         //加锁成功
-        if (flock($lock, LOCK_EX | LOCK_NB)) {
+        if (of_base_com_data::lock('of_accy_session_files::gc', 6)) {
             while (of_base_com_disk::each($dir, $list, true)) {
                 foreach ($list as $path => &$isDir) {
                     //清除过期会话
@@ -58,11 +53,8 @@ class of_accy_session_files extends of_base_session_base {
                 }
             }
             //连接解锁
-            flock($lock, LOCK_UN);
+            of_base_com_data::lock('of_accy_session_files::gc', 3);
         }
-
-        //关闭连接
-        fclose($lock);
     }
 
     protected static function _open() {

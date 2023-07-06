@@ -11,7 +11,7 @@ class of_accy_com_kv_files extends of_base_com_kv {
             ROOT_DIR . OF_DATA . '/_of/of_accy_com_kv_files';
 
         //垃圾回收
-        rand(0, 99) === 1 && $this->_gc();
+        rand(0, 9999) === 1 && $this->_gc();
     }
 
     /**
@@ -23,11 +23,11 @@ class of_accy_com_kv_files extends of_base_com_kv {
         //追加写入锁
         $fp = of_base_com_disk::file($path, null, null);
 
-        //不存在 || 失效
-        if ($result = !ftell($fp) || fileatime($path) < time()) {
-            of_base_com_disk::file($fp, (string)$value, true);
-            //修改访问时间
-            touch($path, $time);
+        //不存在 || 失效(会失效 && 已失效)
+        if ($result = !ftell($fp) || ($temp = filemtime($path)) && $temp < time()) {
+            of_base_com_disk::file($fp, $value, true);
+            //修改时间
+            touch($path, $time ? $time + time() : 0);
         }
 
         //连接解锁
@@ -46,15 +46,15 @@ class of_accy_com_kv_files extends of_base_com_kv {
         //追加写入锁
         $fp = of_base_com_disk::file($path, null, null);
 
-        //修改访问时间
-        touch($path, 0);
+        //修改时间
+        touch($path, $_SERVER['REQUEST_TIME'] - 600);
         //连接解锁
         flock($fp, LOCK_UN);
         //关闭连接
         fclose($fp);
 
         //垃圾回收
-        rand(0, 99) === 1 && $this->_gc();
+        rand(0, 9999) === 1 && $this->_gc();
         return true;
     }
 
@@ -68,14 +68,16 @@ class of_accy_com_kv_files extends of_base_com_kv {
         $fp = of_base_com_disk::file($path, null, null);
 
         //写入数据
-        $result = of_base_com_disk::file($fp, (string)$value, true);
+        $result = of_base_com_disk::file($fp, $value, true);
+        //修改时间
+        touch($path, $time ? $time + time() : 0);
 
         //连接解锁
         flock($fp, LOCK_UN);
         //关闭连接
         fclose($fp);
-        //修改访问时间
-        return $result && touch($path, $time);
+        //修改时间
+        return $result;
     }
 
     /**
@@ -89,10 +91,10 @@ class of_accy_com_kv_files extends of_base_com_kv {
         //打开共享锁
         $fp = of_base_com_disk::file($path, null, false);
 
-        //存在 && 有效(兼容win php < 5.3.0)
+        //存在 && 有效(永久有效 || 尚未失效)
         if (
             $result = filesize($path) && 
-            (filemtime($path) >= $time || fileatime($path) >= $time)
+            (($temp = filemtime($path)) === 0 || $temp >= $time)
         ) {
             $result = of_base_com_disk::file($fp, false, true);
         }
@@ -125,38 +127,43 @@ class of_accy_com_kv_files extends of_base_com_kv {
      * 作者 : Edgar.lee
      */
     private function _gc() {
-        //文件夹不存在
-        if (!is_dir($dir = $this->params['path'])) return ;
-        //当前时间戳
-        $timestamp = time();
+        //删除方式, true=直接删除, false=加锁删除
+        static $noLock = null;
 
-        //打开加锁文件
-        $lock = fopen($path = $dir . '/lock.gc', 'a');
-        //修改访问时间
-        touch($path, 2147483647);
-        //加锁成功
-        if (flock($lock, LOCK_EX | LOCK_NB)) {
+        if (
+            //文件夹存在
+            is_dir($dir = $this->params['path']) &&
+            //加锁成功
+            of_base_com_data::lock('of_accy_com_kv_files::gc', 6)
+        ) {
+            //windows && php < 7.3 ? 直接删除 : 加锁删除
+            $noLock === null && $noLock = strstr(PHP_OS, 'WIN') && version_compare(PHP_VERSION, '7.3.0', '<');
+            //过期时间
+            $timeout = time() - 300;
+
+            //遍历存储路径
             while (of_base_com_disk::each($dir, $list, true)) {
                 foreach ($list as $path => &$isDir) {
-                    //清除过期会话(兼容win php < 5.3.0)
                     if (
-                        !$isDir && 
-                        filemtime($path) + 300 < $timestamp && 
-                        fileatime($path) + 300 < $timestamp
+                        //是文件
+                        !$isDir &&
+                        //文件不是永久有效
+                        ($temp = filemtime($path)) &&
+                        //文件已过期
+                        $temp < $timeout &&
+                        //不用加锁 || 加锁成功
+                        ($noLock || flock($fp = fopen($path, 'c+'), LOCK_EX | LOCK_NB))
                     ) {
-                        unlink($path);
-                        //移除空文件夹
-                        /*while( !glob(($path = dirname($path)) . '/*') ) {
-                            rmdir($path);
-                        }*/
+                        //清除过期会话
+                        @unlink($path);
+                        //连接解锁
+                        $noLock || flock($fp, LOCK_UN);
                     }
                 }
             }
-            //连接解锁
-            flock($lock, LOCK_UN);
-        }
 
-        //关闭连接
-        fclose($lock);
+            //连接解锁
+            of_base_com_data::lock('of_accy_com_kv_files::gc', 3);
+        }
     }
 }

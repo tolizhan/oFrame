@@ -13,6 +13,13 @@ namespace of {
 
 }
 
+namespace of\accy\com\data\lock {
+
+    class files extends \of_accy_com_data_lock_files {
+    }
+
+}
+
 namespace of\accy\com\kv {
 
     class files extends \of_accy_com_kv_files {
