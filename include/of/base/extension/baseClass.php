@@ -87,7 +87,7 @@ class of_base_extension_baseClass {
      *      翻译的字符串
      * 作者 : Edgar.lee
      */
-    protected function &_getText($string, $params = null) {
+    protected function &_getText($string, $params = array()) {
         $params['file'] = $this->constants['__FILE__'];
         return L::getText($string, $params);
     }

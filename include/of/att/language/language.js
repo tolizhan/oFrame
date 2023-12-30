@@ -9,7 +9,8 @@
     args = {
         'debug'  : !!temp.getAttribute('debug'),
         'isInit' : !!temp.getAttribute('init'),
-        'path'   : ROOT_URL + temp.getAttribute('path')
+        'path'   : ROOT_URL + temp.getAttribute('path'),
+        'match'  : eval(temp.getAttribute('match'))
     };
 
     args.isInit && window.L.ajax({
@@ -17,7 +18,7 @@
         'async'   : false,
         'success' : function (data) {
             //语言包初始化
-            if( window.L.type( data = window.L.json(data) ) === 'object' ) {
+            if (window.L.type(data = window.L.json(data)) === 'object') {
                 pack = data;
             }
         }
@@ -28,10 +29,8 @@
             //连接:行号
             var lines = '';
             try {
-                var Exception;
-                //无意义赋值,仅给压缩软件使用
-                lines = Exception.dont.exist;
-            } catch(e) {
+                null.null.null;
+            } catch (e) {
                 if (e.stack) {
                     lines = e.stack.split("\n");
 
@@ -47,7 +46,7 @@
 
                     if (lines = lines
                         .substr(lines.indexOf(':')+3)
-                        .match(/^[^\/\\?#]+([^\?#]*)\/([^\?#]*).*:(\d+)$/i)
+                        .match(/^[^\/\\?#]+([^?#]*)\/([^?#]*).*:(\d+)$/i)
                     ) {
                         //解析路径
                         lines[1] = lines[1].substr(ROOT_URL.length);
@@ -65,33 +64,45 @@
     }
 
     window.L.getText = function(string, params) {
+        var tran = '';
         params || (params = {});
         params.key || (params.key = '');
 
         if (string && (string = string.replace(/(^\s*)|(\s*$)/g, ""))) {
-            //用": "分割为[翻译, 变量]
-            string = !params['const'] && (temp = string.indexOf(': ')) >= 0 ?
-                [string.substr(0, temp), string.substr(temp + 2)] : [string];
-            pack[string[0]] || (pack[string[0]] = {});
-
-            //调试模式 && 语法定位
-            args.debug && (temp = getBacktrace()) && window.L.ajax({
-                'url'     : OF_URL + '/index.php?c=of_base_language_packs&a=update&t=' + (new Date).getTime(),
-                'data'    : window.L.param({
-                    'string' : string[0], 
-                    'params' : {
-                        'class'  : args['class'] || '',
-                        'action' : args.action || '',
-                        'key'    : params.key,
-                        'file'   : temp[0],
-                        'const'  : !!params['const']
+            if (params.mode) {
+                if (temp = args.match.exec(string)) {
+                    for (var i = 1; i < temp.length; i++) {
+                        if (temp[i]) {
+                            tran = temp[i];
+                            break ;
+                        }
                     }
-                })
-            });
+                }
+            } else {
+                tran = string;
+            }
 
-            //合并为"翻译: 变量"
-            string[0] = pack[string[0]][params.key] || pack[string[0]][''] || string[0];
-            string = string.join(': ');
+            //提取到翻译文本
+            if (tran) {
+                pack[tran] || (pack[tran] = {});
+
+                //调试模式 && 语法定位
+                args.debug && (temp = getBacktrace()) && window.L.ajax({
+                    'url'     : OF_URL + '/index.php?c=of_base_language_packs&a=update&t=' + (new Date).getTime(),
+                    'data'    : window.L.param({
+                        'string' : tran,
+                        'params' : {
+                            'class'  : args['class'] || '',
+                            'action' : args.action || '',
+                            'key'    : params.key,
+                            'file'   : temp[0]
+                        }
+                    })
+                });
+
+                //读取并替换翻译文本
+                (temp = pack[tran][params.key] || pack[tran]['']) && (string = string.replace(tran, temp));
+            }
         }
 
         return string;

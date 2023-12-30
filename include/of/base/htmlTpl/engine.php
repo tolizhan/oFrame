@@ -264,7 +264,7 @@ class of_base_htmlTpl_engine {
             if ($temp[1] = $temp[0]->attr($config['funcPre'] . 'html')) {
                 $printHeadArr[''][] = self::formatAttr($temp[0]->attr('>tagLine::start'), $temp[1], false);
             } else {
-                $printHeadArr[''][] = 'L::getText(\'' . addslashes($temp[0]->text()) . '\', array(\'const\' => true))';
+                $printHeadArr[''][] = 'L::getText(\'' . addslashes($temp[0]->text()) . '\')';
             }
             $printHeadArr[''][] = ",\n";
             $temp = str_repeat(' ', 8);
@@ -449,7 +449,7 @@ class of_base_htmlTpl_engine {
                 $tagName !== 'style' &&
                 preg_match('@^(\s*)([^<\s].*?)(\s*)$@s', $text, $temp)
             ) {
-                $temp[2] = "<?php{$line} echo L::getText('{$temp[2]}', array('const' => true)); ?>\n";
+                $temp[2] = "<?php{$line} echo L::getText('{$temp[2]}'); ?>\n";
                 //修改为php标签
                 of_base_com_hParse::nodeAttr($nodeKey, '', $temp[1] . $temp[2]. $temp[3]);
             }

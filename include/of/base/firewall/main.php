@@ -31,6 +31,14 @@
  */
 class of_base_firewall_main {
     /**
+     * 描述 : 防火墙初始化
+     * 作者 : Edgar.lee
+     */
+    public static function init() {
+        of::event('of::dispatch', 'of_base_firewall_main::dispatch');
+    }
+
+    /**
      * 描述 : 访问限制判断
      * 作者 : Edgar.lee
      */
@@ -190,4 +198,4 @@ class of_base_firewall_main {
     }
 }
 
-of::event('of::dispatch', 'of_base_firewall_main::dispatch');
+of_base_firewall_main::init();

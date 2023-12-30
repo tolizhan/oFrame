@@ -54,7 +54,7 @@ class of_base_com_timer {
     public static function init() {
         $config = &self::$config;
         //读取节点
-        $config = of::config('_of.com.timer', array());
+        $config = of::config('_of.com.timer', array()) + array('fork' => array('adapter' => 'default'));
         //计算节点ID, 空节点名称不生成触发器路径
         ($nodeName = of::config('_of.nodeName')) && $config['nodeId'] = md5($nodeName);
 
@@ -63,6 +63,8 @@ class of_base_com_timer {
         //文件锁路径
         empty($config['path']) && $config['path'] = OF_DATA . '/_of/of_base_com_timer';
         $config['path'] = of::formatPath($config['path'], ROOT_DIR);
+        //异步回调方法
+        $config['forkFn'] = 'of_accy_com_timer_' . $config['fork']['adapter'] . '::fork';
 
         //初始 动态任务 配置
         ($index = &$config['task']) || $index = array();
@@ -72,25 +74,30 @@ class of_base_com_timer {
         ($index = &$config['cron']) || $index = array();
         $index += array('path' => '');
         empty($index['path']) || $index['path'] = of::formatPath($index['path'], ROOT_DIR);
+    }
 
-        //web访问开启计划任务
-        if (of::dispatch('class') === 'of_base_com_timer') {
-            echo self::state() ? 'runing' : 'starting', "<br>\n";
-            //开启计划任务
-            self::timer();
+    /**
+     * 描述 : 控制台页面
+     * 作者 : Edgar.lee
+     */
+    public function index() {
+        echo self::state() ? 'running' : 'starting', "<br>\n";
+        //永不超时
+        ini_set('max_execution_time', 0);
+        //开启计划任务
+        self::timer();
 
-            if (OF_DEBUG === false) {
-                exit('Access denied: production mode.');
-            } else {
-                echo '<pre><hr>Scheduled task : '; 
-                if (is_file(self::$config['cron']['path'])) {
-                    print_r(include self::$config['cron']['path']);
-                }
-
-                echo '<hr>Concurrent Running : ';
-                print_r(of_base_com_timer::info(1));
-                echo '</pre>';
+        if (OF_DEBUG === false) {
+            exit('Access denied: production mode.');
+        } else {
+            echo '<pre><hr>Scheduled task : '; 
+            if (is_file(self::$config['cron']['path'])) {
+                print_r(include self::$config['cron']['path']);
             }
+
+            echo '<hr>Concurrent Running : ';
+            print_r(self::info(1));
+            echo '</pre>';
         }
     }
 
@@ -114,7 +121,7 @@ class of_base_com_timer {
             //连接解锁
             of_base_com_data::lock($lock, 3);
             //加载定时器
-            of_base_com_net::request('', array(), array(
+            call_user_func(self::$config['forkFn'], array(
                 'asCall' => 'of_base_com_timer::timer',
                 'params' => array($name, true)
             ));
@@ -223,7 +230,7 @@ class of_base_com_timer {
                         //解锁全局任务列表
                         of_base_com_data::lock($tLock, 3);
                         //清理分布式节点信息
-                        self::info(6);
+                        self::info(1073741826);
                     }
                 }
             }
@@ -409,9 +416,14 @@ class of_base_com_timer {
      *      type为2时 : 分布定时器 {
      *          节点ID : {}
      *      }
-     *      type其它时 : 如1+2为3时 {
+     *      type为4时 : 获取当前任务, null=当前不在异步中, array={
+     *          "task" : 同taskCall方法1参数格式
+     *          "cArg" : 同taskCall方法2参数格式
+     *      }
+     *      type其它时 : 如1|2|4为7时 {
      *          "concurrent"  : type为1的结构,
-     *          "taskTrigger" : type为2的结构
+     *          "taskTrigger" : type为2的结构,
+     *          "nowTaskInfo" : type为4的结构
      *      }
      * 作者 : Edgar.lee
      */
@@ -470,7 +482,7 @@ class of_base_com_timer {
 
         //分布定时器执行情况
         if ($type & 2) {
-            $type === 2 || $type === 6 ? $save = &$result : $save = &$result['taskTrigger'];
+            $type === 2 || $type === 1073741826 ? $save = &$result : $save = &$result['taskTrigger'];
 
             //全局节点列表键
             $listKey = 'of_base_com_timer::nodeList';
@@ -484,7 +496,7 @@ class of_base_com_timer {
                 //监控未开启
                 if (of_base_com_data::lock($nLock, 6)) {
                     //清理未启动监控
-                    if ($type & 4 && $_SERVER['REQUEST_TIME'] - $v['time'] > 3600) {
+                    if ($type & 1073741824 && $_SERVER['REQUEST_TIME'] - $v['time'] > 3600) {
                         //加锁全局节点列表
                         of_base_com_data::lock($listKey, 2);
                         //读取全局节点列表
@@ -503,6 +515,12 @@ class of_base_com_timer {
                     of_base_com_data::lock($nLock, 3);
                 }
             }
+        }
+
+        //当前执行的任务信息
+        if ($type & 4) {
+            $type === 4 ? $save = &$result : $save = &$result['nowTaskInfo'];
+            $save = self::$nowTask;
         }
 
         return $result;
@@ -614,11 +632,15 @@ class of_base_com_timer {
                         if (is_array($data)) {
                             //合并数据
                             $data += $index['data'];
-                            //数据不为空(防止读失败导致意外清空) && 写入数据
-                            $data && of_base_com_kv::set($dKey, $data, 86400, '_ofSelf');
-                        //删除数据
+                            //数据不为空(防止读失败导致意外清空) && 写入数据并更新缓存
+                            if ($data) {
+                                of_base_com_kv::set($dKey, $data, 86400, '_ofSelf');
+                                $isSelf && $cache = $data;
+                            }
+                        //删除数据并更新缓存
                         } else if ($data === false) {
                             of_base_com_kv::del($dKey, '_ofSelf');
+                            $isSelf && $cache = array();
                         }
                     }
                 }
@@ -645,6 +667,8 @@ class of_base_com_timer {
         static $load = array();
         //当前加载的文件
         $list = get_included_files();
+        //清除文件状态缓存
+        clearstatcache();
 
         foreach ($list as &$v) {
             //统一磁盘路径
@@ -947,7 +971,7 @@ class of_base_com_timer {
         $isOk = true;
 
         //支持命令调用则判断本机进程是否存在
-        if (of_base_com_net::isExec()) {
+        if (of_base_com_net::isCli()) {
             //windows系统 ? 查询进程是否存在 : 发送进程信号
             $isOk = self::$config['osType'] === 'win' ? !!strpos(
                 stream_get_contents(popen("TASKLIST /FO LIST /FI \"PID eq {$pid}\"", 'r'), 1024),
@@ -967,7 +991,7 @@ class of_base_com_timer {
         $config = &self::$config;
 
         //不支持php命令
-        if (!of_base_com_net::isExec()) {
+        if (!of_base_com_net::isCli()) {
             $rate = 5;
         //windows系统
         } else if ($config['osType'] === 'win') {
@@ -1358,11 +1382,14 @@ class of_base_com_timer {
      * 作者 : Edgar.lee
      */
     private static function fireCalls($list, $cArg = array()) {
+        //引用配置
+        $config = &self::$config;
+
         foreach ($list as &$v) {
             //单计划
             if (empty($v['cNum'])) {
                 //触发任务
-                of_base_com_net::request('', array(), array(
+                call_user_func($config['forkFn'], array(
                     'asCall' => 'of_base_com_timer::taskCall',
                     'params' => array(
                         $v + array('time' => 0, 'cNum' => 0, 'try' => array()),
@@ -1385,7 +1412,7 @@ class of_base_com_timer {
                             //释放并发锁
                             of_base_com_data::lock("{$taskLock}#{$cNum}", 3);
                             //触发任务
-                            of_base_com_net::request('', array(), array(
+                            call_user_func($config['forkFn'], array(
                                 'asCall' => 'of_base_com_timer::taskCall',
                                 'params' => array(
                                     &$v, array('cMd5' => $cMd5, 'cCid' => $cNum)
@@ -1403,3 +1430,5 @@ class of_base_com_timer {
 }
 
 of_base_com_timer::init();
+//仅允许访问控制台页面
+return join('::', of::dispatch()) === 'of_base_com_timer::index';

@@ -9,7 +9,7 @@ function main() {
  */
 function extendDemo($event = null) {
     //触发 "页面运行结束" 事件
-    if( isset($event['parse']) ) {
+    if (isset($event['parse'])) {
         //通过hParse解析页面数据(包括扩展输出的数据)
         $hParse = &$event['parse']('obj');
         $hParse->find('font:eq(0)')->text('扩展会修改这段文字,已修改');                                                 //修改页面内容
@@ -141,7 +141,7 @@ function callbackPrivateHookTest($a, $b) {
  * 描述 : 升级前后触发测试
  * 作者 : Edgar.lee
  */
-function updateBeforeOrAfter($param) {
+function updateBeforeOrAfter(&$param) {
     echo '更新触发 : ';
     var_dump($param);    //{'callMsgFun' : 输出消息, 'nowVersion' : 当前版本(安装时为null), 'newVersion' : 更新后版本, 'position' : 触发位置(before或after), 'state' : 安装状态,可修改停止(before)或改变结果(after)}
 }

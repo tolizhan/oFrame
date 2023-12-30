@@ -91,6 +91,7 @@ class of_base_com_net {
      *              "proxy" : 代理配置 {
      *                  "addr" : 代理地址, tcp://xxx:port
      *                  "user" : 用户密码, user:password
+     *                  "mode" : 代理方式, 0=直连, 1=隧道
      *              },
      *              "ssl" : 关闭 ssl 证书验证 {
      *                  "verify_peer_name" : false
@@ -274,10 +275,10 @@ class of_base_com_net {
             //操作系统类型(WINNT:windows, Darwin:mac, 其它:linux)
             $osType = strtolower(substr(PHP_OS, 0, 3));
             //web是否支持命令操作
-            isset($config['isExec']) || self::isExec();
+            isset($config['isCli']) || self::isCli();
 
             //命令行操作
-            if ($config['isExec']) {
+            if ($config['isCli']) {
                 //响应结果
                 $res = array('state' => true);
                 //执行参数
@@ -337,13 +338,14 @@ class of_base_com_net {
         $cRes = stream_context_create(
             (isset($data['context']) ? $data['context'] : array()) + array(
                 'ssl' => array(
-                    'verify_peer_name' => false
+                    'verify_peer_name' => false,
+                    'verify_peer' => false,
                 )
             )
         );
 
-        //代理请求
-        if (isset($data['context']['proxy']['addr'])) {
+        //同步请求 && 代理请求
+        if ($mode === false && isset($data['context']['proxy']['addr'])) {
             //引用代理参数
             $index = &$data['context']['proxy'];
 
@@ -360,32 +362,42 @@ class of_base_com_net {
             //代理连接完成
             if ($fp) {
                 //授权用户
-                $temp = isset($index['user']) ? base64_encode($index['user']) : '';
-                //开启隧道 Tunnel
-                fwrite($fp, join("\r\n", array(
-                    "CONNECT {$data['pUrl']['host']}:{$data['pUrl']['port']} HTTP/1.1",
-                    "Host: {$data['pUrl']['host']}:{$data['pUrl']['port']}",
-                    "Proxy-Authorization: Basic {$temp}",
-                    "Connection: keep-alive\r\n\r\n"
-                )));
+                $auth = isset($index['user']) ? base64_encode($index['user']) : '';
 
-                //读取响应头
-                while ($temp = fgets($fp, 2048)) {
-                    if ($temp === "\r\n") {
-                        break ;
-                    } else {
-                        $tHead[] = $temp;
-                    }
-                }
-
-                //代理成功
-                if (preg_match('/.* (\d+) .*/', join($tHead), $temp) && $temp[1] === '200') {
-                    //ssl协议 && 开启加密
-                    $data['pUrl']['scheme'] === 'https' &&
-                        stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT);
-                //代理失败
+                //直连代理
+                if (empty($index['mode']) && $data['pUrl']['scheme'] !== 'https') {
+                    $out = array(
+                        "{$data['type']} {$url} HTTP/1.1",
+                        "Proxy-Authorization: Basic {$auth}"
+                    );
+                //隧道代理
                 } else {
-                    $fp = false;
+                    //开启隧道 Tunnel
+                    fwrite($fp, join("\r\n", array(
+                        "CONNECT {$data['pUrl']['host']}:{$data['pUrl']['port']} HTTP/1.1",
+                        "Host: {$data['pUrl']['host']}:{$data['pUrl']['port']}",
+                        "Proxy-Authorization: Basic {$auth}",
+                        "Connection: keep-alive\r\n\r\n"
+                    )));
+
+                    //读取响应头
+                    while ($temp = fgets($fp, 2048)) {
+                        if ($temp === "\r\n") {
+                            break ;
+                        } else {
+                            $tHead[] = $temp;
+                        }
+                    }
+
+                    //代理成功
+                    if (isset($tHead) && preg_match('/.* (\d+) .*/', join($tHead), $temp) && $temp[1] === '200') {
+                        //ssl协议 && 开启加密
+                        $data['pUrl']['scheme'] === 'https' &&
+                            stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_ANY_CLIENT);
+                    //代理失败
+                    } else {
+                        $fp = false;
+                    }
                 }
             }
         //创建连接
@@ -468,7 +480,7 @@ class of_base_com_net {
             }
 
             //组合请求数据
-            $out[] = "{$data['type']} {$data['pUrl']['path']}" .
+            isset($out) || $out[] = "{$data['type']} {$data['pUrl']['path']}" .
                 (($index = &$data['pUrl']['query']) ? "?{$index}" : '') .
                 ' HTTP/1.1';
             $out[] = 'Host: ' . $data['pUrl']['host'] . $port;
@@ -786,27 +798,27 @@ class of_base_com_net {
      *      true=支持, false=不支持
      * 作者 : Edgar.lee
      */
-    public static function isExec() {
+    public static function isCli() {
         //配置引用
         $config = &self::$config;
 
         //web是否支持命令操作
-        if (!isset($config['isExec'])) {
+        if (!isset($config['isCli'])) {
             //是否为windows操作系统
             $isWin = !strncasecmp(PHP_OS, 'win', 3);
 
             //命令行模式
             if (PHP_SAPI === 'cli') {
-                $config['isExec'] = true;
+                $config['isCli'] = true;
             //未启用popen方法 || windows开发模式(web服务器重启时并发需停止方便调试)
             } else if (
                 ini_get('safe_mode') ||
                 !function_exists('popen') ||
                 OF_DEBUG && $isWin
             ) {
-                $config['isExec'] = false;
+                $config['isCli'] = false;
             //php命令不可执行
-            } else if (!$config['isExec'] = is_int(strpos(
+            } else if (!$config['isCli'] = is_int(strpos(
                 $temp = stream_get_contents(popen('php -r "echo 12345;" 2>&1', 'r'), 2048),
                 '2345'
             ))) {
@@ -816,7 +828,7 @@ class of_base_com_net {
             }
         }
 
-        return $config['isExec'];
+        return $config['isCli'];
     }
 
     /**

@@ -10,7 +10,7 @@ return array(
     'nodeName'    => $_SERVER['SERVER_ADDR'] . php_uname(),
     //系统时区, 设置php支持的时区(如: Europe/London 支持夏令时), 读取格式为 ±00:00
     'timezone'    => 'PRC',
-    //统一调试模式, true=开发环境, null=测试环境, false=生产环境, 字符串=切换开发环境密码
+    //统一调试模式, true=开发模式, null=测试模式, false=生产模式, 字符串=切换开发模式密码
     'debug'       => true,
     //可写目录, 上传, 缓存等路径都将写入该文件夹
     'dataDir'     => '/data',
@@ -121,7 +121,7 @@ return array(
         //'of_base_extension_match',
         //html模板引擎, 实现UI, 开发人员分离
         'of_base_htmlTpl_engine',
-        //非生产环境检查最新版本
+        //非生产模式检查最新版本
         'of_base_version_check',
         //加载 composer
         //'include_composer_vendor_autoload'
@@ -156,8 +156,8 @@ return array(
         'adapter'     => 'files',
         //禁止 js 读取 session_id
         'httpOnly'    => true,
-        //正则匹配"调度类名::方法名"判断是否自动开启, 不启动 com_net, sso_api, language_packs
-        'autoStart'   => '@^(?!serv(_|\b)|of_base_(com_net|sso|language))@',
+        //正则匹配"调度类名::方法名"判断是否自动开启, 不启动除of_base_com_com的框架类
+        'autoStart'   => '@^(?!(serv|of)(_|\b))|of_base_com_com@',
         //最大生存时间(分钟)
         'maxLifeTime' => 60,
         //各调度参数
@@ -215,7 +215,9 @@ return array(
     //多语言包
     'language'    => array(
         //语言包路径
-        'path'    => '/data/language/Edgar',
+        'path'    => '/data/_of/of_base_language_packs',
+        //局部翻译匹配规则, 注意需兼容js, 第一个不为空的子组作为翻译文本, 匹配失败时, 开发模式报错, 其它模式备注
+        'match'   => '/^([\w "\'-,]+)$|^(\W+)$|^(.+?)(?:: |[.!?]+$)/',
         //默认语言
         'default' => 'base'
     ),
@@ -276,22 +278,27 @@ return array(
             //检查是否有权限调用分页, @开头的字符串=正则验证, 否则=遵循回调规则(返回true=通过)
             'check' => '@paging$@i'
         ),
-        //磁盘操作
+        //数据操作
         'data' => array(
+            //数据锁
             'lock' => array(
                 //适配文件 of_accy_com_data_lock_xxx
                 'adapter' => 'files',
                 //对应的配置
                 'params'  => array(
                     #files 模式
-                    //slot > 0, 多网盘挂在"/data/_of/of_accy_com_data_lock_files/n"下, 0>= n < slot
+                    //锁文件存储路径, 单机linux可以设置到内存文件系统下, "/dev/shm/..."
+                    'path' => '/data/_of/of_accy_com_data_lock_files',
+                    //slot > 0, 多网盘挂在"path/n"下, 0<= n < slot
                     'slot' => 1
                 )
             )
         ),
         //网络请求
         'net' => array(
-            //异步请求方案, ""=当前网址, url=带端口的网址
+            //异步回调方式, null=自动判断, true=命令方式, false=网络方式
+            'isCli' => null,
+            //网络异步方式的网址, ""=当前网址, url=带端口的网址, 如: 'http://127.0.0.1:80/'
             'async'  => ''
         ),
         //计划任务
@@ -314,6 +321,18 @@ return array(
             'cron' => array(
                 //静态计划任务文件
                 'path'   => ''
+            ),
+            //启动异步任务方式
+            'fork' => array(
+                //调用of_accy_com_timer_xxx, 支持default和swoole
+                'adapter' => 'default',
+                'params' => array(
+                    #swoole 模式
+                    /*
+                    //并发任务的启动模式, 1=合并任务(省资源, 若进程崩溃会影响多个任务), 2=独立进程(耗资源更稳定, 默认值)
+                    'mode' => 2
+                    // */
+                )
             )
         ),
         //key-value 数据存储 可像db分连接池, 'default'为默认连接池

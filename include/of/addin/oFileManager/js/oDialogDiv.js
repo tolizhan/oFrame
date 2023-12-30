@@ -705,9 +705,9 @@ if(typeof oDialogDiv.getTreeNode !== 'function'){
                             }
                         }
 
+                        iframeWindowObj.unbind('resize', iframeWindowResizeFun);    //移除自身绑定
                         //设置iframe的高
                         ancestorWindow.setTimeout(function(){    //火狐浏览器在此处会卡住,因此这样写
-                            iframeWindowObj.unbind('resize', iframeWindowResizeFun);    //移除自身绑定
                             if(documentObj.width() > oDialogDivIframeObj.width())    //当内容宽度大于iframe宽度时,调整iframe,达到自动适应的问题
                             {
                                 oDialogDivIframeObj.width(documentObj.width());
@@ -724,11 +724,7 @@ if(typeof oDialogDiv.getTreeNode !== 'function'){
                 };
                 iframeWindowResizeFun.scrollWidth = (width === 'auto' ? 299 : width - 11) - oDialogDiv.getScrollBarWidth();    //给滚动条留15px+边距10px+IE iframe 边框1px
                 oDialogDivIframeObj.css({'height' : 'auto', 'width' : iframeWindowResizeFun.scrollWidth});    //width === 'auto' ? width : width - 11
-                iframeWindowObj.resize(iframeWindowResizeFun);    //通过resize系统回调处理iframe的布局信息
-                if($.browser.msie || /trident/.test(navigator.userAgent.toLowerCase()) )        //IE < 10 || IE = 11
-                {
-                    iframeWindowObj.resize();
-                }
+                iframeWindowObj.resize(iframeWindowResizeFun).resize();    //通过resize系统回调处理iframe的布局信息
             } catch(e) {    //跨站加载,无法计算高度
                 layoutStatus = false;
                 oDialogDivLayout();

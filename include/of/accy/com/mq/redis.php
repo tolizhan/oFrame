@@ -2,7 +2,7 @@
 /**
  * 描述 : 实现 redis 消息队列
  * 注明 :
- *      哈希表结构 : {
+ *      消息数据结构 : {
  *          "msgId"      : 消息ID,
  *          "data"       : 消息数据,
  *          "syncCount"  :o同步总数,
@@ -12,6 +12,10 @@
  *          "lockTime"   :o锁定时间戳(在此范围内不执行),
  *          "lockMark"   :o锁定标记(防止执行超时被其它消费)
  *      }
+ *      消息存储键名 :
+ *          消息数据 : of_accy_com_mq_redis::data::{虚拟主机.队列名称.消息类型.消息主键}
+ *          执行队列 : of_accy_com_mq_redis::sort::虚拟主机.队列名称.消息类型.{队列槽名}
+ *          失败队列 : of_accy_com_mq_redis::fail::虚拟主机.队列名称.消息类型.{队列槽名}
  * 作者 : Edgar.lee
  */
 class of_accy_com_mq_redis extends of_base_com_mq {
@@ -35,6 +39,7 @@ class of_accy_com_mq_redis extends of_base_com_mq {
      *          "overdue" :o是否统计可消费数, 默认false不统计, true=统计
      *          "failNo"  :o是否统计失败总数, 默认false不统计, true=统计
      *          "failed"  :o读取最大失败消息, 默认0不查询, >0为最大长度
+     *          "recent"  :o读取即将消费消息, 默认0不查询, >0为最大长度
      *      }
      * 返回 :
      *      {
@@ -51,11 +56,10 @@ class of_accy_com_mq_redis extends of_base_com_mq {
      *              "overdue" : 可消费数
      *              "failNo"  : 失败总数
      *              "failed"  : 失败列表 {
-     *                  消息ID : {
-     *                      "total"   : 消息总数
-     *                      "overdue" : 可消费数
-     *                      "failNo"  : 失败总数
-     *                  }, ...
+     *                  消息ID : {}, ...
+     *              }
+     *              "recent"  : 消费列表 {
+     *                  消息ID : {}, ...
      *              }
      *              "msgList" : 消息属性汇总列表 {
      *                  消息ID : 消息属性 {
@@ -81,8 +85,9 @@ class of_accy_com_mq_redis extends of_base_com_mq {
         $config = of::config('_of.com.mq');
         //参数补全
         $params += array(
-            'match' => false, 'total' => false, 'overdue' => false,
-            'failNo' => false, 'failed' => false, 'mqSlot' => false
+            'match' => false, 'mqSlot' => false, 'total' => false,
+            'overdue' => false, 'failNo' => false, 'failed' => 0,
+            'recent' => 0
         );
         //当期时间戳
         $time = time();
@@ -112,7 +117,7 @@ class of_accy_com_mq_redis extends of_base_com_mq {
                         $index = array(
                             'mqName' => '', 'mqSlot' => array(), 'total' => 0,
                             'overdue' => 0, 'failNo' => 0, 'failed' => array(),
-                            'msgList' => array()
+                            'recent' => array(), 'msgList' => array()
                         );
                         //消息名称
                         $name = $index['mqName'] = "{$vHost}.{$kq}.{$kk}";
@@ -155,15 +160,44 @@ class of_accy_com_mq_redis extends of_base_com_mq {
                                 arsort($index['failed']);
                                 array_splice($index['failed'], $params['failed']);
                             }
+
+                            //读取近期消息列表
+                            if ($params['recent'] > 0) {
+                                //读取消息数据
+                                $index['recent'] += $redis->zRangeByScore($sKey, 0, '+inf', array(
+                                    'withscores' => true, 'limit' => array(0, $params['recent'])
+                                ));
+                                //正序后取前几位
+                                asort($index['recent']);
+                                array_splice($index['recent'], $params['recent']);
+                            }
                         }
 
-                        //读取消息属性汇总列表
+                        //读取失败属性汇总列表
                         foreach ($index['failed'] as $k => &$v) {
                             $v = array();
                             //消息数据集
                             $mark = "of_accy_com_mq_redis::data::{{$name}.{$k}}";
-                            //获取消息属性
-                            $index['msgList'][$k] = $redis->hGetAll($mark);
+                            //获取消息属性失败
+                            if (!$index['msgList'][$k] = $redis->hGetAll($mark)) {
+                                //即将过期的无效列表
+                                unset($index['msgList'][$k], $index['failed'][$k]);
+                            }
+                        }
+
+                        //读取近期属性汇总列表
+                        foreach ($index['recent'] as $k => &$v) {
+                            $v = array();
+                            //未读取过
+                            if (!isset($index['msgList'][$k])) {
+                                //消息数据集
+                                $mark = "of_accy_com_mq_redis::data::{{$name}.{$k}}";
+                                //获取消息属性失败
+                                if (!$index['msgList'][$k] = $redis->hGetAll($mark)) {
+                                    //即将过期的无效列表
+                                    unset($index['msgList'][$k], $index['recent'][$k]);
+                                }
+                            }
                         }
                     }
                 }
@@ -340,7 +374,7 @@ class of_accy_com_mq_redis extends of_base_com_mq {
 
                 //消息存在
                 if ($attr) {
-                    $attr += array('syncCount' => 0, 'lockTime'  => 0, 'planTime' => 0);
+                    $attr += array('syncCount' => 0, 'lockTime'  => 0, 'planTime' => 0, 'slot' => $slot);
                     $attr['lockTime'] < $attr['planTime'] && $attr['lockTime'] = $attr['planTime'];
 
                     //消息未执行
@@ -359,10 +393,7 @@ class of_accy_com_mq_redis extends of_base_com_mq {
                             //执行成功 exec!=false && exec.0!=false
                             if (($isOk = $this->exec()) && $isOk[0]) {
                                 //合并消息
-                                $msgs[$attr['msgId']] = array(
-                                    'attr' => $attr,
-                                    'slot' => $slot
-                                );
+                                $msgs[$attr['msgId']] = $attr;
                                 //锁定消息序列集
                                 $this->zAdd($sKey, $expTime, $id);
                             }
@@ -395,12 +426,12 @@ class of_accy_com_mq_redis extends of_base_com_mq {
 
                         //设置 120 分钟超时
                         ini_set('max_execution_time', 7200);
-                    //消息正在执行 && 正常消息
+                    //消息正在执行(由多台服务器时间不同或多任务同时读取导致) && 正常消息
                     } else {
-                        //开始事务
+                        //开始事务, 若为集群或分布式, 则此命令可能再之后任何一个时间执行
                         $this->multi();
-                        //修改消息的虚列时间为锁定时间, 减少无意的查询
-                        $this->zAdd($sKey, $attr['lockTime'], $id);
+                        //修改消息的序列时间为锁定时间, 减少无意的查询, 同时影响getMqInfo信息延迟性
+                        $this->zAdd($sKey, $attr['lockTime'] - $time > 600 ? $time + 600 : $attr['lockTime'], $id);
                         //提交事务
                         $this->exec();
                     }
@@ -424,11 +455,14 @@ class of_accy_com_mq_redis extends of_base_com_mq {
             $data['extra'] = array('lock'  => $uniqid);
             //解析消费数据
             foreach ($msgs as &$v) {
-                $data['count'][$v['attr']['msgId']] = $v['attr']['syncLevel'];
-                $data['msgId'][] = $v['attr']['msgId'];
-                $data['data'][$v['attr']['msgId']] = json_decode($v['attr']['data'], true);
+                $data['msgs'][$v['msgId']] = array(
+                    'msgId' => $v['msgId'],
+                    'count' => $v['syncLevel'],
+                    'data'  => json_decode($v['data'], true),
+                    'uTime' => $v['updateTime'],
+                );
                 $data['extra']['msgs'][] = array(
-                    'msgId' => $v['attr']['msgId'],
+                    'msgId' => $v['msgId'],
                     'slot' => $v['slot']
                 );
             }
@@ -507,9 +541,7 @@ class of_accy_com_mq_redis extends of_base_com_mq {
      *              "cMd5" : 回调唯一值
      *              "cCid" : 当前并发值
      *          }
-     *          "msgId" : 消息ID
-     *          "count" : 调用计数, 首次为 1
-     *          "data"  : 消息数据
+     *          "msgs"  : 消息数据列表
      *      }
      * 作者 : Edgar.lee
      */
@@ -784,22 +816,31 @@ class of_accy_com_mq_redis extends of_base_com_mq {
         //消息统计集
         $cKey = "of_accy_com_mq_redis::fail::{$slot}";
 
-        //开始事务
+        //开始事务, 上层已监听$mark
         $this->multi();
-        //移除消息的有虚集
-        $this->zRem($sKey, $msgId);
-        //移除消息的统计集
-        $this->zRem($cKey, $msgId);
-        //提交事务(若失败, 则消息被添加, 需确认执行时间)
-        ($isOk = $this->exec()) && $isOk = is_int($isOk[0]);
+        //标记删除, 之后该消息锁时间可能会被并行进程推后10分钟
+        $this->hDel($mark, 'planTime');
+        //若此时有覆盖消息, 将标记失败
+        $this->exec();
+
+        //移除消息的统计集 && 移除消息的有序集, 按fail->sort->data的顺序删除是安全的
+        $isOk = is_int($this->zRem($cKey, $msgId)) && is_int($this->zRem($sKey, $msgId));
 
         do {
             //监听消息数据
             $this->watch($mark);
-            //数据集存在, 直接跳过
-            if ($exist = $this->zScore($sKey, $msgId)) {
-                $this->unwatch();
-                break ;
+            //消息有效(不存在为false), 解锁
+            if ($exist = $this->hGet($mark, 'planTime')) {
+                //开始事务
+                $this->multi();
+                //删除锁定时间
+                $this->hDel($mark, 'lockTime');
+                //删除锁定标记
+                $this->hDel($mark, 'lockMark');
+                //提交事务(若失败, 则消息被添加, 需确认执行时间)
+                ($temp = $this->exec()) && $temp = is_int($temp[0]);
+                //添加到有序集(集合名, 消费时间, 消息ID), 返回新增int(0|1)
+                $exist = $temp ? is_int($this->zAdd($sKey, $exist, $msgId)) : $temp;
             //执行失败
             } else if ($exist === null) {
                 $this->unwatch();

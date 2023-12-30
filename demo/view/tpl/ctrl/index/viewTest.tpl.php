@@ -414,7 +414,7 @@ $(function() {
 js语言包的使用
 <script>
 document.write(L.getText('加载JS端语言包翻译')+'<br/>');
-document.write(L.getText('加载JS端语言包翻译: const', {'const' : true})+'<br/>');
+document.write(L.getText('加载JS端语言包翻译: const', {'mode' : 1})+'<br/>');
 document.write(L.getText('高效加载JS端语言包翻译: bb', {'key' : '关键字'}));
 </script>
 </pre>

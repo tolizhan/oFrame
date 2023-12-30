@@ -43,6 +43,16 @@ namespace of\accy\com\mq {
 
 }
 
+namespace of\accy\com\timer {
+
+    class default extends \of_accy_com_timer_default {
+    }
+
+    class swoole extends \of_accy_com_timer_swoole {
+    }
+
+}
+
 namespace of\accy\db {
 
     class mssqlPdo extends \of_accy_db_mssqlPdo {
@@ -98,7 +108,7 @@ namespace of\base\com {
     class kv extends \of_base_com_kv {
     }
 
-    abstract class mq extends \of_base_com_mq {
+    class mq extends \of_base_com_mq {
     }
 
     class net extends \of_base_com_net {
@@ -255,7 +265,7 @@ namespace {
             /*return of_base_htmlTpl_engine::getHtmlTpl($params);*/
         }
 
-        public static function &getText($string, $params = null) {
+        public static function &getText($string, $params = array()) {
             /*return of_base_language_packs::getText($string, $params);*/
         }
 

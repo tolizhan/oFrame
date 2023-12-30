@@ -3,29 +3,6 @@
 * 描述 : 针对当前页面加载及处理相应扩展
 * 作者 : Edgar.Lee
 */
-//扩展存储目录存在 && 启用扩展
-if (is_dir(of_base_extension_manager::getConstant('extensionDir'))) {
-    //添加调度事件
-    of::event('of::dispatch', 'of_base_extension_match::init');
-    //删除输出控制监听
-    of::event('of::halt', false, array('asCall' => 'L::buffer', 'params' => array(true, true)));
-    //添加结束事件
-    of::event('of::halt', array('asCall' => 'of_base_extension_match::shutdown', 'params' => array(true)));
-    //添加类加载拦截
-    of::event('of::loadClass', array(
-        'classPre' => of_base_extension_manager::getConstant('baseClassName'),
-        'asCall' => 'of_base_extension_match::ofLoadExtensionClass'
-    ), true);
-    //添加试图事件
-    of::event('of_view::display', array('asCall' => 'of_base_extension_match::fireHook', 'params' => array('::view')));
-    //添加sql前事件
-    of::event('of_db::before', array('asCall' => 'of_base_extension_match::fireHook', 'params' => array('::sqlBefore')));
-    //添加sql后事件
-    of::event('of_db::after', array('asCall' => 'of_base_extension_match::fireHook', 'params' => array('::sqlAfter')));
-    //添加触发连接
-    of::link('fireHook', '$type, $params = null', 'of_base_extension_match::fireHook($type, $params, true);');
-}
-
 class of_base_extension_match {
     /**
      * 注明 : 
@@ -47,12 +24,41 @@ class of_base_extension_match {
     static private $extensionClassObj = array();
 
     /**
+     * 描述 : 扩展初始化
+     * 作者 : Edgar.lee
+     */
+    public static function init() {
+        //扩展存储目录存在 && 启用扩展
+        if (is_dir(of_base_extension_manager::getConstant('extensionDir'))) {
+            //添加调度事件
+            of::event('of::dispatch', 'of_base_extension_match::dispatch');
+            //删除输出控制监听
+            of::event('of::halt', false, array('asCall' => 'L::buffer', 'params' => array(true, true)));
+            //添加结束事件
+            of::event('of::halt', array('asCall' => 'of_base_extension_match::shutdown', 'params' => array(true)));
+            //添加类加载拦截
+            of::event('of::loadClass', array(
+                'classPre' => of_base_extension_manager::getConstant('baseClassName'),
+                'asCall' => 'of_base_extension_match::ofLoadExtensionClass'
+            ), true);
+            //添加试图事件
+            of::event('of_view::display', array('asCall' => 'of_base_extension_match::fireHook', 'params' => array('::view')));
+            //添加sql前事件
+            of::event('of_db::before', array('asCall' => 'of_base_extension_match::fireHook', 'params' => array('::sqlBefore')));
+            //添加sql后事件
+            of::event('of_db::after', array('asCall' => 'of_base_extension_match::fireHook', 'params' => array('::sqlAfter')));
+            //添加触发连接
+            of::link('fireHook', '$type, $params = null', 'of_base_extension_match::fireHook($type, $params, true);');
+        }
+    }
+
+    /**
      * 描述 : 初始化扩展
      * 作者 : Edgar.lee
      */
-    public static function init($params) {
+    public static function dispatch($params) {
         //移除调度事件
-        of::event('of::dispatch', false, 'of_base_extension_match::init');
+        of::event('of::dispatch', false, 'of_base_extension_match::dispatch');
 
         //全部扩展信息
         $extensionsInfo = of_base_extension_manager::getExtensionInfo();
@@ -287,3 +293,5 @@ function &responseStrParseFunction($type) {
     }
     return $data;
 }
+
+of_base_extension_match::init();

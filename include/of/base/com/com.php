@@ -268,7 +268,7 @@ class of_base_com_com {
                         $env['thead'][] = "<th rowspan='{$v['attr']['row']}' colspan='{$v['attr']['col']}' {$v['attr']['attr']}>" .
                             "<font {$temp}>" .
                                 $v['attr']['html'][0] .
-                                L::getText($v['name'], array('key'  =>'pageTable', 'file' => &$env['flie'])) .
+                                L::getText($v['name'], array('key' =>'pageTable', 'file' => &$env['flie'])) .
                                 $v['attr']['html'][1] .
                             '</font>' .
                         "</th>";
@@ -558,6 +558,7 @@ class of_base_com_com {
      * 作者 : Edgar.lee
      */
     public static function captcha($captcha = false, $key = 0) {
+        L::session();
         $result = &$_SESSION['_of']['of_base_com_com']['captcha'];
 
         //验证码校验

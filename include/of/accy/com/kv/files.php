@@ -7,7 +7,7 @@ class of_accy_com_kv_files extends of_base_com_kv {
     protected function _connect() {
         //格式为磁盘路径
         $this->params['path'] = isset($this->params['path']) ?
-            of::formatPath($this->params['path'], ROOT_DIR) :
+            ROOT_DIR . $this->params['path'] :
             ROOT_DIR . OF_DATA . '/_of/of_accy_com_kv_files';
 
         //垃圾回收

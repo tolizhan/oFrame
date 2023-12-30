@@ -176,8 +176,10 @@ class of_accy_com_kv_redis extends of_base_com_kv {
 class _RedisArray {
     //redis对象
     private $redis = null;
-    //分布式事务开启状态
-    private $multi = false;
+    //分布式事务开启状态, -2未开启, >-2命令数
+    private $multi = -2;
+    //分布式事务命令列表 {节点名 : [[方法, 参数, 位置], ...], ...}
+    private $cList = array();
 
     /**
      * 描述 : 构造函数
@@ -196,15 +198,68 @@ class _RedisArray {
         $redis = &$this->redis;
         //引用事务预开启状态
         $multi = &$this->multi;
+        //默认返回自身对象
+        $result = $this;
 
-        //事务预开启状态 && 不是multi, exec, discard, unwatch && 开启事务
-        $multi && $argv && $redis->multi($redis->_target($argv[0]));
-        //判断是否设置预开启状态
-        $multi = $func === 'multi';
-        //事务预开启状态 ? 不执行multi返回this : 执行命令并返回
-        $result = $multi ? $this : call_user_func_array(array($redis, $func), $argv);
+        //开启事务, 返回this
+        if ($func === 'multi') {
+            //未开启 && 标记开启
+            $multi < -1 && $multi = -1;
+        //提交事务, 返回array或null
+        } else if ($func === 'exec') {
+            //在事务中
+            if ($multi > -2) {
+                //结果集为苏州
+                $result = array();
+                //批量执行事务
+                foreach ($this->cList as $hk => &$hv) {
+                    //单节点事务顺序
+                    $temp = array();
+                    //开启指定节点事务
+                    $redis->multi($hk);
+                    //批量执行
+                    foreach ($hv as &$v) {
+                        //生成数组键
+                        $temp[] = $v[2];
+                        //执行命令
+                        call_user_func_array(array($redis, $v[0]), $v[1]);
+                    }
+                    //提交事务
+                    $temp = array($temp, $redis->exec());
+                    //生成结果集, 一些命令报错会导致结果集缺失
+                    foreach ($temp[0] as $k => &$v) $result[$v] = isset($temp[1][$k]) ? $temp[1][$k] : false;
+                }
+                //关闭事务
+                $multi = -2;
+                //清空命令列表
+                $this->cList = array();
+                //排序结果集
+                ksort($result);
+            //未在事务中
+            } else {
+                $result = null;
+            }
+        //回滚事务, 返回bool
+        } else if ($func === 'discard') {
+            //在事务中 ? true : false
+            $result = $multi > -2;
+            //关闭事务
+            $multi = -2;
+            //清空命令列表
+            $this->cList = array();
+        //有参数命令 && 在事务中, 返回this
+        } else if ($argv && $multi > -2) {
+            //记录事务命令
+            $this->cList[$redis->_target($argv[0])][] = array($func, $argv, ++$multi);
+        //无参数命令 || 不在事务中
+        } else {
+            //直接执行
+            $result = call_user_func_array(array($redis, $func), $argv);
+            //结果集redis对象 && 返回this
+            $result === $redis && $result = $this;
+        }
 
-        //结果集redis对象 ? 返回this : 返回结果集
-        return $result === $redis ? $this : $result;
+        //返回结果集
+        return $result;
     }
 }

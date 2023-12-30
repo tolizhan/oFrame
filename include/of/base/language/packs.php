@@ -39,7 +39,7 @@
  */
 class of_base_language_packs {
     //环境变量
-    private static $envVar = null;
+    private static $envVar = array();
     //是否开发模式
     private static $debug = false;
 
@@ -48,18 +48,26 @@ class of_base_language_packs {
      * 作者 : Edgar.lee
      */
     public static function init() {
-        $temp = of::config('_of.language.default', 'base');
         //引用环境变量
         $envVar = &self::$envVar;
-        //语言包根路径
-        $envVar['path'] = of::config('_of.language.path', OF_DATA . '/_of/of_base_language_packs');
+        //初始化配置
+        $envVar += of::config('_of.language', array()) + array(
+            'path' => OF_DATA . '/_of/of_base_language_packs',
+            'match' => '/^([\w "\'-,]+)$|^(\W+)$|^(.+?)(?:: |[.!?]+$)/',
+            'default' => 'base'
+        );
+        //选择语言包
         $envVar['name'] = isset($_COOKIE['of_base_language']['name']) ?
-            $_COOKIE['of_base_language']['name'] : $temp;
-        self::$debug = OF_DEBUG !== false || $temp === 'base';
+            $_COOKIE['of_base_language']['name'] : $envVar['default'];
+        //是否开发模式
+        self::$debug = OF_DEBUG !== false || $envVar['default'] === 'base';
 
         //语言包根路径
         $temp = $envVar['path'] .'/'. $envVar['name'];
-        $temp = ' path="' .$temp. '" debug="' .self::$debug. '" init="' . !!is_file(ROOT_DIR . $temp . '/js.txt');
+        $temp = ' path="' . $envVar['path'] .'/'. $envVar['name'] .
+            '" match="' . htmlspecialchars($envVar['match'], ENT_QUOTES, 'UTF-8') .
+            '" debug="' . self::$debug .
+            '" init="' . !!is_file(ROOT_DIR . $temp . '/js.txt');
         //加载前台语言包
         of_view::head('head', '<script' .$temp. '" src="' .OF_URL. '/att/language/language.js" ></script>');
 
@@ -70,7 +78,7 @@ class of_base_language_packs {
         //开启调试模式
         self::$debug && register_shutdown_function('of_base_language_packs::save');
         //添加翻译连接
-        of::link('&getText', '$string, $params = null', 'return of_base_language_packs::getText($string, $params);');
+        of::link('&getText', '$string, $params = array()', 'return of_base_language_packs::getText($string, $params);');
     }
 
     /**
@@ -92,41 +100,73 @@ class of_base_language_packs {
      *     &string : 指定翻译的字符串
      *     &params : 附加数组参数 {
      *          "key"   : 区分键,默认""
-     *          "const" : 是否完整翻译文本, 默认false=不翻译": "后内容, true=完整翻译文本
+     *          "mode"  : 翻译模式, 0=完整翻译, 1=按_of.language.match规则提取翻译文本
      *      }
      * 返回 :
      *      翻译的字符串
      * 作者 : Edgar.lee
      */
-    public static function &getText(&$string, &$params = null) {
+    public static function &getText(&$string, &$params = array()) {
         //引用环境变量
         $envVar = &self::$envVar;
-        //初始化key值
-        isset($params['key']) || $params['key'] = '';
-        //读取语言包类型
-        isset($params['type']) || $params['type'] = 'php';
+        //初始化参数
+        $params += array('key' => '', 'type' => 'php', 'mode' => 0);
 
         //去空白字符串
         if ($string = trim($string)) {
-            //分割成[翻译, 变量]
-            $string = empty($params['const']) ? explode(': ', $string, 2) : array($string);
-            //debug时,给源语言定位
-            self::$debug && self::source($string[0], $params);
-
-            //语言包初始化
-            isset($envVar['pack'][$params['type']]) || self::load($params['type']);
-            //引用语言块
-            $index = &$envVar['pack'][$params['type']][$string[0]];
-
-            if (empty($index[$params['key']])) {
-                $index[$params['key']] = '';
-                empty($index['']) || $string[0] = $index[''];
+            //提取翻译
+            if ($params['mode']) {
+                //匹配成功
+                if (preg_match($envVar['match'], $string, $match, PREG_OFFSET_CAPTURE)) {
+                    foreach ($match as $k => &$v) {
+                        //提取翻译文本
+                        if ($k && $v[0]) {
+                            $match = &$v;
+                            $tran = $v[0];
+                            break ;
+                        }
+                    }
+                }
+            //完整翻译
             } else {
-                $string[0] = $index[$params['key']];
+                $tran = $string;
             }
 
-            //合并为"翻译: 变量"
-            $string = join(': ', $string);
+            //提取到翻译文本
+            if (isset($tran)) {
+                //debug时,给源语言定位
+                self::$debug && self::source($tran, $params);
+
+                //加载对应类型语言包
+                $index = &self::load($params['type']);
+                //引用翻译数据{区分键 : 翻译的语言, ...}
+                $index = &$index[$tran];
+
+                //对应键未翻译, 判断全局键是否翻译
+                if (empty($index[$params['key']])) {
+                    $index[$params['key']] = '';
+                    empty($index['']) || $tran = $index[''];
+                //已翻译
+                } else {
+                    $tran = $index[$params['key']];
+                }
+
+                //提取翻译
+                if ($params['mode']) {
+                    $string = substr_replace($string, $tran, $match[1], strlen($match[0]));
+                //完整翻译
+                } else {
+                    $string = $tran;
+                }
+            //匹配失败提示, 开发模式报错, 其它模式备注
+            } else {
+                of::event('of::error', true, array(
+                    'memo' => !OF_DEBUG,
+                    'info' => 'Translation matching "_of.language.match" failed: ' . $string,
+                    'file' => __FILE__,
+                    'line' => __LINE__
+                ));
+            }
         }
 
         return $string;
@@ -243,7 +283,7 @@ class of_base_language_packs {
         if (empty($params['file']) && $params['type'] === 'php') {
             //追踪层次
             isset($params['trace']) || $params['trace'] = 0;
-            $backtrace = debug_backtrace();
+            $backtrace = debug_backtrace(0);
 
             foreach ($backtrace as $k => &$v) {
                 if ($v['function'] === 'getText' && $v['class'] === 'L') {

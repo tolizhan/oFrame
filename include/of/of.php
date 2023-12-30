@@ -64,7 +64,8 @@ class of {
         }
 
         //生成 L 类
-        $temp = 'class L {' . join(self::$links) . "\n}";
+        $temp = 'class _ofWorkException extends Exception {public $data;}' .
+            'class L {' . join(self::$links) . "\n}";
         if ($temp = self::syntax($temp, true, true)) {
             throw new Exception("{$temp['info']} on line {$temp['line']}\n----\n{$temp['tips']}");
         }
@@ -129,7 +130,7 @@ class of {
      */
     public static function config($name = null, $default = null, $action = 0) {
         //缓存配置, 动态配置
-        static $memory = array('cache' => null, 'claim' => null);
+        static $memory = array('cache' => array(), 'claim' => false);
         //功能操作别名
         static $aAlias = array('off' => 0, 'dir' => 1, 'url' => 2);
 
@@ -138,7 +139,7 @@ class of {
 
         //本次使用实时配置
         if ($action & 4) {
-            $cache = $claim = null;
+            $claim = false;
             //加载最新配置文件
             $of = self::safeLoad(OF_DIR . '/config.php');
             $of['config'] = isset($of['config']) ? (array)$of['config'] : array();
@@ -160,7 +161,7 @@ class of {
             $default = &$cache[$name][$action];
         } else {
             //初始化动态配置
-            if ($claim === null) {
+            if ($claim === false) {
                 $claim = $config['_of']['config'];
                 unset($claim[0]);
                 ksort($claim);
@@ -480,8 +481,6 @@ class of {
      * 作者 : Edgar.lee
      */
     public static function work($code, $info = '', $data = array()) {
-        //问题异常类名
-        static $class = null;
         //监听栈列表
         static $sList = array();
         //黑名单列表
@@ -791,16 +790,10 @@ class of {
             }
         //对象=捕捉异常, 数字=抛出异常
         } else {
-            //创建内置异常类
-            if ($class === null) {
-                $class = '_' . uniqid();
-                eval("class {$class} extends Exception {public \$data;}");
-            }
-
             //处理捕获的异常
             if (is_object($code)) {
                 //是内置异常类
-                if (get_class($code) === $class) {
+                if (get_class($code) === '_ofWorkException') {
                     $result = array(
                         'code' => $code->getCode(),
                         'info' => $code->getMessage(),
@@ -824,9 +817,9 @@ class of {
                 return $result;
             //抛出异常
             } else {
-                $code = new $class(L::getText($info, array(
-                    'key' => __METHOD__, 'trace' => isset($trace) ? $trace : 1)
-                ), $code);
+                $code = new _ofWorkException(L::getText($info, array(
+                    'key' => __METHOD__, 'trace' => isset($trace) ? $trace : 1, 'mode' => 1
+                )), $code);
                 $code->data = &$data;
                 throw $code;
             }
@@ -928,7 +921,7 @@ class of {
      *          }
      * 作者 : Edgar.lee
      */
-    private static function loadClass($className) {
+    public static function loadClass($className) {
         //读取of::loadClass事件
         $event = &self::event('of::loadClass', null);
         //修改过重新排序
@@ -1051,12 +1044,10 @@ class of {
         $_REQUEST = $_GET + $_POST + $_COOKIE;
 
         //加载站点配置文件
-        $of['config'] = (array)$of['config'];
+        is_array($of['config']) || $of['config'] = array($of['config']);
         empty($of['config'][0]) || self::$config = include ROOT_DIR . $of['config'][0];
-        //引用配置
-        $config = &self::$config;
         //合并系统配置
-        $config['_of'] = &self::arrayReplaceRecursive($of, $config['_of']);
+        self::$config['_of'] = &self::arrayReplaceRecursive($of, self::$config['_of']);
 
         //默认节点名称
         isset($of['nodeName']) || $of['nodeName'] = $_SERVER['SERVER_ADDR'] . php_uname();
@@ -1084,9 +1075,9 @@ class of {
             $_SERVER['REQUEST_URI'] = $_SERVER['PHP_SELF'] = $_SERVER['SCRIPT_NAME'] . $_SERVER['PATH_INFO'];
             $_SERVER['PATH_TRANSLATED'] = ROOT_DIR . $_SERVER['PATH_INFO'];
             $_SERVER['QUERY_STRING'] && $_SERVER['REQUEST_URI'] .= '?' . $_SERVER['QUERY_STRING'];
-            isset($config['_of']['rootUrl']) || $config['_of']['rootUrl'] = '';
+            isset($of['rootUrl']) || $of['rootUrl'] = '';
         //web模式自动计算ROOT_URL
-        } else if (!isset($config['_of']['rootUrl'])) {
+        } else if (!isset($of['rootUrl'])) {
             $temp = $_SERVER['SCRIPT_NAME'];
             $scriptFilename = strtr($_SERVER['SCRIPT_FILENAME'], '\\', '/');
             while (true) {
@@ -1099,18 +1090,18 @@ class of {
                 }
             }
             //非英文路径解析
-            $config['_of']['rootUrl'] = str_replace('%2F', '/', rawurlencode(
+            $of['rootUrl'] = str_replace('%2F', '/', rawurlencode(
                 substr($_SERVER['SCRIPT_NAME'], 0, -$scriptNameLen) .
                 substr(ROOT_DIR, strlen(substr($scriptFilename, 0, -$scriptNameLen)))
             ));
         }
 
         //站点根路径,ROOT_URL
-        define('ROOT_URL', $config['_of']['rootUrl']);
+        define('ROOT_URL', $of['rootUrl']);
         //框架根路径,OF_URL
         define('OF_URL', ROOT_URL . substr(OF_DIR, strlen(ROOT_DIR)));
         //框架可写文件夹
-        define('OF_DATA', $config['_of']['dataDir']);
+        define('OF_DATA', $of['dataDir']);
 
         //从 HTTP_REFERER 识别 __OF_DEBUG__
         if (
@@ -1123,17 +1114,16 @@ class of {
         }
 
         //格式化debug
-        if ($config['_of']['debug'] === true || $config['_of']['debug'] === null) {
+        if ($of['debug'] === true || $of['debug'] === null) {
             //调试或生产模式
-            define('OF_DEBUG', isset($_REQUEST['__OF_DEBUG__']) ?
-                true : $config['_of']['debug']
-            );
+            $_SERVER['ofDebug'] = isset($_REQUEST['__OF_DEBUG__']) ?
+                true : $of['debug'];
         } else {
             //生产模式切换, 密码校验
-            define('OF_DEBUG', isset($_REQUEST['__OF_DEBUG__']) ?
-                $config['_of']['debug'] == $_REQUEST['__OF_DEBUG__'] : false
-            );
+            $_SERVER['ofDebug'] = isset($_REQUEST['__OF_DEBUG__']) ?
+                $of['debug'] == $_REQUEST['__OF_DEBUG__'] : false;
         }
+        define('OF_DEBUG', $_SERVER['ofDebug']);
 
         //of_类映射
         self::event('of::loadClass', array(

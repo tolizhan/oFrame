@@ -4,7 +4,6 @@
  * 作者 : Edgar.lee
  */
 class of_base_xssFilter_main {
-
     /**
      * 描述 : 'of::display' 事件触发
      * 作者 : Edgar.lee

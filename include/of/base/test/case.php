@@ -33,7 +33,7 @@ class of_base_test_case {
      * 作者 : Edgar.lee
      */
     public static function task($params = null) {
-        //生产环境不启用
+        //生产模式不启用
         if (OF_DEBUG === false) return ;
         //格式化时间
         $time = date('Y-m-d H:i:s', $_SERVER['REQUEST_TIME']);

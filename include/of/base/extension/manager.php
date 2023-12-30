@@ -14,10 +14,7 @@ class of_base_extension_manager {
         static $constants = null;
 
         if ($constants === null) {
-            $temp = of::config(
-                '_of.extension.path',
-                OF_DATA . '/include/extensions'
-            );
+            $temp = of::config('_of.extension.path', '/include/extensions');
             $constants = array(
                 //扩展基类名
                 'baseClassName' => strtr(substr($temp, 1), '/', '_') . '_',
@@ -133,7 +130,7 @@ class of_base_extension_manager {
             self::loadConfig($extensions);
 
             //更新前调用
-            if (self::updateCallback('before', $name, $callMsg, $extensionConfig) === true) {
+            if (($returnBool = self::updateCallback('before', $name, $callMsg, $extensionConfig)) === true) {
                 //安装语言包
                 self::updateLanguage($name, true);
 
@@ -154,16 +151,24 @@ class of_base_extension_manager {
                 ));
                 $returnBool = false;
             }
-            
 
             //数据库安装完成,解锁安装扩展
             $extensions = self::loadConfig(true);
-            $extensions[$name] = array(
-                //版本号
-                'version' => $extensionConfig['config']['properties']['version'],
-                //扩展状态(真正状态是通过 self::getExtensionInfo 判断得到的)
-                'state'   => '1'
-            );
+            //操作成功
+            if ($returnBool) {
+                $extensions[$name] = array(
+                    //版本号
+                    'version' => $extensionConfig['config']['properties']['version'],
+                    //扩展状态(真正状态是通过 self::getExtensionInfo 判断得到的)
+                    'state'   => '1'
+                );
+            //原未安装, 删除锁定
+            } else if (!$extensionConfig['state']) {
+                unset($extensions[$name]);
+            //原已安装 && 安装失败, 解锁
+            } else {
+                $extensions[$name]['state'] = $extensionConfig['state'];
+            }
             self::loadConfig($extensions);
 
             return $returnBool;

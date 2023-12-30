@@ -73,7 +73,7 @@
  *      }
  * 作者 : Edgar.lee
  */
-abstract class of_base_com_mq {
+class of_base_com_mq {
     //适配器参数
     protected $params = null;
     //消息队列配置
@@ -112,105 +112,110 @@ abstract class of_base_com_mq {
             'asCall' => 'of_base_com_mq::dbEvent',
             'params' => array('after')
         ));
+    }
 
-        //web访问开启消息队列
-        if (of::dispatch('class') === 'of_base_com_mq') {
-            //debug 参数
-            $debug = isset($_GET['__OF_DEBUG__']) ?
-                '&__OF_DEBUG__=' . $_GET['__OF_DEBUG__'] : '';
-            //重新加载消息
-            if ($reload = isset($_GET['type']) && $_GET['type'] === 'reload') {
-                header('location: ?c=of_base_com_mq' . $debug);
+    /**
+     * 描述 : 控制台页面
+     * 作者 : Edgar.lee
+     */
+    public function index() {
+        //debug 参数
+        $debug = isset($_GET['__OF_DEBUG__']) ?
+            '&__OF_DEBUG__=' . $_GET['__OF_DEBUG__'] : '';
+        //重新加载消息
+        if ($reload = isset($_GET['type']) && $_GET['type'] === 'reload') {
+            header('location: ?c=of_base_com_mq' . $debug);
+        }
+        //输出运行状态(并尝试开启)
+        echo self::state() ? 'running' : 'starting', " ";
+
+        if (OF_DEBUG === false) {
+            exit("<br>\nAccess denied: production mode.");
+        //重启消息队列
+        } else if ($reload) {
+            //读取全局节点列表
+            $nodes = of_base_com_kv::get('of_base_com_mq::nodeList', array(), '_ofSelf');
+            //遍历发送重置命令
+            foreach ($nodes as $kt => &$vt) {
+                of_base_com_kv::del('of_base_com_mq::command::' . basename($kt), '_ofSelf');
             }
-            //输出运行状态(并尝试开启)
-            echo self::state() ? 'runing' : 'starting', " ";
+        //展示并发列表
+        } else {
+            //永不超时
+            ini_set('max_execution_time', 0);
+            //显示重启按钮
+            echo '<input type="button" onclick="',
+                'window.location.href=\'?c=of_base_com_mq&type=reload',
+                $debug,
+                '\'" value="Reload the message queue"><pre>';
 
-            if (OF_DEBUG === false) {
-                exit("<br>\nAccess denied: production mode.");
-            //重启消息队列
-            } else if ($reload) {
-                //读取全局节点列表
-                $nodes = of_base_com_kv::get('of_base_com_mq::nodeList', array(), '_ofSelf');
-                //遍历发送重置命令
-                foreach ($nodes as $kt => &$vt) {
-                    of_base_com_kv::del('of_base_com_mq::command::' . basename($kt), '_ofSelf');
-                }
-            //展示并发列表
-            } else {
-                //显示重启按钮
-                echo '<input type="button" onclick="',
-                    'window.location.href=\'?c=of_base_com_mq&type=reload',
-                    $debug,
-                    '\'" value="Reload the message queue"><pre>';
+            //显示异常队列池
+            if ($list = self::getFailPools(null)) {
+                echo 'Failed queue(', OF_DATA, '/_of/of_base_com_mq/failedMsgs): ',
+                    '<font color="red">/', join(', /', $list), '</font>';
+            }
 
-                //显示异常队列池
-                if ($list = self::getFailPools(null)) {
-                    echo 'Failed queue(', OF_DATA, '/_of/of_base_com_mq/failedMsgs): ',
-                        '<font color="red">/', join(', /', $list), '</font>';
-                }
+            //显示运行中队列
+            echo '<hr>Concurrent Running : ';
 
-                //显示运行中队列
-                echo '<hr>Concurrent Running : ';
+            //消费超过24小时数量
+            $nums = 0;
+            //筛选消息队列任务
+            $list = of_base_com_timer::info(1);
+            foreach ($list as $k => &$v) {
+                if (
+                    isset($v['call']['asCall']) &&
+                    $v['call']['asCall'] === 'of_base_com_mq::fireQueue'
+                ) {
+                    $v = array(
+                        'fire' => &$v['call']['params'][0]['fire'],
+                        'list' => &$v['list']
+                    );
 
-                //消费超过24小时数量
-                $nums = 0;
-                //筛选消息队列任务
-                $list = of_base_com_timer::info(1);
-                foreach ($list as $k => &$v) {
-                    if (
-                        isset($v['call']['asCall']) &&
-                        $v['call']['asCall'] === 'of_base_com_mq::fireQueue'
-                    ) {
-                        $v = array(
-                            'fire' => &$v['call']['params'][0]['fire'],
-                            'list' => &$v['list']
-                        );
+                    //读取消息状态信息
+                    foreach ($v['list'] as $kl => &$vl) {
+                        //为节省磁盘性能不用 of_base_com_timer::data(true, array($kl), '/' . $k);
+                        $temp = 'of_base_com_timer::data-' . $k . '.' . $kl;
+                        $temp = of_base_com_kv::get($temp, array(), '_ofSelf');
+                        $index = &$temp['_mq'];
 
-                        //读取消息状态信息
-                        foreach ($v['list'] as $kl => &$vl) {
-                            //为节省磁盘性能不用 of_base_com_timer::data(true, array($kl), '/' . $k);
-                            $temp = 'of_base_com_timer::data-' . $k . '.' . $kl;
-                            $temp = of_base_com_kv::get($temp, array(), '_ofSelf');
-                            $index = &$temp['_mq'];
+                        //格式化执行信息
+                        if ($index === null) {
+                            $vl['execInfo'] = '<font color=red>Run for more than 24 hours</font>';
+                            //统计超长消费数量
+                            $nums += 1;
+                        } else {
+                            $vl['execInfo'] = &$index;
 
-                            //格式化执行信息
-                            if ($index === null) {
-                                $vl['execInfo'] = '<font color=red>Run for more than 24 hours</font>';
-                                //统计超长消费数量
-                                $nums += 1;
-                            } else {
-                                $vl['execInfo'] = &$index;
-
-                                //存在执行信息
-                                if (isset($index['useMemory'])) {
-                                    //内存转化成M单位
-                                    $index['useMemory'] = round(
-                                        $index['useMemory'] / 1048576, 2
-                                    ) . 'M';
-                                    //单条消费格式结构
-                                    is_array($index['msgId']) && (
-                                        isset($index['msgId'][1]) ?
-                                            $index['msgId'] = json_encode($index['msgId']) :
-                                            $index['msgId'] = &$index['msgId'][0]
-                                    );
-                                    //方便查询运行中队列
-                                    $index['doneTime'] || $index['doneTime'] = '--';
-                                    //删除异常消息数据
-                                    unset($index['quitData']);
-                                }
+                            //存在执行信息
+                            if (isset($index['useMemory'])) {
+                                //内存转化成M单位
+                                $index['useMemory'] = round(
+                                    $index['useMemory'] / 1048576, 2
+                                ) . 'M';
+                                //单条消费格式结构
+                                is_array($index['msgId']) && (
+                                    isset($index['msgId'][1]) ?
+                                        $index['msgId'] = json_encode($index['msgId']) :
+                                        $index['msgId'] = &$index['msgId'][0]
+                                );
+                                //方便查询运行中队列
+                                $index['doneTime'] || $index['doneTime'] = '--';
+                                //删除异常消息数据
+                                unset($index['quitData']);
                             }
                         }
-                    } else {
-                        unset($list[$k]);
                     }
+                } else {
+                    unset($list[$k]);
                 }
-
-                //打印队列信息
-                $nums && print_r("<font color=red>Exception({$nums})</font> ");
-                print_r($list);
-
-                echo '</pre>';
             }
+
+            //打印队列信息
+            $nums && print_r("<font color=red>Exception({$nums})</font> ");
+            print_r($list);
+
+            echo '</pre>';
         }
     }
 
@@ -675,22 +680,22 @@ abstract class of_base_com_mq {
                             of_base_com_timer::task($v);
                         }
 
+                        //60秒后没退出信号则启动保护进程
                         sleep(60);
-                        //启动保护监听
-                        self::listen('daemon');
-
                         //检查退出信号
                         of_base_com_timer::exitSignal();
+                        //启动保护监听
+                        self::listen('daemon');
                         //恢复失败消息
                         self::restoreMsgs($failDirs);
                     //关闭监听器
                     } else {
-                        //停止在运行的消息进程
-                        $config || of_base_com_kv::del($cKey, '_ofSelf');
                         break ;
                     }
                 }
 
+                //停止在运行的消息进程
+                of_base_com_kv::del($cKey, '_ofSelf');
                 //关闭锁
                 of_base_com_data::lock($lock, 3);
             } else {
@@ -879,8 +884,8 @@ abstract class of_base_com_mq {
      * 作者 : Edgar.lee
      */
     public static function ofHalt() {
-        //有新的队列 && 启动监听
-        self::$fireMq && self::listen('nodeLock');
+        //不在消费中 && 有新的队列 && 启动监听
+        !self::$fireEnv && self::$fireMq && self::listen('nodeLock');
         //回调函数意外退出
         if ($index = &self::$fireEnv['mqData']) {
             //意外退出回调
@@ -909,17 +914,13 @@ abstract class of_base_com_mq {
      *              "cMd5" : 回调唯一值
      *              "cCid" : 当前并发值
      *          }
-     *          "msgId" : 消息ID列表, [
-     *              消息ID,
-     *              ...
-     *          ]
-     *          "count" : 调用计数 {
-     *              消息ID : 首次为 1,
-     *              ...
-     *          }
-     *          "data"  : 消息数据 {
-     *              消息ID : 消息数据,
-     *              ...
+     *          "msgs"  : 完整消息 {
+     *              消息ID : 单条消息 {
+     *                  "msgId" : 消息ID
+     *                  "count" : 调用计数, 首次为 1
+     *                  "data"  : 消息数据,
+     *                  "uTime" : 更新时间戳
+     *              }
      *          }
      *      }
      * 作者 : Edgar.lee
@@ -932,14 +933,12 @@ abstract class of_base_com_mq {
 
         //记录消息数据
         $fireEnv['mqData'] = &$data;
-        //计数列表
-        $cList = $data['count'];
         //生成并发日志
         $cLog = array(
-            'msgId'     => $data['msgId'],
+            'msgId'     => array_keys($data['msgs']),
             'startTime' => date('Y-m-d H:i:s', time()),
             'doneTime'  => '',
-            'runCount'  => $count += count($data['data']),
+            'runCount'  => $count += count($data['msgs']),
             'useMemory' => &$fireEnv['memory'],
             'quitData'  => array(
                 'class' => &$fireEnv['mqClass'],
@@ -952,9 +951,18 @@ abstract class of_base_com_mq {
         try {
             //单消息处理
             if ($data['lots'] === 1) {
-                $data['msgId'] = &$data['msgId'][0];
-                $data['data'] = &$data['data'][$data['msgId']];
-                $data['count'] = &$data['count'][$data['msgId']];
+                $data += reset($data['msgs']);
+                //计数列表
+                $cList = array($data['count']);
+            //多消息处理
+            } else {
+                foreach ($data['msgs'] as $k => &$v) {
+                    $data['msgId'][] = &$k;
+                    $data['data'][$k] = &$v['data'];
+                    $data['count'][$k] = &$v['count'];
+                }
+                //计数列表
+                $cList = $data['count'];
             }
             //处理消息
             $result = &of::callFunc($call, $data);
@@ -1290,7 +1298,7 @@ abstract class of_base_com_mq {
      *      成功 true, 失败 false
      * 作者 : Edgar.lee
      */
-    abstract protected function _init($fire);
+    //abstract protected function _init($fire);
 
     /**
      * 描述 : 设置消息
@@ -1306,7 +1314,7 @@ abstract class of_base_com_mq {
      *      成功 true, 失败 false
      * 作者 : Edgar.lee
      */
-    abstract protected function _sets(&$msgs);
+    //abstract protected function _sets(&$msgs);
 
     /**
      * 描述 : 触发消息队列, 根据回调响应值执行对应动作
@@ -1327,7 +1335,7 @@ abstract class of_base_com_mq {
      *      true=已匹配到消息, false=未匹配到消息
      * 作者 : Edgar.lee
      */
-    abstract protected function _fire(&$calll, $data);
+    //abstract protected function _fire(&$calll, $data);
 
     /**
      * 描述 : 触发消息队列意外退出时回调
@@ -1347,7 +1355,7 @@ abstract class of_base_com_mq {
      *      }
      * 作者 : Edgar.lee
      */
-    abstract protected function _quit(&$data);
+    //abstract protected function _quit(&$data);
 
     /**
      * 描述 : 开启事务
@@ -1355,7 +1363,7 @@ abstract class of_base_com_mq {
      *      成功 true, 失败 false
      * 作者 : Edgar.lee
      */
-    abstract protected function _begin();
+    //abstract protected function _begin();
 
     /**
      * 描述 : 提交事务
@@ -1365,7 +1373,7 @@ abstract class of_base_com_mq {
      *      成功 true, 失败 false
      * 作者 : Edgar.lee
      */
-    abstract protected function _commit($type);
+    //abstract protected function _commit($type);
 
     /**
      * 描述 : 事务回滚
@@ -1375,7 +1383,9 @@ abstract class of_base_com_mq {
      *      成功 true, 失败 false
      * 作者 : Edgar.lee
      */
-    abstract protected function _rollBack($type);
+    //abstract protected function _rollBack($type);
 }
 
 of_base_com_mq::init();
+//仅允许访问控制台页面
+return join('::', of::dispatch()) === 'of_base_com_mq::index';

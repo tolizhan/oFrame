@@ -285,7 +285,7 @@ class of_accy_db_mysqli extends of_db {
                     of_base_com_kv::del($temp, '_ofSelf');
                     //记录事务追踪
                     $temp = 'of_accy_db_mysql::trace-' . $obj->dbVar['linkMark'];
-                    of_base_com_kv::set($temp, array_slice(debug_backtrace(), 2), 3600, '_ofSelf');
+                    of_base_com_kv::set($temp, array_slice(debug_backtrace(0), 2), 3600, '_ofSelf');
                     //开启超时监听
                     $pMd5 = md5("{$obj->params['user']}@{$obj->params['host']}:{$obj->params['port']}");
                     of_base_com_kv::set('of_accy_db_mysql::pool-' . $pMd5, $obj->params, 3600, '_ofSelf');

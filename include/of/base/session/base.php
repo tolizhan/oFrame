@@ -15,7 +15,7 @@ class of_base_session_base {
      * 描述 : 初始化
      * 作者 : Edgar.lee
      */
-    final public static function init($type) {
+    final public static function init($type = true) {
         if ($type === true) {
             //session类
             self::$adapterClass = 'of_accy_session_' . of::config('_of.session.adapter', 'files');
@@ -40,6 +40,8 @@ class of_base_session_base {
             self::handler();
             //注册L类的session控制
             of::link('session', '$type = true', 'of_base_session_base::control($type);');
+            //注入调度自动开启会话
+            of::event('of::dispatch', 'of_base_session_base::init');
 
             //初始化session状态
             if (!function_exists('session_status')) {
@@ -52,6 +54,8 @@ class of_base_session_base {
                 session_status(self::$status);
             }
         } else if (
+            //有效调度
+            $type['check'] !== false &&
             //自动开启
             ($temp = of::config('_of.session.autoStart')) &&
             //正则验证
@@ -179,5 +183,4 @@ class of_base_session_base {
     // */
 }
 
-of_base_session_base::init(true);
-of::event('of::dispatch', 'of_base_session_base::init');
+of_base_session_base::init();

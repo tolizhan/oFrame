@@ -147,15 +147,20 @@ class of_base_sso_tool {
             $data = of_base_sso_api::getUrl($config['url'], $data);
             return $data;
         } else {
-            if (is_array($args)) {
+            //用户登录
+            if (is_array($args) && !empty($args['user'])) {
                 //指定帐号密码登入
-                !empty($args['user']) && $data += array(
+                $data += array(
                     'user' => &$args['user'],
                     'pwd'  => &$args['pwd']
                 );
+                //附加用户数据
+                $extra['post']['server'] = json_encode($_SERVER);
+            } else {
+                $extra = array();
             }
 
-            $data = &self::request($data, $space);
+            $data = &self::request($data, $space, $extra);
             if ($data['state'] === 200) {
                 //用户未登录
                 if (empty($data['user'])) {
@@ -314,7 +319,7 @@ class of_base_sso_tool {
      *      响应数据
      * 作者 : Edgar.lee
      */
-    private static function &request(&$params, $space) {
+    private static function &request(&$params, $space, &$extra = array()) {
         static $mode = null;
         //工具包session引用
         $tool = &self::session(1, $space);
@@ -331,7 +336,7 @@ class of_base_sso_tool {
 
         //关闭session
         $mode && session_write_close();
-        $response = &of_base_com_net::request($url);
+        $response = &of_base_com_net::request($url, $extra);
         //引用响应值
         $data = &$response['response'];
         //重启session
@@ -385,8 +390,8 @@ class of_base_sso_tool {
 
         //初始化sso配置
         if ($config === null) {
-            //加载接口类, 开启SESSION
-            class_exists('of_base_sso_api');
+            //开启SESSION
+            L::session();
             //读取sso配置
             $config = of::config('_of.sso');
             //追加重置会话

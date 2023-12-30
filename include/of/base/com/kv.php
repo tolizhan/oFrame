@@ -28,7 +28,7 @@ class of_base_com_kv {
             //移除允许实力标识
             unset(self::$instList[$key]['allowInst']);
             //连接参数
-            $this->params = &$params;
+            $this->params = $params;
             //初始化连接
             $this->_connect();
         //实例化不是自身类

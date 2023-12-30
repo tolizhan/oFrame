@@ -11,9 +11,7 @@ class of_base_error_toolBaseClass {
      * 作者 : Edgar.lee
      */
     public static function init($config = array()) {
-        self::$config = &$config;
-
-        $config += array(
+        self::$config = $config + array(
             'sql' => ($temp = of::config('_of.error.sqlLog', OF_DATA. '/error/sqlLog')) ? ROOT_DIR . $temp : false,
             'php' => ($temp = of::config('_of.error.phpLog', OF_DATA. '/error/phpLog')) ? ROOT_DIR . $temp : false,
             'js' => ($temp = of::config('_of.error.jsLog', OF_DATA. '/error/jsLog')) ? ROOT_DIR . $temp : false,

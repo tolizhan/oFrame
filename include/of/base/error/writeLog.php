@@ -100,7 +100,7 @@ class of_base_error_writeLog {
         //系统异常
         } else if (is_object($errno)) {
             $backtrace = array(
-                'errorType'     => 'exception',
+                'errorType'     => $errno instanceof EXCEPTION ? 'exception' : 'phpError',
                 'environment'   => array(
                     //异常代码
                     'type' => $errno->getCode(),
@@ -117,7 +117,7 @@ class of_base_error_writeLog {
         //系统错误(php >= 8 "@"最大设置4437) && 不是过期函数
         } else if (error_reporting() & ~4437 && $errno !== 8192) {
             //错误回溯
-            $errTrace = debug_backtrace();
+            $errTrace = debug_backtrace(0);
             //代码错误
             if (is_array($errno)) {
                 array_splice($errTrace, 0, 2);
@@ -133,7 +133,7 @@ class of_base_error_writeLog {
                 $errno = (int)$error['code'];
             //系统错误
             } else {
-                array_splice($errTrace, 0, 1);
+                isset($errTrace[0]['file']) || array_shift($errTrace);
             }
 
             //生成回溯结构
@@ -151,7 +151,7 @@ class of_base_error_writeLog {
             empty($error['memo']) || $backtrace['environment']['memo'] = $error['memo'];
         //"@"错误 || 过期函数
         } else {
-            //@trigger_error('') 返回 false, php 标准错误处理会接收
+            //@trigger_error('') 返回 false, php 标准错误处理会接收, 记录到error_get_last返回值中
             return isset($errstr[0]);
         }
 
@@ -197,7 +197,7 @@ class of_base_error_writeLog {
             $offset = 4 - (int)version_compare(PHP_VERSION, '7.0.0', '>=');
         }
 
-        $sysBacktrace = debug_backtrace();
+        $sysBacktrace = debug_backtrace(0);
         array_splice($sysBacktrace, 0, $offset);
 
         //生成错误列表
@@ -237,6 +237,8 @@ class of_base_error_writeLog {
      * 作者 : Edgar.lee
      */
     protected static function writeLog(&$logData, $logType, $printStr) {
+        //日志是否保存中, true=写日志报错, false=正常错误
+        static $isSave = false;
         //记录错误
         of::saveError($index = &$logData['environment'], false);
         //配置引用
@@ -252,100 +254,108 @@ class of_base_error_writeLog {
             ". Timestamp : {$logData['time']}</pre>";
         }
 
+        //写日志报错, 防止重复加锁写日志卡住
+        if ($isSave) return ;
         //错误回调
         $isSave = of::event('of_base_error_writeLog::error', true, array(
             'type' => &$logType, 'data' => &$logData
         ));
         $isSave = !in_array(true, $isSave, true);
 
-        //写入日志
-        if ($isSave && $index = &$config[$logType . 'Log']) {
-            //日志路径
-            $logPath = ROOT_DIR . $index . date('/Y/m/d', $logData['time']) . $logType;
-            //追加方式打开日志
-            $handle = &of_base_com_disk::file($logPath . 'Data.php', null, null);
+        try {
+            //写入日志
+            if ($isSave && $index = &$config[$logType . 'Log']) {
+                //日志路径
+                $logPath = ROOT_DIR . $index . date('/Y/m/d', $logData['time']) . $logType;
+                //追加方式打开日志
+                $handle = &of_base_com_disk::file($logPath . 'Data.php', null, null);
 
-            //错误分组标识
-            $index = &$logData['environment'];
-            $eMd5 = md5($index['file'] . '::' . $index['line'] . '::' . $index['code'] . '::' . $index['type']);
-            //错误的分组明细路径
-            $ePath = $logPath . 'Attr/group/' . $eMd5 . '.bin';
+                //错误分组标识
+                $index = &$logData['environment'];
+                $eMd5 = md5($index['file'] . '::' . $index['line'] . '::' . $index['code'] . '::' . $index['type']);
+                //错误的分组明细路径
+                $ePath = $logPath . 'Attr/group/' . $eMd5 . '.bin';
 
-            //已写入日志
-            if ($temp = ftell($handle)) {
-                //日志当前偏移
-                $logSize = str_pad(
-                    //日志大小转换(十进制字节=>8位36进制)
-                    base_convert($temp, 10, 36),
-                    8, '0', STR_PAD_LEFT
-                );
-            //新日志文件
-            } else {
-                //写入保护代码
-                fwrite($handle, '<?php exit; ?> ');
-                //删除索引数据
-                of_base_com_disk::delete($logPath . 'Attr');
-                //日志起始偏移
-                $logSize = '0000000f';
-            }
-
-            //分组明细日志不存在
-            if ($isWrite = !is_file($ePath)) {
-                //添加到分组概要日志
-                of_base_com_disk::file(
-                    $logPath . 'Attr/group.bin', $logSize . $eMd5, null
-                );
-            //分组明细日志存在
-            } else {
-                //不限制相同错误最大条数 || 在限制范围内
-                $isWrite = $config['repeat'] <= 0 ||
-                    $config['repeat'] > filesize($ePath) / 8;
-            }
-
-            //需要记录日志
-            if ($isWrite) {
-                //日志文本数据
-                $logText = strtr(serialize($logData), array(
-                    "\r\n" => " +\1+",
-                    "\r"   => "+\1+",
-                    "\n"   => "+\1+"
-                )) . "\n";
-
-                //写入日志成功
-                if (of_base_com_disk::file($handle, $logText, null)) {
-                    //记录索引日志
-                    of_base_com_disk::file($logPath . 'Attr/index.bin', $logSize, null);
-                    //记录分组明细日志
-                    of_base_com_disk::file($ePath, $logSize, null);
+                //已写入日志
+                if ($temp = ftell($handle)) {
+                    //日志当前偏移
+                    $logSize = str_pad(
+                        //日志大小转换(十进制字节=>8位36进制)
+                        base_convert($temp, 10, 36),
+                        8, '0', STR_PAD_LEFT
+                    );
+                //新日志文件
+                } else {
+                    //写入保护代码
+                    fwrite($handle, '<?php exit; ?> ');
+                    //删除索引数据
+                    of_base_com_disk::delete($logPath . 'Attr');
+                    //日志起始偏移
+                    $logSize = '0000000f';
                 }
+
+                //分组明细日志不存在
+                if ($isWrite = !is_file($ePath)) {
+                    //添加到分组概要日志
+                    of_base_com_disk::file(
+                        $logPath . 'Attr/group.bin', $logSize . $eMd5, null
+                    );
+                //分组明细日志存在
+                } else {
+                    //不限制相同错误最大条数 || 在限制范围内
+                    $isWrite = $config['repeat'] <= 0 ||
+                        $config['repeat'] > filesize($ePath) / 8;
+                }
+
+                //需要记录日志
+                if ($isWrite) {
+                    //日志文本数据
+                    $logText = strtr(serialize($logData), array(
+                        "\r\n" => " +\1+",
+                        "\r"   => "+\1+",
+                        "\n"   => "+\1+"
+                    )) . "\n";
+
+                    //写入日志成功
+                    if (of_base_com_disk::file($handle, $logText, null)) {
+                        //记录索引日志
+                        of_base_com_disk::file($logPath . 'Attr/index.bin', $logSize, null);
+                        //记录分组明细日志
+                        of_base_com_disk::file($ePath, $logSize, null);
+                    }
+                }
+
+                //释放连接源
+                $handle = null;
             }
 
-            //释放连接源
-            $handle = null;
-        }
+            //日志有时限 && 1%的机会清理
+            if ($isSave && ($index = &$config['gcTime']) > 0 && rand(0, 9999) === 1) {
+                //日志生命期
+                $gcTime = $logData['time'] - $index * 86400;
 
-        //日志有时限 && 1%的机会清理
-        if ($isSave && ($index = &$config['gcTime']) > 0 && rand(0, 9999) === 1) {
-            //日志生命期
-            $gcTime = $logData['time'] - $index * 86400;
-
-            //执行清理
-            foreach (array('sqlLog', 'phpLog', 'jsLog') as $temp) {
-                if (!empty($config[$temp])) {
-                    $temp = ROOT_DIR . $config[$temp];
-                    //文件遍历成功
-                    if (of_base_com_disk::each($temp, $data, false)) {
-                        foreach ($data as $k => &$v) {
-                            //是文件 && 文件已过期
-                            if ($v === false && filectime($k) <= $gcTime) {
-                                //删除文件及父空文件夹
-                                of_base_com_disk::delete($k, true);
+                //执行清理
+                foreach (array('sqlLog', 'phpLog', 'jsLog') as $temp) {
+                    if (!empty($config[$temp])) {
+                        $temp = ROOT_DIR . $config[$temp];
+                        //文件遍历成功
+                        if (of_base_com_disk::each($temp, $data, false)) {
+                            foreach ($data as $k => &$v) {
+                                //是文件 && 文件已过期
+                                if ($v === false && filectime($k) <= $gcTime) {
+                                    //删除文件及父空文件夹
+                                    of_base_com_disk::delete($k, true);
+                                }
                             }
                         }
                     }
                 }
             }
+        } catch (Exception $e) {
+        } catch (Error $e) {
         }
+
+        $isSave = false;
     }
 
     /**
@@ -421,7 +431,7 @@ class of_base_error_writeLog {
                 }
 
                 if (
-                    $logData['errorType'] !== 'sqlError' || 
+                    $logData['errorType'] !== 'sqlError' ||
                     strncmp(OF_DIR, $temp[0], strlen(OF_DIR))
                 ) {
                     //在eval中

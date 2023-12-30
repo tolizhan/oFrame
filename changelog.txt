@@ -1,3 +1,70 @@
+版本: 268
+作者: Edgar
+日期: 2023年12月30日 21:51:52
+信息:
+说明: + 框架支持Swoole环境部署, 手册搜索Swoole
+      + 消息队列回调参数增加msgs, 包含完整消息
+      + 语言包可配置局部翻译_of.language.match
+      + redis消息队列getMqInfo支持读取最近消息
+      + 新增锁路径_of.com.data.lock.params.path
+      + of_base_com_timer::info(4)获取当前任务
+      - of::work异常信息支持局部翻译, 失败备忘
+      - of_base_com_net::isExec方法改名"isCli"
+      - sso表字段_of_sso_login_log.ip改为data(mediumtext)
+      * 完善of_base_com_net::request代理兼容性
+      * of_base_com_data::lock运行结束自动解锁
+      * 解决新版浏览器上扩展无法安装卸载的问题
+      * 优化redis分布式封装,使其与集群表现一致
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/ctrl/index.php
+已修改 : /trunk/demo/extend/test/main/demo.php
+已增加 : /trunk/demo/tool/swoole
+已增加 : /trunk/demo/tool/swoole/debug.php
+已修改 : /trunk/demo/view/tpl/ctrl/index/viewTest.tpl.php
+已修改 : /trunk/include/of/accy/com/data/lock/files.php
+已修改 : /trunk/include/of/accy/com/kv/files.php
+已修改 : /trunk/include/of/accy/com/kv/redis.php
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/accy/com/mq/redis.php
+已增加 : /trunk/include/of/accy/com/timer
+已增加 : /trunk/include/of/accy/com/timer/default.php
+已增加 : /trunk/include/of/accy/com/timer/swoole.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/polar.php
+已修改 : /trunk/include/of/accy/db/tidb.php
+已修改 : /trunk/include/of/addin/oFileManager/js/oDialogDiv.js
+已修改 : /trunk/include/of/att/language/language.js
+已修改 : /trunk/include/of/base/com/_meta.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/data.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/toolBaseClass.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/firewall/main.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/htmlTpl/tool.php
+已修改 : /trunk/include/of/base/language/packs.php
+已修改 : /trunk/include/of/base/link/codeNav.php
+已修改 : /trunk/include/of/base/session/base.php
+已修改 : /trunk/include/of/base/sso/api.php
+已修改 : /trunk/include/of/base/sso/db/table.sql
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/base/sso/tool.php
+已修改 : /trunk/include/of/base/test/case.php
+已修改 : /trunk/include/of/base/version/check.php
+已修改 : /trunk/include/of/base/xssFilter/main.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/of.php
+已增加 : /trunk/swoole.php
+
 版本: 266
 作者: Edgar
 日期: 2023年7月6日 9:31:13

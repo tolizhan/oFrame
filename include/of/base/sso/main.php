@@ -1189,7 +1189,7 @@ class of_base_sso_main extends of_base_sso_api {
         WHERE
             `id` = '1'";
         $temp = of_db::sql($sql, self::$config['dbPool']);
-        of_base_sso_api::logingLog($user['name'], $temp[0]['name']);
+        of_base_sso_api::loginLog($user['name'], $temp[0]['name']);
     }
 }
 

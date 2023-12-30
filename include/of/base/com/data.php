@@ -140,8 +140,13 @@ class of_base_com_data {
         static $locks = array();
         static $class = null;
 
-        //初始化回调类
-        $class || $class = 'of_accy_com_data_lock_' . of::config('_of.com.data.lock.adapter', 'files');
+        //初始化
+        if ($class === null) {
+            //加锁回调类
+            $class = 'of_accy_com_data_lock_' . of::config('_of.com.data.lock.adapter', 'files');
+            //全部解锁
+            of::event('of::halt', array('asCall' => __METHOD__, 'params' => array(array())));
+        }
         //待操作列表
         $wList = array();
 
@@ -149,7 +154,7 @@ class of_base_com_data {
         if (is_array($name)) {
             foreach ($locks as $k => &$v) {
                 //清理工作中的加锁数据 && 记录到处理列表
-                $v['wuid'] === $name['wuid'] && $wList[$k] = array(
+                (!$name || $v['wuid'] === $name['wuid']) && $wList[$k] = array(
                     $v['name'], 3, $v['mark'], &$v['data']
                 );
             }

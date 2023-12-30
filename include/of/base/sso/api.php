@@ -105,6 +105,8 @@ class of_base_sso_api {
      * 作者 : Edgar.lee
      */
     public function __construct() {
+        //开启SESSION
+        L::session();
         $dp = of::dispatch();
 
         if ($dp['class'] === 'of_base_sso_api') {
@@ -113,11 +115,8 @@ class of_base_sso_api {
                     $dp['action'] === 'ticket' || isset($_GET['md5']) && isset($_GET['ticket'])
                 )
             ) {
-                if ($dp['action'] === 'ticket') {
-                    //开启SESSION
-                    L::session();
                 //验证参数
-                } else {
+                if ($dp['action'] !== 'ticket') {
                     $temp = array($_GET['md5'], self::getTicket($_GET['ticket']));
                     unset($_GET['md5']);
 
@@ -181,9 +180,6 @@ class of_base_sso_api {
                 break ;
             }
         }
-
-        //开启SESSION
-        of::dispatch('class') === 'of_base_sso_api' || L::session();
     }
 
     /**
@@ -384,8 +380,6 @@ class of_base_sso_api {
                     $role & 1 && $json['role']['allow'] = &self::getRole($range[0], '');
                     //获取没有的权限
                     $role & 2 && $json['role']['deny'] = &self::getRole($range[0], 'NOT');
-
-                    self::logingLog($index['name'], $_GET['name']);
                 }
             }
         }
@@ -602,11 +596,13 @@ class of_base_sso_api {
      *     &site : 系统名
      * 作者 : Edgar.lee
      */
-    protected static function logingLog(&$name, &$site) {
+    protected static function loginLog(&$name, &$site, $logs = '') {
+        //自定义日志 ? 重新防注入 : 使用默认日志)
+        $logs = addslashes($logs ? stripslashes($logs) : json_encode($_SERVER));
         $sql = "INSERT INTO `_of_sso_login_log` (
-            `name`, `site`, `time`, `ip`
+            `name`, `site`, `time`, `data`
         ) VALUES (
-            '{$name}', '{$site}', NOW(), '{$_SERVER['REMOTE_ADDR']}'
+            '{$name}', '{$site}', NOW(), '{$logs}'
         )";
         //插入订单日志
         of_db::sql($sql, self::$config['dbPool']);
@@ -681,7 +677,13 @@ class of_base_sso_api {
         is_array($type) && $index['users'][$space] = $type;
 
         if (isset($index['realm'])) {
+            //登录日志
+            $logs = isset($_POST['server']) ? $_POST['server'] : '';
+
             foreach ($index['realm'] as $k => &$v) {
+                //记录日志
+                $type && self::loginLog($type['name'], $k, $logs);
+                //同步状态 && 不是当前系统
                 if (!empty($v['notify']) && $k !== $_GET['name']) {
                     //异步推送
                     of_base_com_net::request(

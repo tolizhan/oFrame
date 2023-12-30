@@ -63,10 +63,8 @@ class of_base_htmlTpl_tool {
     }
 }
 
-if (of::dispatch('class') === 'of_base_htmlTpl_tool') {
-    if (OF_DEBUG === false) {
-        exit('Access denied: production mode.');
-    } else {
-        return true;
-    }
+if (OF_DEBUG === false) {
+    exit('Access denied: production mode.');
+} else {
+    return true;
 }

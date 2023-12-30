@@ -10,7 +10,7 @@ class of_base_version_check {
      */
     public static function init() {
         if (
-            //非生产环境
+            //非生产模式
             OF_DEBUG !== false &&
             //非框架路径
             strncmp(

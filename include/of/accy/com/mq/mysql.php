@@ -187,7 +187,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
                     } else {
                         //读取加锁消息
                         $sql = "SELECT
-                            `mark`, `data`, `msgId`, `syncLevel`, `updateTime`
+                            `mark`, `data`, `msgId`, `syncLevel`, `updateTime`, `createTime`
                         FROM
                             `_of_com_mq`
                         WHERE
@@ -233,9 +233,12 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             $data['extra'] = array('lock'  => $uniqid);
             //解析消费数据
             foreach ($msgs as $k => &$v) {
-                $data['count'][$v['msgId']] = $v['syncLevel'];
-                $data['msgId'][] = $v['msgId'];
-                $data['data'][$v['msgId']] = json_decode($v['data'], true);
+                $data['msgs'][$v['msgId']] = array(
+                    'msgId' => $v['msgId'],
+                    'count' => $v['syncLevel'],
+                    'data'  => json_decode($v['data'], true),
+                    'uTime' => strtotime($v['createTime']),
+                );
                 $data['extra']['mark'][] = $v['mark'];
             }
 
@@ -292,9 +295,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
      *              "cMd5" : 回调唯一值
      *              "cCid" : 当前并发值
      *          }
-     *          "msgId" : 消息ID
-     *          "count" : 调用计数, 首次为 1
-     *          "data"  : 消息数据
+     *          "msgs"  : 消息数据列表
      *      }
      * 作者 : Edgar.lee
      */
