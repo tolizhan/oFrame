@@ -18,10 +18,10 @@ namespace {
             //标记全局空间
             $_GLOBAL_SCOPE_ = 1;
             //打印编译代码
-            //$debug = 1;
+            $debug = 1;
 
             //加载执行脚本
-            include 'of.incl://0://3://' . $_FUNC_mapVar->incStart = $path;
+            include "of.incl://0://{$_GLOBAL_SCOPE_}://" . $_FUNC_mapVar->incStart = $path;
             //释放内存
             swoole::clear();
         }
@@ -31,10 +31,6 @@ namespace {
          * 作者 : Edgar.lee
          */
         public static function &mockEnv($fnObj) {
-            //兼容常量
-            defined('T_READONLY') || define('T_READONLY', 363);
-            define('SWOOLE_HOOK_FULL', 0);
-            define('SWOOLE_SCHEDULER', true);
             //关闭默认输出缓存
             ob_get_level() && ob_get_clean();
             //注入协议封装
@@ -43,6 +39,16 @@ namespace {
             //register_shutdown_function('swoole::clear', true);
             //注册清理空间
             //register_shutdown_function('swoole::clear', false);
+
+            //兼容常量
+            foreach (array(
+                //定义协程默认状态, 定义抢占调度设置
+                'SWOOLE_HOOK_FULL' => 0, 'SWOOLE_SCHEDULER' => true,
+                //相对命名空间 xx\yy, 绝对命名空间 \xx\yy
+                'T_NAME_QUALIFIED' => 314, 'T_NAME_FULLY_QUALIFIED' => 312, 
+                //自身命名空间 namespace\xxx, 只读关键词 readonly
+                'T_NAME_RELATIVE' => 313, 'T_READONLY' => 363
+            ) as $k => $v)  defined($k) || define($k, $v);
 
             //默认系统配置
             $GLOBALS['system'] = array(
@@ -162,4 +168,24 @@ namespace Swoole {
         }
     }
 
+}
+
+//调试日志
+namespace debug {
+    //WebSocket测试
+    <<<'EOF'
+        //创建监听服务
+        $serv = new Swoole\WebSocket\Server('0.0.0.0', $GLOBALS['system']['port'], SWOOLE_PROCESS);
+        //启动工作并开启协程
+        $serv->set(array('enable_coroutine' => true, 'open_websocket_close_frame' => true) + $GLOBALS['server']);
+
+        //接收WebSocket
+        $serv->on('open', function ($serv, $requ) {
+            echo 'open: ' . print_r($requ, true) . "\n";
+        });
+        //接收WebSocket
+        $serv->on('message', function ($serv, $frame) {
+            echo 'message: ' . print_r($frame, true) . "\n";
+        });
+EOF;
 }

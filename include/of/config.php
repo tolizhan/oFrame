@@ -287,10 +287,18 @@ return array(
                 //对应的配置
                 'params'  => array(
                     #files 模式
+                    //*
                     //锁文件存储路径, 单机linux可以设置到内存文件系统下, "/dev/shm/..."
                     'path' => '/data/_of/of_accy_com_data_lock_files',
                     //slot > 0, 多网盘挂在"path/n"下, 0<= n < slot
-                    'slot' => 1
+                    'slot' => 1,
+                    // */
+
+                    #swooleRedis 模式
+                    /*
+                    //k-v redis连接池, 建议关闭持久化
+                    'kvPool' => 'default',
+                    // */
                 )
             )
         ),

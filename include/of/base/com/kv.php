@@ -208,7 +208,7 @@ class of_base_com_kv {
      * 参数 :
      *      pool  : ('default') 连接池
      * 返回 :
-     *      返回原始资源, 失败返回false
+     *      返回原始资源, 失败返回null
      * 作者 : Edgar.lee
      */
     final public static function link($pool = 'default') {

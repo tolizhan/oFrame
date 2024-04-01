@@ -57,6 +57,7 @@ class of_base_tool_test extends of_base_com_data {
      * 作者 : Edgar.lee
      */
     public static function profiling(&$arg1 = null, $arg2 = null) {
+        //ini_get('precision')会影响microtime(true)精度
         $nowMicrotime = microtime();
         $argsNum = func_num_args();
         //调用次数

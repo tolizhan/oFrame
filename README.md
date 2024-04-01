@@ -1,6 +1,6 @@
 # orange-framework 模块化轻量级php框架
 
-框架本身是套解决方案, 兼容全浏览器及[php5.2~8.2.x](http://doc.phpof.net/?oFrame/FAQ/namespace.html,oFrame/navigation.html)<br>
+框架本身是套解决方案, 兼容全浏览器及[php5.2~8.3.x](http://doc.phpof.net/?oFrame/FAQ/namespace.html,oFrame/navigation.html)<br>
 它基于MVCS, 同时[支持多种设计模式](http://doc.phpof.net/?oFrame/FAQ/architect.html,oFrame/navigation.html)<br>
 它拥有简洁的[开发方式](http://doc.phpof.net/?oFrame/helpManual/controller.html,oFrame/navigation.html,work), 简单的[模板引擎](http://doc.phpof.net/?oFrame/helpManual/htmlTpl.html,oFrame/navigation.html)<br>
 它支持原生的[异步操作](http://doc.phpof.net/?oFrame/components/timer.html,oFrame/navigation.html), 分布式[消息队列](http://doc.phpof.net/?oFrame/components/mq.html,oFrame/navigation.html)<br>
@@ -12,7 +12,7 @@
 
 ## 框架部署
 ### 测试部署
-1. 部署一个php >= 5.2的网络环境
+1. 部署一个php >= 5.2的网络环境 [Swoole环境部署](http://doc.phpof.net/?oFrame/helpManual/swoole.html,oFrame/navigation.html)
 2. 下载框架代码 https://github.com/tolizhan/oFrame/ 或 https://gitee.com/tolizhan/oFrame/
 3. 解压到任意可访问的路径, 如果是 Linux 创建 /data 文件, 给 -R 可读写权限
 4. 访问框架根目录, 显示界面并且没有红色报错便部署成功

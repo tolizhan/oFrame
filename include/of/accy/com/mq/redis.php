@@ -158,7 +158,7 @@ class of_accy_com_mq_redis extends of_base_com_mq {
                                 ));
                                 //倒序后取前几位
                                 arsort($index['failed']);
-                                array_splice($index['failed'], $params['failed']);
+                                $index['failed'] = array_slice($index['failed'], 0, $params['failed'], true);
                             }
 
                             //读取近期消息列表
@@ -169,7 +169,7 @@ class of_accy_com_mq_redis extends of_base_com_mq {
                                 ));
                                 //正序后取前几位
                                 asort($index['recent']);
-                                array_splice($index['recent'], $params['recent']);
+                                $index['recent'] = array_slice($index['recent'], 0, $params['recent'], true);
                             }
                         }
 
@@ -251,6 +251,11 @@ class of_accy_com_mq_redis extends of_base_com_mq {
             //删除数据 ?: 增改数据
             $wait[$mark] = $v['data'] === null ? array(
                 'mode' => 'del',
+                'data'  => array(
+                    'name' => $name,
+                    'time' => $time,
+                    'msgId' => $keys[1],
+                ),
                 'oMsg' => &$v
             ) : array(
                 'mode'  => 'set',
@@ -654,11 +659,11 @@ class of_accy_com_mq_redis extends of_base_com_mq {
             foreach ($wait as $k => &$v) {
                 //数据有效集
                 $mark = "of_accy_com_mq_redis::data::{{$k}}";
+                //引用数据
+                $index = &$v['data'];
 
                 //设置消息
                 if ($v['mode'] === 'set') {
-                    //引用数据
-                    $index = &$v['data'];
                     //数据集和有续集是否执行成功, true=成功, false=失败
                     $heOk = $seOk = false;
                     //数据集和有续集尝试次数
@@ -702,10 +707,13 @@ class of_accy_com_mq_redis extends of_base_com_mq {
 
                     //插入失败记录错误日志(数据 && 序列)成功 || 记录错误
                     $heOk && $seOk || $result[] = &$v['oMsg'];
-                //标记删除
+                //标记删除成功
+                } else if (is_int($temp = $this->hDel($mark, 'planTime'))) {
+                    //有实际标记 && 尽快删除(集合名, 消息ID, 消费时间)
+                    $temp && $this->setMqSort($index['name'], $index['msgId'], $index['time']);
+                //标记删除失败, 记录错误
                 } else {
-                    //标记失败 || 记录错误
-                    is_int($this->hDel($mark, 'planTime')) || $result[] = &$v['oMsg'];
+                    $result[] = &$v['oMsg'];
                 }
             }
 
@@ -823,7 +831,7 @@ class of_accy_com_mq_redis extends of_base_com_mq {
         //若此时有覆盖消息, 将标记失败
         $this->exec();
 
-        //移除消息的统计集 && 移除消息的有序集, 按fail->sort->data的顺序删除是安全的
+        //移除消息的统计集 && 移除消息的有序集, 按fail->sort->data的顺序删除是安全的(data会自动过期)
         $isOk = is_int($this->zRem($cKey, $msgId)) && is_int($this->zRem($sKey, $msgId));
 
         do {

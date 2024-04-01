@@ -26,7 +26,7 @@ class of_accy_com_kv_redis extends of_base_com_kv {
                 $host = explode(':', $params['host']);
                 isset($host[1]) || $host[1] = (empty($params['port']) ? 6379 : $params['port']);
 
-                $redis = new Redis;
+                $redis = $this->link = new Redis;
                 $redis->{$params['persistent'] ? 'pconnect' : 'connect'}($host[0], $host[1]);
                 //授权
                 $redis->auth($params['auth']);
@@ -36,6 +36,7 @@ class of_accy_com_kv_redis extends of_base_com_kv {
             //集群模式
             case 'cluster':
                 $redis = new RedisCluster(null, $params['host'], null, null, $params['persistent'], $params['auth']);
+                $this->link = new _RedisCluster($redis);
                 break;
             //分布模式
             case 'distributed':
@@ -45,7 +46,7 @@ class of_accy_com_kv_redis extends of_base_com_kv {
                     'persistent' => $params['persistent'],
                     'auth'       => $params['auth']
                 ));
-                $this->link = new _RedisArray($redis);
+                $this->link = new _RedisArray($redis, $params['host']);
                 //选择数据库 || 连接失败
                 if (!$redis->select($params['db'])) throw new Exception('Failed to connection.');
                 break;
@@ -158,10 +159,8 @@ class of_accy_com_kv_redis extends of_base_com_kv {
             }
         }
 
-        return $this->check ?
-            false :
-            //应用层使用 && 分布式方式 ? 封装对象 : 原始对象
-            ($other && $this->params['type'] === 'distributed' ? $this->link : $redis);
+        //应用层使用 ? 封装对象 : 原始对象
+        return $this->check ? null : ($other ? $this->link : $redis);
     }
 
     /**
@@ -173,9 +172,91 @@ class of_accy_com_kv_redis extends of_base_com_kv {
     }
 }
 
+class _RedisCluster {
+    //redis对象
+    private $redis = null;
+    //主机列表, _hosts()
+    private $hosts = null;
+
+    /**
+     * 描述 : 构造函数
+     * 作者 : Edgar.lee
+     */
+    public function __construct(&$redis) {
+        $this->redis = &$redis;
+    }
+
+    /**
+     * 描述 : redis集群(Cluster)事务方法重载
+     * 作者 : Edgar.lee
+     */
+    public function __call($func, $argv) {
+        //引用redis对象
+        $redis = &$this->redis;
+
+        //操作lua脚本
+        if ($func === 'script') {
+            //初始化主机列表
+            ($hosts = &$this->hosts) || $hosts = $redis->_masters();
+            //小写操作命令
+            $argv[0] = strtolower($argv[0]);
+            //默认结果
+            $result = false;
+            //批量操作
+            foreach ($hosts as &$hv) {
+                try {
+                    //命令
+                    switch ($argv[0]) {
+                        //加载脚本
+                        case 'load':
+                            //脚本加载失败
+                            if (!$result = $redis->script($hv, 'load', $argv[1])) {
+                                break 2;
+                            }
+                            break;
+                        //确认缓存
+                        case 'exists':
+                            //读取加载状态
+                            $hk = call_user_func_array(array($redis, 'script'), array_merge(array($hv), $argv));
+                            //兼容客户端版本
+                            is_bool($hk) && $hk = array_fill(0, count($argv) - 1, (int)$hk);
+
+                            if ($result) {
+                                foreach ($hk as $k => &$v) $v || $result[$k] = $v;
+                            } else {
+                                $result = $hk;
+                            }
+                            break;
+                        //结束脚本
+                        case 'kill':
+                            $redis->script($hv, 'kill') && $result = true;
+                            break;
+                        //清除缓存
+                        case 'flush':
+                            $result = $redis->script($hv, 'flush');
+                            break;
+                    }
+                } catch (Exception $e) {
+                }
+            }
+        //其它命令
+        } else {
+            //直接执行
+            $result = call_user_func_array(array($redis, $func), $argv);
+            //结果集redis对象 && 返回this
+            $result === $redis && $result = $this;
+        }
+
+        //返回结果集
+        return $result;
+    }
+}
+
 class _RedisArray {
     //redis对象
     private $redis = null;
+    //主机列表, _hosts()
+    private $hosts = null;
     //分布式事务开启状态, -2未开启, >-2命令数
     private $multi = -2;
     //分布式事务命令列表 {节点名 : [[方法, 参数, 位置], ...], ...}
@@ -185,8 +266,9 @@ class _RedisArray {
      * 描述 : 构造函数
      * 作者 : Edgar.lee
      */
-    public function __construct(&$redis) {
+    public function __construct(&$redis, &$hosts) {
         $this->redis = &$redis;
+        $this->hosts = &$hosts;
     }
 
     /**
@@ -251,6 +333,57 @@ class _RedisArray {
         } else if ($argv && $multi > -2) {
             //记录事务命令
             $this->cList[$redis->_target($argv[0])][] = array($func, $argv, ++$multi);
+        //执行lua脚本
+        } else if ($func === 'evalsha' || $func === 'eval') {
+            //单主机redis对象
+            $temp = isset($argv[1][0]) ? $redis->_instance($redis->_target($argv[1][0])) : $redis;
+            //直接执行
+            $result = call_user_func_array(array($temp, $func), $argv);
+        //操作lua脚本
+        } else if ($func === 'script') {
+            //小写操作命令
+            $argv[0] = strtolower($argv[0]);
+            //默认结果
+            $result = false;
+            //批量操作
+            foreach ($this->hosts as &$hv) {
+                try {
+                    //单主机redis对象
+                    $temp = $redis->_instance($hv);
+                    //命令
+                    switch ($argv[0]) {
+                        //加载脚本
+                        case 'load':
+                            //脚本加载失败
+                            if (!$result = $temp->script('load', $argv[1])) {
+                                break 2;
+                            }
+                            break;
+                        //确认缓存
+                        case 'exists':
+                            //读取加载状态
+                            $hk = call_user_func_array(array($temp, 'script'), $argv);
+                            //兼容客户端版本
+                            is_bool($hk) && $hk = array_fill(0, count($argv) - 1, (int)$hk);
+
+                            if ($result) {
+                                foreach ($hk as $k => &$v) $v || $result[$k] = $v;
+                            } else {
+                                $result = $hk;
+                            }
+                            break;
+                        //结束脚本
+                        case 'kill':
+                            $temp->script('kill') && $result = true;
+                            break;
+                        //清除缓存
+                        case 'flush':
+                            $result = $temp->script('flush');
+                            break;
+                    }
+                } catch (Exception $e) {
+                }
+            }
         //无参数命令 || 不在事务中
         } else {
             //直接执行

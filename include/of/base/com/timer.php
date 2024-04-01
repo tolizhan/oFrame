@@ -28,7 +28,6 @@
  *          nodeLock#节点ID : 节点进程, 启动时独享锁
  *          daemon#节点ID : 守护进程, 启动时独享锁
 
- *          "taskIsGc" : 标识守护进程为任务回收器
  *          "taskList" : 任务列表锁, 当新插入或清理任务时加独享锁
  *          taskLock#任务ID : 单个任务锁, 任务启动时加共享锁, 清理时加独享锁, 未存信息
  *          taskLock#任务ID#并发数字 : 任务并发锁, 对应并发任务启动时加独享锁
@@ -121,10 +120,10 @@ class of_base_com_timer {
             //连接解锁
             of_base_com_data::lock($lock, 3);
             //加载定时器
-            call_user_func(self::$config['forkFn'], array(
+            self::fireCalls(array(array('call' => array(
                 'asCall' => 'of_base_com_timer::timer',
                 'params' => array($name, true)
-            ));
+            ))), array('type' => 1));
             $result = false;
         //任务列表遍历检查
         } else if ($name === 'nodeLock') {
@@ -151,9 +150,9 @@ class of_base_com_timer {
                 $needNum = self::getRunNum();
 
                 //静态计划任务
-                ($crontab = &self::crontab($needNum)) && self::fireCalls($crontab);
+                ($crontab = &self::crontab($needNum)) && self::fireCalls($crontab, array('type' => 2));
                 //动态计划任务
-                ($movTask = &self::taskList($needNum)) && self::fireCalls($movTask);
+                ($movTask = &self::taskList($needNum)) && self::fireCalls($movTask, array('type' => 4));
 
                 //无任何任务
                 if ($movTask === false && $crontab === false) sleep(30);
@@ -165,82 +164,22 @@ class of_base_com_timer {
             of_base_com_data::lock($lock, 3);
         //保护进程
         } else if ($name === 'daemon') {
-            //当前时间
-            $time = time();
+            //清理节点信息与任务列表(1 | 2 | 1073741824)
+            self::info(1073741827);
+
             //打开任务进程锁文件
             $nLock = 'of_base_com_timer::nodeLock#' . $nodeId;
             //全局任务列表键
             $tLock = 'of_base_com_timer::taskList';
-            //任务回收器键
-            $gLock = 'of_base_com_timer::taskIsGc';
-            //是否为任务回收器
-            $isGc = false;
-
             //连接加锁(非阻塞) 兼容 glusterfs 网络磁盘
             while (!self::renew() && !of_base_com_data::lock($nLock, 6)) {
                 sleep(1);
-
-                //每10分钟执行一次
-                if (($temp = time()) - 600 > $time) {
-                    //更新最后执行时间
-                    $time = $temp;
-
-                    //成为任务回收器
-                    if ($isGc || $isGc = of_base_com_data::lock($gLock, 6)) {
-                        //获取全局任务列表独享锁
-                        of_base_com_data::lock($tLock, 2);
-                        //读取全局节点列表
-                        if ($data = of_base_com_kv::get($tLock, array(), '_ofSelf')) {
-                            //遍历全局节点列表{任务ID : {}, ...}
-                            foreach ($data as $k => &$v) {
-                                //任务状态锁
-                                $taskLock = 'of_base_com_timer::taskLock#' . $k;
-                                //任务备注键
-                                $taskNoteKey = 'of_base_com_timer::taskNote#' . $k;
-                                //任务信息键
-                                $taskInfoKey = 'of_base_com_timer::taskInfo#' . $k;
-
-                                //任务未运行
-                                if (of_base_com_data::lock($taskLock, 6)) {
-                                    //清理备注数据
-                                    of_base_com_kv::del($taskNoteKey, '_ofSelf');
-                                    //清理信息数据
-                                    of_base_com_kv::del($taskInfoKey, '_ofSelf');
-                                    //清理列表数据
-                                    unset($data[$k]);
-                                    //解除状态锁
-                                    of_base_com_data::lock($taskLock, 3);
-                                //任务信息可修改
-                                } else if (of_base_com_data::lock($taskInfoKey, 6)) {
-                                    //更新备注有效期
-                                    if ($temp = of_base_com_kv::get($taskNoteKey, array(), '_ofSelf')) {
-                                        of_base_com_kv::set($taskNoteKey, $temp, 2592000, '_ofSelf');
-                                    }
-                                    //更新信息有效期
-                                    if ($temp = of_base_com_kv::get($taskInfoKey, array(), '_ofSelf')) {
-                                        of_base_com_kv::set($taskInfoKey, $temp, 2592000, '_ofSelf');
-                                    }
-                                    //解除信息锁
-                                    of_base_com_data::lock($taskInfoKey, 3);
-                                }
-                            }
-                            //回写全局任务列表(永不过期)
-                            of_base_com_kv::set($tLock, $data, 0, '_ofSelf');
-                        }
-                        //解锁全局任务列表
-                        of_base_com_data::lock($tLock, 3);
-                        //清理分布式节点信息
-                        self::info(1073741826);
-                    }
-                }
             }
-
-            //是回收器 && 解锁
-            $isGc && of_base_com_data::lock($gLock, 3);
             //连接解锁
             of_base_com_data::lock($nLock, 3);
             //连接解锁
             of_base_com_data::lock($lock, 3);
+
             //启动任务进程
             self::timer('nodeLock');
         }
@@ -253,16 +192,16 @@ class of_base_com_timer {
      * 描述 : 定时任务
      * 参数 :
      *      params : 任务参数 {
-     *          #定时模式, 未指定taskObj参数
+     *          #动态任务, 未指定taskObj参数
      *          "time" : 执行时间, 五年内秒数=xx后秒执行, 其它=指定时间
      *          "call" : 框架标准的回调
      *          "cNum" : 并发数量, 0=不设置, n=最大值, []=指定并发ID(最小值1)
      *          "try"  : 尝试相隔秒数, 默认[], 如:[60, 100, ...]
 
-     *          #单例任务, taskObj返回任务对象
+     *          #协程任务, taskObj返回任务对象
      *          "call" : 框架标准的回调
 
-     *          #批量任务, taskObj返回 {任务标识 : 任务对象, ...}
+     *          #批量协程, taskObj返回 {任务标识 : 任务对象, ...}
      *          "list" : 任务列表 {任务标识 : 框架回调结构, ...}
      *          "cNum" : 最大并行任务数量
      *      }
@@ -307,7 +246,7 @@ class of_base_com_timer {
             //异步模式 && 即时执行
             if (self::$nowTask && $params['time'] <= $nowTime) {
                 //直接触发
-                self::fireCalls(array(&$params));
+                self::fireCalls(array(&$params), array('type' => 4));
             //同步模式 || 延迟执行
             } else {
                 //添加到待执行列表中
@@ -342,7 +281,7 @@ class of_base_com_timer {
                         'cNum' => $params['cNum']
                     ))
                 )
-            )));
+            )), array('type' => 8));
         //单例任务
         } else {
             //唯一标识
@@ -359,7 +298,10 @@ class of_base_com_timer {
             ), 86400, '_ofSelf');
 
             //直接触发
-            self::fireCalls(array(array('call' => &$params['call'])), array('mark' => $mark));
+            self::fireCalls(
+                array(array('call' => &$params['call'])),
+                array('mark' => $mark, 'type' => 8)
+            );
         }
     }
 
@@ -400,7 +342,7 @@ class of_base_com_timer {
 
     /**
      * 描述 : 获取当期运行的信息
-     *      type : 读取类型(可叠加), 1=并发的任务, 2=分布定时器
+     *      type : 读取类型(可叠加), 1=并发的任务, 2=分布定时器, 4=当前任务
      * 返回 : 
      *      type为1时 : 并发的任务 {
      *          任务唯一键 : {
@@ -437,34 +379,51 @@ class of_base_com_timer {
 
             //全局任务列表键
             $tLock = 'of_base_com_timer::taskList';
+            //获取全局任务列表独享锁
+            $type & 1073741824 && of_base_com_data::lock($tLock, 2);
+
             //读取全局节点列表
             $data = of_base_com_kv::get($tLock, array(), '_ofSelf');
             //遍历全局节点列表{任务ID : {}, ...}
             foreach ($data as $kt => &$vt) {
                 //任务状态锁
                 $taskLock = "of_base_com_timer::taskLock#{$kt}";
+                //任务备注键
+                $taskNoteKey = 'of_base_com_timer::taskNote#' . $kt;
+                //任务信息键
+                $taskInfoKey = 'of_base_com_timer::taskInfo#' . $kt;
+
                 //加锁成功, 任务没运行
                 if (of_base_com_data::lock($taskLock, 6)) {
+                    //清理模式
+                    if ($type & 1073741824) {
+                        //清理备注数据
+                        of_base_com_kv::del($taskNoteKey, '_ofSelf');
+                        //清理信息数据
+                        of_base_com_kv::del($taskInfoKey, '_ofSelf');
+                        //清理列表数据
+                        unset($data[$kt]);
+                    }
                     of_base_com_data::lock($taskLock, 3);
                 //任务已运行 && 文件信息存在
                 } else {
-                    //任务备注键
-                    $taskNoteKey = 'of_base_com_timer::taskNote#' . $kt;
-                    //任务信息键
-                    $taskInfoKey = 'of_base_com_timer::taskInfo#' . $kt;
+                    //加锁消息
+                    $type & 1073741824 && of_base_com_data::lock($taskInfoKey, 2);
+                    //单个任务备注
+                    $note = of_base_com_kv::get($taskNoteKey, array(), '_ofSelf');
+                    //单个任务信息
+                    $info = of_base_com_kv::get($taskInfoKey, array(), '_ofSelf');
 
                     //读取任务回调信息
                     $index = &$save[$kt];
-                    $index['call'] = of_base_com_kv::get($taskNoteKey, array(), '_ofSelf');
-                    $index['call'] = &$index['call']['call'];
-                    $index['list'] = array();
+                    $index = array('call' => &$note['call'], 'list' => array());
 
-                    //读取任务信息
-                    $list = of_base_com_kv::get($taskInfoKey, array(), '_ofSelf');
                     //遍历任务信息
-                    foreach ($list['list'] as $k => &$v) {
+                    foreach ($info['list'] as $k => &$v) {
                         //加锁成功, 进程没启动
                         if (of_base_com_data::lock($temp = "{$taskLock}#{$k}", 6)) {
+                            //清理模式使用, 清理列表数据
+                            unset($info['list'][$k]);
                             of_base_com_data::lock($temp, 3);
                         } else {
                             //记录并发执行的时间
@@ -476,13 +435,31 @@ class of_base_com_timer {
                     }
                     //按运行序号排序
                     ksort($index['list']);
+
+                    //清理模式
+                    if ($type & 1073741824) {
+                        //更新备注有效期
+                        of_base_com_kv::set($taskNoteKey, $note, 2592000, '_ofSelf');
+                        //更新信息有效期
+                        of_base_com_kv::set($taskInfoKey, $info, 2592000, '_ofSelf');
+                        //解除信息锁
+                        of_base_com_data::lock($taskInfoKey, 3);
+                    }
                 }
+            }
+
+            //清理模式
+            if ($type & 1073741824) {
+                //回写全局任务列表(永不过期)
+                of_base_com_kv::set($tLock, $data, 0, '_ofSelf');
+                //解锁全局任务列表
+                of_base_com_data::lock($tLock, 3);
             }
         }
 
         //分布定时器执行情况
         if ($type & 2) {
-            $type === 2 || $type === 1073741826 ? $save = &$result : $save = &$result['taskTrigger'];
+            $type === 2 ? $save = &$result : $save = &$result['taskTrigger'];
 
             //全局节点列表键
             $listKey = 'of_base_com_timer::nodeList';
@@ -704,15 +681,16 @@ class of_base_com_timer {
      * 参数 : 
      *      call : task 参数格式
      *      cArg : 并发参数, 数组=启动并发 {
-     *          "cMd5" : 回调唯一值
-     *          "cCid" : 并发ID, 从1开始
-     *          "mark" : 数据回传标识, 存在时标识回传
+     *          "cMd5" :o回调唯一值, 并发时存在
+     *          "cCid" :o并发ID, 从1开始, 并发时存在
+     *          "mark" :o数据回传标识, 存在时标识回传, 协程任务存在
+     *          "type" : 任务类型, 1=定时器, 2=静态, 4=动态, 8=协程
      *      }
      * 作者 : Edgar.lee
      */
     public static function taskCall($call, $cArg) {
         //保护linux进程不被SIGTERM信号杀掉 && 信号1~32(9 19 32 linux 无效, 17 mac 无效)
-        function_exists('pcntl_signal') && pcntl_signal(15, SIG_IGN);
+        ($cArg['type'] & 1) || function_exists('pcntl_signal') && pcntl_signal(15, SIG_IGN);
 
         //记录当前任务
         self::$nowTask = array(
@@ -725,15 +703,15 @@ class of_base_com_timer {
             'time' => &$call['time'],
             'cNum' => &$call['cNum'],
             'try'  => &$call['try'],
-            'this' => &$cArg
+            'this' => $cArg
         );
-        //空间锁参数
-        $lockArgv = array('space' => __METHOD__);
 
         //启用并发
         if (isset($cArg['cMd5'])) {
             //任务状态锁
             $taskLock = 'of_base_com_timer::taskLock#' . $cArg['cMd5'];
+            //空间锁参数
+            $lockArgv = array('space' => __METHOD__);
             //读锁成功
             of_base_com_data::lock($taskLock, 1, $lockArgv);
 
@@ -1378,6 +1356,7 @@ class of_base_com_timer {
      *      }, ...]
      *      cArg : 单机会参数 {
      *          "mark" :o数据回传标识, 存在时标识回传
+     *          "type" : 任务类型, 1=定时器, 2=静态, 4=动态, 8=协程
      *      }
      * 作者 : Edgar.lee
      */
@@ -1415,7 +1394,7 @@ class of_base_com_timer {
                             call_user_func($config['forkFn'], array(
                                 'asCall' => 'of_base_com_timer::taskCall',
                                 'params' => array(
-                                    &$v, array('cMd5' => $cMd5, 'cCid' => $cNum)
+                                    &$v, array('cMd5' => $cMd5, 'cCid' => $cNum) + $cArg
                                 )
                             ));
                         }

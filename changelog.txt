@@ -1,3 +1,32 @@
+版本: 270
+作者: Edgar
+日期: 2024年4月1日 9:28:21
+信息:
+说明: + 增加swooleRedis数据锁_of.com.data.lock
+      + 增加swoole::data()方法, 进程内共享数据
+      + 增加swoole::fork(call, 4) 共享进程模式
+      + of_base_com_timer::info(4)新增任务类型
+      + 非单点redis支持script evalsha eval命令
+      * 更快的清理redis消息队列标记删除的消息
+      * 修复redis队列getMqInfo方法统计异常问题
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/ctrl/index.php
+已修改 : /trunk/demo/tool/swoole/debug.php
+已增加 : /trunk/include/of/accy/com/data/lock/swooleRedis.bin
+已增加 : /trunk/include/of/accy/com/data/lock/swooleRedis.php
+已修改 : /trunk/include/of/accy/com/kv/redis.php
+已修改 : /trunk/include/of/accy/com/mq/redis.php
+已修改 : /trunk/include/of/accy/com/timer/swoole.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/link/codeNav.php
+已修改 : /trunk/include/of/base/tool/test.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/license.txt
+已修改 : /trunk/swoole.php
+
 版本: 268
 作者: Edgar
 日期: 2023年12月30日 21:51:52

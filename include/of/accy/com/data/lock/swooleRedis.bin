@@ -1,0 +1,101 @@
+--[[
+-- 描述 : redis公平锁
+-- 参数 :
+--      KEYS : [加锁键]
+--      ARGV : [锁标记, 锁类型("1"=共享锁, "2"=独享锁, "3"=解锁, "4"=更新有效期), 尝试锁("0"=阻塞, "4"=尝试)]
+-- 返回 :
+--      0=失败, 1=成功
+-- 作者 : Edgar.lee
+--]]--
+
+--锁过期键
+local timeKey = "of_accy_com_data_lock_swooleRedis::time::{" .. KEYS[1] .. "}"
+--锁列表键
+local listKey = "of_accy_com_data_lock_swooleRedis::list::{" .. KEYS[1] .. "}"
+
+--当前时间戳
+local nowTime = tonumber(redis.call("TIME")[1])
+--过期标记
+local expire = nowTime + 15
+
+--临时数据
+local temp
+--加锁列表
+local list
+--加锁结果, 0=锁失败, 1=锁成功
+local result = 0
+
+--删除加锁数据
+local delLock = function (mark)
+    --删除读写锁
+    redis.call("LREM", listKey, 0, "1" .. mark)
+    redis.call("LREM", listKey, 0, "2" .. mark)
+    --删除数据键
+    redis.call("ZREM", timeKey, mark)
+end
+
+--加锁操作
+if (ARGV[2] == "1" or ARGV[2] == "2")
+then
+    --未添加数据
+    if (redis.call("ZSCORE", timeKey, ARGV[1]) == false)
+    then
+        --添加排队列表
+        redis.call("RPUSH", listKey, ARGV[2] .. ARGV[1])
+    end
+    --更新锁数据有效期
+    redis.call("ZADD", timeKey, expire, ARGV[1])
+
+    --读取加锁列表
+    list = redis.call("LRANGE", listKey, 0, -1)
+    --遍历加锁列表
+    for k, v in pairs(list) do
+        --截取加锁标记[锁标记, 有效期]
+        temp = {string.sub(v, 2)}
+        --读取标记的过期时间
+        temp[2] = redis.call("ZSCORE", timeKey, temp[1]);
+
+        --锁标记已过期, 过期时间不存在 || 已过期
+        if (temp[2] == false or tonumber(temp[2]) < nowTime)
+        then
+            delLock(temp[1])
+        --定位到自身标记
+        elseif (temp[1] == ARGV[1])
+        then
+            result = 1
+            --已定位到自身, 结束遍历
+            break
+        --出现独享锁 || 自身是独享锁, 加锁失败("1"=共享锁, "2"=独享锁)
+        elseif (string.sub(v, 1, 1) == "2" or ARGV[2] == "2")
+        then
+            break
+        end
+    end
+end
+
+--解锁操作
+if (ARGV[2] == "3")
+then
+    delLock(ARGV[1])
+    result = 1
+--更新有效期
+elseif (ARGV[2] == "4")
+then
+    --存在加锁键
+    if (redis.call("ZSCORE", timeKey, ARGV[1]))
+    then
+        result = 1
+        --更新锁有效期
+        redis.call("ZADD", timeKey, expire, ARGV[1])
+        --更新锁数据过期时间
+        redis.call("EXPIRE", timeKey, 300)
+        --更新锁列表过期时间
+        redis.call("EXPIRE", listKey, 300)
+    end
+--尝试加锁 && 未加锁成功
+elseif (ARGV[3] == "4" and result == 0)
+then
+    delLock(ARGV[1])
+end
+
+return result

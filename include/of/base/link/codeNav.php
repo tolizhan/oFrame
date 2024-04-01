@@ -18,6 +18,9 @@ namespace of\accy\com\data\lock {
     class files extends \of_accy_com_data_lock_files {
     }
 
+    class swooleRedis extends \of_accy_com_data_lock_swooleRedis {
+    }
+
 }
 
 namespace of\accy\com\kv {

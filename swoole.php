@@ -5,9 +5,9 @@
  *      方法集成归类
  *          协议封装 : stream_open stream_stat stream_read stream_eof stream_set_option
  *          变量隔离 : __construct __set getVar shareVar varMaps $_GLOBAL_SCOPE_
- *          逻辑隔离 : loadEnv reinit clear fork autoClass errCtrl dispatch checkExit
- *          服务支撑 : space serial yield sentry getBitSize start test http task
- *          代码重写 : codeParser codeKey hardCode
+ *          协程隔离 : loadClass loadEnv reinit clear fork autoClass errCtrl dispatch checkExit
+ *          服务支撑 : data task space serial yield sentry getBitSize start test http
+ *          代码重写 : codeParser codeKey codeHard
 
  *      已接管会话方法
  *          session_start : 启动新会话或者重用现有会话
@@ -144,10 +144,10 @@
 
  *      协程挂起任务($yield) : yield与sentry方法使用 {
  *          "state" : 状态信息 {
- *              "code"  : 0=哨兵停止, 1=哨兵启动,
+ *              "code"  : 0=哨兵停止, 1=哨兵启动, 2=存在任务
  *              "space" : 哨兵协程ID
  *          }
- *          "flock" : 公平锁 {
+ *          "flock" : 文件锁 {
  *              协程ID : {
  *                  "state"   : true=未完成加锁, false=已完成
  *                  "data"    : 锁数据 {
@@ -157,6 +157,9 @@
  *                  }
  *                  "result"  : 加锁结果
  *              }
+ *          }
+ *          "async" : 新建协程 {
+ *              唯一编码 : 任务回调闭包
  *          }
  *          "resCo" : 响应中的请求, 最大100 {
  *              协程ID : {}
@@ -209,7 +212,8 @@ class swoole {
     //协程挂起任务
     private static $yield = array(
         'state' => array('code' => 1, 'space' => 0),
-        'flock' => array(), 'resCo' => array(), 'waits' => array()
+        'flock' => array(), 'async' => array(),
+        'resCo' => array(), 'waits' => array()
     );
     //最近时间戳, 每10s更新
     private static $nTime = 0;
@@ -368,6 +372,14 @@ class swoole {
                 //stream流可以读取私有变量
                 $this->context = $val;
                 break;
+            //加载回调结构类
+            case 'callable':
+                //静态调用转成数组
+                is_string($val) && $val = explode('::', $val);
+                //提取类名并尝试加载
+                is_array($val) && isset($val[1]) && is_string($val[0]) && $this->loadClass($val[0]);
+                break;
+            //创建对象"newObj"
         }
     }
 
@@ -1671,6 +1683,18 @@ class swoole {
     }
 
     /**
+     * 描述 : 主动加载类
+     *      spl_autoload_register回调中禁止加载相同类, 导致并发协程出现类不存在问题
+     * 作者 : Edgar.lee
+     */
+    public function loadClass($class, $isNew = false) {
+        //类已存在 || 尝试加载类
+        class_exists($class, false) || self::autoClass($class);
+        //返回类
+        return $isNew ? $this : $class;
+    }
+
+    /**
      * 描述 : 初始并加载环境
      * 参数 :
      *     &requ : 请求对象
@@ -1694,7 +1718,7 @@ class swoole {
                 //启动串行化
                 self::serial(true);
                 //无待响的请求 && 运行的请求未满 && 放入执行池
-                if ($temp = !self::$yield['waits'] && count(self::$yield['resCo']) <= SWOOLE_MAX_RUNNING) {
+                if ($temp = !self::$yield['waits'] && count(self::$yield['resCo']) <= SWOOLE_MAX_REQUEST) {
                     self::$yield['resCo'][$space] = array();
                 }
                 //禁用串行化
@@ -1730,14 +1754,14 @@ class swoole {
                     'SERVER_SOFTWARE' => 'swoole/' . SWOOLE_VERSION,
                     'GATEWAY_INTERFACE' => 'CGI/1.1',
                     'REQUEST_SCHEME' => 'http',
-                    'DOCUMENT_ROOT' => $GLOBALS['rootDir'],
+                    'DOCUMENT_ROOT' => ROOT_DIR,
                     'DOCUMENT_URI' => $temp = $requ->server['path_info'],
                     'REQUEST_URI' => $temp,
                     'SCRIPT_NAME' => $temp,
                     'PHP_SELF' => $temp,
                     'CONTENT_LENGTH' => '',
                     'CONTENT_TYPE' => '',
-                    'SCRIPT_FILENAME' => $GLOBALS['rootDir'] . $temp,
+                    'SCRIPT_FILENAME' => ROOT_DIR . $temp,
                     'FCGI_ROLE' => 'RESPONDER',
                     'QUERY_STRING' => '',
                     'ofDebug' => false
@@ -1821,9 +1845,6 @@ class swoole {
                 //记录父协程ID
                 $index['state']['pCid'] = $resp;
             }
-
-            //初始化代码
-            self::reinit();
         //超全局隔离变量存在, 判断是否退出
         } else if ($result = &self::$attrs[self::space()]['super']) {
             //检查退出
@@ -1981,27 +2002,159 @@ class swoole {
     }
 
     /**
+     * 描述 : 进程内共享数据
+     * 参数 :
+     *      name : 数据名称
+     *      data : 初始数据, 默认[]
+     * 返回 :
+     *      引用返回, 默认空数组
+     * 作者 : Edgar.lee
+     */
+    public static function &data($name, $data = array()) {
+        static $list = array();
+        $list += array($name => &$data);
+        return $list[$name];
+    }
+
+    /**
+     * 描述 : 异步任务执行器
+     * 参数 :
+     *      params : 启动参数 {
+     *          "serv" : 是否由服务启动, true=是, false=否
+     *      }
+     * 作者 : Edgar.lee
+     */
+    public static function task($params = array('serv' => true)) {
+        //引用协程列表
+        $attrs = &self::$attrs;
+        //可执行任务数
+        $count = 150;
+        //唯一ID计数
+        $uuid = 0;
+        //任务列表 [任务ID, ...]
+        $list = array();
+        //共享内存磁盘路径
+        $path = "/dev/shm/swoole/{$GLOBALS['system']['port']}";
+        //服务状态锁路径
+        $serv = $path . '/serv.lock';
+        //任务目录
+        $task = $path . '/task';
+
+        //尝试获取监听服务权限
+        for ($i = 0; $i < 10; ++$i) {
+            //尝试成功
+            if (flock($work = fopen("{$path}/taskServ{$i}.lock", 'c+'), 6)) {
+                break ;
+            //尝试失败
+            } else {
+                $work = null;
+            }
+        }
+
+        //已获取到服务权限
+        if ($work) {
+            //关闭内存检查与工作周期时间
+            $GLOBALS['system']['memory'] = $GLOBALS['system']['cycle'] = 0;
+            //等待获取消费权
+            flock($lock = fopen($path . '/taskWatch.lock', 'c+'), 2);
+        //未获取到服务权限
+        } else {
+            return ;
+        }
+
+        //读取并执行任务
+        do {
+            //读取到任务数据列表, 按修改时间先到后取前N个
+            if ($data = trim(stream_get_contents(popen("ls -tr '{$task}' | head -{$count}", 'r'), 10240))) {
+                //切割出文件名
+                $data = explode("\n", $data);
+                //遍历执行任务
+                foreach ($data as &$v) {
+                    //任务文件绝对路径
+                    $v = $task . '/'. $v;
+                    //执行任务
+                    self::fork(unserialize(file_get_contents($v)), 1, array('space' => &$list[++$uuid]));
+                    //执行计数
+                    --$count;
+                    //删除任务
+                    unlink($v);
+                }
+                //任务溢出
+                if ($count < 1) break ;
+            //服务已停止
+            } else if (flock(fopen($serv, 'c+'), 5)) {
+                break ;
+            }
+
+            //稍后继续
+            usleep(5000);
+            //清理执行完成的任务, 删除(协程已启动 && 执行完成)协程ID
+            foreach ($list as $k => &$v) if ($v && !isset($attrs[$v])) unset($list[$k]);
+        //有执行任务的空间
+        } while (($count = 150 - count($list)) > 0);
+
+        //释放工作锁
+        flock($work, 3);
+        //释放消费权
+        flock($lock, 3);
+        //无更多任务 || 新启动任务执行器
+        of_base_com_disk::none($task) || self::fork('swoole::task', 2);
+
+        //等待所有任务执行完成, 结束任务执行器进程
+        while ($list) {
+            //协程执行时间
+            sleep(10);
+            //清理执行完成的任务, 删除(协程已启动 && 执行完成)协程ID
+            foreach ($list as $k => &$v) if ($v && !isset($attrs[$v])) unset($list[$k]);
+        }
+    }
+
+    /**
      * 描述 : 新建协程环境的回调
      * 参数 :
      *      call : 符合框架回调结构
-     *      mode : 协程模式, 1=工作协程(可以共享变量), 2=独立进程(长时间运行更稳定)
+     *      mode : 协程模式
+     *          1=工作协程, 启动快, 可共享变量, 过多影响调度速度, 适合跨协程操作的任务
+     *          2=独立进程, 启动慢, 支持更多"工作协程", 适合运行长时间的任务
+     *          4=共享进程, 启动快, 支持少量"工作协程", 适合运行短时间的任务
      * 返回 :
-     *      工作协程: 返回协程ID
+     *      工作协程: 非串行化状态返回协程ID
      * 作者 : Edgar.lee
      */
-    public static function fork($call, $mode = 1) {
+    public static function fork($call, $mode = 1, $data = array()) {
+        //协程唯一值
+        static $uuid = 0;
+
+        //创建共享进程
+        if ($mode & 4) {
+            //生成唯一文件名
+            $name = of_base_com_str::uniqid();
+            //共享内存磁盘路径
+            $path = "/dev/shm/swoole/{$GLOBALS['system']['port']}";
+            //[任务临时路径, 任务执行路径]
+            $temp = array("{$path}/temp/{$name}", "{$path}/task/{$name}");
+            //写入回调任务
+            file_put_contents($temp[0], serialize($call));
+            //防止被读取一半, 无锁安全操作
+            rename($temp[0], $temp[1]);
+
+            //当前为任务模式
+            $GLOBALS['system']['type'] === 'task' &&
+                //任务执行器已停止
+                flock(fopen("{$path}/taskWatch.lock", 'c+'), 5) &&
+                //启动任务执行器
+                self::fork('swoole::task', 2);
         //创建独立进程
-        if ($mode & 2) {
+        } else if ($mode & 2) {
             //执行参数
             $exec = array(
                 'php',
                 __FILE__,
                 'type:task',
+                'data:' . rawurlencode(serialize($call)),
                 '_tz:'  . date_default_timezone_get(),
                 '_ip:'  . $_SERVER['SERVER_ADDR'],
-                '_rl:'  . ROOT_URL,
-                '_od:'  . OF_DIR,
-                'data:' . rawurlencode(serialize($call))
+                $GLOBALS['system']['config']
             );
             //异步前缀, 是mac系统 || linux 使用 nohup
             $aPre = strtolower(substr(PHP_OS, 0, 3)) === 'dar' ? '' : 'nohup ';
@@ -2014,34 +2167,46 @@ class swoole {
         //当前协程ID
         } else if (isset(self::$attrs[$pCid = Co::getCid()]['super'])) {
             $attr = &self::$attrs[$pCid]['super']['_SERVER_mapVar'];
-        } else {
-            return ;
-        }
-
-        //返回沙盒匿名方法
-        return go(function () use ($attr, $pCid, $call) {
-            //标记try开始
-            self::errCtrl(true, __FUNCTION__);
-            //初始化并执行逻辑代码
-            try {
+            $exec = function () use ($attr, $pCid, $call, &$data) {
                 //初始化沙盒环境
                 self::loadEnv($attr, $pCid);
-                //设置调度信息
-                of::dispatch('swoole', 'fork', false);
-                //加载脚本
-                of::callFunc($call);
-            //拦截exit
-            } catch (Swoole\ExitException $e) {
-            //含exit的所有错误
-            } catch (Throwable $e) {
-                of::event('of::error', true, $e);
-            }
-            //标记try结束
-            self::errCtrl(false, __FUNCTION__);
+                //记录自身协程ID
+                $data['space'] = Co::getCid();
+                //标记try开始
+                self::errCtrl(true, __FUNCTION__);
+                //初始化并执行逻辑代码
+                try {
+                    //初始化代码
+                    self::reinit();
+                    //设置调度信息
+                    of::dispatch('swoole', 'fork', false);
+                    //加载脚本
+                    of::callFunc($call);
+                //拦截exit
+                } catch (Swoole\ExitException $e) {
+                //含exit的所有错误
+                } catch (Throwable $e) {
+                    of::event('of::error', true, $e);
+                }
+                //标记try结束
+                self::errCtrl(false, __FUNCTION__);
 
-            //触发关闭回调
-            self::clear(false);
-        });
+                //触发关闭回调
+                self::clear(false);
+            };
+
+            //串行状态
+            if (self::$incNo) {
+                //新建协程
+                self::$yield['async'][++$uuid] = $exec;
+                //标记有待办任务
+                self::$yield['state']['code'] |= 2;
+            } else {
+                return go($exec);
+            }
+        } else {
+            trigger_error('Failed to create fork');
+        }
     }
 
     /**
@@ -2170,35 +2335,55 @@ class swoole {
      * 描述 : 开关串行化
      * 参数 :
      *      type : 是否开启串行, true=开启, false=禁用, int=恢复到指定层级
+     * 返回 :
+     *      返回操作前串行层次
      * 作者 : Edgar.lee
      */
     private static function serial($type) {
-        //恢复到指定层级
-        if (is_int($type)) {
-            self::$incNo && self::$incNo = $type + 1;
-            $type = false;
-        }
+        //引用串行化层级
+        $incNo = &self::$incNo;
+        //返回操作前串行层次
+        $result = $incNo;
 
         //禁用协程
         if ($type) {
             //未禁用协程
-            if (self::$incNo === 0) {
+            if ($incNo === 0) {
                 //关闭抢占式调度
                 SWOOLE_SCHEDULER && Co::disableScheduler();
                 //临时关闭协程(防止类加载不全, spl_autoload_register回调报错等问题)
                 Swoole\Runtime::enableCoroutine(false);
             }
-            //增加包含层次
-            ++self::$incNo;
+            //非数字 ? 增加包含层次 : 设置指定值
+            $type === true ? ++$incNo : $incNo = $type;
         //恢复协程
         } else {
-            if (self::$incNo && --self::$incNo === 0) {
+            //是数字 && 串行状态 && 准备关闭串行
+            $type === 0 && $incNo && $incNo = 1;
+
+            //串行状态 && 可以关闭串行
+            if ($incNo && --$incNo === 0) {
                 //开启函数协程化
                 Swoole\Runtime::enableCoroutine(true, SWOOLE_HOOK_FULL);
                 //开启抢占式调度
                 SWOOLE_SCHEDULER && Co::enableScheduler();
             }
+
+            //引用状态信息
+            $state = &self::$yield['state'];
+            //守望者已挂起 && 有待办任务
+            while ($incNo === 0 && ($state['code'] & 3) === 2) {
+                //尝试恢复协程成功
+                if ($incNo || @Co::resume($state['space'])) {
+                    break ;
+                //10ms后重试
+                } else {
+                    usleep(10000);
+                }
+            }
         }
+
+        return $result;
     }
 
     /**
@@ -2209,8 +2394,6 @@ class swoole {
      * 作者 : Edgar.lee
      */
     private static function yield($type, $data = array()) {
-        //引用状态信息
-        $state = &self::$yield['state'];
         //当前空间
         $space = self::space();
 
@@ -2219,18 +2402,12 @@ class swoole {
         //添加挂起任务到结尾
         self::$yield[$type][$space] = array('state' => true, 'data' => &$data, 'result' => &$reslut);
 
-        //守望者已挂起
-        while (!$state['code']) {
-            //尝试恢复协程成功
-            if (@Co::resume($state['space'])) {
-                break ;
-            //10ms后重试
-            } else {
-                usleep(10000);
-            }
-        }
+        //标记有待办任务且守望者停止 && 恢复守望者
+        $incNo = (self::$yield['state']['code'] |= 2) === 2 ? self::serial(0) : 0;
         //挂起协程
         Co::yield();
+        //恢复串行状态
+        $incNo && self::serial($incNo);
 
         //移除当前任务
         unset(self::$yield[$type][$space]);
@@ -2257,7 +2434,7 @@ class swoole {
             //引用进程最大内存
             $memory = &$GLOBALS['system']['memory'];
             //引用工作周期时间
-            ($cycle = $GLOBALS['system']['cycle']) && $cycle += time();
+            ($cycle = &$GLOBALS['system']['cycle']) && $cycle += time();
             //支持延迟触发信号 && 安装SIGTERM信号处理器
             $mCid && function_exists('pcntl_signal_dispatch') && pcntl_signal(15, function () {
                 self::$isEnd = true;
@@ -2304,14 +2481,31 @@ class swoole {
                     }
                 }
             } while (!self::$isEnd);
+
+            //引用守望者状态信息
+            $state = &self::$yield['state'];
+            //守望者已挂起
+            while (!$state['code']) {
+                //尝试恢复协程成功
+                if (@Co::resume($state['space'])) {
+                    break ;
+                //10ms后重试
+                } else {
+                    usleep(10000);
+                }
+            }
         });
 
         //启动守望者
         go(function () {
+            //工作是否开始退出
+            $isEnd = &self::$isEnd;
             //引用协程列表
             $attrs = &self::$attrs;
             //引用持久锁
             $flock = &self::$yield['flock'];
+            //引用协程任务
+            $async = &self::$yield['async'];
             //引用响应请求
             $resCo = &self::$yield['resCo'];
             //引用排队请求
@@ -2328,8 +2522,8 @@ class swoole {
                 if (!$flock && !$waits) {
                     //标记守望者已挂起
                     $state['code'] = 0;
-                    //无持久锁 && 无待请求 && 挂起协程
-                    !$flock && !$waits && Co::yield();
+                    //(已退出 || 有持久锁 || 有异步任务 || 有待请求) || 挂起协程
+                    $isEnd || $flock || $async || $waits || Co::yield();
                     //标记守望者已恢复
                     $state['code'] = 1;
                 }
@@ -2362,8 +2556,14 @@ class swoole {
                     }
                 }
 
+                //启动异步协程
+                foreach ($async as $k => &$v) {
+                    unset($async[$k]);
+                    go($v);
+                }
+
                 //计算接受请求数
-                $num = SWOOLE_MAX_RUNNING - count($resCo);
+                $num = SWOOLE_MAX_REQUEST - count($resCo);
                 //响应排队中的请求
                 foreach ($waits as $k => &$v) {
                     //已接受请求, 恢复协程
@@ -2381,8 +2581,8 @@ class swoole {
                         break ;
                     }
                 }
-            //没退出工作 || 有协程处理 || 有等待请求
-            } while (!self::$isEnd || $attrs || $waits);
+            //没退出工作 || 有协程处理 || 有异步任务 || 有等待请求
+            } while (!$isEnd || $attrs || $async || $waits);
         });
     }
 
@@ -2501,7 +2701,8 @@ class swoole {
             'php_sapi_name' => 'phpSapiName', 'define' => 'define',
             'register_shutdown_function' => 'registerShutdownFunction', 'class_alias' => 'classAlias',
             'memory_get_usage' => 'memoryGetUsage', 'get_included_files' => 'getIncludedFiles',
-            'get_required_files' => 'getIncludedFiles'
+            'get_required_files' => 'getIncludedFiles', 'call_user_func_array' => 'callable',
+            'call_user_func' => 'callable',
         );
         //唯一ID计数
         static $uuid = 0;
@@ -2807,8 +3008,8 @@ class swoole {
                             (
                                 //接管指定常量
                                 $vk[1] === 'PHP_SAPI' || $vk[1] === 'OF_DEBUG' ||
-                                //命中名称 && 是方法调用
-                                isset($func[$lf = strtolower($vk[1])]) && self::codeKey($keys, $kk, 1) === '('
+                                //命中接管名称 && 是方法调用
+                                isset($func[$lf = strtolower($vk[1])]) && self::codeKey($keys, $kk, 1, $data) === '('
                             ) && (
                                 //独立语句
                                 strlen($temp = self::codeKey($keys, $kk, -1)) === 1 ||
@@ -2838,6 +3039,13 @@ class swoole {
                                     'len' => $kLen,
                                     'str' => '$_SERVER_mapVar[\'ofDebug\']'
                                 );
+                            //调用回调函数
+                            } else if ($func[$lf] === 'callable') {
+                                $wait[] = array(
+                                    'pos' => $kPos + strlen($lf) + $data['eLen'],
+                                    'len' => 0,
+                                    'str' => "\$_FUNC_mapVar->callable = "
+                                );
                             //接管指定方法
                             } else {
                                 $wait[] = array(
@@ -2848,23 +3056,55 @@ class swoole {
                             }
                         }
                         break;
+                    //创建对象new
+                    case T_NEW:
+                        //不在全局变量中 && 常规类名
+                        if ($self['isGlobal'] === 0 && self::codeClass($keys, $kk, 1, $data)) {
+                            //插入主动加载类
+                            $wait[] = array(
+                                //插入位置
+                                'pos' => $kPos,
+                                //当前位置
+                                'len' => 0,
+                                //主动加载类
+                                'str' => "\$_FUNC_mapVar->loadClass({$data['name']}, true)->newObj = "
+                            );
+                        }
+                        break;
                     //静态操作::
                     case T_DOUBLE_COLON:
-                        //在全局中 && 调用init方法
-                        if ($self['type'] === 1 && trim(self::codeKey($keys, $kk, 1, $temp), '_') === 'init') {
-                            //右侧括号位置
-                            self::codeKey($keys, $temp['ePos'], 1, $temp['right']);
-                            //左侧类名位置
-                            $temp['name'] = self::codeKey($keys, $kk, -1, $temp['left']);
-                            //注册init方法
-                            $wait[] = array(
-                                //当前位置 - 到类名长度
-                                'pos' => $kPos - $temp['left']['eLen'],
-                                //当前位置到类名长度 + 2(::) + 到init长度 + 到(长度
-                                'len' => $temp['left']['eLen'] + 2 + $temp['eLen'] + $temp['right']['eLen'],
-                                //获取命名含空间的类名::init
-                                'str' => "\swoole::reinit({$temp['name']}::class . '::{$temp['text']}'"
-                            );
+                        //在代码体中 && 常规类名
+                        if ($self['life'] > 0 && self::codeClass($keys, $kk, -1, $data)) {
+                            //获取右侧方法名
+                            self::codeKey($keys, $kk, 1, $temp);
+
+                            //在全局中 && 调用init方法
+                            if (
+                                $self['type'] === 1 &&
+                                trim($temp['text'], '_') === 'init'
+                            ) {
+                                //右侧括号位置
+                                self::codeKey($keys, $temp['ePos'], 1, $temp['right']);
+                                //注册init方法
+                                $wait[] = array(
+                                    //当前位置 - 到类名长度
+                                    'pos' => $kPos - $data['eLen'],
+                                    //当前位置到类名长度 + 2(::) + 到init长度 + 到(长度
+                                    'len' => $data['eLen'] + 2 + $temp['eLen'] + $temp['right']['eLen'],
+                                    //获取命名含空间的类名::init
+                                    'str' => "\swoole::reinit({$data['name']} . '::{$temp['text']}'"
+                                );
+                            //主动加载类
+                            } else if ($temp['text'] !== 'class') {
+                                $wait[] = array(
+                                    //插入位置, 当前位置 - 类名长度
+                                    'pos' => $kPos - $data['eLen'],
+                                    //当前位置到类名长度 + 2(::) + 到init长度 + 到(长度
+                                    'len' => $data['eLen'],
+                                    //获取命名含空间的类名::init
+                                    'str' => '$_FUNC_mapVar->loadClass(' . $data['name'] . ')'
+                                );
+                            }
                         }
                         break;
                     //heredoc开始
@@ -3020,7 +3260,7 @@ class swoole {
                             strtolower(self::codeKey($keys, $kk, 1)) === 'catch' || array_shift($trys);
                         //需要硬缓存 && 在全局中 && 在对应的空间中
                         } else if ($hard['isOn'] && $self['type'] === 1 && $hard['save'] === $self['life'] + 1) {
-                            self::hardCode($wait, $hard, $kPos);
+                            self::codeHard($wait, $hard, $kPos);
                         }
                         break;
                     case ';':
@@ -3064,9 +3304,9 @@ class swoole {
         }
 
         //插入硬缓存连接
-        $hard['isOn'] && self::hardCode($wait, $hard, $kPos, "\n");
-        //入口文件开启协程
-        $gVar & 2 && $hard['cPos'] && $wait[] = array(
+        $hard['isOn'] && self::codeHard($wait, $hard, $kPos, "\n");
+        //入口或配置类文件开启协程
+        (($gVar & 2) || !$ctrl && self::$incNo === 1) && $hard['cPos'] && $wait[] = array(
             //当前位置
             'pos' => $hard['cPos'],
             'len' => 0,
@@ -3080,14 +3320,20 @@ class swoole {
             $code = substr_replace($code, $temp['str'], $temp['pos'], $temp['len']);
         }
 
-        //打印重写的代码
-        self::$debug && print_r("{$code}\n^^^^^^^^^^^^^\n");
-        //输出关键词信息
-        //foreach ($keys as &$vk) isset($vk[2]) && $vk[0] = token_name($vk[0]); print_r($keys);
-        //打印指定的代码
-        //strpos($code, '存储错误日志') && print_r($code);//echo "\n^^^^^^^^^^^^^\n";
-        //print_r($tree);
-        //print_r($wait);
+        //打印调试信息
+        if (self::$debug) {
+            //打印重写的代码
+            (self::$debug & 1) && print_r("{$code}\n^^^^^^^^^^^^^\n");
+            //输出关键词信息
+            if (self::$debug & 2) {
+                foreach ($keys as &$vk) isset($vk[2]) && $vk['name'] = token_name($vk[0]);
+                print_r($keys);
+            }
+            //打印指定的代码
+            //strpos($code, '存储错误日志') && print_r($code);//echo "\n^^^^^^^^^^^^^\n";
+            //print_r($tree);
+            //print_r($wait);
+        }
     }
 
     /**
@@ -3100,10 +3346,11 @@ class swoole {
      *          "ePos" => 关键词偏移位置
      *          "eLen" => 从(起始定位, 含文本信息]长度
      *          "tLen" => 文本信息长度
+     *          "type" => 关键词类型, 单字符或int型
      *          "text" => 文本信息
      *      }
      * 返回 :
-     *      关键词索引或单字符
+     *      关键词或单字符
      * 作者 : Edgar.lee
      */
     private static function codeKey(&$keys, $kPos, $move, &$data = null) {
@@ -3120,13 +3367,14 @@ class swoole {
                     $data['eLen'] += $data['tLen'] = strlen($keys[$kPos][1]);
                     //不为空返回索引
                     if ($keys[$kPos][0] !== T_WHITESPACE) {
+                        $data['type'] = $keys[$kPos][0];
                         return $data['text'] = $keys[$kPos][1];
                     }
                 //返回单字符
                 } else {
                     //统计关键词长度
                     $data['eLen'] += $data['tLen'] = 1;
-                    return $data['text'] = $keys[$kPos];
+                    return $data['type'] = $data['text'] = $keys[$kPos];
                 }
             //不存在返回失败
             } else {
@@ -3136,10 +3384,103 @@ class swoole {
     }
 
     /**
+     * 描述 : 获取完整代码类名
+     * 参数 :
+     *     &keys : 解析的关键词列表
+     *      kPos : 起始定位
+     *      move : 寻找方向, -1=向前, 1=向后
+     *     &data : 结果相关 {
+     *          "eLen" : 从(起始定位, 含文本信息]长度
+     *          "text" : 不含无效字符得类名
+     *          "name" : 获取类名代码
+     *      }
+     * 返回 :
+     *      true=类名有效, false=关键词类名
+     * 作者 : Edgar.lee
+     */
+    public static function codeClass(&$keys, $kPos, $move, &$data = null) {
+        //相关结果
+        $data = array('eLen' => 0);
+        //结果集
+        $list = array();
+        //递归命令
+        $loop = null;
+        //解析结构命令集
+        $parse = $move > 0 ? array(
+            //结束符: 常规命名空间, 绝对命名空间, 相对命名空间
+            T_NAME_QUALIFIED => 1, T_NAME_FULLY_QUALIFIED => 1, T_NAME_RELATIVE => 1,
+            //跳过符: 变量 $xx, "$"符, 标识符 parent, "\"空间隔离符
+            T_VARIABLE => 2, '$' => 2, T_STRING => 2, T_NS_SEPARATOR => 2,
+            //递归符
+            '{' => array('{' => 1, '}' => -1, 'num' => 1),
+            '[' => array('[' => 1, ']' => -1, 'num' => 1),
+        ) : array(
+            //结束符: 常规命名空间, 绝对命名空间, 相对命名空间
+            T_NAME_QUALIFIED => 1, T_NAME_FULLY_QUALIFIED => 1, T_NAME_RELATIVE => 1,
+            //结束符: 变量 $xx, "$"符
+            T_VARIABLE => 1, '$' => 1,
+            //跳过符: 标识符 parent, "\"空间隔离符
+            T_STRING => 2, T_NS_SEPARATOR => 2,
+            //递归符
+            '}' => array('}' => 1, '{' => -1, 'num' => 1),
+            ']' => array(']' => 1, '[' => -1, 'num' => 1),
+            ')' => array(')' => 1, '(' => -1, 'num' => 1),
+        );
+
+        //偏移量存在
+        while (isset($keys[$kPos += $move])) {
+            //单字符或数字标识
+            $code = $keys[$kPos][0];
+            //完整代码文本
+            $text = is_int($code) ? $keys[$kPos][1] : $code;
+
+            //在递归中
+            if ($loop) {
+                //记录代码
+                $list[] = $text;
+                //是关键符
+                isset($loop[$code]) &&
+                    //完成递归闭环
+                    ($loop['num'] += $loop[$code]) === 0 &&
+                    //标记递归结束
+                    $loop = null;
+            //在结构集中
+            } else if (isset($parse[$code])) {
+                //记录代码
+                $list[] = $text;
+                //结束符
+                if ($parse[$code] === 1) {
+                    break ;
+                //进入递归
+                } else if (is_array($parse[$code])) {
+                    $loop = $parse[$code];
+                }
+            //未知字符 && 已有结果, 结束查询
+            } else if ($list) {
+                break ;
+            //未知字符 && 没有结果, 记录长度
+            } else {
+                $data['eLen'] += strlen($text);
+            }
+        }
+
+        //反向查询 && 翻转结果
+        $move < 0 && $list = array_reverse($list);
+        //合并字符串
+        $data['text'] = $data['name'] = $text = join($list);
+        //记录完成长度
+        $data['eLen'] += strlen($text);
+        //未动态类 || 静态类追加"::class"
+        $text[0] === '$' || $text[0] === '(' || $data['name'] .= '::class';
+        //类名有效
+        return $text !== 'self' && $text !== 'static' && $text !== 'parent' && $text !== 'class';
+    }
+
+    /**
      * 描述 : 插入硬缓存代码
      * 作者 : Edgar.lee
      */
-    private static function hardCode(&$wait, &$hard, &$kPos, $pStr = '') {
+    private static function codeHard(&$wait, &$hard, &$kPos, $pStr = '') {
         //硬缓存随机方法名
         $temp = '_' . uniqid();
         //插入硬缓存起始代码
@@ -3181,12 +3522,20 @@ class swoole {
             'system' => array(
                 'port' => 8888, 'type' => 'http',
                 'memory' => 0, 'cycle' => 0,
-                'sysDir' => __DIR__, 'reinit' => array(),
-                'health' => ''
+                'health' => '', 'reinit' => array(),
+                'config' => '', 'define' => array(
+                    //系的根路径, 框架根路径
+                    'ROOT_DIR' => __DIR__, 'OF_DIR' => __DIR__ . '/include/of',
+                    //相对命名空间 xx\yy, 绝对命名空间 \xx\yy
+                    'T_NAME_QUALIFIED' => 314, 'T_NAME_FULLY_QUALIFIED' => 312, 
+                    //自身命名空间 namespace\xxx, 只读关键词 readonly
+                    'T_NAME_RELATIVE' => 313, 'T_READONLY' => 363
+                )
             ),
             'server' => array(
                 'hook_flags' => null, 'enable_preemptive_scheduler' => false,
-                'max_wait_time' => 86400, 'worker_num' => swoole_cpu_num()
+                'max_wait_time' => 86400, 'worker_num' => swoole_cpu_num(),
+                'dispatch_mode' => 1, 'max_request' => 1000
             ),
             'phpIni' => array(
                 'max_execution_time' => 30, 'memory_limit' => ini_get('memory_limit')
@@ -3206,6 +3555,7 @@ class swoole {
                     //加载配置
                     case 'conf':
                         $config = array_replace_recursive($config, include $temp[1]);
+                        $config['system']['config'] = 'conf:' . $temp[1];
                         break;
                     //启动类型, http=服务, task=任务
                     case 'type':
@@ -3214,14 +3564,6 @@ class swoole {
                     //设置备用时区
                     case '_tz':
                         ini_set('date.timezone', $temp[1]);
-                        break;
-                    //设置默认 ROOT_URL
-                    case '_rl':
-                        define('ROOT_URL', $temp[1]);
-                        break;
-                    //设置默认 OF_DIR
-                    case '_od':
-                        define('OF_DIR', $temp[1]);
                         break;
                 }
             }
@@ -3236,13 +3578,14 @@ class swoole {
         );
 
         //最大运行请求数
-        define('SWOOLE_MAX_RUNNING', 100);
-        //兼容php 8.0+ token_name的只读类
-        defined('T_READONLY') || define('T_READONLY', 363);
+        define('SWOOLE_MAX_REQUEST', 100);
         //定义协程默认状态
         define('SWOOLE_HOOK_FULL', $config['server']['hook_flags']);
         //定义抢占调度设置
         define('SWOOLE_SCHEDULER', $config['server']['enable_preemptive_scheduler']);
+        //定义常量初始值
+        foreach ($config['system']['define'] as $k => &$v) defined($k) || define($k, $v);
+
         //强制开启抢占调度
         unset($config['server']['enable_preemptive_scheduler']);
         //读取服务器IP
@@ -3257,10 +3600,8 @@ class swoole {
         $GLOBALS['server'] = &$config['server'];
         //引用php配置
         $GLOBALS['phpIni'] = &$config['phpIni'];
-        //根目录路径
-        $GLOBALS['rootDir'] = rtrim(strtr($config['system']['sysDir'], '\\', '/'), '/');
         //根目录长度
-        $GLOBALS['rootLen'] = strlen($GLOBALS['rootDir']);
+        $GLOBALS['rootLen'] = strlen(ROOT_DIR);
 
         //激活循环引用收集器
         gc_enable();
@@ -3270,8 +3611,33 @@ class swoole {
         Co::set(array('hook_flags' => SWOOLE_HOOK_FULL, 'enable_preemptive_scheduler' => true));
         //已开启抢占调度 || 禁用抢占调度(开启再禁用可以建立挂起的协程, 防止串行下的新协程直接执行)
         SWOOLE_SCHEDULER || Co::disableScheduler();
-        //启动服务, 下一版扩展为 WebSocket
-        $config['system']['type'] === 'http' ? self::http() : self::task();
+
+        //加载框架启动任务
+        Co\run(function () {
+            //准备环境数据
+            $temp = new stdClass;
+            $temp->header['host'] = 'http://127.0.0.1/';
+            $temp->server = array(
+                'path_info' => OF_DIR . '/index.php',
+                'request_time' => $_SERVER['REQUEST_TIME'],
+                'request_time_float' => $_SERVER['REQUEST_TIME_FLOAT'],
+            );
+            //注册超全局变量
+            extract(self::loadEnv($temp), EXTR_REFS);
+            //初始化代码
+            self::reinit();
+            //加载框架文件
+            include 'of.incl://1://0://' . OF_DIR . '/of.php';
+            //任务模式
+            if ($GLOBALS['system']['type'] === 'task') {
+                //执行任务回调
+                $mCid = self::fork(unserialize(rawurldecode($GLOBALS['_ARGV']['data'])));
+                //启动哨兵
+                self::sentry(null, $mCid);
+            }
+        });
+        //启动服务, 未来扩展为 WebSocket
+        $config['system']['type'] === 'http' && self::http();
     }
 
     /**
@@ -3300,6 +3666,19 @@ class swoole {
         $serv = new Swoole\Http\Server('0.0.0.0', $GLOBALS['system']['port'], SWOOLE_PROCESS);
         //启动工作并开启协程
         $serv->set(array('enable_coroutine' => true) + $GLOBALS['server']);
+        //主进程启动
+        $serv->on('start', function ($serv) {
+            //共享内存磁盘路径
+            $path = "/dev/shm/swoole/{$GLOBALS['system']['port']}";
+            //创建异步任务目录
+            is_dir($temp = $path . '/task') || mkdir($temp, 0777, true);
+            //创建临时任务目录
+            is_dir($temp = $path . '/temp') || mkdir($temp, 0777, true);
+            //服务加锁, 标记服务已启动
+            flock($GLOBALS['lock'] = fopen($path . '/serv.lock', 'c+'), LOCK_EX);
+            //启动主动异步任务执行器
+            for ($i = 0; $i < 10; ++$i) self::fork('swoole::task', 2);
+        });
         //工作启动
         $serv->on('workerStart', function ($serv) {
             //启动哨兵
@@ -3317,7 +3696,7 @@ class swoole {
             //引用请求信息
             $index = &$requ->server;
             //访问文件不存在
-            if (!is_file($file = $GLOBALS['rootDir'] . rtrim($index['path_info'], '/'))) {
+            if (!is_file($file = ROOT_DIR . rtrim($index['path_info'], '/'))) {
                 //是目录 && 主文件存在
                 if (is_file($file .= '/index.php')) {
                     //访问目录不是以"/"结尾
@@ -3341,12 +3720,14 @@ class swoole {
             //标记全局空间
             $_GLOBAL_SCOPE_ = 1;
 
+            //注册超全局变量
+            extract(self::loadEnv($requ, $resp), EXTR_REFS);
             //标记try开始
             self::errCtrl(true, __FUNCTION__);
             //初始化并执行逻辑代码
             try {
-                //注册超全局变量
-                extract(self::loadEnv($requ, $resp), EXTR_REFS);
+                //初始化代码
+                self::reinit();
                 //加载脚本
                 include 'of.incl://' . Co::getCid() . '://3://' . $_FUNC_mapVar->incStart = $file;
             //拦截exit
@@ -3365,32 +3746,6 @@ class swoole {
         });
         //开启服务
         $serv->start();
-    }
-
-    /**
-     * 描述 : 启动任务服务
-     * 作者 : Edgar.lee
-     */
-    public static function task() {
-        //启动一个容器
-        Co\run(function () {
-            //准备环境数据
-            $temp = new stdClass;
-            $temp->header['host'] = 'http://127.0.0.1/';
-            $temp->server = array(
-                'path_info' => OF_DIR . '/index.php',
-                'request_time' => $_SERVER['REQUEST_TIME'],
-                'request_time_float' => $_SERVER['REQUEST_TIME_FLOAT'],
-            );
-            //注册超全局变量
-            extract(self::loadEnv($temp), EXTR_REFS);
-            //加载框架文件
-            include 'of.incl://1://0://' . OF_DIR . '/of.php';
-            //执行任务回调
-            $mCid = self::fork(unserialize(rawurldecode($GLOBALS['_ARGV']['data'])));
-            //启动哨兵
-            self::sentry(null, $mCid);
-        });
     }
 }
 
