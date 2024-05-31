@@ -3,28 +3,21 @@
  * 描述 : 数据库基类
  * 注明 :
  *      连接池列表结构($instList) : {
- *          "default" : {
+ *          连接池名 : {
  *              "pool" : 格式化后的连接池结构为 {
  *                  "write' :  {[
  *                      'adapter'        => 数据库连接方式 'mysqli',
- *                      'params'         => 数据库连接参数 array(
- *                          'host'       => '127.0.0.1',
- *                          'port'       => 3306,
- *                          'user'       => 'root',
- *                          'password'   => 'admin',
- *                          'database'   => 'test',
- *                          'charset'    => 'utf8',
- *                          'persistent' => 是否长连接 false
- *                  ], ...},
+ *                      'params'         => 数据库连接参数 {},
  *                  "read"  : 同 write 结构,
  *              },
  *              "inst" : 初始化的连接源对象 {
  *                  "write' : 写入连接源,
  *                  "read"  : 读取连接源,
- *                  "ping"  : 保持事务连接的连接
- *                  "back"  : read的备份, 启动事务时有效
- *                  "level" : 嵌套的层次, 启动事务时有效
- *                  "state" : 嵌套未回滚, 启动事务时有效
+ *                  "back"  : read的备份, 启动事务时有效, 默认 不存在
+ *                  "ping"  : 发送心跳包, 启动事务时有效, 默认 true
+ *                  "level" : 嵌套的层次, 启动事务时有效, 默认 0
+ *                  "state" : 嵌套未回滚, 启动事务时有效, 默认 true
+ *                  "tzId"  : 时区标识符, 生成连接的时区, 默认 ±00:00
  *              }
  *          }
  *      }
@@ -61,70 +54,82 @@ abstract class of_db {
     /**
      * 描述 : 读取/设置连接池
      * 参数 :
-     *     #创建连接池(数组)
+     *     #读取运行连接信息(key为null)
+     *      key  : 固定null
+
+     *     #创建连接池(pool为数组)
      *      key  : 连接池名称
      *      pool : 连接参数, 若key已创建过, 便不起作用, 与_of.db 配置结构相同
 
-     *     #读取连接池(null)
+     *     #读取连接池(pool为null)
      *      key  : 连接池名称
 
-     *     #查询事务层次(文本), 每开启事务会加一, 完结事务会减一
+     *     #查询事务层次(pool为"level"), 每开启事务会加一, 完结事务会减一
      *      key  : 连接池名称
      *      pool : 固定"level"
 
-     *     #检查连接是否正常(文本)
-     *      key  : 连接池名称
-     *      pool : 固定"ping"
-     *      val  : 默认null=未连接返回false, true=初始化连接
-
-     *     #查询事务最终提交状态(文本), 当SQL执行失败, 状态自动改false
+     *     #查询事务最终提交状态(pool为"state"), 当SQL执行失败, 状态自动改false
      *      key  : 连接池名称
      *      pool : 固定"state"
      *      val  : 默认null=读取状态, false=强制最终回滚
 
-     *     #重命名指定连接池(文本)
+     *     #查询连接信息(pool为"info")
+     *      key  : 连接池名称
+     *      pool : 固定"info"
+
+     *     #检查连接是否正常(pool为"ping")
+     *      key  : 连接池名称
+     *      pool : 固定"ping"
+     *      val  : 默认null=未连接返回false, true=初始化连接
+
+     *     #重命名指定连接池(pool为"rename")
      *      key  : 连接池名称
      *      pool : 固定"rename"
      *      val  : 新连接池名, 若新名已存在, 则会替换
 
-     *     #克隆连接池(文本)
+     *     #克隆连接池(pool为"clone")
      *      key  : 连接池名称
      *      pool : 固定"clone"
      *      val  : 新连接池名, 若名称已存在, 会将原连接改名唯一值
 
-     *     #关闭并删除指定连接池(文本)
+     *     #关闭并删除指定连接池(pool为"clean")
      *      key  : 连接池名称
      *      pool : 固定"clean"
      *      val  : 清理方式, 默认null=销毁连接池, 1=仅关闭连接
-
-     *     #读取运行连接信息
-     *      key  : 固定null
      * 返回 :
-     *     #创建连接池(数组)
-     *     #读取连接池(null)
-     *      返回连接池结构, 如果失败则报错并结束脚本
-
-     *     #查询事务层次("level")
-     *      不在事务中返回0, 一层事务返回1, ...
-
-     *     #检查连接是否正常("ping")
-     *      连接正常返回true, 反之false
-
-     *     #查询事务最终提交状态("state")
-     *      最终提交事务true, 反之false
-
-     *     #克隆连接池("clone")
-     *      若克隆名已存在, 返回原连接改名的唯一值
-
      *     #读取运行连接信息(key为null时) {
      *          连接名称 : {
-     *              "level" : 同查询事务层次("level"),
-     *              "state" : 同查询事务最终提交状态("state")
+     *              "level" : 嵌套的层次, 数据库未连接为 0
+     *              "state" : 嵌套未回滚, 数据库未连接为 null
+     *              "tzId"  : 时区标识符, 数据库未连接为 ''
      *          }, ...
      *      }
+
+     *     #创建连接池(pool为数组)
+     *      $instList.连接池名.pool 结构
+
+     *     #读取连接池(pool为null)
+     *      key有效返回$instList.连接池名.pool 结构, 否则报错
+
+     *     #查询事务层次(pool为"level")
+     *      不在事务中返回0, 一层事务返回1, ...
+
+     *     #查询事务最终提交状态(pool为"state")
+     *      不在事务中null, 最终提交事务true, 反之false
+
+     *     #查询连接信息(pool为"info")
+     *      数据库未连接为 null, 已连接返回 key为null 结构
+
+     *     #检查连接是否正常(pool为"ping")
+     *      连接正常返回true, 反之false
+
+     *     #克隆连接池(pool为"clone")
+     *      若克隆名($val)已存在, 返回原连接改名的唯一值, 否则为null
      * 作者 : Edgar.lee
      */
     final public static function &pool($key, $pool = null, $val = null) {
+        //默认信息结构
+        static $defInfo = array('level' => 0, 'state' => null, 'tzId'  => '');
         //引用实例列表
         $instList = &self::$instList;
 
@@ -133,8 +138,25 @@ abstract class of_db {
             switch ($pool) {
                 //查询当前事务层次
                 case 'level':
-                    $result = isset($instList[$key]['inst']['level']) ?
+                    $result = isset($instList[$key]['inst']) ?
                         $instList[$key]['inst']['level'] : 0;
+                    break;
+                //查询当前提交状态
+                case 'state':
+                    //读取
+                    if ($val === null) {
+                        isset($instList[$key]['inst']) && $result = $instList[$key]['inst']['state'];
+                    //设置
+                    } else if (!$val && !empty($instList[$key]['inst']['level'])) {
+                        $instList[$key]['inst']['state'] = false;
+                    }
+                    break;
+                //查询当前运行信息
+                case 'info':
+                        //数据库已连接
+                        isset($instList[$key]['inst']) &&
+                        //读取连接信息
+                        $result = array_intersect_key($instList[$key]['inst'], $defInfo);
                     break;
                 //检查连接是否正常
                 case 'ping':
@@ -146,17 +168,6 @@ abstract class of_db {
                     if ($result = isset($instList[$key]['inst']) && $index = &$instList[$key]['inst']) {
                         $result = isset($index['write']) ?
                             $index['write']->_ping($val) : $index['read']->_ping($val);
-                    }
-                    break;
-                //查询当前提交状态
-                case 'state':
-                    //读取
-                    if ($val === null) {
-                        $result = isset($instList[$key]['inst']['level']) ?
-                            $instList[$key]['inst']['state'] : null;
-                    //设置
-                    } else if (!$val && isset($instList[$key]['inst'])) {
-                        $instList[$key]['inst']['state'] = false;
                     }
                     break;
                 //重命名指定连接池
@@ -245,9 +256,8 @@ abstract class of_db {
             $result = array();
 
             foreach ($instList as $k => &$v) {
-                $result[$k] = isset($v['inst']['level']) ?
-                    array('level' => $v['inst']['level'], 'state' => $v['inst']['state']) :
-                    array('level' => 0, 'state' => null);
+                //数据库已连接 ? 连接信息 : 连接结构
+                $result[$k] = isset($v['inst']) ? array_intersect_key($v['inst'], $defInfo) : $defInfo;
             }
         }
 
@@ -319,12 +329,12 @@ abstract class of_db {
                     }
                 }
 
+                //引用连接池
+                $index = &$instList[$pool]['inst'];
                 //标记下一轮不发心跳包
-                $instList[$pool]['inst']['ping'] = false;
-                //SQL执行失败 && 事务最终回滚
-                if (!$isDone = $result !== false) {
-                    $instList[$pool]['inst']['state'] = false;
-                }
+                $index['ping'] = false;
+                //SQL执行成功 || 在事务中 && 事务最终回滚
+                ($isDone = $result !== false) || $index['level'] && $index['state'] = false;
             }
         //事务处理
         } else if ($dbObj = &self::getConnect('write')) {
@@ -334,7 +344,7 @@ abstract class of_db {
             //启动事务
             if ($sql === null) {
                 //嵌套事务
-                if (isset($index['level'])) {
+                if ($index['level']) {
                     $index['level'] += 1;
                     $result = true;
                 //根级事务 && 开启事务成功
@@ -349,7 +359,10 @@ abstract class of_db {
                     $index['read'] = &$dbObj;
                 }
             //结束事务
-            } else if (isset($index['level'])) {
+            } else if ($index['level']) {
+                //当前事务最终回滚状态
+                $state = $index['state'];
+
                 //嵌套事务
                 if (--$index['level']) {
                     //嵌套回滚 && 最终回滚
@@ -360,12 +373,16 @@ abstract class of_db {
                     $isDone = $result = $dbObj->{$fun[$sql && $index['state']]}();
                     //切回原始配置
                     $index['read'] = &$index['back'];
+                    //标记事务未开启
+                    $index['level'] = 0;
+                    //最终状态为提交
+                    $index['state'] = null;
                     //注销事务信息
-                    unset($index['back'], $index['level']);
+                    unset($index['back']);
                 }
 
                 //返回结果 是回滚 || 执行成功 && 最终提交
-                $result = $sql === false || $result && $index['state'];
+                $result = $sql === false || $result && $state;
             }
         }
 
@@ -376,7 +393,7 @@ abstract class of_db {
                 //在事务中
                 if (!empty($v['inst']['level'])) {
                     //不发心跳包 || 发送心跳包
-                    empty($v['inst']['ping']) || $v['inst']['write']->_ping(false);
+                    $v['inst']['ping'] && $v['inst']['write']->_ping(false);
                     //标记下一轮发送心跳包
                     $v['inst']['ping'] = true;
                 }
@@ -417,13 +434,20 @@ abstract class of_db {
             $isMix = $pool['write'] !== $pool['read'];
             //引用读写分离
             $pool = &$pool[$type];
+            //初始化默认结构
+            $config['inst'] += array(
+                'ping'  => true,
+                'level' => 0,
+                'state' => null,
+                'tzId'  => date('P', 0)
+            );
 
             do {
                 //随机读取一连接
-                $link = &$pool[$rand = rand(0, count($pool) - 1)];
+                $link = $pool[$rand = rand(0, count($pool) - 1)];
                 //设置时区
                 if (($index = &$link['params']['timezone']) === null || $index === true) {
-                    $index = of::config('_of.timezone');
+                    $index = $config['inst']['tzId'];
                 }
 
                 //标识允许实例化
@@ -443,7 +467,7 @@ abstract class of_db {
                     $isMix || $config['inst'] = array(
                         'write' => &$dbLink,
                         'read'  => &$dbLink
-                    );
+                    ) + $config['inst'];
                     break;
                 }
 

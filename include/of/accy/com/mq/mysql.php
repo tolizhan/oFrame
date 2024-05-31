@@ -444,7 +444,7 @@ class of_accy_com_mq_mysql extends of_base_com_mq {
             //重置过期时间
             $index['expire'] = 600;
             //读取正在执行并发数据, 第一位为0
-            $sort = of_base_com_timer::data(true, 1);
+            $sort = of_base_com_timer::data(null, 1);
             $sort = $sort['info'][$cCid]['sort'];
             //计算消息数据偏移量(阶加公式=lots * (sort+1) * 并行概率 * sort/2
             $index['limit'] = (int)ceil($lots * ($sort + 1) * 0.7 * $sort / 2);

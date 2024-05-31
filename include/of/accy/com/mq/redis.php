@@ -754,7 +754,7 @@ class of_accy_com_mq_redis extends of_base_com_mq {
             //重置过期时间
             $index['expire'] = 600;
             //读取正在执行并发数据, 第一位为0
-            $count = of_base_com_timer::data(true, 1);
+            $count = of_base_com_timer::data(null, 1);
 
             //当前并发位置, 第一位为0
             $nSort = $count['info'][$cCid]['sort'];

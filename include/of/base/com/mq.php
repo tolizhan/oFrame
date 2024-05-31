@@ -228,29 +228,15 @@ class of_base_com_mq {
      * 作者 : Edgar.lee
      */
     public static function state($start = true) {
-        //最终运行状态
-        $result = false;
-        //全局节点列表键
-        $listKey = 'of_base_com_mq::nodeList';
-        //读取全局节点列表
-        $nodes = of_base_com_kv::get($listKey, array(), '_ofSelf');
-
-        //判断所有监听, 一个运行便为运行
-        foreach ($nodes as $kt => &$vt) {
-            //节点进程锁
-            $nodeLock = 'of_base_com_mq::nodeLock#' . $kt;
-            //队列监听未启动
-            if (of_base_com_data::lock($nodeLock, 6)) {
-                of_base_com_data::lock($nodeLock, 3);
-            //队列监听已启动
-            } else {
-                $result = true;
-                break ;
-            }
-        }
-
+        //空监听路径(空节点ID)不触发队列监听路径
+        if (!$nodeId = &self::$nodeId) return true;
+        //节点进程锁
+        $nodeLock = 'of_base_com_mq::nodeLock#' . $nodeId;
+        //当前节点是否启动, 未启动解锁
+        ($result = !of_base_com_data::lock($nodeLock, 6)) || of_base_com_data::lock($nodeLock, 3);
         //需要开启 && 尝试开启
-        $start && self::listen('nodeLock');
+        $result || $start && self::listen('nodeLock');
+        //返回结果
         return $result;
     }
 
@@ -722,7 +708,7 @@ class of_base_com_mq {
                 $nodeLock = 'of_base_com_mq::nodeLock#' . $nodeId;
                 //连接加锁(非阻塞) 兼容 glusterfs 网络磁盘
                 while (!of_base_com_timer::renew() && !of_base_com_data::lock($nodeLock, 6)) {
-                    sleep(1);
+                    sleep(30);
                 }
                 //连接解锁
                 of_base_com_data::lock($nodeLock, 3);

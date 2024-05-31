@@ -469,7 +469,7 @@ L === undefined && (L = {
 
                 //需要监听
                 if (!index.call) {
-                    index.call = function ( evt ) {
+                    index.call = function (evt) {
                         //备份事件
                         var o = {'b' : L.event.e};
 

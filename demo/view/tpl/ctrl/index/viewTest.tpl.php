@@ -1,5 +1,5 @@
 <?php
-$this->head( array(
+$this->head(array(
     'title' => L::getText('测试输出的标题'),
     'css'   => array(
         //'/main.css',

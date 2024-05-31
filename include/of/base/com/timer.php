@@ -28,6 +28,7 @@
  *          nodeLock#节点ID : 节点进程, 启动时独享锁
  *          daemon#节点ID : 守护进程, 启动时独享锁
 
+ *          "taskIsGc" : 标识守护进程为任务回收器
  *          "taskList" : 任务列表锁, 当新插入或清理任务时加独享锁
  *          taskLock#任务ID : 单个任务锁, 任务启动时加共享锁, 清理时加独享锁, 未存信息
  *          taskLock#任务ID#并发数字 : 任务并发锁, 对应并发任务启动时加独享锁
@@ -83,8 +84,6 @@ class of_base_com_timer {
         echo self::state() ? 'running' : 'starting', "<br>\n";
         //永不超时
         ini_set('max_execution_time', 0);
-        //开启计划任务
-        self::timer();
 
         if (OF_DEBUG === false) {
             exit('Access denied: production mode.');
@@ -127,6 +126,8 @@ class of_base_com_timer {
             $result = false;
         //任务列表遍历检查
         } else if ($name === 'nodeLock') {
+            //当前时间
+            $time = 0;
             //全局节点列表键
             $listKey = 'of_base_com_timer::nodeList';
             //读取全局节点列表
@@ -156,24 +157,39 @@ class of_base_com_timer {
 
                 //无任何任务
                 if ($movTask === false && $crontab === false) sleep(30);
-                //启动保护进程
-                self::timer('daemon');
+                //启动保护进程, 每10分钟执行一次
+                if (($temp = time()) - $time > 600) {
+                    //更新最后执行时间
+                    $time = $temp;
+                    //启动保护进程
+                    self::timer('daemon');
+                }
             }
 
             //连接解锁
             of_base_com_data::lock($lock, 3);
         //保护进程
         } else if ($name === 'daemon') {
-            //清理节点信息与任务列表(1 | 2 | 1073741824)
-            self::info(1073741827);
-
             //打开任务进程锁文件
             $nLock = 'of_base_com_timer::nodeLock#' . $nodeId;
-            //全局任务列表键
-            $tLock = 'of_base_com_timer::taskList';
+            //任务回收器键
+            $gLock = 'of_base_com_timer::taskIsGc';
+            //是否为任务回收器
+            $isGc = false;
+            //当前时间
+            $time = 0;
+
             //连接加锁(非阻塞) 兼容 glusterfs 网络磁盘
             while (!self::renew() && !of_base_com_data::lock($nLock, 6)) {
-                sleep(1);
+                sleep(30);
+
+                //每10分钟执行一次
+                if (($temp = time()) - $time > 600) {
+                    //更新最后执行时间
+                    $time = $temp;
+                    //成为任务回收器 && 清理节点信息与任务列表(1 | 2 | 1073741824)
+                    ($isGc || $isGc = of_base_com_data::lock($gLock, 6)) && self::info(1073741827);
+                }
             }
             //连接解锁
             of_base_com_data::lock($nLock, 3);
@@ -209,6 +225,7 @@ class of_base_com_timer {
      * 作者 : Edgar.lee
      */
     public static function task($params, &$taskObj = -234567890) {
+        static $onTimer = null;
         //格式化
         $params += array('time' => 0, 'cNum' => 0, 'try' => array());
 
@@ -217,7 +234,7 @@ class of_base_com_timer {
             //当前时间
             $nowTime = time();
             //开启定时器
-            self::timer();
+            $onTimer === null && $onTimer = !self::timer();
 
             //时间戳
             if (is_numeric($params['time'])) {
@@ -232,15 +249,15 @@ class of_base_com_timer {
             //限制并发 && 立刻执行
             if ($params['cNum'] && $params['time'] <= $nowTime) {
                 //并发数组
-                $cArr = is_array($params['cNum']) ?
-                    $params['cNum'] : range(1, $params['cNum']);
+                is_array($params['cNum']) || $params['cNum'] = range(1, $params['cNum']);
                 //读取当前并发信息
-                $temp = self::data(null, 1, $params['call']);
-
-                //当前执行并发数大于等于所需并发数, 直接跳出
-                if (!array_diff($cArr, array_keys($temp['info']))) {
-                    return ;
+                $temp = self::data(null, $params['cNum'], $params['call']);
+                //移除已执行的并发
+                foreach ($params['cNum'] as $k => &$v) {
+                    if ($temp['info'][$v]['isRun']) unset($params['cNum'][$k]);
                 }
+                //所有并发都在执行, 直接跳出
+                if (!$params['cNum']) return ;
             }
 
             //异步模式 && 即时执行
@@ -314,29 +331,15 @@ class of_base_com_timer {
      * 作者 : Edgar.lee
      */
     public static function state($start = true) {
-        //最终运行状态
-        $result = false;
-        //全局节点列表键
-        $listKey = 'of_base_com_timer::nodeList';
-        //读取全局节点列表
-        $nodes = of_base_com_kv::get($listKey, array(), '_ofSelf');
-
-        //判断所有监听, 一个运行便为运行
-        foreach ($nodes as $kt => &$vt) {
-            //节点进程锁
-            $nodeLock = 'of_base_com_timer::nodeLock#' . $kt;
-            //队列监听未启动
-            if (of_base_com_data::lock($nodeLock, 6)) {
-                of_base_com_data::lock($nodeLock, 3);
-            //队列监听已启动
-            } else {
-                $result = true;
-                break ;
-            }
-        }
-
+        //空节点名 && 不启动触发器
+        if (!$nodeId = &self::$config['nodeId']) return true;
+        //节点进程锁
+        $nodeLock = 'of_base_com_timer::nodeLock#' . $nodeId;
+        //当前节点是否启动, 未启动解锁
+        ($result = !of_base_com_data::lock($nodeLock, 6)) || of_base_com_data::lock($nodeLock, 3);
         //需要开启 && 尝试开启
-        $start && self::timer();
+        $result || $start && self::timer();
+        //返回结果
         return $result;
     }
 
@@ -407,44 +410,44 @@ class of_base_com_timer {
                     of_base_com_data::lock($taskLock, 3);
                 //任务已运行 && 文件信息存在
                 } else {
-                    //加锁消息
-                    $type & 1073741824 && of_base_com_data::lock($taskInfoKey, 2);
                     //单个任务备注
                     $note = of_base_com_kv::get($taskNoteKey, array(), '_ofSelf');
-                    //单个任务信息
-                    $info = of_base_com_kv::get($taskInfoKey, array(), '_ofSelf');
-
                     //读取任务回调信息
                     $index = &$save[$kt];
                     $index = array('call' => &$note['call'], 'list' => array());
 
-                    //遍历任务信息
-                    foreach ($info['list'] as $k => &$v) {
-                        //加锁成功, 进程没启动
-                        if (of_base_com_data::lock($temp = "{$taskLock}#{$k}", 6)) {
-                            //清理模式使用, 清理列表数据
-                            unset($info['list'][$k]);
-                            of_base_com_data::lock($temp, 3);
-                        } else {
-                            //记录并发执行的时间
-                            $index['list'][$k] = array(
-                                'datetime' => date('Y-m-d H:i:s', $v['time']),
-                                'timestamp' => $v['time']
-                            );
+                    //加锁消息
+                    $type & 1073741824 && of_base_com_data::lock($taskInfoKey, 2);
+                    //单个任务信息成功
+                    if ($info = of_base_com_kv::get($taskInfoKey, array(), '_ofSelf')) {
+                        //遍历任务信息
+                        foreach ($info['list'] as $k => &$v) {
+                            //加锁成功(非清理使用缓存), 进程没启动
+                            if ($type & 1073741824 && of_base_com_data::lock($temp = "{$taskLock}#{$k}", 5)) {
+                                //清理模式使用, 清理列表数据
+                                unset($info['list'][$k]);
+                                of_base_com_data::lock($temp, 3);
+                            } else {
+                                //记录并发执行的时间
+                                $index['list'][$k] = array(
+                                    'datetime' => date('Y-m-d H:i:s', $v['time']),
+                                    'timestamp' => $v['time']
+                                );
+                            }
+                        }
+                        //按运行序号排序
+                        ksort($index['list']);
+
+                        //清理模式
+                        if ($type & 1073741824) {
+                            //更新备注有效期
+                            of_base_com_kv::set($taskNoteKey, $note, 2592000, '_ofSelf');
+                            //更新信息有效期
+                            of_base_com_kv::set($taskInfoKey, $info, 2592000, '_ofSelf');
                         }
                     }
-                    //按运行序号排序
-                    ksort($index['list']);
-
-                    //清理模式
-                    if ($type & 1073741824) {
-                        //更新备注有效期
-                        of_base_com_kv::set($taskNoteKey, $note, 2592000, '_ofSelf');
-                        //更新信息有效期
-                        of_base_com_kv::set($taskInfoKey, $info, 2592000, '_ofSelf');
-                        //解除信息锁
-                        of_base_com_data::lock($taskInfoKey, 3);
-                    }
+                    //解除信息锁
+                    $type & 1073741824 && of_base_com_data::lock($taskInfoKey, 3);
                 }
             }
 
@@ -557,6 +560,8 @@ class of_base_com_timer {
             $filt = $cIds === 2 ? null : $cIds !== 1;
             //并发ID排序计数
             $sort = -1;
+            //使用缓存锁, 通过守护进程更新
+            $lock = $cIds === 1 && $data === null;
 
             //遍历列表
             if (is_int($cIds)) {
@@ -564,10 +569,14 @@ class of_base_com_timer {
                 $taskInfoKey = 'of_base_com_timer::taskInfo#' . $call;
                 //读取消息
                 $cIds = of_base_com_kv::get($taskInfoKey, array('list' => array()), '_ofSelf');
-                //读取并发ID
-                $cIds = array_keys($cIds['list']);
                 //在异步并发中读取自身时没数据一定是k-v服务不稳定
-                $cIds || isset($nowTask['cArg']['cMd5']) && trigger_error('K-V service unavailable: _ofSelf');
+                if (isset($nowTask['cArg']['cMd5']) && !isset($cIds['list'][$nowTask['cArg']['cCid']])) {
+                    trigger_error('K-V service unavailable: _ofSelf');
+                    exit;
+                //读取并发ID
+                } else {
+                    $cIds = array_keys($cIds['list']);
+                }
             //读取自身
             } else if ($cIds === null) {
                 $cIds = array($nowTask['cArg']['cCid']);
@@ -584,7 +593,7 @@ class of_base_com_timer {
                 //自身进程
                 $isSelf = isset($nowTask) && $nowTask['cArg']['cCid'] === $v;
                 //进程是否运行, true=运行, false=停止
-                $isRun = $isSelf ? true : !of_base_com_data::lock($taskNumsLock, 5);
+                $isRun = $isSelf || $lock ? true : !of_base_com_data::lock($taskNumsLock, 5);
 
                 //读取全部进程 || (读取停止 ? 进程停止 : 进程运行)
                 if ($filt || ($filt === null ? !$isRun : $isRun)) {
@@ -623,7 +632,7 @@ class of_base_com_timer {
                 }
 
                 //并发任务运行中 || 解锁未运行的进程
-                $isRun || of_base_com_data::lock($taskNumsLock, 3);
+                $isRun || $lock || of_base_com_data::lock($taskNumsLock, 3);
             }
         }
 
@@ -684,7 +693,7 @@ class of_base_com_timer {
      *          "cMd5" :o回调唯一值, 并发时存在
      *          "cCid" :o并发ID, 从1开始, 并发时存在
      *          "mark" :o数据回传标识, 存在时标识回传, 协程任务存在
-     *          "type" : 任务类型, 1=定时器, 2=静态, 4=动态, 8=协程
+     *          "type" : 任务类型, 1=定时器, 2=静态任务, 4=动态任务, 8=子任务
      *      }
      * 作者 : Edgar.lee
      */
@@ -1051,7 +1060,13 @@ class of_base_com_timer {
                 //读取加锁源
                 $fp = of_base_com_disk::file(self::$config['path'] . '/taskList.php', null, null);
                 //读取任务列表
-                $task = of_base_com_disk::file($fp, true, true);
+                try {
+                    $task = of_base_com_disk::file($fp, true, true);
+                //任务读取失败
+                } catch (Exception $e) {
+                    of::event('of::error', true, $e);
+                    $task = array();
+                }
 
                 $task[$mode['time']][$hash] = &$mode;
                 //按时间递增排序
@@ -1083,7 +1098,13 @@ class of_base_com_timer {
                 if (($result = ftell($fp) > 21) && is_int($mode)) {
                     $result = array();
                     //读取任务列表
-                    $task = of_base_com_disk::file($fp, true, true);
+                    try {
+                        $task = of_base_com_disk::file($fp, true, true);
+                    //任务读取失败
+                    } catch (Exception $e) {
+                        of::event('of::error', true, $e);
+                        $task = array();
+                    }
 
                     //有到期任务
                     while (($time = key($task)) && $nowtime >= $time) {
@@ -1356,7 +1377,7 @@ class of_base_com_timer {
      *      }, ...]
      *      cArg : 单机会参数 {
      *          "mark" :o数据回传标识, 存在时标识回传
-     *          "type" : 任务类型, 1=定时器, 2=静态, 4=动态, 8=协程
+     *          "type" : 任务类型, 1=定时器, 2=静态任务, 4=动态任务, 8=子任务
      *      }
      * 作者 : Edgar.lee
      */

@@ -33,8 +33,8 @@ namespace {
         public static function &mockEnv($fnObj) {
             //关闭默认输出缓存
             ob_get_level() && ob_get_clean();
-            //注入协议封装
-            stream_wrapper_register('of.incl', 'swoole');
+            //设置标识时区, 用来判断是否需要更改协程时区
+            date_default_timezone_set('GMT-0');
             //注册结束执行
             //register_shutdown_function('swoole::clear', true);
             //注册清理空间
@@ -47,7 +47,9 @@ namespace {
                 //相对命名空间 xx\yy, 绝对命名空间 \xx\yy
                 'T_NAME_QUALIFIED' => 314, 'T_NAME_FULLY_QUALIFIED' => 312, 
                 //自身命名空间 namespace\xxx, 只读关键词 readonly
-                'T_NAME_RELATIVE' => 313, 'T_READONLY' => 363
+                'T_NAME_RELATIVE' => 313, 'T_READONLY' => 363,
+                //注解"#["
+                'T_ATTRIBUTE' => 387
             ) as $k => $v)  defined($k) || define($k, $v);
 
             //默认系统配置
@@ -58,7 +60,8 @@ namespace {
             );
             //引用php配置
             $GLOBALS['phpIni'] = array(
-                'max_execution_time' => 30, 'memory_limit' => 128 * 1024
+                'max_execution_time' => 30, 'memory_limit' => 128 * 1024,
+                'date.timezone' => 'PRC'
             );
             //合并GLOBALS超全局变量
             $super = array(
@@ -71,6 +74,7 @@ namespace {
                 '_REQUEST' => &$GLOBALS['_REQUEST'],
                 'GLOBALS' => &$super
             );
+
             //生成超全局变量
             $attr = &swoole::loadEnv($_SERVER);
             //初始化接管方法对象

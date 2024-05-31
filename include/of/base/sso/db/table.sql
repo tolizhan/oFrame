@@ -35,7 +35,7 @@ INSERT INTO `__COLUMNS` (`TABLE_NAME`,`COLUMN_NAME`,`ORDINAL_POSITION`,`COLUMN_D
 ('_of_sso_login_log','id','1',NULL,'NO',NULL,NULL,'int(11) unsigned','auto_increment','日志主键'),
 ('_of_sso_login_log','name','2',NULL,'NO','utf8','utf8_general_ci','char(255)','','用户帐号'),
 ('_of_sso_login_log','site','3',NULL,'NO','utf8','utf8_general_ci','char(255)','','系统帐号'),
-('_of_sso_login_log','time','4',NULL,'NO',NULL,NULL,'datetime','','登录时间'),
+('_of_sso_login_log','time','4',NULL,'NO',NULL,NULL,'timestamp','','登录时间'),
 ('_of_sso_login_log','data','5',NULL,'NO','utf8','utf8_general_ci','mediumtext','','日志数据'),
 ('_of_sso_pack_func','id','1',NULL,'NO',NULL,NULL,'int(10) unsigned','auto_increment','主键'),
 ('_of_sso_pack_func','realmId','2','0','NO',NULL,NULL,'int(10) unsigned','','系统ID,关联_of_sso_realm::id'),

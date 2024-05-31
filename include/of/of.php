@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200270);
+define('OF_VERSION', 200272);
 
 /**
  * 描述 : 控制层核心
@@ -376,7 +376,7 @@ class of {
 
      *     #获取时间(文本)
      *      code : 固定"time"
-     *      info : 返回时间格式, 默认2=格式化时间, 1=时间戳, 3=[时间戳, 格式化]
+     *      info : 返回时间格式, 默认2=格式化时间, 1=时间戳, 3=[时间戳, 格式化, 时区标识, 格林时差]
 
      *     #操作错误(文本)
      *      code : 固定"error"
@@ -460,7 +460,7 @@ class of {
      * 注明 :
      *      监听栈列表结构($sList) : [{
      *          "wuid"  : 工作ID,
-     *          "time"  : [时间戳, 格式化],
+     *          "time"  : [时间戳, 格式化, 时区标识 Europe/London, 格林差异 ±00:00],
      *          "dyna"  : 是否监听新连接池, true=是, false=否
      *          "unify" : 集成工作增量, 0=未开启集成工作, >=1为集成工作增量
      *          "list"  : 监听的连接池 {
@@ -507,7 +507,8 @@ class of {
                         //定位所属的集成工作
                         $sList[$info]['unify'] && $info += $sList[$info]['unify'] - 1;
                         //引用增量工作
-                        $index = &$sList[$info]['list'];
+                        $index = &$sList[$info];
+                        //新增的连接池
                         $code[] = $data['pool'];
                     }
                 //工作存在
@@ -515,7 +516,7 @@ class of {
                     //统一工作增量
                     $sList[$info]['unify'] && $info += $sList[$info]['unify'] - 1;
                     //引用增量工作
-                    $index = &$sList[$info]['list'];
+                    $index = &$sList[$info];
                 //工作不存在
                 } else {
                     throw new Exception('Work does not exist: ' . $info);
@@ -532,7 +533,7 @@ class of {
                 //压入栈列表
                 array_unshift($sList, array(
                     'wuid'  => uniqid(),
-                    'time'  => array($time = time(), date('Y-m-d H:i:s', $time)),
+                    'time'  => array($time = time()) + explode('|', date('|Y-m-d H:i:s|e|P', $time)),
                     'dyna'  => $code === null ? 1 : (isset($sList[0]) && $sList[0]['dyna'] ?
                         $sList[0]['dyna'] + 1 : 0
                     ),
@@ -543,24 +544,37 @@ class of {
                     'done'  => array()
                 ));
                 //引用增量工作
-                $index = &$sList[$temp ? $temp - 1 : 0]['list'];
-                //自动监听 && 初始化空连接池
-                $code === null && $code = array();
+                $index = &$sList[$temp ? $temp - 1 : 0];
             }
 
-            //遍历开启事务
-            foreach ($code as &$v) {
-                //去重数据库连接池 && 不在黑名单中
-                if (empty($index[$v]) && empty($block[$v])) {
-                    //连接池在事务中 ? 克隆连接池, 返回原连接池新名称 : null
-                    $temp = of_db::pool($v, 'level') ? of_db::pool($v, 'clone', $v) : null;
-                    //克隆名不冲突 && 记录默认连接源
-                    $temp === null && $temp = $v;
-                    //保存原连接池
-                    $index[$v] = $temp;
-                    //事务开启成功(开启失败连接层会抛出异常)
-                    of_db::sql(null, $v);
+            //监听连接池不为空
+            if ($code) {
+                //当前时区标识
+                $nowTz = date_default_timezone_get();
+                //当前时区与工作时区相同 || 恢复到工作时区
+                $nowTz === $index['time'][2] || date_default_timezone_set($index['time'][2]);
+                //遍历开启事务
+                foreach ($code as &$v) {
+                    //去重数据库连接池 && 不在黑名单中
+                    if (empty($index['list'][$v]) && empty($block[$v])) {
+                        if (
+                            //数据库已连接
+                            ($temp = of_db::pool($v, 'info')) &&
+                            //在事务中 || 工作时区与数据库时区不同
+                            ($temp['level'] || $temp['tzId'] !== $index['time'][3])
+                        ) {
+                            //克隆连接池, 返回原连接池新名称
+                            $index['list'][$v] = of_db::pool($v, 'clone', $v);
+                        } else {
+                            //使用默认连接源
+                            $index['list'][$v] = $v;
+                        }
+                        //事务开启成功(开启失败连接层会抛出异常)
+                        of_db::sql(null, $v);
+                    }
                 }
+                //当前时区与工作时区相同 || 恢复到当前时区
+                $nowTz === $index['time'][2] || date_default_timezone_set($nowTz);
             }
 
             //初始化返回结构
@@ -713,6 +727,9 @@ class of {
                     //回滚事务事务 && 清除克隆连接池
                     $k === $v ? of_db::pool($v, 'clean', 1) : of_db::pool($v, 'rename', $k);
                 }
+
+                //恢复到工作创建时的时区
+                date_default_timezone_set($index['time'][2]);
             }
         //文本=功能操作
         } else if (is_string($code)) {
@@ -1060,7 +1077,6 @@ class of {
         ) {
             date_default_timezone_set($index);
         }
-        $index = date('P', $_SERVER['REQUEST_TIME']);
 
         //cli模式初始化环境信息
         if (PHP_SAPI === 'cli') {

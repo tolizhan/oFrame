@@ -36,6 +36,8 @@ var oUpload = (function () {
     var share = {
         //服务器上传目录
         'rootDir'  : OF_URL + '/addin/oUpload',
+        //系统域名
+        'rootHost' : location.protocol + '//' + location.host,
         //碎片节点
         'fragment' : document.createElement('div'),
         //最大上传字节
@@ -485,6 +487,21 @@ var oUpload = (function () {
                 for(var i in index) if( index[i].ajax ) return ;
                 file.click();
             });
+            //拖拽文件移动
+            L.event(params.node, 'dragover', function () {
+                //关闭事件默认动作, 来触发drop事件
+                return false;
+            });
+            //拖拽文件释放
+            L.event(params.node, 'drop', function (e) {
+                //读取上传文件列表
+                file.files = e.event.dataTransfer.files
+                //触发选择文件完成
+                html5.onSel({'target' : file});
+                //关闭事件默认动作, 防止打开文件
+                return false;
+            });
+
             //上传调用函数
             file.upload = function (fileId, check) {
                 html5.upload.call(file, fileId, check);
@@ -840,10 +857,8 @@ var oUpload = (function () {
                 }
             };
 
-            //上传路径
-            (temp = index.config.script).indexOf('://') > 0 || (temp = index.config.path + temp);
             //打开连接
-            ajax.open('POST', temp, true);
+            ajax.open('POST', index.config.script, true);
             //ajax标识
             ajax.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
             //发送数据
@@ -1088,10 +1103,12 @@ var oUpload = (function () {
             'multi'  : false,
             'path'   : share.rootDir,
             'queue'  : 99,
-            'script' : '/oUpload.php',
+            'script' : share.rootDir + '/oUpload.php',
             'show'   : true
         }, params);
 
+        //上传路径
+        params.script.indexOf('://') > 0 || (params.script = share.rootHost + params.script);
         //最大字节校验
         (!params.size || params.size > share.maxSize) && (params.size = share.maxSize);
         //初始化对象

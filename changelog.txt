@@ -1,3 +1,41 @@
+版本: 272
+作者: Edgar
+日期: 2024年5月31日 18:37:44
+信息:
+说明: + 支持Swoole下协程之间的时区隔离
+      + swooleRedis可配置解锁与续签时间
+      + of::work([x]|null)决定工作时区
+      + of::work('time',3)包含工作时区
+      + 当下时区决定数据库连接时的时区
+      + of_db::pool('info')返回连接信息
+      + oUpload上传插件支持拖拽文件上传
+      - 读取_of.timezone不再是格林时差
+      - 框架控制台状态显示每个节点状态
+      * 提升Swoole协程调度性能与兼容性
+      * 解决已知异常导致的框架瘫痪问题
+      * 错误日志默认时区"_of.timezone"
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/tool/swoole/debug.php
+已修改 : /trunk/demo/view/tpl/ctrl/index/viewTest.tpl.php
+已修改 : /trunk/include/of/accy/com/data/lock/swooleRedis.bin
+已修改 : /trunk/include/of/accy/com/data/lock/swooleRedis.php
+已修改 : /trunk/include/of/accy/com/mq/mysql.php
+已修改 : /trunk/include/of/accy/com/mq/redis.php
+已修改 : /trunk/include/of/addin/PHPOffice/PHPExcel/Autoloader.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.js
+已删除 : /trunk/include/of/addin/tcpdf/tools/.htaccess
+已修改 : /trunk/include/of/att/language/language.js
+已修改 : /trunk/include/of/att/link/L.js
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/sso/db/table.sql
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/swoole.php
+
 版本: 270
 作者: Edgar
 日期: 2024年4月1日 9:28:21

@@ -23,7 +23,9 @@ class of_base_error_writeLog {
             //php日志路径
             'phpLog' => OF_DATA . '/error/phpLog',
             //js日志路径
-            'jsLog'  => OF_DATA . '/error/jsLog'
+            'jsLog'  => OF_DATA . '/error/jsLog',
+            //日志时区
+            'logTz'  => of::config('_of.timezone')
         );
         self::$config['jsLog'] && of_view::head('head', '<script src="' .OF_URL. '/index.php?a=jsErrScript&c=of_base_error_jsLog"></script>');
 
@@ -243,9 +245,12 @@ class of_base_error_writeLog {
         of::saveError($index = &$logData['environment'], false);
         //配置引用
         $config = &self::$config;
+        //系统时区时间对象
+        $sysTime = new DateTime('now', new DateTimeZone($config['logTz']));
+        //系统时间日期[时间戳, 日期格式]
+        $sysTime = explode(' ', $sysTime->format('U /Y/m/d'));
         //当前时间戳
-        $logData['time'] = time();
-
+        $logData['time'] = $sysTime[0];
         //debug模式 && 不是备忘录 && 有打印信息
         if (OF_DEBUG && empty($index['memo']) && $printStr) {
             //打印日志
@@ -266,7 +271,7 @@ class of_base_error_writeLog {
             //写入日志
             if ($isSave && $index = &$config[$logType . 'Log']) {
                 //日志路径
-                $logPath = ROOT_DIR . $index . date('/Y/m/d', $logData['time']) . $logType;
+                $logPath = ROOT_DIR . $index . $sysTime[1] . $logType;
                 //追加方式打开日志
                 $handle = &of_base_com_disk::file($logPath . 'Data.php', null, null);
 

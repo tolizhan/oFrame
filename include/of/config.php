@@ -8,7 +8,7 @@ return array(
     'config'      => '/demo/config/config.php',
     //节点名称, 区别分布式不同节点, ""=不执行计划及队列等后台任务(用来分流后台任务与用户访问)
     'nodeName'    => $_SERVER['SERVER_ADDR'] . php_uname(),
-    //系统时区, 设置php支持的时区(如: Europe/London 支持夏令时), 读取格式为 ±00:00
+    //系统时区, 设置php支持的时区(如: Europe/London 支持夏令时)
     'timezone'    => 'PRC',
     //统一调试模式, true=开发模式, null=测试模式, false=生产模式, 字符串=切换开发模式密码
     'debug'       => true,
@@ -42,7 +42,7 @@ return array(
             'database'   => 'test',
             //mysql >= 5.5.3 可配置utf8mb4存储emoji表情
             'charset'    => 'utf8mb4',
-            //数据库时区, 默认true=框架时区, false=数据库时区, "±00:00"=指定时区
+            //数据库时区, 配合timestamp类型实现跨时区同步, 默认true=框架时区, false=数据库时区, "±00:00"=指定时区
             'timezone'   => true,
             //设置隔离级别, ""=跟随系统, "READ UNCOMMITTED", "READ COMMITTED", "REPEATABLE READ", "SERIALIZABLE"
             'isolation'  => 'READ COMMITTED',
@@ -148,7 +148,9 @@ return array(
         //php日志路径, false=关闭
         'phpLog' => '/data/error/phpLog',
         //js日志路径, false=关闭
-        'jsLog'  => '/data/error/jsLog'
+        'jsLog'  => '/data/error/jsLog',
+        //日志时区, 默认系统时区
+        //'logTz'  => _of.timezone
     ),
     //会话封装
     'session'     => array(
@@ -298,6 +300,10 @@ return array(
                     /*
                     //k-v redis连接池, 建议关闭持久化
                     'kvPool' => 'default',
+                    //自动解锁时间(s), 报错时可适当调大, 谨慎强杀Swoole进程, 可能导致锁无法及时释放
+                    'unlock' => 15,
+                    //续签锁间隔时间(s), 须小于"unlock", 更大可以支持更多的锁
+                    'renew' => 5
                     // */
                 )
             )
@@ -334,13 +340,7 @@ return array(
             'fork' => array(
                 //调用of_accy_com_timer_xxx, 支持default和swoole
                 'adapter' => 'default',
-                'params' => array(
-                    #swoole 模式
-                    /*
-                    //并发任务的启动模式, 1=合并任务(省资源, 若进程崩溃会影响多个任务), 2=独立进程(耗资源更稳定, 默认值)
-                    'mode' => 2
-                    // */
-                )
+                'params' => array()
             )
         ),
         //key-value 数据存储 可像db分连接池, 'default'为默认连接池

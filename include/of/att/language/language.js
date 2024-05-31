@@ -29,7 +29,7 @@
             //连接:行号
             var lines = '';
             try {
-                null.null.null;
+                lines.lines.lines;
             } catch (e) {
                 if (e.stack) {
                     lines = e.stack.split("\n");
