@@ -6,7 +6,7 @@
  *          协议封装 : stream_open stream_stat stream_read stream_eof stream_set_option
  *          变量隔离 : __construct __set offsetGet shareVar varMaps $_GLOBAL_SCOPE_
  *          协程隔离 : loadClass loadEnv reinit clear fork errCtrl autoClass dispatch checkExit
- *          服务支撑 : data task serial yield sentry getBitSize start test http
+ *          服务支撑 : data task health serial yield sentry getBitSize request start test webSocket
  *          代码重写 : codeParser codeKey codeHard
 
  *      已接管会话方法
@@ -212,6 +212,11 @@ class swoole implements ArrayAccess {
     //动态变量映射列表, 当读取协程内存时, memoryGetUsage方法会使用
     private $vMaps = null;
 
+    //连接描述符    #Socket对象
+    private $objFd;
+    //连接描述符映射{描述符 : {"serv" : 服务, "requ" : 请求, "resp" : 响应, "call" : 回调"open info done"}, ...}
+    private static $fdMap = array();
+
     //协程隔离列表
     private static $attrs = array();
     //初始化回调母版 {strtr(class, '\\', '_') : {class::init => class::init, ...}, ...}
@@ -235,29 +240,29 @@ class swoole implements ArrayAccess {
     /**
      * 描述 : 打开文件流
      * 注明 :
-     *      路径结构($path) : 协议://协程ID://是否全局://[eval ? 路径://代码 : '路径']
+     *      路径结构($path) : 协议://协程ID\n是否全局\n[eval ? 路径\n代码 : 路径]
      * 作者 : Edgar.lee
      */
     public function stream_open($path, $mode, $options, &$file) {
         //"协程ID://"为防止报错 Failed to open stream: infinite recursion prevented
-        $path = explode('://', $path, 5);
+        $path = explode("\n", $path, 4);
 
         //改写只读数据流协议
-        if ($path[3] === 'php:input') {
+        if ($path[2] === 'php:input') {
             $this->code = self::$attrs[Co::getCid()]['super']['_FUNC_mapVar']->input;
             $this->stat['size'] = strlen($this->code);
             return true;
         //执行字符串代码
-        } else if (isset($path[4])) {
+        } else if (isset($path[3])) {
             //生成eval路径
-            $file = "{$path[3]} : eval()'d code";
+            $file = "{$path[2]} : eval()'d code";
             //存储改写代码
-            $code = '<?php ' . $path[4];
+            $code = '<?php ' . $path[3];
             //缓存标记
-            $mark = md5($path[4]);
+            $mark = md5($path[3]);
         //执行文件代码
         } else {
-            $mark = $file = realpath($path[3]);
+            $mark = $file = realpath($path[2]);
         }
 
         //存在缓存, 减少改写时间及内存占用量
@@ -276,7 +281,7 @@ class swoole implements ArrayAccess {
             }
 
             //改写代码
-            self::codeParser($code, (int)$path[2], $ctrl);
+            self::codeParser($code, (int)$path[1], $ctrl);
             //统计代码长度
             $stat['size'] = strlen($code);
             //改后信息
@@ -388,7 +393,7 @@ class swoole implements ArrayAccess {
             //创建对象"newObj"
             case 'newObj':
                 //是时间对象 && 是标识时区
-                if ($val instanceof DateTimeInterface && $val->format('e') === 'GMT-0') {
+                if ($val instanceof DateTimeInterface && $val->format('e') === 'gMt-0') {
                     //改为协程时间
                     $val->setTimezone(self::$attrs[$this->space]['state']['tzIds'][2]);
                 }
@@ -1572,7 +1577,7 @@ class swoole implements ArrayAccess {
         $memory = &self::$attrs[$this->space]['state']['memory'];
 
         //任务进程返回真实内存
-        if ($memory[4] && $GLOBALS['system']['type'] === 'task') {
+        if ($memory[4] && $GLOBALS['system']['open'] === 'task') {
             return memory_get_usage(!!$real);
         //真实计算
         } else if (is_array($real)) {
@@ -1678,6 +1683,132 @@ class swoole implements ArrayAccess {
     }
 
     /**
+     * 描述 : 接管 file_get_contents
+     * 作者 : Edgar.lee
+     */
+    public function fileGetContents(...$params) {
+        //原始数据流
+        if ($params[0] === 'php://input') {
+            return self::$attrs[$this->space]['super']['_FUNC_mapVar']->input;
+        //打开资源
+        } else {
+            return call_user_func_array('file_get_contents', $params);
+        }
+    }
+
+    /**
+     * 描述 : 接管 file_put_contents
+     * 作者 : Edgar.lee
+     */
+    public function filePutContents($file, $data, $flags = 0, $context = null) {
+        //初始空上下文流
+        $context || $context = stream_context_create();
+        //仅写方式打开
+        $fp = fopen($file, 'c', !!($flags & FILE_USE_INCLUDE_PATH), $context);
+        //加独享锁
+        $flags & LOCK_EX && $this->flock($fp, LOCK_EX);
+        //追加模式
+        if ($flags & FILE_APPEND) {
+            //移动到最后
+            fseek($fp, 0, SEEK_END);
+        //覆盖模式
+        } else {
+            //游标移到起始位置, 防止部分磁盘支持超过结尾补"\0"功能
+            fseek($fp, 0);
+            //清空文件
+            ftruncate($fp, 0);
+        }
+        //写入数据成功 && 防止网络磁盘掉包
+        is_int($result = fwrite($fp, $data)) && (fseek($fp, -1, SEEK_CUR) || fread($fp, 1));
+        //解锁
+        $flags & LOCK_EX && flock($fp, LOCK_UN);
+        //关闭连接
+        fclose($fp);
+        //返回写入结果
+        return $result;
+    }
+
+    /**
+     * 描述 : 接管 fopen
+     * 作者 : Edgar.lee
+     */
+    public function fopen(...$params) {
+        //原始数据流
+        $params[0] === 'php://input' && $params[0] = 'sw.incl://' . $this->space . "\n0\nphp:input";
+        //打开资源
+        $result = call_user_func_array('fopen', $params);
+        //返回资源
+        return $result;
+    }
+
+    /**
+     * 描述 : 接管 flock
+     * 作者 : Edgar.lee
+     */
+    public function flock($stream, $operate, &$block = null) {
+        //加锁操作, swoole阻塞加锁相互冲突, 尝试锁不会
+        if (($operate & 3) < 3) {
+            //尝试锁成功 || 阻塞式加锁 && 等待加锁, 防止同一资源加两把锁时夯住
+            return flock($stream, $operate | 4, $block) || ($operate & 7) < 3 && self::yield('flock', array(
+                'stream' => $stream,
+                'operate' => $operate | 4,
+                'block' => &$block,
+                'exeTime' => self::$attrs[$this->space]['state']['exeTime']
+            ));
+        //解锁操作, 尝试解锁可能失败, 阻塞不会
+        } else {
+            return flock($stream, 3, $block);
+        }
+    }
+
+    /**
+     * 描述 : WebSocket推送数据
+     * 作者 : Edgar.lee
+     */
+    public function push($data) {
+        //连接存在
+        if (isset(self::$fdMap[$this->objFd])) {
+            $index = &self::$fdMap[$this->objFd];
+
+            //连接存在
+            if ($isOk = $index['serv']->exist($this->objFd)) {
+                is_array($data) && $data = of_base_com_data::json($data);
+                $isOk = $index['serv']->push($this->objFd, $data, SWOOLE_WEBSOCKET_FLAG);
+            }
+
+            //操作成功 || 关闭连接
+            $isOk || $this->close();
+            //返回结果
+            return $isOk;
+        }
+    }
+
+    /**
+     * 描述 : WebSocket关闭连接
+     * 作者 : Edgar.lee
+     */
+    public function close() {
+        //连接存在
+        if (isset(self::$fdMap[$this->objFd])) {
+            $index = &self::$fdMap[$this->objFd];
+
+            //服务存在 && 连接存在 && 发送关闭帧并关闭连接
+            $isOk = $index['serv'] && $index['serv']->exist($this->objFd) && $index['serv']->disconnect($this->objFd);
+
+            //移除连接
+            unset(self::$fdMap[$this->objFd]);
+            //存在结束回调 && 回调结束
+            isset($index['call']['done']) && self::fork($index['call']['done'], 1, array(
+                'requ' => $index['requ'],
+                'argv' => array('link' => $this->objFd)
+            ));
+
+            //返回结果
+            return $isOk;
+        }
+    }
+
+    /**
      * 描述 : 拦截调度入口回调事件, 解决多次调度正确返回校验值
      * 作者 : Edgar.lee
      */
@@ -1754,7 +1885,7 @@ class swoole implements ArrayAccess {
             $memory[2] && self::$nTime - $memory[2] >= 600 && ++$refresh === 1
         ) {
             //协程限制内存 && (设置永不超时 || 任务模式), 检查内存
-            if ($memory[1] > -1 && (!$exeTime[0] || $GLOBALS['system']['type'] === 'task')) {
+            if ($memory[1] > -1 && (!$exeTime[0] || $GLOBALS['system']['open'] === 'task')) {
                 //当前应用协程ID列表
                 $temp = array_fill_keys(array_keys(self::$attrs), 1);
                 //初始化协程内存刷新列表
@@ -1795,85 +1926,6 @@ class swoole implements ArrayAccess {
     }
 
     /**
-     * 描述 : 接管 file_get_contents
-     * 作者 : Edgar.lee
-     */
-    public function fileGetContents(...$params) {
-        //原始数据流
-        if ($params[0] === 'php://input') {
-            return self::$attrs[$this->space]['super']['_FUNC_mapVar']->input;
-        //打开资源
-        } else {
-            return call_user_func_array('file_get_contents', $params);
-        }
-    }
-
-    /**
-     * 描述 : 接管 file_put_contents
-     * 作者 : Edgar.lee
-     */
-    public function filePutContents($file, $data, $flags = 0, $context = null) {
-        //初始空上下文流
-        $context || $context = stream_context_create();
-        //仅写方式打开
-        $fp = fopen($file, 'c', !!($flags & FILE_USE_INCLUDE_PATH), $context);
-        //加独享锁
-        $flags & LOCK_EX && $this->flock($fp, LOCK_EX);
-        //追加模式
-        if ($flags & FILE_APPEND) {
-            //移动到最后
-            fseek($fp, 0, SEEK_END);
-        //覆盖模式
-        } else {
-            //游标移到起始位置, 防止部分磁盘支持超过结尾补"\0"功能
-            fseek($fp, 0);
-            //清空文件
-            ftruncate($fp, 0);
-        }
-        //写入数据成功 && 防止网络磁盘掉包
-        is_int($result = fwrite($fp, $data)) && (fseek($fp, -1, SEEK_CUR) || fread($fp, 1));
-        //解锁
-        $flags & LOCK_EX && flock($fp, LOCK_UN);
-        //关闭连接
-        fclose($fp);
-        //返回写入结果
-        return $result;
-    }
-
-    /**
-     * 描述 : 接管 fopen
-     * 作者 : Edgar.lee
-     */
-    public function fopen(...$params) {
-        //原始数据流
-        $params[0] === 'php://input' && $params[0] = 'of.incl://' . $this->space . '://0://php:input';
-        //打开资源
-        $result = call_user_func_array('fopen', $params);
-        //返回资源
-        return $result;
-    }
-
-    /**
-     * 描述 : 接管 flock
-     * 作者 : Edgar.lee
-     */
-    public function flock($stream, $operate, &$block = null) {
-        //加锁操作, swoole阻塞加锁相互冲突, 尝试锁不会
-        if (($operate & 3) < 3) {
-            //尝试锁成功 || 阻塞式加锁 && 等待加锁, 防止同一资源加两把锁时夯住
-            return flock($stream, $operate | 4, $block) || ($operate & 7) < 3 && self::yield('flock', array(
-                'stream' => $stream,
-                'operate' => $operate | 4,
-                'block' => &$block,
-                'exeTime' => self::$attrs[$this->space]['state']['exeTime']
-            ));
-        //解锁操作, 尝试解锁可能失败, 阻塞不会
-        } else {
-            return flock($stream, 3, $block);
-        }
-    }
-
-    /**
      * 描述 : 主动加载类
      *      spl_autoload_register回调中禁止加载相同类, 导致并发协程出现类不存在问题
      * 作者 : Edgar.lee
@@ -1883,10 +1935,12 @@ class swoole implements ArrayAccess {
             //类已存在 || 尝试加载类
             class_exists($class, false) || self::autoClass($class, false);
 
-            //引用协程状态
-            $init = &self::$attrs[$this->space]['state']['init'];
-            //协程类存在初始回调, 完成类初始化
-            if (isset($init[$name = strtr($class, '\\', '_')])) {
+            if (
+                //存在待初始化列表
+                ($init = &self::$attrs[$this->space]['state']['init']) &&
+                //存在类初始化回调
+                isset($init[$name = strtr($class, '\\', '_')])
+            ) {
                 $index = &$init[$name];
                 unset($init[$name]);
                 foreach ($index as &$v) self::reinit($v);
@@ -1907,30 +1961,34 @@ class swoole implements ArrayAccess {
      * 作者 : Edgar.lee
      */
     public static function &loadEnv(&$requ = null, &$resp = null) {
+        //协程ID
+        $space = Co::getCid();
+
         //初始化接管方法
         if ($requ) {
             //清理空间数据
             Co::defer('swoole::clear');
             //捕获所有输出
             ob_start();
-            //协程ID
-            $space = Co::getCid();
 
             //网络请求
             if ($isObj = is_object($requ)) {
-                //无待响的请求 && 运行的请求未满
-                if (
-                    ($temp = !self::$yield['waits']) &&
-                    ++self::$yield['state']['resNum'] <= SWOOLE_MAX_REQUEST
-                ) {
-                    //放入执行池
-                    self::$yield['resCo'][$space] = array();
-                //需排队
-                } else {
-                    //无待响的请求 && 恢复临时增加的请求数量
-                    $temp && --self::$yield['state']['resNum'];
-                    //放入排队池
-                    self::yield('waits');
+                //是web请求
+                if ($resp) {
+                    //无待响的请求 && 运行的请求未满
+                    if (
+                        ($temp = !self::$yield['waits']) &&
+                        ++self::$yield['state']['resNum'] <= SWOOLE_MAX_REQUEST
+                    ) {
+                        //放入执行池
+                        self::$yield['resCo'][$space] = array();
+                    //需排队
+                    } else {
+                        //无待响的请求 && 恢复临时增加的请求数量
+                        $temp && --self::$yield['state']['resNum'];
+                        //放入排队池
+                        self::yield('waits');
+                    }
                 }
 
                 //设置超全局隔离变量
@@ -1956,7 +2014,7 @@ class swoole implements ArrayAccess {
                 $result['_SERVER_mapVar'] = array(
                     'USER' => 'www-data',
                     'REDIRECT_STATUS' => 200,
-                    'SERVER_NAME' => parse_url($requ->header['host'], PHP_URL_HOST),
+                    'SERVER_NAME' => $requ->header['host'] ?? $requ->header['host'] = $_SERVER['SERVER_ADDR'],
                     'SERVER_ADDR' => $_SERVER['SERVER_ADDR'],
                     'SERVER_SOFTWARE' => 'swoole/' . SWOOLE_VERSION,
                     'GATEWAY_INTERFACE' => 'CGI/1.1',
@@ -2058,7 +2116,9 @@ class swoole implements ArrayAccess {
                 $index['state']['pCid'] = $resp;
             }
         //超全局隔离变量存在, 判断是否退出
-        } else if ($result = &self::$attrs[Co::getCid()]['super']) {
+        } else if (isset(self::$attrs[$space])) {
+            //引用超全局隔离变量
+            $result = &self::$attrs[$space]['super'];
             //检查退出
             $result['_FUNC_mapVar']->checkExit();
         //超全局隔离变量不存在
@@ -2214,20 +2274,18 @@ class swoole implements ArrayAccess {
         //引用协程列表
         $attrs = &self::$attrs;
         //可执行任务数
-        $count = 150;
+        $count = SWOOLE_MAX_REQUEST;
         //唯一ID计数
         $uuid = 0;
         //任务列表 [任务ID, ...]
         $list = array();
-        //共享内存磁盘路径
-        $path = "/dev/shm/swoole/{$GLOBALS['system']['port']}";
         //任务目录
-        $task = $path . '/task';
+        $task = $GLOBALS['system']['shmDir'] . '/task';
 
         //尝试获取监听服务权限
         for ($i = 0; $i < 10; ++$i) {
             //尝试成功
-            if (flock($work = fopen("{$path}/taskServ{$i}.lock", 'c+'), 6)) {
+            if (flock($work = fopen("{$GLOBALS['system']['shmDir']}/taskServ{$i}.lock", 'c+'), 6)) {
                 break ;
             //尝试失败
             } else {
@@ -2240,7 +2298,7 @@ class swoole implements ArrayAccess {
             //关闭内存检查与工作周期时间
             $GLOBALS['system']['memory'] = $GLOBALS['system']['cycle'] = 0;
             //等待获取消费权
-            flock($lock = fopen($path . '/taskWatch.lock', 'c+'), 2);
+            flock($lock = fopen($GLOBALS['system']['shmDir'] . '/taskWatch.lock', 'c+'), 2);
         //未获取到服务权限
         } else {
             return ;
@@ -2249,7 +2307,7 @@ class swoole implements ArrayAccess {
         //读取并执行任务
         do {
             //按修改时间先到后取前N个
-            $data = trim(stream_get_contents(popen("ls -tr '{$task}' | head -{$count}", 'r'), 10240));
+            $data = trim(stream_get_contents(popen("ls -tr '{$task}' | head -{$count}", 'r'), 65536));
             //读取到任务数据列表, 切割出任务文件名
             $data = $data ? explode("\n", $data) : array();
 
@@ -2285,7 +2343,7 @@ class swoole implements ArrayAccess {
             //清理执行完成的任务, 删除(协程已启动 && 执行完成)协程ID
             foreach ($list as $k => &$v) if ($v && !isset($attrs[$v])) unset($list[$k]);
         //有执行任务的空间
-        } while (($count = 150 - count($list)) > 0);
+        } while (($count = SWOOLE_MAX_REQUEST - count($list)) > 0);
 
         //释放工作锁
         flock($work, 3);
@@ -2306,6 +2364,28 @@ class swoole implements ArrayAccess {
     }
 
     /**
+     * 描述 : 健康检查执行器
+     * 作者 : Edgar.lee
+     */
+    public static function health($pPid) {
+        //健康检查网址
+        if ($temp = $GLOBALS['system']['health']) {
+            //开启健康检查
+            while (true) {
+                //每10s执行一次
+                sleep(10);
+                //任务进程未结束 && 主进程未结束
+                if (!self::$isEnd && Swoole\Process::kill($pPid, 0)) {
+                    //发送健康检查
+                    @file_get_contents($temp);
+                } else {
+                    break ;
+                }
+            }
+        }
+    }
+
+    /**
      * 描述 : 新建协程环境的回调
      * 参数 :
      *      call : 符合框架回调结构
@@ -2313,6 +2393,11 @@ class swoole implements ArrayAccess {
      *          1=工作协程, 启动快, 可共享变量, 过多影响调度速度, 适合跨协程操作的任务
      *          2=独立进程, 启动慢, 支持更多"工作协程", 适合运行长时间的任务
      *          4=共享进程, 启动快, 支持少量"工作协程", 适合运行短时间的任务
+     *      data : mode为1时生效 {
+     *          "space" :&当协程运行时被设置为协程ID, 引用传值, 默认无引用
+     *          "requ"  : 指定请求信息, 符合Swoole\Http\Request属性的对象, 默认父协程的请求信息
+     *          "argv"  : 指定call的触发参数, 参考of::callFunc, 默认无参数
+     *      }
      * 返回 :
      *      工作协程: 非串行化状态返回协程ID
      * 作者 : Edgar.lee
@@ -2325,29 +2410,46 @@ class swoole implements ArrayAccess {
         if ($mode & 4) {
             //生成唯一文件名
             $name = of_base_com_str::uniqid();
-            //共享内存磁盘路径
-            $path = "/dev/shm/swoole/{$GLOBALS['system']['port']}";
             //[任务临时路径, 任务执行路径]
-            $temp = array("{$path}/temp/{$name}", "{$path}/task/{$name}");
+            $temp = array("{$GLOBALS['system']['shmDir']}/temp/{$name}", "{$GLOBALS['system']['shmDir']}/task/{$name}");
             //写入回调任务
             file_put_contents($temp[0], serialize($call));
             //防止被读取一半, 无锁安全操作
             rename($temp[0], $temp[1]);
 
             //当前为任务模式
-            $GLOBALS['system']['type'] === 'task' &&
+            $GLOBALS['system']['open'] === 'task' &&
                 //任务执行器已停止
-                flock(fopen("{$path}/taskWatch.lock", 'c+'), 5) &&
+                flock(fopen("{$GLOBALS['system']['shmDir']}/taskWatch.lock", 'c+'), 5) &&
                 //启动任务执行器
                 self::fork(array('asCall' => 'swoole::task', 'params' => array(getmypid())), 2);
         //创建独立进程
         } else if ($mode & 2) {
+            //异步数据
+            $exec = rawurlencode($call = serialize($call));
+
+            //在应用协程中
+            if (isset(self::$attrs[$pCid = Co::getCid()])) {
+                //检查退出信号与超时退出
+                self::$attrs[$pCid]['super']['_FUNC_mapVar']->checkExit(3);
+
+                //数据长度超过4K, window>5k, linux>128K会 报错"Argument list too long"
+                if (isset($exec[4096])) {
+                    //生成异步唯一值
+                    $temp = of_base_com_str::uniqid();
+                    //异步数据存在到kv
+                    of_base_com_kv::set('of_swoole::async::' . $temp, $call, 300, '_ofSelf');
+                    //重写异步数据, "_数据键_数据摘要20"
+                    $exec = '_' . $temp . '_' . substr($exec, 0, 1024) . '20';
+                }
+            }
+
             //执行参数
             $exec = array(
                 'php',
                 __FILE__,
-                'type:task',
-                'data:' . rawurlencode(serialize($call)),
+                'open:task',
+                'data:' . $exec,
                 '_ip:'  . $_SERVER['SERVER_ADDR'],
                 $GLOBALS['system']['config']
             );
@@ -2359,10 +2461,12 @@ class swoole implements ArrayAccess {
             is_string($exec) && pclose(popen($exec, 'r'));
 
             return ;
-        //当前协程ID
-        } else if (isset(self::$attrs[$pCid = Co::getCid()]['super'])) {
-            $attr = &self::$attrs[$pCid]['super']['_SERVER_mapVar'];
-            $exec = function () use ($attr, $pCid, $call, &$data) {
+        //当前协程ID(指定请求信息 || 父请求头信息可用)
+        } else if (isset($data['requ']) || isset(self::$attrs[$pCid = Co::getCid()]['super'])) {
+            //指定请求信息 ? 使用请求信息 : 使用父请求头信息
+            $attr = isset($data['requ']) ? $data['requ'] : self::$attrs[$pCid]['super']['_SERVER_mapVar'];
+            //生成协程方法
+            $exec = function () use (&$attr, &$pCid, $call, &$data) {
                 //初始化沙盒环境
                 self::loadEnv($attr, $pCid);
                 //记录自身协程ID
@@ -2377,8 +2481,8 @@ class swoole implements ArrayAccess {
                     self::reinit();
                     //设置调度信息
                     of::dispatch('swoole', 'fork', false);
-                    //加载脚本
-                    of::callFunc($call);
+                    //加载脚本, 带触发参数 ? 指定触发参数 ? 无触发参数回调
+                    isset($data['argv']) ? of::callFunc($call, $data['argv']) : of::callFunc($call);
                 //拦截exit
                 } catch (Swoole\ExitException $e) {
                 //含exit的所有错误
@@ -2784,8 +2888,8 @@ class swoole implements ArrayAccess {
      *      ctrl : 含逻辑流程代码, true=含有, false=不含
      * 注明 :
      *      代码改写逻辑
-     *          代码加载协议封装, include => include 'of.incl://' . \Co::getCid() . '://是否全局://路径'
-     *          代码执行方法改写, eval => include 'of.incl://' . \Co::getCid() . '://是否全局://路径://代码'
+     *          代码加载协议封装, include => include 'sw.incl://' . \Co::getCid() . "\n是否全局\n路径"
+     *          代码执行方法改写, eval => include 'sw.incl://' . \Co::getCid() . "\n是否全局\n路径\n代码"
      *          共享变量声明改写, global static => swoole::shareVar
      *          静态变量调用改写, self:: parent:: static:: space\class:: => ReflectionClass映射
      *          超全局变量初始化, $XXX 替换$XXX_mapVar, 增加初始方法 swoole::loadEnv
@@ -2999,9 +3103,9 @@ class swoole implements ArrayAccess {
                             'pos' => $kPos,
                             'len' => $kLen,
                             //去掉'_once'代码因为需快速解除串行化防止某代码多次用'_once'加载导致无法解锁
-                            'str' => substr($vk[1], 0, 7) . " 'of.incl://' . " .
+                            'str' => substr($vk[1], 0, 7) . " 'sw.incl://' . " .
                                 //加入协程ID是防止并行协程的流协议同时加载某文件导致触发防止死循环错误
-                                '\Co::getCid() . \'://\' . isset($_GLOBAL_SCOPE_) . \'://\' . ' .
+                                '\Co::getCid() . "\n" . isset($_GLOBAL_SCOPE_) . "\n" . ' .
                                 //串行化是防止加载代码过程中其它协程网络请求出现allow_url_include问题
                                 '$_FUNC_mapVar->serial = '
                         );
@@ -3014,9 +3118,9 @@ class swoole implements ArrayAccess {
                         $wait[] = array(
                             'pos' => $kPos,
                             'len' => $kLen + $temp['eLen'],
-                            'str' => '(include \'of.incl://\' . ' .
-                                '\Co::getCid() . \'://\' . isset($_GLOBAL_SCOPE_) . \'://\' . ' .
-                                '($_FUNC_mapVar->serial = __FILE__ . \'(\' . __LINE__ . \')\') . \'://\' . '
+                            'str' => '(include \'sw.incl://\' . ' .
+                                '\Co::getCid() . "\n" . isset($_GLOBAL_SCOPE_) . "\n" . ' .
+                                '($_FUNC_mapVar->serial = __FILE__ . \'(\' . __LINE__ . \')\') . "\n" . '
                         );
                         break;
                     //注解"#["
@@ -3659,7 +3763,7 @@ class swoole implements ArrayAccess {
      *      text=类名有效, false=关键词类名
      * 作者 : Edgar.lee
      */
-    public static function codeClass(&$keys, $kPos, $move, &$data = null) {
+    private static function codeClass(&$keys, $kPos, $move, &$data = null) {
         //相关结果
         $data = array('ePos' => &$kPos, 'eLen' => 0);
         //结果集
@@ -3776,37 +3880,231 @@ class swoole implements ArrayAccess {
     }
 
     /**
+     * 描述 : 请求回调处理
+     * 作者 : Edgar.lee
+     */
+    private static function &request($requ, $resp) {
+        //引用请求信息
+        $index = &$requ->server;
+        //执行脚本文件
+        $file = $index['path_info'];
+
+        //存在路由配置
+        if ($GLOBALS['system']['routes']) {
+            foreach ($GLOBALS['system']['routes'] as $k => &$v) {
+                //按正在规则替换
+                $file = preg_replace($k, $v, $file, -1, $c);
+                //路由成功
+                if ($c) break ;
+            }
+        }
+
+        //访问文件不存在
+        if (!is_file($file = ROOT_DIR . rtrim($file, '/'))) {
+            //是目录 && 主文件存在
+            if (is_file($file .= '/index.php')) {
+                //访问目录不是以"/"结尾
+                if (substr($index['path_info'], -1) !== '/') {
+                    $temp = empty($index['query_string']) ? '' : "?{$index['query_string']}";
+                    $resp && $resp->redirect("{$index['path_info']}/{$temp}", 301);
+                    return $null;
+                }
+            } else {
+                $resp && $resp->status(404, $index['path_info']);
+                return $null;
+            }
+        //访问静态文件
+        } else if (strtolower(substr($file, -4)) !== '.php') {
+            $resp && $resp->sendfile($file);
+            return $null;
+        }
+
+        //设置准确访问地址
+        $index['path_info'] = substr($file, $GLOBALS['system']['rootLen']);
+        //标记全局空间
+        $_GLOBAL_SCOPE_ = 1;
+
+        //注册超全局变量
+        extract(self::loadEnv($requ, $resp), EXTR_REFS);
+        //标记try开始
+        self::errCtrl(true, __FUNCTION__);
+        //初始化并执行逻辑代码
+        try {
+            //加载脚本
+            $result = include 'sw.incl://' . Co::getCid() . "\n1\n" . $_FUNC_mapVar->serial = $file;
+        //拦截exit
+        } catch (Swoole\ExitException $e) {
+            //打印字符串exit(str)
+            if (is_string($e = $e->getStatus())) echo $e;
+        //含exit的所有错误
+        } catch (Throwable $e) {
+            of::event('of::error', true, $e);
+        }
+        //标记try结束
+        self::errCtrl(false, __FUNCTION__);
+
+        //触发关闭回调
+        self::clear(false);
+
+        //框架入口返回值
+        return $result;
+    }
+
+    /**
+     * 描述 : 启动WebSocket服务
+     * 作者 : Edgar.lee
+     */
+    private static function webSocket() {
+        //WebSocket心跳包
+        $beat = array();
+        //心跳ping包
+        empty($GLOBALS['server']['open_websocket_ping_frame']) && $beat += array(
+            'ping' => 'pong', 'Ping' => 'Pong', 'PING' => 'PONG'
+        );
+        //心跳pong包
+        empty($GLOBALS['server']['open_websocket_pong_frame']) && $beat += array(
+            'pong' => 0, 'Pong' => 0, 'PONG' => 0
+        );
+
+        //创建监听服务
+        $serv = new Swoole\WebSocket\Server('0.0.0.0', $GLOBALS['system']['port'], SWOOLE_PROCESS);
+        //启动工作并开启协程
+        $serv->set(array('open_websocket_close_frame' => true));
+        //接收WebSocket
+        $serv->on('open', function ($serv, $requ) {
+            //加载入口文件并返回入口文件返回值
+            $call = self::request($requ, null);
+
+            //消息回调存在
+            if (isset($call['info'])) {
+                //创建响应对象
+                $resp = new self;
+                $resp->objFd = $requ->fd;
+                //记录连接映射
+                self::$fdMap[$requ->fd] = array(
+                    'serv' => $serv,
+                    'requ' => $requ,
+                    'resp' => $resp,
+                    'call' => $call
+                );
+                //信息初始化回调
+                isset($call['init']) && self::fork($call['init'], 1, array(
+                    'requ' => $requ,
+                    'argv' => array('link' => $requ->fd, 'resp' => $resp)
+                ));
+            //回调无效关闭连接
+            } else {
+                $serv->disconnect($requ->fd);
+            }
+        });
+        //接收WebSocket
+        $serv->on('message', function ($serv, $frame) use (&$beat) {
+            //连接存在
+            if (isset(self::$fdMap[$frame->fd])) {
+                $index = &self::$fdMap[$frame->fd];
+
+                //关闭帧
+                if ($frame->opcode == 0x08) {
+                    //标记服务关闭
+                    $index['serv'] = null;
+                    //触发完成回调
+                    $index['resp']->close();
+                //心跳包
+                } else if (isset($beat[$frame->data])) {
+                    //是ping包 && 回pong包
+                    ($temp = $beat[$frame->data]) && $index['resp']->push($temp);
+                //消息帧
+                } else {
+                    self::fork($index['call']['info'], 1, array(
+                        'requ' => $index['requ'],
+                        'argv' => array('link' => $frame->fd, 'resp' => $index['resp'], 'info' => $frame)
+                    ));
+                }
+            }
+        });
+        //请求回调
+        $serv->on('request', function ($requ, $resp) {
+            self::request($requ, $resp);
+        });
+        //返回服务
+        return $serv;
+    }
+
+    /**
+     * 描述 : 自定义服务
+     * 作者 : Edgar.lee
+     */
+    private static function server($path = '') {
+        if ($path) {
+            //加载启动服务
+            $serv = $path === 'WebSocket' ? self::webSocket() : include $path;
+            //合并启动参数
+            $serv->set(array('enable_coroutine' => true) + ($serv->setting ?? array()) + $GLOBALS['server']);
+            //工作启动回调
+            $call = $serv->getCallback('workerStart');
+            //覆盖启动回调
+            $serv->on('workerStart', function (...$argv) use ($call) {
+                //启动哨兵, 协程调度, 内存超时检查等
+                self::sentry($argv[0], 0);
+                //触发自定义回调
+                $call && call_user_func_array($call, $argv);
+            });
+            //工作退出回调
+            $call = $serv->getCallback('workerExit');
+            //覆盖退出回调
+            $serv->on('workerExit', function (...$argv) use ($call) {
+                //标记工作开始关闭
+                self::$isEnd = true;
+                //停止所有定时器, swoole >= 4.4 有此方法
+                Swoole\Timer::clearAll();
+                //触发自定义回调
+                $call && call_user_func_array($call, $argv);
+            });
+            //开启服务
+            $serv->start();
+        } else if (is_file($temp = __DIR__ . '/demo/tool/swoole/debug.php')) {
+            //加载调试代码(Co类名)
+            require_once $temp;
+            //初始化接管方法对象
+            $temp = new self;
+            //初始化接管方法对象
+            $temp->swRes = new Co;
+            //执行调试
+            Co::debug($temp, __DIR__, self::$debug);
+        }
+    }
+
+    /**
      * 描述 : 准备配置并调度服务
      * 作者 : Edgar.lee
      */
     public static function start() {
         //注入协议封装
-        stream_wrapper_register('of.incl', __CLASS__);
+        stream_wrapper_register('sw.incl', __CLASS__);
         //仅cli模式下运行
-        if (PHP_SAPI !== 'cli') exit(self::test());
+        if (PHP_SAPI !== 'cli') exit(self::server());
 
         //默认启动配置
         $config = array(
             'system' => array(
-                'port' => 8888, 'type' => 'http',
-                'memory' => 0, 'cycle' => 0,
-                'health' => '', 'reinit' => array(),
-                'config' => '', 'define' => array(
+                'open' => 'WebSocket','port' => 8888,
+                'cycle' => 0, 'memory' => 0,
+                'config' => '', 'health' => '',
+                'routes' => array(), 'reinit' => array(),
+                'define' => array(
                     //系的根路径, 框架根路径
                     'ROOT_DIR' => __DIR__, 'OF_DIR' => __DIR__ . '/include/of',
-                    //相对命名空间 xx\yy, 绝对命名空间 \xx\yy
-                    'T_NAME_QUALIFIED' => 314, 'T_NAME_FULLY_QUALIFIED' => 312, 
-                    //自身命名空间 namespace\xxx, 只读关键词 readonly
-                    'T_NAME_RELATIVE' => 313, 'T_READONLY' => 363,
-                    //注解"#["
-                    'T_ATTRIBUTE' => 387
-                )
+                    //相对命名空间 xx\yy (314), 绝对命名空间 \xx\yy (312)
+                    'T_NAME_QUALIFIED' => 0, 'T_NAME_FULLY_QUALIFIED' => 0, 
+                    //自身命名空间 namespace\xxx (313), 只读关键词 readonly (363)
+                    'T_NAME_RELATIVE' => 0, 'T_READONLY' => 0,
+                    //注解"#[" (387)
+                    'T_ATTRIBUTE' => 0
+                ),
             ),
             'server' => array(
-                'hook_flags' => null, 'enable_preemptive_scheduler' => false,
-                'max_wait_time' => 86400, 'worker_num' => swoole_cpu_num(),
-                'dispatch_mode' => 1, 'max_request' => 1000,
-                'package_max_length' => self::getBitSize(ini_get('post_max_size'))
+                'hook_flags' => null, 'worker_num' => swoole_cpu_num(),
+                'max_wait_time' => 86400, 'package_max_length' => self::getBitSize(ini_get('post_max_size'))
             ),
             'phpIni' => array(
                 'max_execution_time' => 30, 'memory_limit' => ini_get('memory_limit'),
@@ -3829,15 +4127,19 @@ class swoole implements ArrayAccess {
                         $config = array_replace_recursive($config, include $temp[1]);
                         $config['system']['config'] = 'conf:' . $temp[1];
                         break;
-                    //启动类型, http=服务, task=任务
-                    case 'type':
-                        $config['system']['type'] = $temp[1];
+                    //启动类型, WebSocket=服务, task=任务
+                    case 'open':
+                        $config['system']['open'] = $temp[1];
                         break;
                 }
             }
         }
         //进程最大内存转换成字节
         $config['system']['memory'] = self::getBitSize($config['system']['memory']);
+        //共享内存磁盘路径
+        $config['system']['shmDir'] = "/dev/shm/of/swoole/{$config['system']['port']}";
+        //根目录长度
+        $config['system']['rootLen'] = strlen($config['system']['define']['ROOT_DIR']);
         //脚本最大内存转换成字节
         $config['phpIni']['memory_limit'] = self::getBitSize($config['phpIni']['memory_limit']);
         //初始化协程程度(兼容swoole 4.3+ SWOOLE_HOOK_NATIVE_CURL >= 4.6 SWOOLE_HOOK_CURL >= 4.4)
@@ -3846,11 +4148,13 @@ class swoole implements ArrayAccess {
         );
 
         //最大运行请求数
-        define('SWOOLE_MAX_REQUEST', 100);
+        define('SWOOLE_MAX_REQUEST', 1000);
+        //WEBSOCKET推送码
+        define('SWOOLE_WEBSOCKET_FLAG', empty($config['server']['websocket_compression']) ? true : 3);
         //定义协程默认状态
         define('SWOOLE_HOOK_FULL', $config['server']['hook_flags']);
         //定义抢占调度设置
-        define('SWOOLE_SCHEDULER', $config['server']['enable_preemptive_scheduler']);
+        define('SWOOLE_SCHEDULER', !empty($config['server']['enable_preemptive_scheduler']));
         //定义常量初始值
         foreach ($config['system']['define'] as $k => &$v) defined($k) || define($k, $v);
 
@@ -3860,164 +4164,66 @@ class swoole implements ArrayAccess {
             'r'
         ), 1024));
         $_SERVER['SERVER_ADDR'] = $temp[0] ? $temp[0] : '127.0.0.1';
-        //引用系统配置
-        $GLOBALS['system'] = &$config['system'];
-        //引用服务配置
-        $GLOBALS['server'] = &$config['server'];
-        //引用php配置
-        $GLOBALS['phpIni'] = &$config['phpIni'];
-        //根目录长度
-        $GLOBALS['rootLen'] = strlen(ROOT_DIR);
+        //全局配置
+        foreach ($config as $k => &$v) $GLOBALS[$k] = &$v;
 
         //激活循环引用收集器
         gc_enable();
         //不限制内存
         ini_set('memory_limit', -1);
-        //设置标识时区, 用来判断是否需要更改协程时区
-        date_default_timezone_set('GMT-0');
+        //设置标识时区, 用来判断是否需要更改协程时区(通过特殊写法规避兼容性)
+        date_default_timezone_set('gMt-0');
         //注册异常回调
         register_shutdown_function(__CLASS__ . '::clear', true);
         //开启全协程, 抢占模式
-        Co::set(array('hook_flags' => SWOOLE_HOOK_FULL, 'enable_preemptive_scheduler' => SWOOLE_SCHEDULER));
+        Co::set(array('enable_preemptive_scheduler' => SWOOLE_SCHEDULER) + $config['server']);
 
         //加载框架启动任务
         Co\run(function () {
             //准备环境数据
             $temp = new stdClass;
-            $temp->header['host'] = 'http://127.0.0.1/';
-            $temp->server = array(
-                'path_info' => OF_DIR . '/index.php',
-                'request_time' => $_SERVER['REQUEST_TIME'],
-                'request_time_float' => $_SERVER['REQUEST_TIME_FLOAT'],
-            );
+            $temp->server = array('path_info' => '/index.php', 'remote_addr' => '127.0.0.1');
             //注册超全局变量
             extract(self::loadEnv($temp), EXTR_REFS);
             //加载框架文件
-            include 'of.incl://1://0://' . OF_DIR . '/of.php';
+            include "sw.incl://1\n0\n" . OF_DIR . '/of.php';
             //任务模式
-            if ($GLOBALS['system']['type'] === 'task') {
+            if ($GLOBALS['system']['open'] === 'task') {
+                //大数据级
+                if ($GLOBALS['_ARGV']['data'][0] === '_') {
+                    //提取数据键
+                    $temp = 'of_swoole::async::' . substr($GLOBALS['_ARGV']['data'], 1, 32);
+                    //读取异步数据
+                    $data = of_base_com_kv::get($temp, false, '_ofSelf');
+                    //删除异步数据
+                    of_base_com_kv::del($temp, '_ofSelf');
+                //小数据级
+                } else {
+                    $data = rawurldecode($GLOBALS['_ARGV']['data']);
+                }
                 //执行任务回调
-                $mCid = self::fork(unserialize(rawurldecode($GLOBALS['_ARGV']['data'])));
+                $mCid = self::fork(unserialize($data));
                 //启动哨兵
                 self::sentry(null, $mCid);
+            //服务模式
+            } else {
+                //创建异步任务目录
+                is_dir($temp = $GLOBALS['system']['shmDir'] . '/task') || mkdir($temp, 0777, true);
+                //创建临时任务目录
+                is_dir($temp = $GLOBALS['system']['shmDir'] . '/temp') || mkdir($temp, 0777, true);
+                //执行器回调任务
+                $temp = array('asCall' => 'swoole::task', 'params' => array(getmypid()));
+                //启动主动异步任务执行器
+                for ($i = 0; $i < 10; ++$i) self::fork($temp, 2);
+                //需健康检查 && 启动健康检查任务
+                $GLOBALS['system']['health'] && self::fork(array(
+                    'asCall' => 'swoole::health', 'params' => array(getmypid())
+                ), 2);
             }
         });
-        //启动服务, 未来扩展为 WebSocket
-        $config['system']['type'] === 'http' && self::http();
-    }
 
-    /**
-     * 描述 : 调试环境
-     * 作者 : Edgar.lee
-     */
-    private static function test() {
-        if (is_file($temp = __DIR__ . '/demo/tool/swoole/debug.php')) {
-            //加载调试代码(Co类名)
-            require_once $temp;
-            //初始化接管方法对象
-            $temp = new self;
-            //初始化接管方法对象
-            $temp->swRes = new Co;
-            //执行调试
-            Co::debug($temp, __DIR__, self::$debug);
-        }
-    }
-
-    /**
-     * 描述 : 启动HTTP服务
-     * 作者 : Edgar.lee
-     */
-    private static function http() {
-        //创建监听服务
-        $serv = new Swoole\Http\Server('0.0.0.0', $GLOBALS['system']['port'], SWOOLE_PROCESS);
-        //启动工作并开启协程
-        $serv->set(array('enable_coroutine' => true) + $GLOBALS['server']);
-        //主进程启动
-        $serv->on('start', function ($serv) {
-            //共享内存磁盘路径
-            $path = "/dev/shm/swoole/{$GLOBALS['system']['port']}";
-            //创建异步任务目录
-            is_dir($temp = $path . '/task') || mkdir($temp, 0777, true);
-            //创建临时任务目录
-            is_dir($temp = $path . '/temp') || mkdir($temp, 0777, true);
-            //执行器回调任务
-            $temp = array('asCall' => 'swoole::task', 'params' => array(getmypid()));
-            //启动主动异步任务执行器
-            for ($i = 0; $i < 10; ++$i) self::fork($temp, 2);
-
-            //开启健康检查
-            while ($GLOBALS['system']['health']) {
-                //每10s执行一次
-                sleep(10);
-                //发送健康检查
-                @file_get_contents($GLOBALS['system']['health']);
-            }
-        });
-        //工作启动
-        $serv->on('workerStart', function ($serv) {
-            //启动哨兵
-            self::sentry($serv, 0);
-        });
-        //工作退出
-        $serv->on('workerExit', function () {
-            //标记工作开始关闭
-            self::$isEnd = true;
-            //停止所有定时器, swoole >= 4.4 有此方法
-            Swoole\Timer::clearAll();
-        });
-        //请求回调
-        $serv->on('request', function ($requ, $resp) {
-            //引用请求信息
-            $index = &$requ->server;
-            //访问文件不存在
-            if (!is_file($file = ROOT_DIR . rtrim($index['path_info'], '/'))) {
-                //是目录 && 主文件存在
-                if (is_file($file .= '/index.php')) {
-                    //访问目录不是以"/"结尾
-                    if (substr($index['path_info'], -1) !== '/') {
-                        $temp = empty($index['query_string']) ? '' : "?{$index['query_string']}";
-                        $resp->redirect("{$index['path_info']}/{$temp}", 301);
-                        return ;
-                    }
-                } else {
-                    $resp->status(404);
-                    return ;
-                }
-            //访问静态文件
-            } else if (strtolower(substr($file, -4)) !== '.php') {
-                $resp->sendfile($file);
-                return ;
-            }
-
-            //设置准确访问地址
-            $index['path_info'] = substr($file, $GLOBALS['rootLen']);
-            //标记全局空间
-            $_GLOBAL_SCOPE_ = 1;
-
-            //注册超全局变量
-            extract(self::loadEnv($requ, $resp), EXTR_REFS);
-            //标记try开始
-            self::errCtrl(true, __FUNCTION__);
-            //初始化并执行逻辑代码
-            try {
-                //加载脚本
-                include 'of.incl://' . Co::getCid() . '://1://' . $_FUNC_mapVar->serial = $file;
-            //拦截exit
-            } catch (Swoole\ExitException $e) {
-                //打印字符串exit(str)
-                if (is_string($e = $e->getStatus())) echo $e;
-            //含exit的所有错误
-            } catch (Throwable $e) {
-                of::event('of::error', true, $e);
-            }
-            //标记try结束
-            self::errCtrl(false, __FUNCTION__);
-
-            //触发关闭回调
-            self::clear(false);
-        });
-        //开启服务
-        $serv->start();
+        //启动服务
+        $config['system']['open'] === 'task' || self::server($config['system']['open']);
     }
 }
 

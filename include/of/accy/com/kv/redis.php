@@ -141,7 +141,7 @@ class of_accy_com_kv_redis extends of_base_com_kv {
                         $isOk = $redis->ping('test');
                         break;
                     case 'distributed':
-                        $isOk = !in_array(false, $redis->ping(), true);
+                        is_array($isOk = $redis->ping()) && $isOk = !in_array(false, $isOk, true);
                         break;
                     default :
                         $isOk = $redis->ping();

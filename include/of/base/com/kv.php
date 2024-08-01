@@ -52,7 +52,7 @@ class of_base_com_kv {
         //引用实例列表
         $instList = &self::$instList;
 
-        if (empty($instList[$key])) {
+        if (empty($instList[$key]['inst'])) {
             if ($pool === null) {
                 //引用数据库配置
                 $config = &self::$config;

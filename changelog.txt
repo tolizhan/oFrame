@@ -1,3 +1,23 @@
+版本: 274
+作者: Edgar
+日期: 2024年8月1日 15:50:50
+信息:
+说明: + Swoole支持WebSocket和自定义服务
+      + Swoole可配路由规则system.routes
+      + 静态计划任务设置负值为倒数时间
+      * 修复Swoole在php7.x中兼容性问题
+      * 解决大数据计划任务无法触发问题
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/tool/swoole/debug.php
+已修改 : /trunk/include/of/accy/com/kv/redis.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/net.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/index.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/swoole.php
+
 版本: 272
 作者: Edgar
 日期: 2024年5月31日 18:37:44

@@ -21,7 +21,7 @@ namespace {
             $debug = 1;
 
             //加载执行脚本
-            include "of.incl://0://{$_GLOBAL_SCOPE_}://" . $_FUNC_mapVar->incStart = $path;
+            include "sw.incl://0\n{$_GLOBAL_SCOPE_}\n" . $_FUNC_mapVar->incStart = $path;
             //释放内存
             swoole::clear();
         }
@@ -44,12 +44,12 @@ namespace {
             foreach (array(
                 //定义协程默认状态, 定义抢占调度设置
                 'SWOOLE_HOOK_FULL' => 0, 'SWOOLE_SCHEDULER' => true,
-                //相对命名空间 xx\yy, 绝对命名空间 \xx\yy
-                'T_NAME_QUALIFIED' => 314, 'T_NAME_FULLY_QUALIFIED' => 312, 
-                //自身命名空间 namespace\xxx, 只读关键词 readonly
-                'T_NAME_RELATIVE' => 313, 'T_READONLY' => 363,
-                //注解"#["
-                'T_ATTRIBUTE' => 387
+                //相对命名空间 xx\yy (314), 绝对命名空间 \xx\yy (312)
+                'T_NAME_QUALIFIED' => 0, 'T_NAME_FULLY_QUALIFIED' => 0, 
+                //自身命名空间 namespace\xxx (313), 只读关键词 readonly (363)
+                'T_NAME_RELATIVE' => 0, 'T_READONLY' => 0,
+                //注解"#[" (387)
+                'T_ATTRIBUTE' => 0
             ) as $k => $v)  defined($k) || define($k, $v);
 
             //默认系统配置
