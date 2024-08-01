@@ -42,17 +42,17 @@
 3. 按照日志说明中"-"开头的变化从低到高版升级当前系统
 
 ### 入门顺序
-0. 开发规范    http://doc.phpof.net/?codingStandard/htmlCssJsPhpMysql/general.html,codingStandard/navigation.html
-1. 了解框架    http://doc.phpof.net/?oFrame/gettingStarted/preface.html
-2. 部署说明    http://doc.phpof.net/?oFrame/gettingStarted/deploy.html
-3. 入门演示    http://doc.phpof.net/?oFrame/gettingStarted/introduction.html
-4. 配置文件    http://doc.phpof.net/?oFrame/gettingStarted/config.html
-5. php L类     http://doc.phpof.net/?oFrame/gettingStarted/Lphp.html
-6. js L对象    http://doc.phpof.net/?oFrame/gettingStarted/L.js.html
-7. 分页列表    http://doc.phpof.net/?oFrame/gettingStarted/pageTable.html
-8. 工作流开发  http://doc.phpof.net/?oFrame/helpManual/controller.html,oFrame/navigation.html,work
-9. 模版引擎    http://doc.phpof.net/?oFrame/helpManual/htmlTpl.html,oFrame/navigation.html
-10. 计划任务    http://doc.phpof.net/?oFrame/components/timer.html,oFrame/navigation.html
-11. 消息队列    http://doc.phpof.net/?oFrame/components/mq.html,oFrame/navigation.html
-12. 错误日志    http://doc.phpof.net/?oFrame/helpManual/error.html,oFrame/navigation.html
-13. 上传插件    http://doc.phpof.net/?oFrame/integrated/oUpload.html,oFrame/navigation.html
+0. [开发规范](http://doc.phpof.net/?codingStandard/htmlCssJsPhpMysql/general.html,codingStandard/navigation.html)
+1. [了解框架](http://doc.phpof.net/?oFrame/gettingStarted/preface.html)
+2. [部署说明](http://doc.phpof.net/?oFrame/gettingStarted/deploy.html)
+3. [入门演示](http://doc.phpof.net/?oFrame/gettingStarted/introduction.html)
+4. [配置文件](http://doc.phpof.net/?oFrame/gettingStarted/config.html)
+5. [php L类 ](http://doc.phpof.net/?oFrame/gettingStarted/Lphp.html)
+6. [js L对象](http://doc.phpof.net/?oFrame/gettingStarted/L.js.html)
+7. [分页列表](http://doc.phpof.net/?oFrame/gettingStarted/pageTable.html)
+8. [工作流开发](http://doc.phpof.net/?oFrame/helpManual/controller.html,oFrame/navigation.html,work)
+9. [模版引擎](http://doc.phpof.net/?oFrame/helpManual/htmlTpl.html,oFrame/navigation.html)
+10. [计划任务](http://doc.phpof.net/?oFrame/components/timer.html,oFrame/navigation.html)
+11. [消息队列](http://doc.phpof.net/?oFrame/components/mq.html,oFrame/navigation.html)
+12. [错误日志](http://doc.phpof.net/?oFrame/helpManual/error.html,oFrame/navigation.html)
+13. [上传插件](http://doc.phpof.net/?oFrame/integrated/oUpload.html,oFrame/navigation.html)
