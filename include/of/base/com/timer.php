@@ -1246,7 +1246,9 @@ class of_base_com_timer {
             $timeList[] = array(
                 'nowTime' => $lastTime,
                 //分时日月 星期(0-6)
-                'nowNode' => explode(' ', date('i H d m w', $lastTime))
+                'nowNode' => explode(' ', date('i H d m w', $lastTime)),
+                //每节点最大数
+                'maxNums' => array(60, 24, date('t', $lastTime) + 1, 13, 7)
             );
         }
 
@@ -1264,28 +1266,36 @@ class of_base_com_timer {
 
                     foreach ($timeList as &$timeBox) {
                         foreach ($item as $ki => &$vi) {
-                            $index = &$timeBox['nowNode'][$ki];
+                            //当前节点时间
+                            $tItem = &$timeBox['nowNode'][$ki];
+                            //当前节点最大值
+                            $mItem = &$timeBox['maxNums'][$ki];
                             //每列时间集合[14-30/3]
-                            preg_match_all('@(\d+|\*)(?:-(\d+))?(?:/(\d+))?(,|$)@', $vi, $list, PREG_SET_ORDER);
+                            preg_match_all('@(-?\d+|\*)(?:-(-?\d+))?(?:/(\d+))?(,|$)@', $vi, $list, PREG_SET_ORDER);
 
                             foreach ($list as &$vl) {
+                                //负值转正值
+                                (int)$vl[1] < 0 && $vl[1] += $mItem;
+                                //负值转正值
+                                (int)$vl[2] < 0 && $vl[2] += $mItem;
+
                                 //x 模式
                                 if ($vl[2] === '') {
-                                    $temp = $index == $vl[1] || $vl[1] === '*';
+                                    $temp = $tItem == $vl[1] || $vl[1] === '*';
                                 //大-小 模式
                                 } else if ($vl[1] > $vl[2]) {
-                                    $temp = $index >= $vl[1] || $index <= $vl[2];
+                                    $temp = $tItem >= $vl[1] || $tItem <= $vl[2];
                                 //小-大 模式
                                 } else {
-                                    $temp = $index >= $vl[1] && $index <= $vl[2];
+                                    $temp = $tItem >= $vl[1] && $tItem <= $vl[2];
                                 }
 
                                 //范围通过 && 频率通过(不需要 || 在范围内 && 可整除)
                                 if (
                                     $temp && (
                                         !$vl[3] ||
-                                        $index >= $vl[1] &&
-                                        ($index - (int)$vl[1]) % $vl[3] === 0
+                                        $tItem >= $vl[1] &&
+                                        ($tItem - (int)$vl[1]) % $vl[3] === 0
                                     )
                                 ) {
                                     //进入下一项校验

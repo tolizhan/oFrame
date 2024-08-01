@@ -68,7 +68,7 @@ class of_index {
             );
             //提示 popen无法使用
             $tips = ini_get('safe_mode') || !function_exists('popen') ?
-                'tips: <font color="red">safe_mode or popen() has been disabled</font><br>\n' : '';
+                '<font color="red">Warning: safe_mode or popen() has been disabled</font><br>\n' : '';
 
             echo "<hr>\n",
                 'OF: ', OF_VERSION, "<br>\n",

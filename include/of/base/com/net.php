@@ -125,7 +125,18 @@ class of_base_com_net {
             ini_set('max_execution_time', 0);
 
             if (PHP_SAPI === 'cli') {
-                $data = rawurldecode($GLOBALS['_ARGV']['data']);
+                //大数据级
+                if ($GLOBALS['_ARGV']['data'][0] === '_') {
+                    //提取数据键
+                    $temp = 'of_base_com_net::async::' . substr($GLOBALS['_ARGV']['data'], 1, 32);
+                    //读取异步数据
+                    $data = of_base_com_kv::get($temp, false, '_ofSelf');
+                    //删除异步数据
+                    of_base_com_kv::del($temp, '_ofSelf');
+                //小数据级
+                } else {
+                    $data = rawurldecode($GLOBALS['_ARGV']['data']);
+                }
             } else {
                 //请求数据流
                 $data = file_get_contents('php://input');
@@ -133,14 +144,14 @@ class of_base_com_net {
                 if (
                     isset($_GET['md5']) &&
                     ($temp = of_base_com_kv::get(
-                        'of_base_com_net::' . $_GET['md5'], false, '_ofSelf'
+                        'of_base_com_net::check::' . $_GET['md5'], false, '_ofSelf'
                     )) &&
                     $temp === md5($data)
                 ) {
                     //忽略客户端断开
                     ignore_user_abort(true);
                     //删除校验kv
-                    of_base_com_kv::del('of_base_com_net::' . $_GET['md5'], '_ofSelf');
+                    of_base_com_kv::del('of_base_com_net::check::' . $_GET['md5'], '_ofSelf');
                     //默认关闭session
                     session_write_close();
                 } else {
@@ -279,6 +290,18 @@ class of_base_com_net {
 
             //命令行操作
             if ($config['isCli']) {
+                //异步数据
+                $exec = rawurlencode($res = serialize($data));
+                //数据长度超过4K, window>5k, linux>128K会 报错"Argument list too long"
+                if (isset($exec[4096])) {
+                    //生成异步唯一值
+                    $temp = of_base_com_str::uniqid();
+                    //异步数据存在到kv
+                    of_base_com_kv::set('of_base_com_net::async::' . $temp, $res, 300, '_ofSelf');
+                    //重写异步数据, "_数据键_数据摘要20"
+                    $exec = '_' . $temp . '_' . substr($exec, 0, 1024) . '20';
+                }
+
                 //响应结果
                 $res = array('state' => true);
                 //执行参数
@@ -289,7 +312,7 @@ class of_base_com_net {
                     '_tz:'  . date_default_timezone_get(),
                     '_ip:'  . $_SERVER['SERVER_ADDR'],
                     '_rl:'  . ROOT_URL,
-                    'data:' . rawurlencode(serialize($data))
+                    'data:' . $exec
                 );
 
                 //Windows
@@ -328,7 +351,7 @@ class of_base_com_net {
                 //数据校验
                 $temp = of_base_com_str::uniqid();
                 of_base_com_kv::set(
-                    $asMd5 = 'of_base_com_net::' . $temp, md5($data['data']), 300, '_ofSelf'
+                    $asMd5 = 'of_base_com_net::check::' . $temp, md5($data['data']), 300, '_ofSelf'
                 );
                 $data['pUrl']['query'] .= '&md5=' . $temp;
             }
