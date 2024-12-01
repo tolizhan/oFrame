@@ -17,7 +17,7 @@ class of_base_extension_match {
      *          }
      *      }
      *      加载的扩展类($extensionClassObj)结构 : {
-     *          完整类名 : false=加载成功但没有初始化对象,object=初始化的对象
+     *          完整类名 : object=初始化的对象
      *      }
      */
     static private $hookList = array();
@@ -38,7 +38,7 @@ class of_base_extension_match {
             of::event('of::halt', array('asCall' => 'of_base_extension_match::shutdown', 'params' => array(true)));
             //添加类加载拦截
             of::event('of::loadClass', array(
-                'classPre' => of_base_extension_manager::getConstant('baseClassName'),
+                'filter' => of_base_extension_manager::getConstant('baseClassName'),
                 'asCall' => 'of_base_extension_match::ofLoadExtensionClass'
             ), true);
             //添加试图事件
@@ -135,41 +135,8 @@ class of_base_extension_match {
         //合并类名
         $mergeClassName = of_base_extension_manager::getConstant('baseClassName') . $eKey . '_' . $className;
 
-        if (!isset($classObj[$mergeClassName])) {
-            $parseFile = of_base_extension_manager::getConstant('extensionDir') .'/'. $eKey .'/'. strtr($className, '_', '/') . '.php';
-            //生成扩展类数据
-            if (is_file($parseFile)) {
-                //构造参数
-                $constructParams = addslashes(serialize(array(
-                    //代替 __FILE__ 常量
-                    'file' => $parseFile,
-                    //当前扩展所在的文件名称
-                    'eKey' => $eKey
-                )));
-
-                //扩展已加密
-                if (strncmp($temp = file_get_contents($parseFile), '<?php', 5) !== 0) {
-                    $temp = of_base_com_str::rc4('扩展加密密钥', $temp);
-                }
-                //扩展类体
-                $temp = str_replace('L::getText(', '$this->_getText(', substr($temp, 5));
-                $temp = "CLASS {$mergeClassName} EXTENDS of_base_extension_baseClass { function __construct() {parent::__construct('{$constructParams}');} {$temp} }";
-
-                //解析错误
-                if ($temp = &of::syntax($temp, true)) {
-                    throw new Exception("{$temp['info']} in " . substr($parseFile, strlen(ROOT_DIR)) . " on line {$temp['line']}");
-                //标记类创建成功,但没有生成对象(false)
-                } else {
-                    $classObj[$mergeClassName] = false;
-                }
-            //文件不存在
-            } else {
-                throw new Exception('No such file : ' . substr($parseFile, strlen(ROOT_DIR)));
-            }
-        }
-
         if ($isNew) {
-            $classObj[$mergeClassName] === false && $classObj[$mergeClassName] = new $mergeClassName;
+            isset($classObj[$mergeClassName]) || $classObj[$mergeClassName] = new $mergeClassName;
             return $classObj[$mergeClassName];
         } else {
             return $mergeClassName;
@@ -262,8 +229,36 @@ class of_base_extension_match {
      * 作者 : Edgar.lee
      */
     public static function ofLoadExtensionClass($params) {
-        $params = explode('_', substr($params['className'], strlen(of_base_extension_manager::getConstant('baseClassName'))), 2);
-        self::loadClass($params[0], $params[1], false);
+        //扩展文件路径
+        $file = ROOT_DIR .'/'. strtr($params['name'], '_', '/') . '.php';
+
+        //生成扩展类数据
+        if (is_file($file)) {
+            //提取扩展所在文件名
+            $argv = substr($params['name'], strlen(of_base_extension_manager::getConstant('baseClassName')));
+            $argv = explode('_', $argv, 2);
+            //构造参数[代替 __FILE__ 常量, 当前扩展所在的文件名称]
+            $argv = addslashes(serialize(array('file' => $file, 'eKey' => $argv[0])));
+
+            //扩展已加密
+            if (strncmp($code = file_get_contents($file), '<?php', 5) !== 0) {
+                $code = of_base_com_str::rc4('扩展加密密钥', $code);
+            }
+            //扩展类体
+            $code = str_replace('L::getText(', '$this->_getText(', substr($code, 5));
+            $code = "<?php CLASS {$params['name']} EXTENDS of_base_extension_baseClass { " .
+                "function __construct() {parent::__construct('{$argv}');}" .
+                $code .
+            '}';
+
+            //扩展文件路径
+            $params['file'] = $file;
+            //扩展文件代码
+            $params['code'] = $code;
+        //文件不存在
+        } else {
+            throw new Exception('No such file : ' . substr($file, strlen(ROOT_DIR)));
+        }
     }
 }
 

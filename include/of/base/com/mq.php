@@ -452,7 +452,7 @@ class of_base_com_mq {
     public static function fireQueue($params, $nowTask) {
         $data = &$params['fire'];
         $data['this'] = &$nowTask['this'];
-        $config = &self::pool($params['fire']['pool'], $bind);
+        $config = &self::pool($data['pool'], $bind);
         $config = &$config['queues'][$data['queue']];
         $thisMq = &$config['keys'][$data['key']];
         $fireEnv = &self::$fireEnv;
@@ -465,12 +465,16 @@ class of_base_com_mq {
             $check = &$config['check'];
             //检查内存占用峰值
             $memory = $config['memory'] * 1048576;
+            //当前并发ID
+            $cCid = $data['this']['cCid'];
             //重置异常消息数据, 不用直等是为了防止多副本启动时间不同导致无法正常重置
-            $isFix = $data['this']['cCid'] % $thisMq['cNum'] === intval($thisMq['cNum'] > 1);
+            $isFix = $cCid % $thisMq['cNum'] === intval($thisMq['cNum'] > 1);
             //可以垃圾回收
             ($isGc = function_exists('gc_enable')) && gc_enable();
             //接收环境变化键名
             $cKey = 'of_base_com_mq::command::' . md5(of::config('_of.nodeName'));
+            //接收队列变化键名
+            $qKey = "{$cKey}::{$data['key']}.{$data['queue']}.{$data['pool']}";
             //消息队列实例对象
             $mqObj = &self::$mqList[$bind]['pools'][$data['pool']]['inst'];
             //初始化环境变量
@@ -495,13 +499,22 @@ class of_base_com_mq {
             $isFix && self::resetPaincMqData(2);
 
             while (true) {
-                $cmd = of_base_com_kv::get($cKey, array('taskPid' => '', 'compare' => ''), '_ofSelf');
-                isset($tPid) || $tPid = $cmd['taskPid'];
+                $cmd = of_base_com_kv::get($cKey, array('taskPid' => ''), '_ofSelf');
+                $qmd = of_base_com_kv::get($qKey, array('taskPid' => '', 'compare' => ''), '_ofSelf');
+                isset($mark) || $mark = $qmd['compare'];
 
                 //运行环境无变化
                 if (
-                    //有效任务ID && 为当前任务
-                    $cmd['taskPid'] && $cmd['taskPid'] === $tPid &&
+                    //有效队列ID
+                    $mark &&
+                    //队列ID未变
+                    $qmd['compare'] === $mark &&
+                    //有效任务ID
+                    $qmd['taskPid'] === $cmd['taskPid'] &&
+                    //当前并发ID有效
+                    $qmd['cNumMin'] <= $cCid &&
+                    //当前并发ID有效
+                    $qmd['cNumMax'] >= $cCid &&
                     //!(验证文件 && 文件变动)
                     !($check && of_base_com_timer::renew($check))
                 ) {
@@ -600,12 +613,18 @@ class of_base_com_mq {
                 of_base_com_data::lock($listKey, 3);
                 //安装信号触发器
                 of_base_com_timer::exitSignal();
+                //停止在运行的消息进程
+                of_base_com_kv::del($cKey, '_ofSelf');
 
+                //此变量重用做存储队列运行的摘要
+                $nodes = array();
                 //监听标志存在
                 while (!of_base_com_timer::renew()) {
                     //读取命令
-                    $cmd = of_base_com_kv::get($cKey, array('taskPid' => '', 'compare' => ''), '_ofSelf');
+                    $cmd = of_base_com_kv::get($cKey, array('taskPid' => ''), '_ofSelf');
+                    $cmd['taskPid'] || $cmd['taskPid'] = of_base_com_str::uniqid();
                     isset($tPid) || $tPid = $cmd['taskPid'];
+                    of_base_com_kv::set($cKey, $cmd, 86400, '_ofSelf');
                     //加载最新配置文件
                     $config = of::config('_of.com.mq', array(), 4);
                     //待回调列表
@@ -629,14 +648,14 @@ class of_base_com_mq {
                                 if (!isset($vq['mode']) || $vq['mode']) {
                                     foreach ($vq['keys'] as $kk => &$vk) {
                                         //并发起始进程ID
-                                        $temp = ($tNum - 1) * $vk['cNum'] + 1;
+                                        $cMin = ($tNum - 1) * $vk['cNum'] + 1;
+                                        //并发结束进程ID
+                                        $cMax = $cMin + $vk['cNum'] - 1;
+
                                         //待回调列表
                                         $vk['cNum'] > 0 && $waitCall[] = array(
                                             'time' => 0,
-                                            'cNum' => range(
-                                                $temp,
-                                                $temp + $vk['cNum'] - 1
-                                            ),
+                                            'cNum' => range($cMin, $cMax),
                                             'call' => array(
                                                 'asCall' => 'of_base_com_mq::fireQueue',
                                                 'params' => array(array(
@@ -648,26 +667,51 @@ class of_base_com_mq {
                                                 ))
                                             )
                                         );
+
+                                        //计算队列摘要值
+                                        $nodes["{$kk}.{$kq}.{$ke}"] = array(
+                                            'taskPid' => $tPid,
+                                            'compare' => of_base_com_data::digest(array(
+                                                'queues' => array(
+                                                    $kq => array(
+                                                        'keys' => array(
+                                                            $kk => array('cNum' => 0) + $vk
+                                                        )
+                                                    ) + $vq
+                                                )
+                                            ) + $ve),
+                                            'cNumMin' => $cMin,
+                                            'cNumMax' => $cMax
+                                        );
                                     }
                                 }
                             }
                         }
 
-                        //比对配置文件变化(更新后所有当前消息队列停止)
-                        $temp = of_base_com_data::digest($config);
-                        if ($cmd['compare'] !== $temp) {
-                            $cmd['compare'] = $temp;
-                            $cmd['taskPid'] = $tPid = of_base_com_str::uniqid();
+                        //给已运行的队列退出或保持运行信号
+                        foreach ($nodes as $k => &$v) {
+                            //本次队列保持运行, 存储比对信息
+                            if ($v) {
+                                of_base_com_kv::set("{$cKey}::{$k}", $v, 86400, '_ofSelf');
+                                //假定下次退出, 若下次配置中不存在或变动则真退出
+                                $v = null;
+                            //本次队列退出运行
+                            } else {
+                                of_base_com_kv::del("{$cKey}::{$k}", '_ofSelf');
+                                unset($nodes[$k]);
+                            }
                         }
-                        of_base_com_kv::set($cKey, $cmd, 86400, '_ofSelf');
+
+                        //30秒后没退出信号则激活消息队列, 目的是等待已有进程可能的退出
+                        sleep(30);
 
                         //激活消息队列
                         foreach ($waitCall as &$v) {
                             of_base_com_timer::task($v);
                         }
 
-                        //60秒后没退出信号则启动保护进程
-                        sleep(60);
+                        //30秒后没退出信号则启动保护进程
+                        sleep(30);
                         //检查退出信号
                         of_base_com_timer::exitSignal();
                         //启动保护监听
@@ -950,6 +994,9 @@ class of_base_com_mq {
                 //计数列表
                 $cList = $data['count'];
             }
+
+            //清除当前错误
+            of::work('error', false);
             //处理消息
             $result = &of::callFunc($call, $data);
         } catch (Exception $e) {

@@ -5,7 +5,7 @@
  * 注明 :
  *      本脚本仅做UI开发使用
  *      为了方便后端语言整合, 不要使用在js中
- *      chrome 浏览器本地调试时, 需带上 --allow-file-access-from-files 启动参数
+ *      chrome edge 浏览器本地调试时, 需带上 --allow-file-access-from-files 启动参数
  *      firfox 浏览器本地调试时, 访问"about:config" 将 security.fileuri.strict_origin_policy 改为 false
  * 作者 : Edgar.lee
  */

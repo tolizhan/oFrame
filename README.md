@@ -1,6 +1,6 @@
 # orange-framework 模块化轻量级php框架
 
-框架本身是套解决方案, 兼容全浏览器及[php5.2~8.3.x](http://doc.phpof.net/?oFrame/FAQ/namespace.html,oFrame/navigation.html)<br>
+框架本身是套解决方案, 兼容全浏览器及[php5.2~8.4.x](http://doc.phpof.net/?oFrame/FAQ/namespace.html,oFrame/navigation.html)<br>
 它基于MVCS, 同时[支持多种设计模式](http://doc.phpof.net/?oFrame/FAQ/architect.html,oFrame/navigation.html)<br>
 它拥有简洁的[开发方式](http://doc.phpof.net/?oFrame/helpManual/controller.html,oFrame/navigation.html,work), 简单的[模板引擎](http://doc.phpof.net/?oFrame/helpManual/htmlTpl.html,oFrame/navigation.html)<br>
 它支持原生的[异步操作](http://doc.phpof.net/?oFrame/components/timer.html,oFrame/navigation.html), 分布式[消息队列](http://doc.phpof.net/?oFrame/components/mq.html,oFrame/navigation.html)<br>
@@ -45,14 +45,14 @@
 0. [开发规范](http://doc.phpof.net/?codingStandard/htmlCssJsPhpMysql/general.html,codingStandard/navigation.html)
 1. [了解框架](http://doc.phpof.net/?oFrame/gettingStarted/preface.html)
 2. [部署说明](http://doc.phpof.net/?oFrame/gettingStarted/deploy.html)
-3. [入门演示](http://doc.phpof.net/?oFrame/gettingStarted/introduction.html)
-4. [配置文件](http://doc.phpof.net/?oFrame/gettingStarted/config.html)
-5. [php L类 ](http://doc.phpof.net/?oFrame/gettingStarted/Lphp.html)
-6. [js L对象](http://doc.phpof.net/?oFrame/gettingStarted/L.js.html)
-7. [分页列表](http://doc.phpof.net/?oFrame/gettingStarted/pageTable.html)
-8. [工作流开发](http://doc.phpof.net/?oFrame/helpManual/controller.html,oFrame/navigation.html,work)
-9. [模版引擎](http://doc.phpof.net/?oFrame/helpManual/htmlTpl.html,oFrame/navigation.html)
-10. [计划任务](http://doc.phpof.net/?oFrame/components/timer.html,oFrame/navigation.html)
-11. [消息队列](http://doc.phpof.net/?oFrame/components/mq.html,oFrame/navigation.html)
-12. [错误日志](http://doc.phpof.net/?oFrame/helpManual/error.html,oFrame/navigation.html)
-13. [上传插件](http://doc.phpof.net/?oFrame/integrated/oUpload.html,oFrame/navigation.html)
+3. [配置文件](http://doc.phpof.net/?oFrame/gettingStarted/config.html)
+4. [入门演示](http://doc.phpof.net/?oFrame/gettingStarted/introduction.html)
+5. [错误日志](http://doc.phpof.net/?oFrame/gettingStarted/error.html,oFrame/navigation.html)
+6. [php L类 ](http://doc.phpof.net/?oFrame/gettingStarted/Lphp.html)
+7. [js L对象](http://doc.phpof.net/?oFrame/gettingStarted/L.js.html)
+8. [模版引擎](http://doc.phpof.net/?oFrame/gettingStarted/htmlTpl.html,oFrame/navigation.html)
+9. [分页列表](http://doc.phpof.net/?oFrame/gettingStarted/pageTable.html)
+10. [上传插件](http://doc.phpof.net/?oFrame/integrated/oUpload.html,oFrame/navigation.html)
+11. [工作流开发](http://doc.phpof.net/?oFrame/helpManual/controller.html,oFrame/navigation.html,work)
+12. [计划任务](http://doc.phpof.net/?oFrame/components/timer.html,oFrame/navigation.html)
+13. [消息队列](http://doc.phpof.net/?oFrame/components/mq.html,oFrame/navigation.html)

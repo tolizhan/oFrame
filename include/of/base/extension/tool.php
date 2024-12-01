@@ -277,7 +277,11 @@ class of_base_extension_tool {
      * 作者 : Edgar.lee
      */
     private function printHtml() {
-        of_view::head(array());
+        of_view::head(array(
+            'head' => array(
+                'jQuery' => '<script src="' .OF_URL. '/att/link/jquery.js" ></script>'
+            )
+        ));
 ?>
 
 <style>

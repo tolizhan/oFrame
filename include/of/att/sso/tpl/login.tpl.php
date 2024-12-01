@@ -4,6 +4,9 @@ $index = array('_' . OF_URL . '/att/sso/css/login.css');
 isset($_GET['css']) && $index[] = $_GET['css'];
 
 $this->head(array(
+    'head' => array(
+        'jQuery' => '<script src="' .OF_URL. '/att/link/jquery.js" ></script>'
+    ),
     'js'  => array('_' . OF_URL . '/att/sso/js/login.js'),
     'css' => &$index
 ));

@@ -135,6 +135,15 @@ return array(
             //'pConfig' => '/include/of/addin/config.php',
             //js 扩展配置文件路径, 默认 OF_URL . '/addin/config.js'
             //'jConfig' => '/include/of/addin/config.js',
+        ),
+        //视图层相关
+        'view'  => array(
+            /*在head中默认插入的html
+            'head' => array(
+                //加载 jquery.js, 执行中相同的非数字key可覆盖, 默认 OF_URL . '/att/link/jquery.js'
+                'jQuery' => '<script src="/include/of/att/link/jquery.js" ></script>',
+            )
+            // */
         )
     ),
     //错误日志
@@ -405,14 +414,15 @@ return array(
              *
              *          #mysql 模式
              *          "dbPool" : _of.db 的连接池
-             *          #redis 模式, 注意: 真实节点变动时(含域名), 必须须使用"moveMq"进行迁移, 否则会丢消息
+             *          #redis 模式
              *          "kvPool" : _of.com.kv 的redis连接池, 建议使用混合型持久化
-             *          "mqSlot" : 包含两项>0的一维数组, 如[[0, 1], [0, 1, 2]]
+             *          "mqSlot" : 包含两项>0的一维数组, 如[生产分槽[0, 1], 消费分槽[0, 1, 2]]
              *                     其作用是将消息均衡分布到各节点, 每项对应一个分槽
              *                     选择合适的数字或字符串让每个节点有一个分槽就是最优的方式
              *                     第0项数组代表生产分槽, 总个数代表总分槽数;
              *                     第1项数组代表消费分槽, 要覆盖生产分槽所有项
              *                          当生产分槽调整时, 要包含调整前所有项, 待分槽自动调整完后, 改为生产分槽
+             *                          注意: 真实节点变动时(含域名), 必须须使用"moveMq"进行迁移, 否则会丢消息
              *      },
              *      "moveMq"  :o迁移队列时设置, 若迁移的新旧队列池服务有交集, 注意用vHost区别
              *                  原队列池名P改oP, 配置新队列池P.moveMq = oP, 直到oP清空时移除

@@ -18,7 +18,7 @@ namespace {
             //标记全局空间
             $_GLOBAL_SCOPE_ = 1;
             //打印编译代码
-            $debug = 1;
+            $debug = array(1, '') + $debug;
 
             //加载执行脚本
             include "sw.incl://0\n{$_GLOBAL_SCOPE_}\n" . $_FUNC_mapVar->incStart = $path;
@@ -48,8 +48,8 @@ namespace {
                 'T_NAME_QUALIFIED' => 0, 'T_NAME_FULLY_QUALIFIED' => 0, 
                 //自身命名空间 namespace\xxx (313), 只读关键词 readonly (363)
                 'T_NAME_RELATIVE' => 0, 'T_READONLY' => 0,
-                //注解"#[" (387)
-                'T_ATTRIBUTE' => 0
+                //注解"#[" (387), 箭头函数 fn (343)
+                'T_ATTRIBUTE' => 0, 'T_FN' => 0
             ) as $k => $v)  defined($k) || define($k, $v);
 
             //默认系统配置
@@ -165,6 +165,10 @@ namespace {
 
 }
 
+/**
+ * 描述 : 模拟协程化开关
+ * 作者 : Edgar.lee
+ */
 namespace Swoole {
 
     class Runtime {
@@ -172,24 +176,4 @@ namespace Swoole {
         }
     }
 
-}
-
-//调试日志
-namespace debug {
-    //WebSocket测试
-    <<<'EOF'
-        //创建监听服务
-        $serv = new Swoole\WebSocket\Server('0.0.0.0', $GLOBALS['system']['port'], SWOOLE_PROCESS);
-        //启动工作并开启协程
-        $serv->set(array('enable_coroutine' => true, 'open_websocket_close_frame' => true) + $GLOBALS['server']);
-
-        //接收WebSocket
-        $serv->on('open', function ($serv, $requ) {
-            echo 'open: ' . print_r($requ, true) . "\n";
-        });
-        //接收WebSocket
-        $serv->on('message', function ($serv, $frame) {
-            echo 'message: ' . print_r($frame, true) . "\n";
-        });
-EOF;
 }

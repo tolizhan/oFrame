@@ -78,6 +78,9 @@
  *          file_put_contents : 将数据写入文件
  *          fopen : 打开文件或者 URL
  *          flock : 可移植的协同文件锁定
+ *          stream_wrapper_register : 注册流封装协议
+ *          stream_wrapper_restore : 还原流封装协议
+ *          stream_wrapper_unregister : 注销流封装协议
  *      已接管其它方法
  *          php_sapi_name : 固定返回fpm-fcgi
  *          define : 定义一个常量
@@ -234,8 +237,8 @@ class swoole implements ArrayAccess {
     );
     //最近时间戳, 每10s更新
     private static $nTime = 0;
-    //代码调试, 1=重写代码
-    private static $debug = 0;
+    //代码调试, [(1=重写代码; 2=解析信息), 匹配过滤]
+    private static $debug = array(0, '');
 
     /**
      * 描述 : 打开文件流
@@ -254,8 +257,8 @@ class swoole implements ArrayAccess {
             return true;
         //执行字符串代码
         } else if (isset($path[3])) {
-            //生成eval路径
-            $file = "{$path[2]} : eval()'d code";
+            //生成eval路径, 是框架执行协议 ? 截取路径 : 生成路径
+            $file = substr($path[2], 0, 8) === 'of.eval:' ? substr($path[2], 10) : "{$path[2]} : eval()'d code";
             //存储改写代码
             $code = '<?php ' . $path[3];
             //缓存标记
@@ -404,14 +407,14 @@ class swoole implements ArrayAccess {
      * 描述 : ArrayAccess类数组unset回调
      * 作者 : Edgar.lee
      */
-    public function offsetUnset($key) {
+    public function offsetUnset($key): void {
     }
 
     /**
      * 描述 : ArrayAccess类数组isset回调
      * 作者 : Edgar.lee
      */
-    public function offsetExists($key) {
+    public function offsetExists($key): bool {
         return true;
     }
 
@@ -419,7 +422,7 @@ class swoole implements ArrayAccess {
      * 描述 : ArrayAccess类数组set回调
      * 作者 : Edgar.lee
      */
-    public function offsetSet($key, $val) {
+    public function offsetSet($key, $val): void {
     }
 
     /**
@@ -428,7 +431,7 @@ class swoole implements ArrayAccess {
      *      引用返回隔离静态变量
      * 作者 : Edgar.lee
      */
-    public function &offsetGet($key) {
+    public function &offsetGet($key): array {
         //引用子属性 && 子属性初始
         ($index = &self::$attrs[Co::getCid()]['class'][$this->cName]) || $index = $this->gAttr;
         //返回属性值
@@ -1290,7 +1293,7 @@ class swoole implements ArrayAccess {
      * 作者 : Edgar.lee
      */
     public function setTimeLimit($value) {
-        self::$attrs[$this->space]['state']['exeTime'] = array($value, time() + $value);
+        self::$attrs[$this->space]['state']['exeTime'] = array($value, self::time() + $value);
         return true;
     }
 
@@ -1347,7 +1350,7 @@ class swoole implements ArrayAccess {
      * 作者 : Edgar.lee
      */
     public function date($format, $time = null) {
-        return (new DateTime($time === null ? 'now' : '@' . $time))
+        return (new DateTime($time === null ? 'now' : '@' . ($time ? $time : 0)))
             ->setTimezone(self::$attrs[$this->space]['state']['tzIds'][2])
             ->format($format);
     }
@@ -1436,14 +1439,36 @@ class swoole implements ArrayAccess {
      */
     public function strtotime($date, $time = null) {
         try {
-            return $time === null ?
-                (new DateTime($date, self::$attrs[$this->space]['state']['tzIds'][2]))
-                    ->getTimestamp() :
-                (new DateTime('@' . $time))
-                    ->setTimezone(self::$attrs[$this->space]['state']['tzIds'][2])
-                    ->modify($date)
+            //时间转换
+            if ($time === null) {
+                return (new DateTime($date, self::$attrs[$this->space]['state']['tzIds'][2]))
                     ->getTimestamp();
-        } catch (Exception $e) {
+            //时间计算
+            } else {
+                //类型转换
+                if (is_bool($time) || is_numeric($time)) {
+                    //时间转换
+                    $time = self::errCtrl()->errOff = (new DateTime('@' . (int)$time))
+                        ->setTimezone(self::$attrs[$this->space]['state']['tzIds'][2])
+                        ->modify($date);
+                    $time && $time = $time->getTimestamp();
+                    //返回时间戳或false
+                    return $time;
+                //无效数据
+                } else {
+                    //读取代码行数
+                    $temp = $this->debugBacktrace();
+                    //生成协程超时错误
+                    self::errCtrl(
+                        E_WARNING,
+                        'strtotime() expects parameter 2 to be integer, ' . gettype($time) . ' given',
+                        $temp[0]['file'] ?? __FILE__,
+                        $temp[0]['line'] ?? __LINE__
+                    );
+                    return false;
+                }
+            }
+        } catch (Throwable $e) {
             return false;
         }
     }
@@ -1461,7 +1486,7 @@ class swoole implements ArrayAccess {
                 //返回数据
                 $result = $index[0];
                 //设置超时秒数
-                $index = array($value, time() + $value);
+                $index = array($value, self::time() + $value);
                 //返回原数据
                 return $result;
             //禁止内存调整, 会影响全局
@@ -1539,6 +1564,8 @@ class swoole implements ArrayAccess {
      * 作者 : Edgar.lee
      */
     public function define($name, $value) {
+        //空间常量const, 改写后若__NAMESPACE__为"", 会导致\CONST无效数据情况
+        $name[0] === '\\' && $name = substr($name, 1);
         return defined($name) || define($name, $value);
     }
 
@@ -1762,6 +1789,17 @@ class swoole implements ArrayAccess {
     }
 
     /**
+     * 描述 : 注册流封装协议
+     * 作者 : Edgar.lee
+     */
+    public function streamWrapperRegister($name, $class, $flag = 0) {
+        static $list = array();
+        $list += array($name => -1);
+        ++$list[$name] ? $list[$name] = 1 : stream_wrapper_register($name, $class, $flag);
+        return true;
+    }
+
+    /**
      * 描述 : WebSocket推送数据
      * 作者 : Edgar.lee
      */
@@ -1872,12 +1910,12 @@ class swoole implements ArrayAccess {
             //读取代码行数
             $temp = $this->debugBacktrace();
             //生成协程超时错误
-            of::event('of::error', true, array(
-                'code' => E_ERROR,
-                'info' => "Maximum execution time of {$exeTime[0]} second exceeded",
-                'file' => $temp[0]['file'] ?? __FILE__,
-                'line' => $temp[0]['line'] ?? __LINE__
-            ));
+            self::errCtrl(
+                E_ERROR,
+                "Maximum execution time of {$exeTime[0]} second exceeded",
+                $temp[0]['file'] ?? __FILE__,
+                $temp[0]['line'] ?? __LINE__
+            );
             exit;
         //检查内存溢出(未锁定 && 内存缓存过期 && 内存刷新未加锁)
         } else if (
@@ -1905,12 +1943,12 @@ class swoole implements ArrayAccess {
                         //读取代码行数
                         $temp = $this->debugBacktrace();
                         //生成协程超时错误
-                        of::event('of::error', true, array(
-                            'code' => E_ERROR,
-                            'info' => "Failed to set memory limit to {$memory[1]} bytes (Current memory usage is {$memory[3]} bytes)",
-                            'file' => $temp[0]['file'] ?? __FILE__,
-                            'line' => $temp[0]['line'] ?? __LINE__
-                        ));
+                        self::errCtrl(
+                            E_ERROR,
+                            "Failed to set memory limit to {$memory[1]} bytes (Current memory usage is {$memory[3]} bytes)",
+                            $temp[0]['file'] ?? __FILE__,
+                            $temp[0]['line'] ?? __LINE__
+                        );
                         exit;
                     }
                 }
@@ -1919,7 +1957,7 @@ class swoole implements ArrayAccess {
             //移除本轮刷新
             unset($reList[$this->space]);
             //更新检查时间
-            $memory[2] = time();
+            $memory[2] = self::time();
             //内存刷新完成
             $refresh = 0;
         }
@@ -2029,8 +2067,7 @@ class swoole implements ArrayAccess {
                     'CONTENT_TYPE' => '',
                     'SCRIPT_FILENAME' => ROOT_DIR . $temp,
                     'FCGI_ROLE' => 'RESPONDER',
-                    'QUERY_STRING' => '',
-                    'ofDebug' => false
+                    'QUERY_STRING' => ''
                 );
                 //合并swoole->server
                 foreach ($requ->server as $k => &$v) {
@@ -2042,6 +2079,8 @@ class swoole implements ArrayAccess {
                 }
             //沙盒环境
             } else {
+                //移除框架过程信息
+                unset($requ['_of']);
                 //设置超全局隔离变量
                 $result = array(
                     '_ENV_mapVar' => $_ENV,
@@ -2058,7 +2097,7 @@ class swoole implements ArrayAccess {
             }
 
             //当前时间
-            $time = time();
+            $time = self::time();
             //当前时区
             $zone = $GLOBALS['phpIni']['date.timezone'];
             //更新启动时间
@@ -2208,7 +2247,7 @@ class swoole implements ArrayAccess {
                 if (is_string($e = $e->getStatus())) echo $e;
             //含exit的所有错误
             } catch (Throwable $e) {
-                of::event('of::error', true, $e);
+                self::errCtrl($e);
             }
             //标记try结束
             self::errCtrl(false, __FUNCTION__);
@@ -2487,7 +2526,7 @@ class swoole implements ArrayAccess {
                 } catch (Swoole\ExitException $e) {
                 //含exit的所有错误
                 } catch (Throwable $e) {
-                    of::event('of::error', true, $e);
+                    self::errCtrl($e);
                 }
                 //标记try结束
                 self::errCtrl(false, __FUNCTION__);
@@ -2625,6 +2664,15 @@ class swoole implements ArrayAccess {
     }
 
     /**
+     * 描述 : 获取并更新最近时间
+     * 作者 : Edgar.lee
+     */
+    private static function time() {
+        //更新最近时间
+        return self::$nTime = time();
+    }
+
+    /**
      * 描述 : 开关串行化
      * 参数 :
      *      type : 是否开启串行, true=开启, false=禁用, int=恢复到指定层级
@@ -2720,7 +2768,7 @@ class swoole implements ArrayAccess {
             //引用进程最大内存
             $memory = &$GLOBALS['system']['memory'];
             //引用工作周期时间
-            ($cycle = &$GLOBALS['system']['cycle']) && $cycle += time();
+            ($cycle = &$GLOBALS['system']['cycle']) && $cycle += self::time();
             //支持延迟触发信号 && 安装SIGTERM信号处理器
             $mCid && function_exists('pcntl_signal_dispatch') && pcntl_signal(15, function () {
                 self::$isEnd = true;
@@ -2729,7 +2777,7 @@ class swoole implements ArrayAccess {
             do {
                 sleep(10);
                 //更新最近时间
-                self::$nTime = time();
+                self::time();
                 //归还内存给系统
                 gc_mem_caches();
 
@@ -2904,7 +2952,7 @@ class swoole implements ArrayAccess {
      *      }, ...]
      *      代码树列表($tree) : [{
      *          "type" : 类型(1=g全局, 2=a方法, 4=c类, 8=i接口, 16=t复用),
-     *          "life" : 生命周期, 每个"{"+1, 每个"}"-1, 为0时弹出
+     *          "life" : 生命周期, 每个"{"+1, 每个"}"-1, 为0时弹出, 每进入一层方法名后的括号中-1
      *          "name" : 结构名字, 仅类有值
      *          "uuid" : 代码块唯一编码
      *          "isStatic" : 是否进入静态变量, 0=未进入, 1=已进入
@@ -2936,6 +2984,8 @@ class swoole implements ArrayAccess {
             '$_GET' => 1, '$_POST' => 1, '$_FILES' => 1,
             '$_COOKIE' => 1, '$_SESSION' => 1, '$_REQUEST' => 1,
         );
+        //类属性修饰符
+        static $aMode = array(T_PUBLIC => 1, T_PROTECTED => 1, T_PRIVATE => 1, T_STATIC => 1, ')' => 1);
         //类的修饰符
         static $cMode = array(T_WHITESPACE => 1, T_ABSTRACT => 1, T_FINAL => 1, T_READONLY => 1);
         //默认树结构
@@ -2984,7 +3034,8 @@ class swoole implements ArrayAccess {
             'ini_set' => 'iniSet', 'date_default_timezone_set' => 'dateDefaultTimezoneSet',
             //文件流相关方法
             'file_get_contents' => 'fileGetContents', 'file_put_contents' => 'filePutContents',
-            'fopen' => 'fopen', 'flock' => 'flock',
+            'fopen' => 'fopen', 'flock' => 'flock', 'stream_wrapper_register' => 'streamWrapperRegister',
+            'stream_wrapper_restore' => 'offsetExists', 'stream_wrapper_unregister' => 'offsetExists',
             //其它方法
             'php_sapi_name' => 'phpSapiName', 'define' => 'define',
             'register_shutdown_function' => 'registerShutdownFunction', 'class_alias' => 'classAlias',
@@ -2995,13 +3046,15 @@ class swoole implements ArrayAccess {
         //唯一ID计数
         static $uuid = 0;
 
+        //调试代码
+        $test = self::$debug[0] && (!self::$debug[1] || strpos($code, self::$debug[1]) !== false);
         //待处理列表
         $wait = array();
         //代码树列表, 记录类和方法的顺序
         $tree = array(array('isGlobal' => $gVar, 'life' => 1) + $strur);
         //异常处理块列表
         $trys = array();
-        //硬缓存代码块
+        //硬缓存代码块, 有效解决多次文件加载重新编译造成的内存增加
         $hard = array('save' => 1, 'cPos' => 0, 'isOn' => 0);
         //关闭串行标记, 因本方法代码逻辑问题标记跳过T_USE
         $onCo = array('sPos' => 0, 'tags' => array(T_USE => 1));
@@ -3086,7 +3139,7 @@ class swoole implements ArrayAccess {
                                     $keys[$i][0] === '=' && $wait[] = array(
                                         'pos' => $kPos,
                                         'len' => $kLen + $temp,
-                                        'str' => '$_FUNC_mapVar->define(\'' . self::codeKey($keys, $kk, 1) . '\', '
+                                        'str' => '$_FUNC_mapVar->define(__NAMESPACE__ . \'\\' . self::codeKey($keys, $kk, 1) . '\', '
                                     );
                                     $temp += isset($keys[$i][2]) ? strlen($keys[$i][1]) : 1;
                                 }
@@ -3132,6 +3185,9 @@ class swoole implements ArrayAccess {
                     case T_CLASS:
                         //读取类名
                         self::codeKey($keys, $kk, 1, $temp);
+                        //匿名类
+                        $temp['type'] === T_STRING || $temp['text'] = '';
+
                         //不存在类注解
                         if ($aPos === 0) {
                             //计算重复声明判断插入位置
@@ -3145,8 +3201,9 @@ class swoole implements ArrayAccess {
                                 }
                             }
                         }
-                        //插入重复声明类判断
-                        $wait[] = array(
+
+                        //非匿名类 && 插入重复声明类判断
+                        $temp['text'] && $wait[] = array(
                             'pos' => $aPos ? $aPos : $kPos - strlen(rtrim($temp['pStr'])),
                             'len' => 0,
                             'str' => ($self['type'] === 1 && $self['life'] === $hard['save'] ?
@@ -3154,8 +3211,14 @@ class swoole implements ArrayAccess {
                                 ) . '$_FUNC_mapVar->serial = true;' .
                                     "if (!class_exists(__NAMESPACE__ . '\\{$temp['text']}', false)) {"
                         );
-                        //硬缓存代码未开启 && 在全局 && 在空间里的"{"中 && 开启硬缓存代码
-                        !$hard['isOn'] && $self['type'] === 1 && $self['life'] > $hard['save'] && $hard['isOn'] = 1;
+                        //硬缓存代码未开启
+                        !$hard['isOn'] &&
+                            //在全局 &&
+                            $self['type'] === 1 &&
+                            //(在空间里的"{"中 || 匿名类)
+                            ($self['life'] > $hard['save'] || !$temp['text']) &&
+                            //开启硬缓存代码
+                            $hard['isOn'] = 1;
                         //压入未初始化的类
                         array_unshift($tree, array('type' => 4, 'name' => $temp['text'], 'uuid' => ++$uuid) + $strur);
                         break;
@@ -3195,20 +3258,36 @@ class swoole implements ArrayAccess {
                         //压入未初始化的方法
                         array_unshift($tree, array('type' => 16, 'uuid' => ++$uuid) + $strur);
                         break;
+                    //箭头函数
+                    case T_FN:
+                        //退出静态变量, 可能出现静态箭头函数 static fn()
+                        $self['isStatic'] = 0;
+                        //硬缓存代码未开启 && 在全局 && 开启硬缓存代码
+                        !$hard['isOn'] && $self['type'] === 1 && $hard['isOn'] = 1;
+                        break;
                     //方法
                     case T_FUNCTION:
+                        //退出静态变量, 可能出现静态匿名方法 static function()
+                        $self['isStatic'] = 0;
+
+                        //关键词
                         if (self::codeKey($keys, $kk, -1, $data, 1) !== T_USE) {
                             //读取方法名(可能是匿名方法)
                             ($temp = self::codeKey($keys, $kk, 1, $data)) === '(' && $temp = '';
                             //引用返回符 && 获取后面的方法名
                             $temp === '&' && $temp = self::codeKey($keys, $data['ePos'], 1);
 
-                            //在类 || 接口 || 复用中
-                            if ($self['type'] & 28) {
-                                //退出静态变量(复用不用此代码, 为的是不执行独立方法中的代码)
-                                $self['isStatic'] = 0;
-                            //独立方法
-                            } else if ($temp) {
+                            //硬缓存代码未开启
+                            !$hard['isOn'] &&
+                                //在全局 &&
+                                $self['type'] === 1 &&
+                                //(在空间里的"{"中 || 匿名方法) &&
+                                ($self['life'] > $hard['save'] || !$temp) &&
+                                //开启硬缓存代码
+                                $hard['isOn'] = 1;
+
+                            //(在全局 || 方法中) && 独立方法
+                            if ($self['type'] & 3 && $temp) {
                                 //插入重复声明方法判断
                                 $wait[] = array(
                                     'pos' => $kPos,
@@ -3218,9 +3297,8 @@ class swoole implements ArrayAccess {
                                         ) . '$_FUNC_mapVar->serial = true;' .
                                             "if (!function_exists(__NAMESPACE__ . '\\{$temp}')) {"
                                 );
-                                //硬缓存代码未开启 && 在全局 && 在空间里的"{"中 && 开启硬缓存代码
-                                !$hard['isOn'] && $self['type'] === 1 && $self['life'] > $hard['save'] && $hard['isOn'] = 1;
                             }
+
                             //压入未初始化的方法
                             array_unshift($tree, array('type' => 2, 'name' => $temp, 'uuid' => ++$uuid) + $strur);
                         }
@@ -3250,25 +3328,8 @@ class swoole implements ArrayAccess {
                         break;
                     //static关键词
                     case T_STATIC:
-                        //不是静态操作
-                        if (self::codeKey($keys, $kk, 1) !== '::') {
-                            //进入静态变量
-                            $self['isStatic'] = 1;
-                            //寻找 static int $var 结构的 int
-                            self::codeKey($keys, $kk, 1, $temp);
-                            //是纯字母的文本(文本长度大于1 && 不是$开头)
-                            if ($temp['tLen'] > 1 && $temp['text'][0] !== '$') {
-                                //寻找 static int $var 结构的 $var
-                                $temp['text'] = self::codeKey($keys, $temp['ePos'], 1);
-                                //是变量 && 删除变量类型结构
-                                $temp['text'][0] === '$' && $wait[] = array(
-                                    //当前代码位置 + 关键词长度 + 目标位置
-                                    'pos' => $kPos + $kLen + $temp['eLen'] - $temp['tLen'],
-                                    'len' => $temp['tLen'],
-                                    'str' => ''
-                                );
-                            }
-                        }
+                        //是静态操作 || 进入静态变量
+                        self::codeKey($keys, $kk, 1) === '::' || $self['isStatic'] = 1;
                         break;
                     //变量
                     case T_VARIABLE:
@@ -3329,17 +3390,58 @@ class swoole implements ArrayAccess {
                                         'str' => '$GLOBALS_mapVar[\'' . substr($vk[1], 1) . '\']'
                                     );
                                 }
-                            //不在复用中的共享声明 || 在全局变量中
-                            } else if (
-                                $self['type'] !== 16 && ($self['isStatic'] || $self['isGlobal'])
-                            ) {
+                            //在静态变量中 || 在全局变量中
+                            } else if ($self['isStatic'] || $self['isGlobal']) {
                                 //记录全局或静态变量
                                 $self['varList'][$vk[1]] = '\'' . substr($vk[1], 1) . "' => &{$vk[1]}";
+
+                                //在类或复用中 && 在静态变量中
+                                if ($self['type'] & 20 && $self['isStatic']) {
+                                    $data = array('ePos' => $kk);
+                                    $temp = $kPos;
+
+                                    //向上寻找类型声明符, 直到修饰符为止
+                                    while (true) {
+                                        //类属性有效修饰符
+                                        if (isset($aMode[self::codeKey($keys, $data['ePos'], -1, $data, 1)])) {
+                                            //存在类属性声明 && 删除 static ?int $var 结构的 ?int 类型声明
+                                            $kPos > $temp && $wait[] = array(
+                                                'pos' => $temp,
+                                                'len' => $kPos - $temp,
+                                                'str' => ''
+                                            );
+                                            break ;
+                                        //为类型声明
+                                        } else {
+                                            $temp -= $data['eLen'];
+                                        }
+                                    }
+                                }
                             }
                         }
                         break;
                     //接管方法, 单方法
                     case T_STRING:
+                        if (
+                            //在类(4)或复用(16)中 || 在方法的"("中
+                            ($self['type'] & 20 || ($self['type'] & 2 && $self['life'] < 0)) &&
+                            //定位到属性钩子
+                            ($vk[1] === 'set' || $vk[1] === 'get')
+                        ) {
+                            for ($i = $kk; ++$i;) {
+                                switch ($keys[$i][0]) {
+                                    //寻找"{", 属性钩子是个方法体, 压入未初始化的匿名方法
+                                    case '{':
+                                        array_unshift($tree, array('type' => 2, 'name' => '', 'uuid' => ++$uuid) + $strur);
+                                        break 2;
+                                    //寻找";"或"=>"位置, 结束属性钩子方法体的寻找
+                                    case ';':
+                                    case T_DOUBLE_ARROW:
+                                        break 2;
+                                }
+                            }
+                            break ;
+                        }
                     //接管方法, \单方法
                     case T_NAME_FULLY_QUALIFIED:
                         if (
@@ -3351,7 +3453,7 @@ class swoole implements ArrayAccess {
                                 //是方法调用
                                 self::codeKey($keys, $kk, 1, $data) === '(' &&
                                 //命中接管名称
-                                isset($func[$lf = strtolower(ltrim(self::codeClass($keys, $kk + 1, -1), '\\'))])
+                                isset($func[$lf = strtolower(ltrim(self::codeExp($keys, $kk + 1, -1), '\\'))])
                             ) && (
                                 //独立语句
                                 strlen(self::codeKey($keys, $kk, -1, $temp)) === 1 ||
@@ -3379,7 +3481,7 @@ class swoole implements ArrayAccess {
                                 $wait[] = array(
                                     'pos' => $kPos,
                                     'len' => $kLen,
-                                    'str' => '$_SERVER_mapVar[\'ofDebug\']'
+                                    'str' => '$_SERVER_mapVar[\'_of\'][\'debug\']'
                                 );
                             //调用回调函数
                             } else if ($func[$lf] === 'callable') {
@@ -3411,16 +3513,27 @@ class swoole implements ArrayAccess {
                         //标记进入到new表达式中
                         $self['isNewObj'] = 1;
 
-                        //不在全局变量中 && 常规类名
-                        if ($self['isGlobal'] === 0 && self::codeClass($keys, $kk, 1, $data)) {
+                        //常规类名(非 self static parent class) && 不在全局变量中
+                        if (self::codeExp($keys, $kk, 1, $data) && $self['isGlobal'] === 0) {
                             //插入主动加载类
                             $wait[] = array(
                                 //插入位置
                                 'pos' => $kPos,
                                 //当前位置
                                 'len' => 0,
-                                //主动加载类
+                                //主动加载类, 常规对象
                                 'str' => "\$_FUNC_mapVar->loadClass({$data['name']}, true)->newObj = "
+                            );
+                        //匿名类 && 在全局中
+                        } else if ($data['text'] === 'class' && $self['type'] === 1) {
+                            //插入主动加载类
+                            $wait[] = array(
+                                //插入位置
+                                'pos' => $kPos,
+                                //当前位置
+                                'len' => 0,
+                                //主动加载类, 匿名对象
+                                'str' => '$_ = '
                             );
                         }
                         break;
@@ -3429,7 +3542,7 @@ class swoole implements ArrayAccess {
                         //再全局或方法中 && 不在静态变量中 && 在代码体中 && 常规类名
                         if (
                             $self['type'] & 3 && !$self['isStatic'] && $self['life'] > 0 &&
-                            self::codeClass($keys, $kk, -1, $data)
+                            self::codeExp($keys, $kk, -1, $data)
                         ) {
                             //获取类名左侧关键词
                             self::codeKey($keys, $data['ePos'], -1, $temp);
@@ -3508,6 +3621,14 @@ class swoole implements ArrayAccess {
                     case '"':
                         $self['isQuotes'] = ~$self['isQuotes'] & 1;
                         break;
+                    case '(':
+                        //在方法中 && 未进入方法周期 && 周期+1
+                        $self['type'] === 2 && $self['life'] <= 0 && --$self['life'];
+                        break;
+                    case ')':
+                        //在方法中 && 未进入方法周期 && 周期-1
+                        $self['type'] === 2 && $self['life'] < 0 && ++$self['life'];
+                        break;
                     case '{':
                         //首次进入在方法中
                         if ($self['type'] === 2 && $self['life'] === 0) {
@@ -3533,11 +3654,11 @@ class swoole implements ArrayAccess {
                         //标记含有逻辑流程代码
                         $ctrl = true;
                         //记录生命周期
-                        $self['isQuotes'] || ++$self['life'];
+                        $self['isQuotes'] || $self['life'] >= 0 && ++$self['life'];
                         break;
                     case '}':
                         //销毁代码树
-                        if ($self['isQuotes'] === 0 && --$self['life'] === 0) {
+                        if ($self['isQuotes'] === 0 && $self['life'] >= 0 && --$self['life'] === 0) {
                             //类的结束
                             if ($self['type'] === 4) {
                                 //插入映射方法改写静态变量为对象并结束重复声明类判断
@@ -3550,7 +3671,8 @@ class swoole implements ArrayAccess {
                                         'public function __normalPropertiesMaps($sObj) {' .
                                             'if (get_class($sObj) === \'swoole\') {' .
                                                 '$vMaps = array();' .
-                                                'foreach ($this as $k => &$v) {$vMaps[$k] = &$v;}' .
+                                                //循环不用引用赋值是为兼容php8.4的属性钩子
+                                                'foreach ($this as $k => $v) {$vMaps[$k] = $v;}' .
                                                 '$sObj->varMaps($vMaps);' .
                                             '}' .
                                         '}' .
@@ -3564,14 +3686,17 @@ class swoole implements ArrayAccess {
                                                     //已是swoole对象(继承父类已实现) || 改为映射
                                                     'is_object(self::$$k) || self::$$k = $o;' .
                                                 '}' .
-                                            '}}' . $self['name'] . '::__staticPropertiesMaps();' :
-                                            '}') .
-                                        //在判断类之外关闭串行功能
-                                        '}$_FUNC_mapVar->serial = false;' .
-                                        //插入重复声明复用结束
-                                        ($tree[1]['type'] === 1 && $tree[1]['life'] === $hard['save'] ?
-                                            '/*!swoole rewrite: end!*/' : ''
-                                        )
+                                            '}}' . ($self['name'] ?
+                                                "{$self['name']}::__staticPropertiesMaps();" :
+                                                '; $_::__staticPropertiesMaps()'
+                                            ) : '}') .
+                                        ($self['name'] ?
+                                            //在判断类之外关闭串行功能
+                                            '}$_FUNC_mapVar->serial = false;' .
+                                            //插入重复声明复用结束
+                                            ($tree[1]['type'] === 1 && $tree[1]['life'] === $hard['save'] ?
+                                                '/*!swoole rewrite: end!*/' : ''
+                                            ) : '; unset($_)')
                                 );
                             //复用与接口的结束
                             } else if ($self['type'] & 24) {
@@ -3631,8 +3756,8 @@ class swoole implements ArrayAccess {
                             //重新引用上级类
                             $self = &$tree[0];
                         }
-                        //不在类中 && 有共享变量
-                        if ($self['type'] !== 4 && $self['varList']) {
+                        //在全局或方法中 && 有共享变量
+                        if ($self['type'] & 3 && $self['varList']) {
                             //改写静态或全局的变量列表
                             $wait[] = array(
                                 'pos' => $kPos,
@@ -3666,7 +3791,7 @@ class swoole implements ArrayAccess {
         }
 
         //插入硬缓存连接
-        $hard['isOn'] && self::codeHard($wait, $hard, $kPos - 1, "\n");
+        $hard['isOn'] && self::codeHard($wait, $hard, $kPos, "\n");
         //有php代码 && 关闭串行化
         $wait[] = array(
             //当前位置
@@ -3683,18 +3808,14 @@ class swoole implements ArrayAccess {
         }
 
         //打印调试信息
-        if (self::$debug) {
+        if ($test) {
             //打印重写的代码
-            (self::$debug & 1) && print_r("{$code}\n^^^^^^^^^^^^^\n");
+            (self::$debug[0] & 1) && print_r("{$code}\n^^^^^^^^^^^^^\n");
             //输出关键词信息
-            if (self::$debug & 2) {
+            if (self::$debug[0] & 2) {
                 foreach ($keys as &$vk) isset($vk[2]) && $vk['name'] = token_name($vk[0]);
                 print_r($keys);
             }
-            //打印指定的代码
-            //strpos($code, '存储错误日志') && print_r($code);//echo "\n^^^^^^^^^^^^^\n";
-            //print_r($tree);
-            //print_r($wait);
         }
     }
 
@@ -3748,7 +3869,7 @@ class swoole implements ArrayAccess {
     }
 
     /**
-     * 描述 : 获取完整代码类名
+     * 描述 : 获取代码前后一段表达式
      * 参数 :
      *     &keys : 解析的关键词列表
      *      kPos : 起始定位
@@ -3760,10 +3881,17 @@ class swoole implements ArrayAccess {
      *          "name" : 获取类名代码
      *      }
      * 返回 :
-     *      text=类名有效, false=关键词类名
+     *      text=结果有效, false=关键词类名
      * 作者 : Edgar.lee
      */
-    private static function codeClass(&$keys, $kPos, $move, &$data = null) {
+    private static function codeExp(&$keys, $kPos, $move, &$data = null) {
+        //超全局变量列表
+        static $super = array(
+            '$GLOBALS' => 1, '$_SERVER' => 1, '$_ENV' => 1,
+            '$_GET' => 1, '$_POST' => 1, '$_FILES' => 1,
+            '$_COOKIE' => 1, '$_SESSION' => 1, '$_REQUEST' => 1,
+        );
+
         //相关结果
         $data = array('ePos' => &$kPos, 'eLen' => 0);
         //结果集
@@ -3774,6 +3902,8 @@ class swoole implements ArrayAccess {
         $parse = $move > 0 ? array(
             //结束符: 常规命名空间, 绝对命名空间, 相对命名空间
             T_NAME_QUALIFIED => 1, T_NAME_FULLY_QUALIFIED => 1, T_NAME_RELATIVE => 1,
+            //结束符: 类标识
+            T_CLASS => 1,
             //跳过符: 变量 $xx, "$"符, 标识符 parent, 标识符 static
             T_VARIABLE => 2, '$' => 2, T_STRING => 2, T_STATIC => 2,
             //跳过符: "\"空间隔离符, "->"对象操作符
@@ -3784,8 +3914,8 @@ class swoole implements ArrayAccess {
         ) : array(
             //结束符: 常规命名空间, 绝对命名空间, 相对命名空间
             T_NAME_QUALIFIED => 1, T_NAME_FULLY_QUALIFIED => 1, T_NAME_RELATIVE => 1,
-            //结束符: 变量 $xx, "$"符
-            T_VARIABLE => 1, '$' => 1,
+            //结束符: 类标识, 变量 $xx, "$"符
+            T_CLASS => 1, T_VARIABLE => 1, '$' => 1,
             //跳过符: 标识符 parent, 标识符 static, "\"空间隔离符
             T_STRING => 2, T_STATIC => 2, T_NS_SEPARATOR => 2,
             //跳过符: "->"对象操作符
@@ -3806,7 +3936,7 @@ class swoole implements ArrayAccess {
             //在递归中
             if ($loop) {
                 //记录代码
-                $list[] = $text;
+                $list[] = isset($super[$text]) ? "{$text}_mapVar" : $text;
                 //是关键符
                 isset($loop[$code]) &&
                     //完成递归闭环
@@ -3816,7 +3946,7 @@ class swoole implements ArrayAccess {
             //在结构集中
             } else if (isset($parse[$code])) {
                 //记录代码
-                $list[] = $text;
+                $list[] = isset($super[$text]) ? "{$text}_mapVar" : $text;
                 //结束符
                 if ($parse[$code] === 1) {
                     break ;
@@ -3891,11 +4021,26 @@ class swoole implements ArrayAccess {
 
         //存在路由配置
         if ($GLOBALS['system']['routes']) {
+            //遍历路由规则, 使用第一个能匹配的规则
             foreach ($GLOBALS['system']['routes'] as $k => &$v) {
-                //按正在规则替换
-                $file = preg_replace($k, $v, $file, -1, $c);
+                //按路由规则替换
+                $file = preg_replace($k, $v, $file, -1, $temp);
                 //路由成功
-                if ($c) break ;
+                if ($temp) {
+                    //路由改写出GET参数
+                    if ($temp = parse_url($file, PHP_URL_QUERY)) {
+                        //同时存在请求参数 && 合并GET参数
+                        empty($index['query_string']) || $temp .= '&' . $index['query_string'];
+                        //生成新的GET参数数组
+                        parse_str($temp, $requ->get);
+                        //编码GET参数为字符串(去掉多余干扰字符)
+                        $index['query_string'] = http_build_query($requ->get);
+                    }
+
+                    //提取脚本文件(去掉?和#后面信息)
+                    $file = parse_url($file, PHP_URL_PATH);
+                    break ;
+                }
             }
         }
 
@@ -3938,7 +4083,7 @@ class swoole implements ArrayAccess {
             if (is_string($e = $e->getStatus())) echo $e;
         //含exit的所有错误
         } catch (Throwable $e) {
-            of::event('of::error', true, $e);
+            self::errCtrl($e);
         }
         //标记try结束
         self::errCtrl(false, __FUNCTION__);
@@ -4072,6 +4217,9 @@ class swoole implements ArrayAccess {
             //执行调试
             Co::debug($temp, __DIR__, self::$debug);
         }
+
+        //退出服务
+        exit;
     }
 
     /**
@@ -4082,7 +4230,7 @@ class swoole implements ArrayAccess {
         //注入协议封装
         stream_wrapper_register('sw.incl', __CLASS__);
         //仅cli模式下运行
-        if (PHP_SAPI !== 'cli') exit(self::server());
+        PHP_SAPI === 'cli' || self::server();
 
         //默认启动配置
         $config = array(
@@ -4098,13 +4246,14 @@ class swoole implements ArrayAccess {
                     'T_NAME_QUALIFIED' => 0, 'T_NAME_FULLY_QUALIFIED' => 0, 
                     //自身命名空间 namespace\xxx (313), 只读关键词 readonly (363)
                     'T_NAME_RELATIVE' => 0, 'T_READONLY' => 0,
-                    //注解"#[" (387)
-                    'T_ATTRIBUTE' => 0
+                    //注解"#[" (387), 箭头函数 fn (343)
+                    'T_ATTRIBUTE' => 0, 'T_FN' => 0
                 ),
             ),
             'server' => array(
                 'hook_flags' => null, 'worker_num' => swoole_cpu_num(),
-                'max_wait_time' => 86400, 'package_max_length' => self::getBitSize(ini_get('post_max_size'))
+                'max_wait_time' => 86400, 'log_level' => SWOOLE_LOG_WARNING,
+                'package_max_length' => self::getBitSize(ini_get('post_max_size'))
             ),
             'phpIni' => array(
                 'max_execution_time' => 30, 'memory_limit' => ini_get('memory_limit'),
@@ -4125,9 +4274,9 @@ class swoole implements ArrayAccess {
                     //加载配置
                     case 'conf':
                         $config = array_replace_recursive($config, include $temp[1]);
-                        $config['system']['config'] = 'conf:' . $temp[1];
+                        $config['system']['config'] = $v;
                         break;
-                    //启动类型, WebSocket=服务, task=任务
+                    //启动类型, WebSocket或其它=服务, task=任务
                     case 'open':
                         $config['system']['open'] = $temp[1];
                         break;

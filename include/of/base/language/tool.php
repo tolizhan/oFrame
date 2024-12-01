@@ -152,7 +152,11 @@ if (OF_DEBUG === false) {
     $temp = $result === null ? 1 : $result;
     echo of_base_com_data::json($temp);
 } else {
-    of_view::head(array());
+    of_view::head(array(
+        'head' => array(
+            'jQuery' => '<script src="' .OF_URL. '/att/link/jquery.js" ></script>'
+        )
+    ));
 ?>
 <style>
 body{ background-color:#FFFFFF; font-family:宋体;}

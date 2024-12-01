@@ -941,4 +941,4 @@ L === undefined && (L = {
     * 作者 : Edgar.Lee
     */
     'extension'  : {}
-}, L.val('$.browser', L.browser));
+});

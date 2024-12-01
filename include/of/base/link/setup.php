@@ -12,14 +12,18 @@ $addin['jConfig'] = isset($addin['jConfig']) ?
 
 //输出控制监听
 of::event('of::halt', array('asCall' => 'L::buffer', 'params' => array(true, true)));
-//为前端集成 jquery, L 封装 及 框架常量
-of_view::head('head', array(
-    //初始化路径
-    '<script>var ROOT_URL="' .ROOT_URL. '", OF_URL="' .OF_URL. '", VIEW_URL="' .of_view::path(true). '";</script>',
-    //加载 jquery.js
-    'jQuery' => '<script src="' .OF_URL. '/att/link/jquery.js" ></script>',
-    //加载 L.js
-    '<script src="' .OF_URL. '/att/link/L.js" addin="' .$addin['jConfig']. '" ></script>'
+//为前端集成 L封装 框架常量 默认html
+of_view::head('head', array_merge(
+    array(
+        //初始化路径
+        '<script>var ROOT_URL="' .ROOT_URL. '", OF_URL="' .OF_URL. '", VIEW_URL="' .of_view::path(true). '";</script>',
+        //加载 L.js
+        '<script src="' .OF_URL. '/att/link/L.js" addin="' .$addin['jConfig']. '" ></script>'
+    ),
+    of::config('_of.link.view.head', array(
+        //加载 jquery.js
+        'jQuery' => '<script src="' .OF_URL. '/att/link/jquery.js" ></script>',
+    ))
 ));
 
 /**

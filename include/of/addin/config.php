@@ -26,7 +26,7 @@ switch ($name) {
         class_exists('PHPRPC_Server', false) ||
         class_exists('PHPRPC_Date', false) ||
         of::event('of::loadClass', array(
-            'classPre' => 'PHPRPC_', 'mapping' => substr(OF_DIR, strlen(ROOT_DIR)) . '/addin/phprpc/PHPRPC_'
-        ));
+            'filter' => 'PHPRPC_', 'router' => substr(OF_DIR, strlen(ROOT_DIR)) . '/addin/phprpc/PHPRPC_'
+        ), true);
         break;
 }

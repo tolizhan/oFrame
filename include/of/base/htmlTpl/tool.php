@@ -9,6 +9,8 @@ class of_base_htmlTpl_tool {
      * 作者 : Edgar.lee
      */
     public static function index() {
+        //非调试模式 && 提示权限不足
+        OF_DEBUG === false && exit('Access denied: production mode.');
         //拷贝GET参数
         $get = $_GET + array('type' => '');
 
@@ -63,8 +65,5 @@ class of_base_htmlTpl_tool {
     }
 }
 
-if (OF_DEBUG === false) {
-    exit('Access denied: production mode.');
-} else {
-    return true;
-}
+//仅允许访问控制台页面
+return join('::', of::dispatch()) === 'of_base_htmlTpl_tool::index';

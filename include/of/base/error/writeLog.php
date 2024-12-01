@@ -241,8 +241,10 @@ class of_base_error_writeLog {
     protected static function writeLog(&$logData, $logType, $printStr) {
         //日志是否保存中, true=写日志报错, false=正常错误
         static $isSave = false;
+        //引用错误主体
+        $error = &$logData['environment'];
         //记录错误
-        of::saveError($index = &$logData['environment'], false);
+        $error['uuid'] = of::saveError($error, false);
         //配置引用
         $config = &self::$config;
         //系统时区时间对象
@@ -276,8 +278,7 @@ class of_base_error_writeLog {
                 $handle = &of_base_com_disk::file($logPath . 'Data.php', null, null);
 
                 //错误分组标识
-                $index = &$logData['environment'];
-                $eMd5 = md5($index['file'] . '::' . $index['line'] . '::' . $index['code'] . '::' . $index['type']);
+                $eMd5 = md5($error['file'] . '::' . $error['line'] . '::' . $error['code'] . '::' . $error['type']);
                 //错误的分组明细路径
                 $ePath = $logPath . 'Attr/group/' . $eMd5 . '.bin';
 
@@ -378,9 +379,9 @@ class of_base_error_writeLog {
      *              '_GET'     : 对应超全局变量
      *              '_POST'    : 对应超全局变量
      *              '_COOKIE'  : 对应超全局变量
+     *              '_REQUEST' : 对应超全局变量
      *              '_SESSION' : 对应超全局变量
      *              '_SERVER'  : 对应超全局变量
-     *              '_REQUEST' : 对应超全局变量
      *              'iStream'  : 原始请求输入流
      *          }
      *          'backtrace' : 回溯信息,js没有 {}
@@ -474,9 +475,9 @@ class of_base_error_writeLog {
             '_GET'     => &$_GET,
             '_POST'    => &$_POST,
             '_COOKIE'  => &$_COOKIE,
+            '_REQUEST' => &$_REQUEST,
             '_SESSION' => &$_SESSION,
             '_SERVER'  => &$_SERVER,
-            '_REQUEST' => &$_REQUEST,
             'iStream'  => file_get_contents('php://input'),
         );
 

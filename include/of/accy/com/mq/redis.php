@@ -362,14 +362,14 @@ class of_accy_com_mq_redis extends of_base_com_mq {
 
             //读取消息主键列表, 升级消息读出所有信息来更换消息槽
             $list = $this->zRangeByScore($sKey, 0, $isUp ? '+inf' : $time, array(
-                'withscores' => true, 'limit' => array($limit['sort'], $size)
+                'limit' => array($limit['sort'], $size)
             ));
             //未查出消息 || 重置消息偏移量
             $list || $this->msgLimit();
             $list ? $doLoop = $nTotal : --$doLoop;
 
             //变量消息主键
-            foreach ($list as $id => &$vl) {
+            foreach ($list as &$id) {
                 //哈希表ID
                 $mark = "of_accy_com_mq_redis::data::{{$name}.{$id}}";
                 //监听消息数据

@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200274);
+define('OF_VERSION', 200276);
 
 /**
  * 描述 : 控制层核心
@@ -34,33 +34,52 @@ class of {
     );
     //是否支持命名空间
     private static $isSpace = false;
+    //是否抛出语法错误
+    private static $isParse = false;
     //工作流程错误队列 [{"code" : 编码, "info" : 错误, "file" : 路径, "line" : 行数, "uuid" : 标识}, ...]
     private static $workErr = array(null);
+    //实际最后一次错误
+    private static $lastErr = null;
 
     /**
      * 描述 : 初始化框架
      * 作者 : Edgar.lee
      */
     public static function init() {
-        //支持命名空间
-        self::$isSpace = version_compare(PHP_VERSION, '5.3.0', '>=');
         //注册spl
         spl_autoload_register('of::loadClass');
-        //加载系统配置文件
-        self::loadSystemEnv();
+        //注册协议
+        stream_wrapper_register('of.eval', __CLASS__);
         //注册::halt事件
         register_shutdown_function('of::event', 'of::halt', true);
-        //动态工作SQL监听
-        self::event('of_db::before', array(
-            'asCall' => 'of::work',
-            'params' => array(array(), 0)
-        ));
+
+        //支持命名空间
+        self::$isSpace = version_compare(PHP_VERSION, '5.3.0', '>=');
+        //抛出语法错误
+        self::$isParse = version_compare(PHP_VERSION, '7.0.0', '>=');
+        //加载系统配置
+        self::loadSystemEnv();
+
+        //异常调用回溯"getTrace"方法, 返回参数 php>=7.4
+        ini_set('zend.exception_ignore_args', '0');
+        //隐藏原生错误
+        ini_set('display_errors', false);
+        //防止禁用错误
+        error_reporting(E_ALL);
+        //监听系统错误
+        set_error_handler('of::saveError');
+        //监听系统异常
+        set_exception_handler('of::saveError');
+        //监听致命错误
+        self::event('of::halt', 'of::saveError');
+        //监听代码错误
+        self::event('of::error', 'of::saveError');
+        //监听 SQL错误
+        self::event('of_db::error', 'of::saveError');
 
         //预先加载类
         if (isset(self::$config['_of']['preloaded'])) {
-            foreach (self::$config['_of']['preloaded'] as &$v) {
-                self::loadClass($v);
-            }
+            foreach (self::$config['_of']['preloaded'] as &$v) self::loadClass($v);
         }
 
         //生成 L 类
@@ -173,7 +192,7 @@ class of {
                     $name . '.', $k . '.',
                     min(strlen($name), strlen($k)) + 1
                 )) {
-                    $vaule = &of::getArrData($k, $config, null, 2);
+                    $vaule = &self::getArrData($k, $config, null, 2);
                     $vaule = include ROOT_DIR . $v;
                     unset($claim[$k]);
                 }
@@ -182,7 +201,7 @@ class of {
             //引用数据
             $vaule = &$cache[$name][$action];
             //数组定位
-            $vaule = of::getArrData(array(&$name, &$config, &$default, 2));
+            $vaule = self::getArrData(array(&$name, &$config, &$default, 2));
 
             //格式成 磁盘(1) 或 网络(2) 路径 && 值不为NULL
             if ($action & 3 && $vaule !== null) {
@@ -257,9 +276,9 @@ class of {
                             $result[$k] = null;
                             $result[$k] = &self::callFunc($v['event'], $params);
                         } catch (Exception $e) {
-                            of::event('of::error', true, $e);
+                            self::event('of::error', true, $e);
                         } catch (Error $e) {
-                            of::event('of::error', true, $e);
+                            self::event('of::error', true, $e);
                         }
                         $v['isExec'] = true;
                     }
@@ -638,7 +657,7 @@ class of {
             while ($temp = array_shift($index['defer'])) {
                 //在新工作中回调
                 if (is_array($temp) && array_key_exists('onWork', $temp)) {
-                    of::work($temp['onWork'], $temp, array(
+                    self::work($temp['onWork'], $temp, array(
                         'isOk' => $code && !$iwErr[0], 'wuid' => $index['wuid']
                     ));
                 //不开工作直接回调
@@ -648,10 +667,10 @@ class of {
                         self::callFunc($temp, array('isOk' => $code && !$iwErr[0], 'wuid' => $index['wuid']));
                     } catch (Exception $e) {
                         //记录异常
-                        of::event('of::error', true, $e);
+                        self::event('of::error', true, $e);
                     } catch (Error $e) {
                         //记录异常
-                        of::event('of::error', true, $e);
+                        self::event('of::error', true, $e);
                     }
                 }
             }
@@ -704,7 +723,7 @@ class of {
                 while ($temp = array_shift($index['done'])) {
                     //在新工作中回调
                     if (is_array($temp) && array_key_exists('onWork', $temp)) {
-                        of::work($temp['onWork'], $temp, array(
+                        self::work($temp['onWork'], $temp, array(
                             'isOk' => $isOk, 'wuid' => $index['wuid']
                         ));
                     //不开工作直接回调
@@ -714,10 +733,10 @@ class of {
                             self::callFunc($temp, array('isOk' => $isOk, 'wuid' => $index['wuid']));
                         } catch (Exception $e) {
                             //记录异常
-                            of::event('of::error', true, $e);
+                            self::event('of::error', true, $e);
                         } catch (Error $e) {
                             //记录异常
-                            of::event('of::error', true, $e);
+                            self::event('of::error', true, $e);
                         }
                     }
                 }
@@ -748,7 +767,7 @@ class of {
                     }
                 //error=操作错误
                 case 'error':
-                    $info === false && self::$workErr[0] = null;
+                    $info === false && self::$workErr[0] = self::$lastErr = null;
                     return self::$workErr[0];
                 //block=排除监听
                 case 'block':
@@ -818,7 +837,7 @@ class of {
                     );
                 //其它常规异常
                 } else {
-                    of::event('of::error', true, $code);
+                    self::event('of::error', true, $code);
                     $result = array(
                         'code' => 500,
                         'info' => L::getText('An internal error occurred', array('key' => __METHOD__)),
@@ -900,8 +919,10 @@ class of {
 
         //发生错误 && 不是备忘录
         if (isset($error) && empty($error['memo'])) {
+            //关联上一次错误
+            $_SERVER['_of']['error'] = self::$lastErr;
             //记录最后一次错误
-            self::$workErr[0] = array(
+            self::$lastErr = self::$workErr[0] = array(
                 'code' => &$error['code'], 'info' => &$error['info'],
                 'file' => &$error['file'], 'line' => &$error['line'],
                 'uuid' => uniqid()
@@ -919,26 +940,35 @@ class of {
                         '. Timestamp : ', time(), '</pre>';
                 }
             }
+
+            //返回错误标识
+            return self::$lastErr['uuid'];
         }
     }
 
     /**
      * 描述 : 动态加载类
      * 参数 :
-     *      className : 需要加载的类名
+     *      name : 需要加载的类名
      * 返回 :
      *      成功类返回的值,默认1,失败返回false
      * 注明 :
      *      of::loadClass事件 : 类路径映射,指定前缀的类将按照其它前缀的类加载
      *          第二参结构 : {
-     *              classPre : 类前缀
-     *              mapping  : 映射前缀,字符串=指定的前缀替换该字符串
-     *              asCall   : 函数回调,不能与mapping共存
-     *              params   : 回调参数,用[_]键指定类名位置
+     *              filter : 匹配的类前缀触发回调
+     *              router : 映射前缀,字符串=指定的前缀替换该字符串
+     *              asCall : 函数回调,不能与router共存
+     *              params : 回调参数,用[_]键指定类名位置
      *          }
      * 作者 : Edgar.lee
      */
-    public static function loadClass($className) {
+    public static function loadClass($name) {
+        //框架类转命名空间方式
+        $alias = self::$isSpace && rtrim(substr($name, 0, 3), '\_') === 'of';
+        $alias && $name = strtr($name, '\\', '_');
+
+        //事件回调修改的类名
+        $class = $name;
         //读取of::loadClass事件
         $event = &self::event('of::loadClass', null);
         //修改过重新排序
@@ -946,48 +976,45 @@ class of {
             $event['change'] = false;
             //至少有of_这条数据
             foreach ($event['list'] as $k => &$v) {
-                $sortList[$k] = &$v['event']['classPre'];
                 if ($v['change']) {
                     $v['change'] = false;
-                    $v['classPreLen'] = strlen($v['event']['classPre']);
+                    $v['filterLen'] = strlen($v['event']['filter']);
                 }
             }
-            //重新排序
-            array_multisort($sortList, SORT_DESC, SORT_STRING, $event['list']);
         }
-
-        //框架类转命名空间方式
-        $isAlias = self::$isSpace && rtrim(substr($className, 0, 3), '\_') === 'of';
-        $isAlias && $isAlias = $className = strtr($className, '\\', '_');
-
         //加载回调, 不用判断一定有数据
         foreach ($event['list'] as &$v) {
-            $k = $v['classPreLen'];
+            $k = $v['filterLen'];
             $v = &$v['event'];
-            if (strncmp($v['classPre'], $className, $k) === 0) {
+            if (strncmp($v['filter'], $name, $k) === 0) {
                 if (isset($v['asCall'])) {
-                    $temp = self::callFunc($v, array('className' => $className));
-                    if ($temp !== false) return $temp;
+                    self::callFunc($v, array('name' => $name, 'code' => &$code, 'file' => &$file));
                 } else {
-                    $className = substr_replace($className, $v['mapping'], 0, $k);
-                    break;
+                    $class = substr_replace($name, $v['router'], 0, $k);
                 }
             }
         }
 
-        if ($className) {
+        //回调未指定路径
+        if (!isset($file)) {
             //指定路径 || 转换路径
-            $className[0] === '/' || $className = '/' . strtr($className, '_', '/');
+            $class[0] === '/' || $class = '/' . strtr($class, '_', '/');
             //生成绝对路径
-            $className = ROOT_DIR . strtr($className, '\\', '/') . '.php';
-            //加载文件
-            $className = is_file($className) ? include $className : false;
-            //为框架类设置空间别名
-            if ($isAlias && class_exists($isAlias, false)) {
-                class_alias($isAlias, strtr($isAlias, '_', '\\'));
-            }
-            return $className;
+            $file = ROOT_DIR . strtr($class, '\\', '/') . '.php';
         }
+        //加载代码
+        if (isset($code)) {
+            $class = include "of.eval://{$file}\n?>{$code}";
+        //加载文件
+        } else {
+            $class = is_file($file) ? include $file : false;
+        }
+
+        //为框架类设置空间别名
+        if ($alias && class_exists($name, false)) {
+            class_alias($name, strtr($name, '_', '\\'));
+        }
+        return $class;
     }
 
     /**
@@ -1049,7 +1076,7 @@ class of {
         }
 
         //加载全局配置文件
-        $of += (include OF_DIR . '/config.php') + array('debug' => false, 'config' => array());
+        $of += (include OF_DIR . '/config.php') + array('debug' => false, 'config' => array(), 'dataDir' => '/data');
         //站点根目录,ROOT_DIR
         define('ROOT_DIR', $of['rootDir']);
 
@@ -1132,36 +1159,23 @@ class of {
         //格式化debug
         if ($of['debug'] === true || $of['debug'] === null) {
             //调试或生产模式
-            $_SERVER['ofDebug'] = isset($_REQUEST['__OF_DEBUG__']) ?
+            $_SERVER['_of']['debug'] = isset($_REQUEST['__OF_DEBUG__']) ?
                 true : $of['debug'];
         } else {
             //生产模式切换, 密码校验
-            $_SERVER['ofDebug'] = isset($_REQUEST['__OF_DEBUG__']) ?
+            $_SERVER['_of']['debug'] = isset($_REQUEST['__OF_DEBUG__']) ?
                 $of['debug'] == $_REQUEST['__OF_DEBUG__'] : false;
         }
-        define('OF_DEBUG', $_SERVER['ofDebug']);
+        define('OF_DEBUG', $_SERVER['_of']['debug']);
 
         //of_类映射
         self::event('of::loadClass', array(
-            'classPre' => 'of_', 'mapping' => substr(OF_DIR, strlen(ROOT_DIR) + 1) . '/'
+            'filter' => 'of_', 'router' => substr(OF_DIR, strlen(ROOT_DIR) + 1) . '/'
         ), true);
-
-        //异常调用回溯"getTrace"方法, 返回参数 php>=7.4
-        ini_set('zend.exception_ignore_args', '0');
-        //隐藏原生错误
-        ini_set('display_errors', false);
-        //防止禁用错误
-        error_reporting(E_ALL);
-        //监听系统错误
-        set_error_handler('of::saveError');
-        //监听系统异常
-        set_exception_handler('of::saveError');
-        //监听代码错误
-        of::event('of::error', 'of::saveError');
-        //监听致命错误
-        of::event('of::halt', 'of::saveError');
-        //监听 SQL错误
-        of::event('of_db::error', 'of::saveError');
+        //动态工作SQL监听
+        self::event('of_db::before', array(
+            'asCall' => 'of::work', 'params' => array(array(), 0)
+        ));
     }
 
     /**
@@ -1356,9 +1370,10 @@ class of {
     /**
      * 描述 : 校验php语法
      * 参数 :
-     *     &code : 检查的代码, 符合 eval 的规范
-     *      exec : 是否执行 false=不执行, true=执行
-     *      tips : 是否显示行号源码 false=不显示, true=显示, 字符串=显示指定的代码
+     *      code : 检查的代码, 符合 eval 的规范
+     *      exec : 是否执行 false=不执行, true=执行, 字符串=执行且指定文件路径
+     *      tips : 是否显示行号源码 false=不显示, true=显示
+     *     &data : 执行时返回的数据
      * 返回 :
      *      语法通过返回 null
      *      语法失败返回 {
@@ -1368,36 +1383,43 @@ class of {
      *      }
      * 作者 : Edgar.lee
      */
-    public static function &syntax(&$code, $exec = false, $tips = false) {
-        try {
-            $temp = ini_set('error_append_string', "\n----\n" . $code);
-
+    public static function &syntax($code, $exec = false, $tips = false, &$data = null) {
+        //语法错误时异常
+        if (self::$isParse) {
+            try {
+                //是否执行, 屏蔽 __halt_compiler 语法错误
+                $temp = $exec === false ? 'if (0) {' . str_replace('__halt_compiler', 'c', $code) . "//<?php\n}" : $code;
+                $data = is_bool($exec) ? eval($temp) : include "of.eval://{$exec}\n{$code}";
+            //兼容php7
+            } catch (Error $e) {
+                //是语法错误 ? 返回错误 : 错误日志
+                $e instanceof ParseError ?
+                    $result = array('info' => $e->getMessage(), 'line' => $e->getLine()) :
+                    self::event('of::error', true, $e);
+                //执行结果false
+                $data = false;
+            }
+        //语法错误时报错
+        } else {
             //是否执行, 屏蔽 __halt_compiler 语法错误
-            $exec ? $exec = &$code : $exec = 'if (0) {' . str_replace('__halt_compiler', 'c', $code) . "//<?php\n}";
-            if (@eval($exec) === false) {
+            $temp = $exec === true ? $code : 'if (0) {' . str_replace('__halt_compiler', 'c', $code) . "//<?php\n}";
+            //未指定路径 || 校验代码
+            if (($data = @eval($temp)) === false) {
                 $result = error_get_last();
-                $result['info'] = &$result['message'];
-                unset($result['message'], $result['type'], $result['file']);
+                $result = array('info' => &$result['message'], 'line' => &$result['line']);
                 //清除错误 (php < 7 时 eval 出错时返回 false, 同时没有 error_clear_last 方法)
                 @trigger_error('');
+            //指定文件路径
+            } else if (is_string($exec)) {
+                $data = include "of.eval://{$exec}\n{$code}";
             }
-
-            ini_set('error_append_string', $temp);
-        //兼容php7
-        } catch (Error $e) {
-            $result = array(
-                //异常消息
-                'info' => $e->getMessage(),
-                //异常行
-                'line' => $e->getLine()
-            );
         }
 
         //发生错误
         if (isset($result)) {
             //格式化提示代码
             if ($tips) {
-                $tips = explode("\n", $tips === true ? $code : $tips);
+                $tips = explode("\n", $code);
                 //最大值的长度
                 $line = strlen(count($tips));
                 foreach ($tips as $k => &$v) {
@@ -1411,6 +1433,68 @@ class of {
         }
 
         return $result;
+    }
+
+    //流配置资源**********************************************************of.eval协议
+    public $context;
+    //流文件信息
+    private $stat;
+    //流指针位置
+    private $seek = 0;
+    //流改写代码
+    private $code;
+
+    /**
+     * 描述 : 打开文件流
+     * 注明 :
+     *      路径结构($path) : of.eval://路径\n代码
+     * 作者 : Edgar.lee
+     */
+    public function stream_open($path, $mode, $options, &$file) {
+        //拆分代码
+        $path = explode("\n", $path, 2);
+        //代码路径
+        $file = substr($path[0], 10);
+        //执行代码
+        $this->code = '<?php ' . $path[1];
+        //代码长度
+        $this->stat['size'] = strlen($this->code);
+        //返回结果
+        return true;
+    }
+
+    /**
+     * 描述 : 读取流信息
+     * 作者 : Edgar.lee
+     */
+    public function stream_stat() {
+        return $this->stat;
+    }
+
+    /**
+     * 描述 : 读取流数据
+     * 作者 : Edgar.lee
+     */
+    public function stream_read($count) {
+        $code = substr($this->code, $this->seek, $count);
+        $this->seek += strlen($code);
+        return $code;
+    }
+
+    /**
+     * 描述 : 判断流结束
+     * 作者 : Edgar.lee
+     */
+    public function stream_eof() {
+        return $this->seek >= $this->stat['size'];
+    }
+
+    /**
+     * 描述 : 设置流参数
+     * 作者 : Edgar.lee
+     */
+    public function stream_set_option($option, $arg1, $arg2) {
+        return true;
     }
 }
 

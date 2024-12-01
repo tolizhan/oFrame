@@ -10,7 +10,7 @@ class of_accy_com_timer_swoole {
      */
     public static function fork($params) {
         //协程任务, 在共享进程中执行
-        if ($params['params'][1]['type'] & 8) {
+        if ($params['params'][1]['type'] & 24) {
             swoole::fork($params, 4);
         //独立进程方式执行
         } else {

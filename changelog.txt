@@ -1,3 +1,46 @@
+版本: 276
+作者: Edgar
+日期: 2024年12月1日 14:39:20
+信息:
+说明: + of::syntax()可指定执行代码路径并获取返回值
+      + 扩展文件可通过__FILE__魔术常量获取准确路径
+      + of_base_com_timer::info(4)可区分"多子任务"
+      + 错误日志增加上次错误..._SERVER[_of][error]
+      + 消息队列配置动态调整时并发不再整体队列重启
+      + _of.link.view.head可在<head>中插入默认html
+      + 兼容 PHP 8.4
+      - 重写"of::loadClass"事件,可以更改代码和路径
+      * Swoole兼容"时间函数错误,空间常量,更多语法"
+      * Swoole路由规则可格式化成带"?GET参数"的路径
+      * Swoole修复匿名方法匿名类导致的内存溢出问题
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/model/list.php
+已修改 : /trunk/demo/tool/htmlLoad/code/load.js
+已修改 : /trunk/demo/tool/swoole/debug.php
+已修改 : /trunk/include/of/accy/com/data/lock/files.php
+已修改 : /trunk/include/of/accy/com/kv/redis.php
+已修改 : /trunk/include/of/accy/com/mq/redis.php
+已修改 : /trunk/include/of/accy/com/timer/swoole.php
+已修改 : /trunk/include/of/addin/config.php
+已修改 : /trunk/include/of/att/link/L.js
+已修改 : /trunk/include/of/att/link/jquery.js
+已修改 : /trunk/include/of/att/sso/tpl/login.tpl.php
+已修改 : /trunk/include/of/att/sso/tpl/main.tpl.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/extension/tool.php
+已修改 : /trunk/include/of/base/htmlTpl/tool.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/link/setup.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/include/of/view.php
+已修改 : /trunk/swoole.php
+
 版本: 274
 作者: Edgar
 日期: 2024年8月1日 15:50:50

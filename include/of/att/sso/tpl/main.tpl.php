@@ -1,5 +1,8 @@
 <?php
 $this->head(array(
+    'head' => array(
+        'jQuery' => '<script src="' .OF_URL. '/att/link/jquery.js" ></script>'
+    ),
     'js'  => array(
         '_' . OF_URL . '/att/sso/js/main.js',
         '_' . OF_URL . '/att/com/com/paging/main.js',

@@ -7,19 +7,19 @@ class ctrl_list {
     public static function init() {
         //ctrl_类映射
         of::event('of::loadClass', array(
-            'classPre' => 'ctrl', 'mapping' => 'demo_ctrl'
+            'filter' => 'ctrl', 'router' => 'demo_ctrl'
         ), true);
         //model_类映射
         of::event('of::loadClass', array(
-            'classPre' => 'model', 'mapping' => 'demo_model'
+            'filter' => 'model', 'router' => 'demo_model'
         ), true);
         //serv_类映射
         of::event('of::loadClass', array(
-            'classPre' => 'serv', 'mapping' => 'demo_serv'
+            'filter' => 'serv', 'router' => 'demo_serv'
         ), true);
         //test_类映射
         of::event('of::loadClass', array(
-            'classPre' => 'test', 'mapping' => 'demo_test'
+            'filter' => 'test', 'router' => 'demo_test'
         ), true);
 
         //非框架入口

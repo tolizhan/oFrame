@@ -86,7 +86,7 @@ class of_accy_com_data_lock_files {
                             //windows环境php >= 7.3 打开已删除文件报错"无权限"问题
                             $isWin && rename($path, $path .= '_');
                             //清除过期锁
-                            unlink($path);
+                            @unlink($path);
                             //标记已删除, 异步删除时可能其它待加锁的连接已打开
                             fwrite($fp, '1');
                         }

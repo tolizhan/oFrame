@@ -44,7 +44,7 @@ class of_view extends stdClass {
     public static function path($isUrl = false) {
         $index = &$_COOKIE['of_view']['viewPath'];
         //初始化模板
-        isset($index) || $index = of::config('_of.view.tplPath');
+        isset($index) || $index = of::config('_of.view.tplPath', '/view');
 
         return $isUrl === null ? $index : of::formatPath($index, $isUrl ? ROOT_URL : ROOT_DIR);
     }
@@ -76,7 +76,7 @@ class of_view extends stdClass {
      */
     public static function display($tpl = null) {
         //模板扩展名
-        $tplExt = of::config('_of.view.tplExt');
+        $tplExt = of::config('_of.view.tplExt', '.tpl.php');
 
         //常规模板
         if ($tpl === null || $tpl[0] !== '_' && $tpl[0] !== '/') {
@@ -136,7 +136,7 @@ class of_view extends stdClass {
             echo '<!DOCTYPE html>',
                 '<html>',
                 '<head>',
-                '<title>', isset($_['title']) ? $_['title'] : '', of::config('_of.view.title'), '</title>',
+                '<title>', isset($_['title']) ? $_['title'] : '', of::config('_of.view.title', ''), '</title>',
                 '<meta http-equiv="X-UA-Compatible" content="IE=edge" />';
                 //of.php已发送头,同时IE6 p3p隐私共享会因utf-8导致js cookie不可写
                 //'<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />',

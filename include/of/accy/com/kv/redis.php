@@ -48,7 +48,7 @@ class of_accy_com_kv_redis extends of_base_com_kv {
                 ));
                 $this->link = new _RedisArray($redis, $params['host']);
                 //选择数据库 || 连接失败
-                if (!$redis->select($params['db'])) throw new Exception('Failed to connection.');
+                if (!$this->link->select($params['db'])) throw new Exception('Failed to connection.');
                 break;
         }
     }
@@ -269,6 +269,24 @@ class _RedisArray {
     public function __construct(&$redis, &$hosts) {
         $this->redis = &$redis;
         $this->hosts = &$hosts;
+    }
+
+    /**
+     * 描述 : 选择数据库, 个别版本redis客户端直接调用select会崩溃
+     * 作者 : Edgar.lee
+     */
+    public function select($db) {
+        //引用redis对象
+        $redis = &$this->redis;
+        //响应结果
+        $result = array();
+        //批量操作
+        foreach ($this->hosts as &$hv) {
+            //单主机redis对象
+            $result[$hv] = $redis->_instance($hv)->select($db);
+        }
+        //返回结果集
+        return $result;
     }
 
     /**
