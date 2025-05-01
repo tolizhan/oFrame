@@ -381,7 +381,7 @@ _top:expression(eval(document.documentElement.scrollTop) + 200);
                 temp = '';
 
                 $.each(json, function (path) {
-                    temp += '<option value="' +path+ '">' +path.substr(1)+ '</option>'
+                    temp += '<option value="' +path+ '">' +path.slice(1)+ '</option>'
                 });
 
                 temp = $('#translateSelectLanguagePage').html(temp);
@@ -409,7 +409,7 @@ _top:expression(eval(document.documentElement.scrollTop) + 200);
                     path = temp + path;
             }
 
-            $('.urlBar').html((path.substr(0, 1) === '/' ? '' : '/') + path);
+            $('.urlBar').html((path.slice(0, 1) === '/' ? '' : '/') + path);
             isTip === false || window.L.open('tip')('正在加载');
             $('#merger table tbody').html('');
             $('#merger .floatBar').hide();
@@ -428,7 +428,7 @@ _top:expression(eval(document.documentElement.scrollTop) + 200);
                         '<font class="folder">D</font>' +
                         '<font class="file">F</font>' +
                         '<div class="discard" title="有废弃"></div>' +
-                        '<span>' +path.substr(path.lastIndexOf('/') + 1)+ '</span>' +
+                        '<span>' +path.slice(path.lastIndexOf('/') + 1)+ '</span>' +
                     '</div>';
                 });
                 $('.disk').html(temp + '<div class="clear"></div>')

@@ -88,14 +88,78 @@ class of_base_com_timer {
         if (OF_DEBUG === false) {
             exit('Access denied: production mode.');
         } else {
-            echo '<pre><hr>Scheduled task : '; 
-            if (is_file(self::$config['cron']['path'])) {
-                print_r(include self::$config['cron']['path']);
+            //路径参数
+            $rUrl = '?c=of_base_com_timer' . (isset($_GET['__OF_DEBUG__']) ? '&__OF_DEBUG__=' . $_GET['__OF_DEBUG__'] : '');
+            //默认排序
+            $sort = isset($_GET['sort']) ? $_GET['sort'] : 'maxRunTime';
+            //加载消息类型
+            $mark = isset($_GET['mark']) ? $_GET['mark'] : '';
+            //获取并发任务
+            $info = self::info(1);
+            //分组打印信息
+            $list = array();
+            //当前时间戳
+            $time = time();
+
+            //并发任务分组统计
+            foreach ($info as $k => &$v) {
+                //任务回调方法
+                $func = is_array($v['call']) ?
+                    (is_array($temp = isset($v['call'][0]) ? $v['call'] : $v['call']['asCall']) ?
+                        '[' . join(', ', $temp) . ']' : $temp
+                    ) : $v['call'];
+                //初始化分类列表
+                isset($list[$func]) || $list[$func] = array(
+                    //分类名称, 分类标识, 任务列表
+                    'groupName' => $func, 'groupMark' => md5($func), 'taskList' => array(),
+                    //执行并发, 最长时间, 最后启动时间
+                    'concurrent' => 0, 'maxRunTime' => 0, 'datetime' => '',
+                );
+                //汇总分类引用
+                $list[$func]['taskList'][$k] = &$v;
+                //统计分类数据
+                foreach ($v['list'] as &$vl) {
+                    //统计执行并发
+                    $list[$func]['concurrent'] += 1;
+                    //统计最长时间
+                    $list[$func]['maxRunTime'] = max($time - $vl['timestamp'], $list[$func]['maxRunTime']);
+                    //最后启动时间
+                    $list[$func]['datetime'] = max($vl['datetime'], $list[$func]['datetime']);
+                }
             }
 
-            echo '<hr>Concurrent Running : ';
-            print_r(self::info(1));
-            echo '</pre>';
+            //排序打印信息
+            ($temp = array_column($list, $sort)) && array_multisort($temp, SORT_DESC, $list);
+            //汇总并发数量
+            $temp = array_sum(array_column($list, 'concurrent'));
+            //打印分组信息
+            echo '<style>a{color: #000;} table{border-collapse: collapse;} pre{width: 0;}</style><hr>',
+                '<table border="1">',
+                    '<tr>',
+                        "<th><a href='{$rUrl}&sort=groupName'>groupName</a></td>",
+                        "<th><a href='{$rUrl}&sort=concurrent'>concurrent($temp)</a></td>",
+                        "<th><a href='{$rUrl}&sort=maxRunTime'>maxRunTime(s)</a></td>",
+                        "<th><a href='{$rUrl}&sort=datetime'>lastDatetime</a></td>",
+                    '</tr>';
+            foreach ($list as &$v) {
+                $temp = array(
+                    'mark' => "mark={$v['groupMark']}#{$v['groupMark']}' id='{$v['groupMark']}'",
+                    'list' => $mark === $v['groupMark'] ?
+                        '<tr><td colspan=4><pre>' . print_r($v['taskList'], true) . '</pre></td></tr>' : ''
+                );
+                echo '<tr>',
+                        "<td><a href='{$rUrl}&sort={$sort}&{$temp['mark']}'>{$v['groupName']}</a></td>",
+                        "<td>{$v['concurrent']}</td>",
+                        "<td>{$v['maxRunTime']}</td>",
+                        "<td>{$v['datetime']}</td>",
+                    "</tr>", $temp['list'];
+            }
+            echo '</table>';
+
+            //输出计划任务配置
+            echo '<hr><pre>Scheduled task : ',
+                (is_file(self::$config['cron']['path']) ? print_r(include self::$config['cron']['path'], true) : ''),
+                '</pre>';
         }
     }
 
@@ -441,14 +505,17 @@ class of_base_com_timer {
 
                         //清理模式
                         if ($type & 1073741824) {
-                            //更新备注有效期
-                            of_base_com_kv::set($taskNoteKey, $note, 2592000, '_ofSelf');
+                            //更新备注有效期(当数据正常时)
+                            $note['call'] && of_base_com_kv::set($taskNoteKey, $note, 2592000, '_ofSelf');
                             //更新信息有效期
                             of_base_com_kv::set($taskInfoKey, $info, 2592000, '_ofSelf');
                         }
                     }
                     //解除信息锁
                     $type & 1073741824 && of_base_com_data::lock($taskInfoKey, 3);
+
+                    //读取异常(瞬间清理或网络错误), 不记入结果
+                    if (!$index['call']) unset($save[$kt]);
                 }
             }
 
@@ -733,10 +800,29 @@ class of_base_com_timer {
             if (!isset($temp[$cArg['cMd5']])) {
                 //获取全局任务列表独享锁
                 of_base_com_data::lock($tLock, 2, $lockArgv);
+
+                //格式回调数组
+                if (is_array($index = &$call['call'])) {
+                    $temp = array('call' => json_decode(json_encode($index), true));
+                    //分析回调结构
+                    if (isset($index[0])) {
+                        $temp += array(&$temp['call'][0], &$index[0]);
+                    } else if (is_array($index['asCall'])) {
+                        $temp += array(&$temp['call']['asCall'][0], &$index['asCall'][0]);
+                    } else {
+                        $temp += array(&$temp['call']['asCall'], &$index['asCall']);
+                    }
+                    //对象转换成易读方式
+                    is_object($temp[1]) && $temp[0] = get_class($temp[1]);
+                } else {
+                    //可能是调用对象 __invoke
+                    $temp = array('call' => is_object($index) ? 'new ' . get_class($index) : $index);
+                }
                 //跟新任务备注数据
                 of_base_com_kv::set('of_base_com_timer::taskNote#' . $cArg['cMd5'], array(
-                    'call' => $call['call']
+                    'call' => $temp['call']
                 ), 2592000, '_ofSelf');
+
                 //读取全局节点列表
                 $temp = of_base_com_kv::get($tLock, array(), '_ofSelf') + array($cArg['cMd5'] => array());
                 //回写全局任务列表(永不过期)

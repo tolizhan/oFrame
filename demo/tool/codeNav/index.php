@@ -17,7 +17,9 @@ $ofClassPath = array(
 );
 //编辑器框架空间导航, {空间名 : [继承类代码, ...]}
 $ideNsNav = array();
-//L类导航, [[方法, 参数, 主体, 静态]]
+//L类遍历, []
+$linkVal = array();
+//L类导航, [[方法, 参数, 主体, 静态, 注释]]
 $linkNav = array();
 //提取框架类名正则
 $ofClassPreg = '@\s(abstract\s+)?class\s+(of_[^\s]+)\s@ms';
@@ -58,24 +60,56 @@ foreach ($ofClassList as $k => &$v) {
 foreach ($ideNsNav as $k => &$v) $v = "\nnamespace {$k} {\n\n" . join("\n\n", $v) . "\n\n}";
 $ideNsNav = join("\n", $ideNsNav);
 
+//生成L类属性列表
+of_base_com_disk::each(OF_DIR . '/base/com', $linkVal);
+$linkVal['view'] = new ReflectionClass('of_view');
+foreach ($linkVal as $k => &$v) {
+    if ($k === 'view') {
+        //存在注释 && 格式化注释
+        ($v = $v->getDocComment()) && $v = "\n        " . preg_replace('@^\s+@m', '         ', $v);
+        $v = "{$v}\n        public of_view \$view;\n";
+    //是php文件 && 不以"_"开头的文件名
+    } else if (pathinfo($k, PATHINFO_EXTENSION) === 'php' && ($v = substr(basename($k), 0, -4)) && $v[0] !== '_') {
+        $k = new ReflectionClass("of_base_com_{$v}");
+        //存在注释 && 格式化注释
+        ($k = $k->getDocComment()) && $k = "\n        " . preg_replace('@^\s+@m', '         ', $k);
+        $v = "{$k}\n        public of_base_com_{$v} \$_{$v};\n";
+    } else {
+        unset($linkVal[$k]);
+    }
+}
+$linkVal = join($linkVal);
+
 //生成L类导航文件
 @eval('$linkNav = array(); ' . str_replace('of::link', '$linkNav[] = array', join("\n", $linkNav)));
 foreach ($linkNav as &$v) {
+    //匹配方法名与参数
+    if (preg_match('@([\w\\\\]+)::(\w+)\s*\(@', $v[2], $v[4])) {
+        //通过反射机制提取方法的注释
+        $r = new ReflectionClass($v[4][1]);
+        $f = $r->getMethod($v[4][2]);
+        //存在注释 && 格式化注释
+        ($v[4] = $f->getDocComment()) && $v[4] = "\n        " . preg_replace('@^\s+@m', '         ', $v[4]);
+    } else {
+        $v[4] = '';
+    }
     $v[3] = isset($v[3]) && $v[3] === false ? '' : 'static ';
-    $v = "\n        public {$v[3]}function {$v[0]}({$v[1]}) {\n            /*{$v[2]}*/\n        }\n";
+    $v = "{$v[4]}\n        public {$v[3]}function {$v[0]}({$v[1]}) {\n            {$v[2]}\n        }\n";
 }
-$linkNav = '    class L {' . join($linkNav) . '    }';
-if ($temp = of::syntax($linkNav, false, $linkNav)) {
+$linkNav = join($linkNav);//'    class L {' . join($linkNav) . '    }';
+
+//检查语法
+if ($temp = of::syntax($temp = "class L {{$linkNav}}", false, $temp)) {
     throw new Exception(print_r($temp, true));
 } else {
-    $linkNav = "\nnamespace {\n\n{$linkNav}\n\n}";
+    $linkNav = "\nnamespace {\n\n    class L {{$linkVal}{$linkNav}    }\n\n}";
 }
 
 //回写成代码导航文件
 file_put_contents($savePath, join("\n", array(
     '<?php',
     '/**',
-    ' * 描述 : 未实际运行, 仅作IDE编辑器对"of\xxx\yyy"及"L类"的代码跟踪',
+    ' * 描述 : 用于IDE编辑器对"of\xxx\yyy"及"L类"的代码跟踪',
     ' * 作者 : Edgar.lee',
     " */{$ideNsNav}\n{$linkNav}"
 )));

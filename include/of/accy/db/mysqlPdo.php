@@ -67,7 +67,7 @@ class of_accy_db_mysqlPdo extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _close() {
-        return is_resource($this->connection) && !($this->connection = null);
+        return !$this->connection = null;
     }
 
     /**

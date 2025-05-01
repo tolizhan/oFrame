@@ -42,7 +42,7 @@
     //当前脚步
     var script = $('script').eq(-1);
     //OA 网址
-    var oaUrl = (oaUrl = script.attr('src')).substr(0, oaUrl.length - 7) || '.';
+    var oaUrl = (oaUrl = script.attr('src')).slice(0, oaUrl.length - 7) || '.';
     //导航配置
     var config = (new Function('return ' + script.prop('text') + ';'))();
     //依赖数据

@@ -1,24 +1,27 @@
 <?php
+//兼容旧版配置
+$appDir = ROOT_DIR . '/include/application';
+
 switch ($name) {
     //phpExcel
     case 'excel':
-        class_exists('PHPExcel', false) || require OF_DIR . '/addin/PHPOffice/PHPExcel.php';
+        class_exists('PHPExcel', false) || require $appDir .'/PHPOffice/PHPExcel.php';
         break;
     //phpWord
     case 'word' :
-        class_exists('PHPWord', false) || require OF_DIR . '/addin/PHPOffice/PHPWord.php';
+        class_exists('PHPWord', false) || require $appDir .'/PHPOffice/PHPWord.php';
         break;
     //phpSoap
     case 'soap' :
-        class_exists('nusoap_base', false) || require OF_DIR . '/addin/nusoap/nusoap.php';
+        class_exists('nusoap_base', false) || require $appDir .'/nusoap/nusoap.php';
         break;
     //phpMailer
     case 'mail' :
-        function_exists('PHPMailerAutoload') || require OF_DIR . '/addin/PHPMailer/PHPMailerAutoload.php';
+        function_exists('PHPMailerAutoload') || require $appDir .'/PHPMailer/PHPMailerAutoload.php';
         break;
     //tcPdf
     case 'pdf' :
-        class_exists('TCPDF', false) || require OF_DIR . '/addin/tcpdf/tcpdf.php';
+        class_exists('TCPDF', false) || require $appDir .'/tcpdf/tcpdf.php';
         break;
     //phprpc
     case 'phprpc' :
@@ -26,7 +29,7 @@ switch ($name) {
         class_exists('PHPRPC_Server', false) ||
         class_exists('PHPRPC_Date', false) ||
         of::event('of::loadClass', array(
-            'filter' => 'PHPRPC_', 'router' => substr(OF_DIR, strlen(ROOT_DIR)) . '/addin/phprpc/PHPRPC_'
+            'filter' => 'PHPRPC_', 'router' => substr($appDir, strlen(ROOT_DIR)) . '/phprpc/PHPRPC_'
         ), true);
         break;
 }

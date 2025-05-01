@@ -1,4 +1,8 @@
 <?php
+/**
+ * 描述 : 工具组件封装
+ * 作者 : Edgar.lee
+ */
 class of_base_com_com {
     /**
      * 描述 : 分页列表

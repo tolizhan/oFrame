@@ -645,7 +645,7 @@ var ofBaseSsoMain = {
  * 描述 : 翻页后回调
  * 作者 : Edgar.lee
  */
-L.data('paging.after[]', function() {
+L.data('paging.after[]', function () {
     //基础类型
     var type = this.id.slice(0, -6);
     //当前页面
@@ -661,7 +661,7 @@ L.data('paging.after[]', function() {
 
     temp = {};
     //将数据转化为{ID:数据}
-    for(var i in this.data) {
+    for (var i in this.data) {
         temp[this.data[i].id] = this.data[i];
     }
     //更新自带数据
@@ -670,12 +670,12 @@ L.data('paging.after[]', function() {
     //所有复选框
     temp = ofBaseSsoMain.allBox(type);
     //恢复复选框
-    for(var i in temp) {
+    for (var i in temp) {
         sels[i] && (temp[i].checked = true);
     }
 
     //恢复选择状态
-    if( edit.selItem && temp[edit.selItem.key] ) {
+    if (edit.selItem && temp[edit.selItem.key]) {
         //更新节点
         edit.selItem.node = temp[edit.selItem.key].parentNode.parentNode;
         //修改背景色
@@ -683,7 +683,7 @@ L.data('paging.after[]', function() {
     } else {
         delete edit.selItem;
         //取消修改
-        if( ofBaseSsoMain.state.selNode && type === ofBaseSsoMain.state.selNode.type ) {
+        if (ofBaseSsoMain.state.selNode && type === ofBaseSsoMain.state.selNode.type) {
             //隐藏修改内容
             ofBaseSsoMain.edit(false);
         }
@@ -692,11 +692,11 @@ L.data('paging.after[]', function() {
     ofBaseSsoMain.linkage(type);
 
     //添加提示信息
-    if( temp = this.paging().tip ) {
+    if (temp = this.paging().tip) {
         //提示信息显示
         ofBaseSsoMain.tipBar(temp);
-        delete ($temp = this.paging()).tip;
-        this.paging($temp, false);
+        delete (temp = this.paging()).tip;
+        this.paging(temp, false);
     }
 });
 

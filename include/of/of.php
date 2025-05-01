@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200276);
+define('OF_VERSION', 200278);
 
 /**
  * 描述 : 控制层核心
@@ -980,16 +980,21 @@ class of {
                     $v['change'] = false;
                     $v['filterLen'] = strlen($v['event']['filter']);
                 }
+                $sortList[$k] = $v['filterLen'];
             }
+            //按类名匹配度由大到小重新排序
+            array_multisort($sortList, SORT_DESC, SORT_NUMERIC, $event['list']);
         }
         //加载回调, 不用判断一定有数据
         foreach ($event['list'] as &$v) {
             $k = $v['filterLen'];
             $v = &$v['event'];
             if (strncmp($v['filter'], $name, $k) === 0) {
+                //回调按照类名匹配度由大到小顺序执行
                 if (isset($v['asCall'])) {
                     self::callFunc($v, array('name' => $name, 'code' => &$code, 'file' => &$file));
-                } else {
+                //替换按照类名匹配度由大到小执行一次
+                } else if ($class === $name) {
                     $class = substr_replace($name, $v['router'], 0, $k);
                 }
             }
@@ -1026,8 +1031,6 @@ class of {
         ini_set('default_charset', 'UTF-8');
         //输出框架信息
         ini_get('expose_php') && header('X-Powered-By: OF/' . OF_VERSION);
-        //of磁盘路径
-        define('OF_DIR', strtr(dirname(__FILE__), '\\', '/'));
         //强制框架配置
         $of = array();
 
@@ -1065,6 +1068,8 @@ class of {
             }
             //本机IP
             isset($_SERVER['SERVER_ADDR']) || $_SERVER['SERVER_ADDR'] = '127.0.0.1';
+            //访问路径
+            $_SERVER['SCRIPT_FILENAME'] = strtr(current(get_included_files()), '\\', '/');
         //COOKIE重新解析键名含%xx的格式
         } else if (isset($_SERVER['HTTP_COOKIE'])) {
             parse_str(
@@ -1075,11 +1080,6 @@ class of {
             ini_get('magic_quotes_gpc') && self::slashesDeep($_COOKIE);
         }
 
-        //加载全局配置文件
-        $of += (include OF_DIR . '/config.php') + array('debug' => false, 'config' => array(), 'dataDir' => '/data');
-        //站点根目录,ROOT_DIR
-        define('ROOT_DIR', $of['rootDir']);
-
         //防注入处理的超全局变量
         $temp = array(&$_GET, &$_POST, &$_COOKIE);
         //防注入脚本
@@ -1087,6 +1087,35 @@ class of {
         //固定顺序整合到 request 中, 防止被 php.ini 中 request_order 影响
         $_REQUEST = $_GET + $_POST + $_COOKIE;
 
+        //加载全局配置文件
+        $of += (include dirname(__FILE__) . '/config.php') + array(
+            'debug' => false, 'config' => array(),
+            'dataDir' => '/data', 'ofDir' => '/include/of'
+        );
+        //未指定根目录
+        if (!isset($of['rootDir'])) {
+            $scriptFilename = strtr($_SERVER['SCRIPT_FILENAME'], '\\', '/');
+
+            //从框架入口访问
+            if (substr($scriptFilename, $temp = -10 - strlen($of['ofDir'])) === $of['ofDir'] . '/index.php') {
+                $of['rootDir'] = substr($scriptFilename, 0, $temp);
+            //使用遍历磁盘的方式计算根目录
+            } else {
+                while (($scriptFilename = dirname($temp = $scriptFilename)) !== $temp) {
+                    if (is_file($scriptFilename . $of['ofDir'] . '/of.php')) {
+                        $of['rootDir'] = $scriptFilename;
+                        break ;
+                    }
+                }
+                //根目录未找到
+                isset($of['rootDir']) || exit('Path is not under: _of.rootDir');
+            }
+        }
+
+        //站点根目录,ROOT_DIR
+        define('ROOT_DIR', $of['rootDir']);
+        //框架根目录,OF_DIR
+        define('OF_DIR', ROOT_DIR . $of['ofDir']);
         //加载站点配置文件
         is_array($of['config']) || $of['config'] = array($of['config']);
         empty($of['config'][0]) || self::$config = include ROOT_DIR . $of['config'][0];
@@ -1110,8 +1139,6 @@ class of {
             //设置项目跟目录
             $_SERVER['DOCUMENT_ROOT'] = ROOT_DIR;
             //计算一些路径
-            $temp = get_included_files();
-            $_SERVER['SCRIPT_FILENAME'] = strtr($temp[0], '\\', '/');
             isset($_SERVER['PATH_INFO']) || $_SERVER['PATH_INFO'] = '';
             $_SERVER['QUERY_STRING'] = empty($_SERVER['QUERY_STRING']) ? '' : join('&', $_SERVER['QUERY_STRING']);
             $_SERVER['SCRIPT_NAME'] = substr($_SERVER['SCRIPT_FILENAME'], strlen(ROOT_DIR));
@@ -1134,7 +1161,9 @@ class of {
             }
             //非英文路径解析
             $of['rootUrl'] = str_replace('%2F', '/', rawurlencode(
+                //提取虚拟目录, 如: [/虚拟目录]/访问路径
                 substr($_SERVER['SCRIPT_NAME'], 0, -$scriptNameLen) .
+                //提取站点根路径, 如: (ROOT_DIR[/服务根目录][/站点根路径])/访问路径
                 substr(ROOT_DIR, strlen(substr($scriptFilename, 0, -$scriptNameLen)))
             ));
         }

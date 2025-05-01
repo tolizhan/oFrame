@@ -61,7 +61,7 @@
 
     //文档路径
     if (path) {
-        path = root.substr(0, root.lastIndexOf('/') + 1) + path;
+        path = root.slice(0, root.lastIndexOf('/') + 1) + path;
 
         ajax = new (window.ActiveXObject || window.XMLHttpRequest)('Microsoft.XMLHTTP');
         ajax.open('get', path, false);
@@ -70,7 +70,7 @@
 
         ajax.onreadystatechange = function() {
             if (ajax.readyState === 4) {
-                path = path.substr(0, path.lastIndexOf('/') + 1);
+                path = path.slice(0, path.lastIndexOf('/') + 1);
 
                 //计算文档路径
                 temp = /(["'\s])(src\s*=|href\s*=|url\s*\()\s*('|"|)([^ "'>]*)\3(\)?)/ig;

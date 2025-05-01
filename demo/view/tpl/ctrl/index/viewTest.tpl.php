@@ -23,11 +23,9 @@ echo "\n", $this->str;
 <br />
 <input type='button' value='点击产生错误' onclick='error()'/>
 <input type='button' value='日期控件' onclick='wDate()'/>
-<input type='button' value='打开oFM' onclick='openFileManager()'/>
 <input type='button' value='打开tip提示' onclick='openTip()'/>
 <input type='button' value='打开zTree树' onclick='openZTree()'/>
 <input type='button' value='打开oDialogDiv' onclick='openDialogDiv()'/>
-<input type='button' value='打开oEditor' onclick='openEditor()'/>
 <input type='button' value='打开oUpload' id="oUpload"/>
 <input type='button' value='打开图表' onclick='openECharts()'/>
 <div id='wDate'></div>
@@ -61,21 +59,6 @@ function wDate()
 function error()
 {
     ff.ff.ff
-}
-function openFileManager()
-{
-    window.L.open('oFM')(
-        function(systemObj,callBackObj)
-        {
-            alert(systemObj.url);
-            //alert(systemObj.handle);
-            //alert(callBackObj.lizhan);
-            oFileManager.close();
-        },
-        {'lizhan':5},
-        false,
-        {fileExt:'txt;doc',browseDir:'/.',selectExt:'exe;txt'}
-    );
 }
 function openTip()
 {
@@ -150,37 +133,6 @@ function oDialogDivInfo(info, timeout, lock)
     if(lock === true)    //枷锁演示
     {
         tip.lock = lock;
-    }
-}
-function openEditor()
-{
-    if(window.L.open('oEditor'))
-    {
-        var oEditorObj=new oEditor(
-            {
-                fullPanel : true,maxHeight : 300
-                ,CustomConfig:
-                    {
-                        AnswerSelect:
-                            {
-                                AnswerType:"textbox"
-                            }
-                        ,oFileManager:                                            //oFileManager配置文件
-                            {
-                                quickUploadDir:{                                  //各类型的文件快速上传路径
-                                    img         : '/pictures/..quickUpload'       //图片快速上传文件夹
-                                    ,media      : '/media/..quickUpload'          //媒体快速上传文件夹
-                                    ,attachment : '/attachment/..quickUpload'     //媒体快速上传文件夹
-                                }
-                                ,browseDir:{                                      //各类型文件预览文件夹
-                                    img         : '/pictures'                     //图片预览文件夹
-                                    ,media      : '/media'                        //媒体预览文件夹
-                                    ,attachment : '/attachment'                   //附件上传文件夹
-                                }
-                            }
-                    }
-            }
-        ).panelInstance('myArea1');
     }
 }
 

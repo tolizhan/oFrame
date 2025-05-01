@@ -5,13 +5,14 @@
  *      连接池列表结构($instList) : {
  *          连接池名 : {
  *              "pool" : 格式化后的连接池结构为 {
- *                  "write' :  {[
- *                      'adapter'        => 数据库连接方式 'mysqli',
- *                      'params'         => 数据库连接参数 {},
+ *                  "write" : {[
+ *                      "adapter" : 数据库连接方式 "mysqli",
+ *                      "params"  : 数据库连接参数 {},
+ *                   ], ...}
  *                  "read"  : 同 write 结构,
  *              },
  *              "inst" : 初始化的连接源对象 {
- *                  "write' : 写入连接源,
+ *                  "write" : 写入连接源,
  *                  "read"  : 读取连接源,
  *                  "back"  : read的备份, 启动事务时有效, 默认 不存在
  *                  "ping"  : 发送心跳包, 启动事务时有效, 默认 true

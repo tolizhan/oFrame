@@ -202,7 +202,7 @@ L.paging || (function () {
                 //遍历数据
                 for (var i in data.data) {
                     //不以"_"开头的属性进行html编码
-                    for (var j in tObj.w = data.data[i]) j.substr(0, 1) === '_' || (tObj.w[j] = L.entity(tObj.w[j]));
+                    for (var j in tObj.w = data.data[i]) j.slice(0, 1) === '_' || (tObj.w[j] = L.entity(tObj.w[j]));
                     //使用的数据条
                     tObj.t = tObj.i[i % tObj.i.length];
                     tObj.t.itemObj.outerHTML || (tObj.t.itemObj.outerHTML = document.createElement('div').appendChild(tObj.t.itemObj).parentNode.innerHTML);
@@ -210,9 +210,9 @@ L.paging || (function () {
                     tObj.w = tObj.t.itemObj.outerHTML.replace(tObj.r, function (all, bac, key) {
                         //单数"`"
                         if (bac.length % 2) {
-                            return all.substr(Math.ceil(bac.length / 2))
+                            return all.slice(Math.ceil(bac.length / 2))
                         } else {
-                            return bac.substr(bac.length / 2) + (data.data[i][key] == null ? '' : data.data[i][key]);
+                            return bac.slice(bac.length / 2) + (data.data[i][key] == null ? '' : data.data[i][key]);
                         }
                     });
 
@@ -262,7 +262,7 @@ L.paging || (function () {
                         'page'   : data.page,
                         'sort'   : tObj.s
                     })
-                }).substr(1));
+                }).slice(1));
             }
 
             //修改跳转按钮
@@ -292,7 +292,7 @@ L.paging || (function () {
                                 tObj.t.style.display = '';
                                 //赋值计算值
                                 tObj.t.setAttribute('value', key);
-                                return all.substr(0, bac.length / 2) + key;
+                                return all.slice(0, bac.length / 2) + key;
                             }
                         }
                     });

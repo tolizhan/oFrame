@@ -15,6 +15,8 @@
  * 作者 : Edgar.lee
  */
 if (isset($_GET['url']) && preg_match('@^http(?:s?)://@i', $_GET['url'])) {
+    //请求网址解码
+    ini_get('magic_quotes_gpc') && $_GET['url'] = stripcslashes($_GET['url']);
     //匹配响应头
     $preg = '@^(?:HTTP/|Content-Encoding|Last-Modified|ETag|Cache-Control)\b@i';
     //准备头信息

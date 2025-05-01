@@ -34,7 +34,7 @@ class of_accy_db_tidb extends of_db {
             $params['port']
         );
 
-        if (mysqli_ping($connection)) {
+        if ($connection && @mysqli_query($connection, 'SELECT 1')) {
             $this->connection = $connection;
             //设置字体, GROUP_CONCAT最大长度
             $temp = "SET NAMES '{$params['charset']}', GROUP_CONCAT_MAX_LEN = 4294967295";
@@ -71,7 +71,7 @@ class of_accy_db_tidb extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _close() {
-        return is_resource($this->connection) && mysqli_close($this->connection);
+        return mysqli_close($this->connection);
     }
 
     /**
@@ -285,7 +285,7 @@ class of_accy_db_tidb extends of_db {
     protected function _ping($mode) {
         //事务状态下不重新检查
         if ($mode) {
-            return $this->transState || @mysqli_ping($this->connection) || $this->_connect();
+            return $this->transState || @mysqli_query($this->connection, 'SELECT 1') || $this->_connect();
         //判断连接并延长连接时效
         } else {
             return !!@mysqli_query($this->connection, 'SELECT 1');

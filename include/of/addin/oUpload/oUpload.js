@@ -57,7 +57,7 @@ var oUpload = (function () {
          * 作者 : Edgar.lee
          */
         'append'   : function (pNode, cNode) {
-            if( typeof cNode === 'string' ) {
+            if (typeof cNode === 'string') {
                 share.fragment.innerHTML = cNode;
                 cNode = share.fragment.firstChild;
             }
@@ -91,12 +91,11 @@ var oUpload = (function () {
             var callback = target.callback, temp;
             target = share.fileList[target.id].context;
             //去除第一个" "
-            params[0] === 'complete' && (params[3] = params[3].substr(1));
-            //console.log(params);
+            params[0] === 'complete' && (params[3] = params[3].replace(/^\s*/, ''));
 
-            if( callback ) {
+            if (callback) {
                 //遍历调用函数
-                for(var i in callback) {
+                for (var i in callback) {
                     try {
                         //事件回调
                         (temp = callback[i][params[0]]) && temp.apply(target, params);
@@ -142,10 +141,10 @@ var oUpload = (function () {
          * 作者 : Edgar.lee
          */
         'obServer' : function (type) {
-            var block, rect, guiNode, offest;
+            var block, rect, guiNode;
 
-            if( type === false ) {
-                if( share.mutation ) {
+            if (type === false) {
+                if (share.mutation) {
                     //启动突发监听
                     (new share.mutation(arguments.callee)).observe(document.body, {
                         'attribute'         : true,
@@ -156,13 +155,13 @@ var oUpload = (function () {
                     L.event(window, 'resize', arguments.callee);
                 }
             } else {
-                for(var i in share.fileList) {
+                for (var i in share.fileList) {
                     guiNode = share.fileList[i].guiNode;
                     //节点位置
                     rect = share.getRect(share.fileList[i].context.node);
                     //队列位置
                     block = share.getRect(guiNode.block);
-                    if(
+                    if (
                         //节点不可见
                         rect.left === rect.right ||
                         //节点不可见
@@ -263,7 +262,7 @@ var oUpload = (function () {
         'queueShow' : function (event) {
             var queue = this.previousSibling;
             var rect = share.getRect(queue);
-            if( rect.left === rect.right ) {
+            if (rect.left === rect.right) {
                 queue.style.display = 'block';
 
                 rect = share.getRect(queue);
@@ -283,7 +282,7 @@ var oUpload = (function () {
             var item = share.fileList[this.uniqid].guiNode.items[arguments[1]];
 
             //移除样式
-            if( item.speed.className.indexOf('of_addin_oUpload-item_open') > -1 ) {
+            if (item.speed.className.indexOf('of_addin_oUpload-item_open') > -1) {
                 //移除事件
                 L.event(item.speed, 'click', false);
                 //移除样式
@@ -332,7 +331,7 @@ var oUpload = (function () {
                 context.cancel(uniqid);
             });
             //非错误 && 非自动上传
-            if( arguments.length === 3 && !this.setting('auto') ) {
+            if (arguments.length === 3 && !this.setting('auto')) {
                 //开始样式
                 list.speed.className += ' of_addin_oUpload-item_open';
                 //点击开始上传
@@ -350,7 +349,7 @@ var oUpload = (function () {
             //单文件节点列表
             var items = share.fileList[this.uniqid].guiNode.items, temp;
 
-            switch( arguments['3'].type ) {
+            switch (arguments['3'].type) {
                 case 'SIZE':
                     temp = 'File size: ' + (arguments['3'].info / 1048576) + 'M';
                     break;
@@ -373,7 +372,7 @@ var oUpload = (function () {
             //单文件节点
             var item = share.fileList[this.uniqid].guiNode.items[arguments[1]], speed;
 
-            if( arguments[3].speed < 1000 ) {
+            if (arguments[3].speed < 1000) {
                 speed = Math.round(arguments[3].speed) + 'k/s';
             } else {
                 speed = (arguments[3].speed / 1024).toFixed(1) + 'm/s';
@@ -516,7 +515,7 @@ var oUpload = (function () {
             };
 
             //触发初始化回调
-            window.setTimeout(function () {share.fire(file, ['init']);}, 0);
+            window.setTimeout(function () { share.fire(file, ['init']); }, 0);
             return file;
         },
 
@@ -546,7 +545,7 @@ var oUpload = (function () {
             //允许多个 || 清空列表
             index.config.multi || (index.files = {}, count.fileCount = 0);
             //保存上传的文件
-            for(var i = 0, iL = files.length; i < iL; i++) {
+            for (var i = 0, iL = files.length; i < iL; i++) {
                 //生成唯一值
                 uniqid = (new Date).getTime().toString(36) + L.count(index.files);
                 file = {
@@ -568,7 +567,7 @@ var oUpload = (function () {
                     'uniqid' : attr.size + '-' + attr.modificationDate.time + '-' + attr.name
                 };
 
-                temp = new RegExp('(^|;)' + file.attr.type.substr(1) + '(;|$)', 'i');
+                temp = new RegExp('(^|;)' + file.attr.type.slice(1) + '(;|$)', 'i');
                 //扩展名不符
                 if (index.config.exts && !temp.test(index.config.exts)) {
                     share.fire(target, ['error', uniqid, attr, {
@@ -578,7 +577,7 @@ var oUpload = (function () {
                         'type' : 'TYPE'
                     }]);
                 //触发 单文件太大 回调
-                } else if( attr.size > index.config.size ) {
+                } else if (attr.size > index.config.size) {
                     share.fire(target, ['error', uniqid, attr, {
                         //单文件允许的最大字节
                         'info' : index.config.size,
@@ -586,11 +585,11 @@ var oUpload = (function () {
                         'type' : 'SIZE'
                     }]);
                 //已经选择过文件
-                } else if( L.search(index.files, file.uniqid, 'uniqid') ) {
+                } else if (L.search(index.files, file.uniqid, 'uniqid')) {
                     //重复选择文件 +1
                     count.filesReplaced += 1;
                 //达到了最大队列
-                } else if( count.fileCount == index.config.queue ) {
+                } else if (count.fileCount == index.config.queue) {
                     //触发 队列已满 回调
                     share.fire(target, ['queueFull', index.config.queue]);
                     break;
@@ -607,7 +606,7 @@ var oUpload = (function () {
                 }
             }
             //计算队列中总字节数
-            for(var i in index.files) {
+            for (var i in index.files) {
                 count.allBytesTotal += index.files[i].attr.size;
             }
 
@@ -632,7 +631,7 @@ var oUpload = (function () {
             var index = html5.list[this.id], temp = {};
 
             //上传单个文件
-            if( fileId ) {
+            if (fileId) {
                 index.files[fileId] && (temp[fileId] = index.files[fileId]);
             //上传全部文件
             } else {
@@ -640,9 +639,9 @@ var oUpload = (function () {
             }
 
             //上传文件 || 无效校验路径
-            if( check || !index.config.check ) {
+            if (check || !index.config.check) {
                 //指定上传
-                if( fileId ) {
+                if (fileId) {
                     //ajax 上传文件
                     temp[fileId] && html5.send(index, fileId, true);
                 //全部上传
@@ -651,7 +650,7 @@ var oUpload = (function () {
                     html5.active(index);
                 }
             } else {
-                for(var i in temp) {
+                for (var i in temp) {
                     temp[i] = temp[i].attr.name;
                 }
                 //触发 本次选择完成 回调
@@ -669,9 +668,9 @@ var oUpload = (function () {
             //可上传列表, 正在上传数量
             var list = [], count = 0;
 
-            for(var i in index.files) {
+            for (var i in index.files) {
                 //统计正在上传数
-                if( index.files[i].ajax ) {
+                if (index.files[i].ajax) {
                     count += 1;
                 //可以上传列表
                 } else {
@@ -679,7 +678,7 @@ var oUpload = (function () {
                 }
             }
 
-            for(var i = 0, iL = index.config.limit - count; i < iL; ++i) {
+            for (var i = 0, iL = index.config.limit - count; i < iL; ++i) {
                 //ajax 上传文件
                 list[i] && html5.send(index, list[i], false);
             }
@@ -696,7 +695,7 @@ var oUpload = (function () {
             var index = html5.list[this.id], size = 0, count = L.count(index.files), temp = {};
 
             //上传单个文件
-            if( fileId ) {
+            if (fileId) {
                 temp[fileId] = index.files[fileId] || {
                     'attr'  : {'size' : 0},
                     'count' : ++count
@@ -707,8 +706,8 @@ var oUpload = (function () {
             }
 
             //统计完整字节
-            for(var i in index.files) size += index.files[i].attr.size;
-            for(var i in temp) {
+            for (var i in index.files) size += index.files[i].attr.size;
+            for (var i in temp) {
                 //删除上传文件
                 delete index.files[i];
                 //正在上传 && 停止上传
@@ -770,7 +769,7 @@ var oUpload = (function () {
             var file = index.files[fileId], form = new FormData, temp, time, ajax;
 
             //已经开始上传
-            if (file.ajax) return ;
+            if (file.ajax) return;
             //创建ajax对象
             file.ajax = ajax = window.XMLHttpRequest ? new window.XMLHttpRequest : ActiveXObject('Msxml12.XMLHTTP');
             //触发 单文件开始上传 回调
@@ -783,7 +782,7 @@ var oUpload = (function () {
             form.append('file', index.config.file);
 
             //上传进度
-            ajax.upload.addEventListener("progress", function(e) {
+            ajax.upload.addEventListener("progress", function (e) {
                 //已上传的字节
                 temp = e.loaded > file.attr.size ? file.attr.size : e.loaded;
                 temp = {
@@ -801,17 +800,17 @@ var oUpload = (function () {
             }, false);
 
             //上传结果
-            ajax.onreadystatechange = function(e) {
+            ajax.onreadystatechange = function (e) {
                 //连接成功
-                if(ajax.readyState === 1) {
+                if (ajax.readyState === 1) {
                     //记录时间戳
                     time = e.timeStamp;
                 //传输完成
-                } else if(ajax.readyState === 4) {
+                } else if (ajax.readyState === 4) {
                     //删除待上传文件
                     delete index.files[fileId];
                     //上传成功
-                    if(ajax.status === 200) {
+                    if (ajax.status === 200) {
                         //记录上传字节
                         index.status.size += file.attr.size;
                         //记录上传速度
@@ -833,9 +832,9 @@ var oUpload = (function () {
                     single || html5.active(index);
 
                     //全部上传完成
-                    if( L.count(index.files) === 0 ) {
+                    if (L.count(index.files) === 0) {
                         temp = 0;
-                        for(var i in index.status.speed) temp += index.status.speed[i];
+                        for (var i in index.status.speed) temp += index.status.speed[i];
                         //平均速度
                         temp /= index.status.speed.length;
 
@@ -942,22 +941,28 @@ var oUpload = (function () {
             };
             //读取设置配置
             file.setting = function (name, value) {
-                name === 'exts' && (value = '*.'+ (value ? value.replace(/;/g,';*.') : '*'));
+                //扩展名
+                if (name === 'exts') {
+                    value = '*.' + (value ? value.replace(/;/g, ';*.') : '*');
+                //文件名
+                } else if (name === 'file') {
+                    value = L.param({'file' : value});
+                }
+                //映射字段名
+                file.setting.map[name] && (name = file.setting.map[name]);
+
                 //初始化完成
-                if( file._setting ) {
-                    if( file.setting.wait.length ) {
-                        for(var i in file.setting.wait) {
+                if (file._setting) {
+                    if (file.setting.wait.length) {
+                        for (var i in file.setting.wait) {
                             //按顺序执行设置
-                            file._setting(
-                                file.setting.map[file.setting.wait[i][0]] || file.setting.wait[i][0], 
-                                file.setting.wait[i][1]
-                            );
+                            file._setting(file.setting.wait[i][0], file.setting.wait[i][1]);
                         }
                         file.setting.wait = [];
                     }
 
                     //执行函数
-                    if( name ) return file._setting(name, value);
+                    if (name) return file._setting(name, value);
                 //未初始化
                 } else {
                     file.setting.wait.push([name, value]);
@@ -968,11 +973,9 @@ var oUpload = (function () {
             //属性映射列表
             file.setting.map = {
                 'path'   : 'pagepath',
-                'script' : 'script',
-                'folder' : 'folder',
+                'file'   : 'scriptData',
                 'queue'  : 'queueSizeLimit',
                 'exts'   : 'fileExt',
-                'multi'  : 'multi',
                 'size'   : 'sizeLimit',
                 'check'  : 'checkScript',
                 'limit'  : 'simUploadLimit'
@@ -1070,25 +1073,26 @@ var oUpload = (function () {
         var file, context = {
             'node'    : params.node,
             'cancel'  : function () {
-                var items = typeof arguments[0] === 'string' ? 
+                var items = typeof arguments[0] === 'string' ?
                     L.val({}, arguments[0], true).obj : share.fileList[context.uniqid].guiNode.items;
                 //删除对应文件
-                for(var i in items) file.cancel.call(file, i);
+                for (var i in items) file.cancel.call(file, i);
             },
             'upload'  : function () {
                 file.upload.apply(file, typeof arguments[0] === 'string' ? arguments : []);
             },
             'setting' : function () {
-                var result = file.setting.apply(file, arguments);
-
                 //设置模式
-                if( arguments.length > 1 ) {
+                if (arguments.length > 1) {
                     params[arguments[0]] = arguments[1];
-                    if( arguments[0] === 'show' ) {
+                    if (arguments[0] === 'show') {
                         share.fileList[context.uniqid].guiNode.block.style.display = arguments[1] ? 'block' : 'none';
+                    } else if (arguments[0] ==='script') {
+                        arguments[1].indexOf('://') > 0 || (arguments[1] = share.rootHost + arguments[1]);
                     }
                 }
 
+                var result = file.setting.apply(file, arguments);
                 return result === undefined ? params[arguments[0]] : result;
             }
         };
@@ -1116,7 +1120,7 @@ var oUpload = (function () {
         //初始化GUI接口
         share.initGui({'context' : context, 'fileObj' : file, 'params'  : params});
 
-        if( params.call ) {
+        if (params.call) {
             typeof params.call === 'function' && (params.call = {'complete' : params.call});
             file.callback.push(params.call);
         }

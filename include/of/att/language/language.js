@@ -41,15 +41,15 @@
                     } else {
                         //兼容 Safari
                         lines = lines[3] || lines[2];
-                        lines = lines.substr(0, lines.lastIndexOf(':'));
+                        lines = lines.slice(0, lines.lastIndexOf(':'));
                     }
 
                     if (lines = lines
-                        .substr(lines.indexOf(':')+3)
+                        .slice(lines.indexOf(':')+3)
                         .match(/^[^\/\\?#]+([^?#]*)\/([^?#]*).*:(\d+)$/i)
                     ) {
                         //解析路径
-                        lines[1] = lines[1].substr(ROOT_URL.length);
+                        lines[1] = lines[1].slice(ROOT_URL.length);
                         //解析文件
                         lines[2] === '' ? lines[2] = 'index.php' : null;
                         lines = lines[1] + '/' + lines[2] + ':' + lines[3];

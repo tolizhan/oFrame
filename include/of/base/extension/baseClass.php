@@ -10,7 +10,7 @@ class of_base_extension_baseClass {
     private $constants = null;
 
     public function __construct($constructParams) {
-        //包含 __FILE__, eKey
+        //包含 file, eKey
         $constants = unserialize(stripslashes($constructParams));
         //扩展键文件夹
         $temp = '/' . $constants['eKey'];
@@ -54,7 +54,7 @@ class of_base_extension_baseClass {
         //判断是路径
         } else if (strpbrk($key, '\\/')) {
             //eval的地址返回当前__FILE__
-            return strpos($key, '(') === false ? $key : $constants['__FILE__'];
+            return strpos($key, '(') === false ? $key : $constants['file'];
         } else {
             return null;
         }
@@ -88,7 +88,7 @@ class of_base_extension_baseClass {
      * 作者 : Edgar.lee
      */
     protected function &_getText($string, $params = array()) {
-        $params['file'] = $this->constants['__FILE__'];
+        $params['file'] = $this->constants['file'];
         return L::getText($string, $params);
     }
 

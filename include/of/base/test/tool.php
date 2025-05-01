@@ -406,7 +406,7 @@ var toolObj = {
                 //目录名
                 var dirName = '';
                 for (var i in response.data) {
-                    dirName = i.substr(path.length + 1);
+                    dirName = i.slice(path.length + 1);
                     diskObj.children('.clear').before('<div title="' + dirName + '" class="dir' + (response.data[i] ? ' folder' : ' file') + '" onclick="toolObj.dirClick(this)">' +
                         '<font class="folder">D</font>' +
                         '<font class="file">F</font>' +
@@ -426,7 +426,7 @@ var toolObj = {
         if ($.trim(path) === '') {                 //空目录
         
             urlBarObj.html('');
-        } else if( path.substr(0, 1) === '/' ) {   //切换语言包
+        } else if( path.slice(0, 1) === '/' ) {   //切换语言包
             urlBarObj.html(path);
             window.L.open('tip')('正在加载', false);
             $.post(OF_URL + '/index.php?c=of_base_test_tool', {'type' : 'getDir', 'path' : path, 'logType' : logType}, responseFun, 'json');
@@ -435,7 +435,7 @@ var toolObj = {
             if( (temp = path.lastIndexOf('/')) > -1 )    //读取上级目录
             {
                 window.L.open('tip')('正在加载', false);
-                temp > 0 && (path = path.substr(0, temp));
+                temp > 0 && (path = path.slice(0, temp));
                 urlBarObj.html(path);
                 $.post(OF_URL + '/index.php?c=of_base_test_tool', {'type' : 'getDir', 'path' : path, 'logType' : logType}, responseFun, 'json');
             }

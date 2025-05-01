@@ -265,6 +265,13 @@ class swoole implements ArrayAccess {
             $mark = md5($path[3]);
         //执行文件代码
         } else {
+            //判断是相对路径 (少于两位 || linux第一位不是"/" && windos第二位不是":")
+            if (!isset($path[2][1]) || $path[2][0] !== '/' && $path[2][1] !== ':') {
+                //提取相对路径
+                $temp = explode('-', $path[0], 2);
+                //合成绝对路径
+                $path[2] = "{$temp[1]}/{$path[2]}";
+            }
             $mark = $file = realpath($path[2]);
         }
 
@@ -1523,6 +1530,12 @@ class swoole implements ArrayAccess {
 
                 //返回原数据
                 return $result;
+            //设置浮点数显示精度
+            case 'precision':
+            //设置浮点数序列化精度
+            case 'serialize_precision':
+                //设置最佳精度, https://wiki.php.net/rfc/precise_float_value
+                return ini_set($option, 15);
             default :
                 return ini_set($option, $value);
         }
@@ -1859,13 +1872,23 @@ class swoole implements ArrayAccess {
 
         //非绝对禁用或绝对通过
         if ($params['check'] !== false && $params['check'] !== null) {
-            //未初始化 && 加载返回值
-            ($index = &$list[$params['class']]) === null && $index = of::callFunc(array(
-                'asCall' => 'of::loadClass',
-                'params' => array($params['class'])
-            ));
+            //未初始化
+            if (($index = &$list[$params['class']]) === null) {
+                //加载返回值
+                $index = of::callFunc(array(
+                    'asCall' => 'of::loadClass',
+                    'params' => array($params['class'])
+                ));
+                //类不存在, 可能是过程写法文件
+                if (!class_exists($params['class'], false)) {
+                    //防止二次加载文件, 初始化时调了"of::loadClass", 而框架判断类不存在时, 会再次调用
+                    $params['class'] = 'of';
+                    //标记永远不初始化
+                    $index = false;
+                }
+            }
             //返回值有效 ? null : false
-            $params['check'] = $params['check'] === $index ? null : false;
+            $params['check'] = $params['check'] === $index && $index !== false ? null : false;
         }
     }
 
@@ -2160,9 +2183,8 @@ class swoole implements ArrayAccess {
             $result = &self::$attrs[$space]['super'];
             //检查退出
             $result['_FUNC_mapVar']->checkExit();
-        //超全局隔离变量不存在
+        //超全局隔离变量不存在, 如clear(null)清理时触发的__destruct
         } else {
-            trigger_error('You need to create a OF environment: swoole::fork()');
             exit ;
         }
 
@@ -2952,7 +2974,7 @@ class swoole implements ArrayAccess {
      *      }, ...]
      *      代码树列表($tree) : [{
      *          "type" : 类型(1=g全局, 2=a方法, 4=c类, 8=i接口, 16=t复用),
-     *          "life" : 生命周期, 每个"{"+1, 每个"}"-1, 为0时弹出, 每进入一层方法名后的括号中-1
+     *          "life" : 生命周期, 每个"{"+1, 每个"}"-1, 为0时弹出, 每进入一层方法名后的"("中-1
      *          "name" : 结构名字, 仅类有值
      *          "uuid" : 代码块唯一编码
      *          "isStatic" : 是否进入静态变量, 0=未进入, 1=已进入
@@ -3158,7 +3180,7 @@ class swoole implements ArrayAccess {
                             //去掉'_once'代码因为需快速解除串行化防止某代码多次用'_once'加载导致无法解锁
                             'str' => substr($vk[1], 0, 7) . " 'sw.incl://' . " .
                                 //加入协程ID是防止并行协程的流协议同时加载某文件导致触发防止死循环错误
-                                '\Co::getCid() . "\n" . isset($_GLOBAL_SCOPE_) . "\n" . ' .
+                                '\Co::getCid() . \'-\' . __DIR__ . "\n" . isset($_GLOBAL_SCOPE_) . "\n" . ' .
                                 //串行化是防止加载代码过程中其它协程网络请求出现allow_url_include问题
                                 '$_FUNC_mapVar->serial = '
                         );
@@ -3463,6 +3485,8 @@ class swoole implements ArrayAccess {
                                 $temp['text'] !== 'class' &&
                                 //不为复用名
                                 $temp['text'] !== 'trait' &&
+                                //非新建对象
+                                $temp['text'] !== 'new' &&
                                 //非静态调用
                                 $temp['text'] !== '::' &&
                                 //非动态调用
@@ -3570,8 +3594,8 @@ class swoole implements ArrayAccess {
                                     //获取命名含空间的类名::init
                                     'str' => "\swoole::reinit({$data['name']} . '::{$temp['text']}'"
                                 );
-                            //主动加载类
-                            } else if ($temp['text'] !== 'class') {
+                            //主动加载类(非"xxx::class" && 非(new xxx)::yy)
+                            } else if ($temp['text'] !== 'class' && strpos($data['name'], 'new ') === false) {
                                 $wait[] = array(
                                     //插入位置, 当前位置 - 类名长度
                                     'pos' => $kPos - $data['eLen'],
@@ -4060,7 +4084,13 @@ class swoole implements ArrayAccess {
             }
         //访问静态文件
         } else if (strtolower(substr($file, -4)) !== '.php') {
-            $resp && $resp->sendfile($file);
+            //需要响应信息
+            if ($resp) {
+                //设置MIME响应头
+                function_exists('mime_content_type') && ($temp = @mime_content_type($file)) && $resp->header('Content-Type', $temp);
+                //设置响应状态码
+                $resp->sendfile($file);
+            }
             return $null;
         }
 
@@ -4115,7 +4145,7 @@ class swoole implements ArrayAccess {
         $serv = new Swoole\WebSocket\Server('0.0.0.0', $GLOBALS['system']['port'], SWOOLE_PROCESS);
         //启动工作并开启协程
         $serv->set(array('open_websocket_close_frame' => true));
-        //接收WebSocket
+        //连接WebSocket
         $serv->on('open', function ($serv, $requ) {
             //加载入口文件并返回入口文件返回值
             $call = self::request($requ, null);
@@ -4269,20 +4299,23 @@ class swoole implements ArrayAccess {
             if (isset($temp[1])) {
                 //保存到全局中
                 $GLOBALS['_ARGV'][$temp[0]] = &$temp[1];
-
-                switch ($temp[0]) {
-                    //加载配置
-                    case 'conf':
-                        $config = array_replace_recursive($config, include $temp[1]);
-                        $config['system']['config'] = $v;
-                        break;
-                    //启动类型, WebSocket或其它=服务, task=任务
-                    case 'open':
-                        $config['system']['open'] = $temp[1];
-                        break;
+                //加载配置文件
+                if ($temp[0] === 'conf') {
+                    //json格式
+                    if ($temp[1][0] === '{') {
+                        $temp = json_decode($temp[1][1] === '\'' ? strtr($temp[1], array('"' => '\"', '\'' => '"')) : $temp[1], true);
+                        empty($temp['system']['config']) || $temp = array_replace_recursive(include $temp['system']['config'], $temp);
+                    //配置路径
+                    } else {
+                        $temp = include $temp[1];
+                    }
+                    $config = array_replace_recursive($config, $temp);
+                    $config['system']['config'] = str_replace('"', '\"', $v);
                 }
             }
         }
+        //启动类型, WebSocket或其它=服务, task=任务
+        isset($GLOBALS['_ARGV']['open']) && $config['system']['open'] = $GLOBALS['_ARGV']['open'];
         //进程最大内存转换成字节
         $config['system']['memory'] = self::getBitSize($config['system']['memory']);
         //共享内存磁盘路径

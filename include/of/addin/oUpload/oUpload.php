@@ -40,7 +40,7 @@ if (empty($_POST['file'])) {
     $path = $temp . of_base_com_str::uniqid() . ($fExt ? '.' . $fExt : '');
 } else {
     //存储路径
-    $path = $_POST['file'];
+    $path = '/' . trim(strtr(stripcslashes($_POST['file']), '\\', '/'), '/');
 }
 
 //真实路径(过滤掉非法字符)
@@ -58,10 +58,10 @@ if (
     //路径验证
     preg_match($config['folder'], $path) &&
     //扩展验证
-    !preg_match($config['filtExt'], $fExt)
+    !preg_match($config['filtExt'], $fExt) &&
+    //文件不存在
+    !file_exists($file = ROOT_DIR . $path)
 ) {
-    //实际存储路径
-    $file = ROOT_DIR . $path;
     //创建路径
     is_dir($temp = dirname($file)) || @mkdir($temp, 0777, true);
     //文件移动

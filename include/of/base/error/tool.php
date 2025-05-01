@@ -474,7 +474,7 @@ var toolObj = {
                 //目录名
                 var dirName = '';
                 for (var i in response.data) {
-                    dirName = i.substr(path.length + 1);
+                    dirName = i.slice(path.length + 1);
                     diskObj.children('.clear').before('<div title="' + dirName + '" class="dir' + (response.data[i] ? ' folder' : ' file') + '" onclick="toolObj.dirClick(this)">' +
                         '<font class="folder">D</font>' +
                         '<font class="file">F</font>' +
@@ -494,7 +494,7 @@ var toolObj = {
         if ($.trim(path) === '') {                 //空目录
         
             urlBarObj.html('');
-        } else if( path.substr(0, 1) === '/' ) {   //切换语言包
+        } else if( path.slice(0, 1) === '/' ) {   //切换语言包
             urlBarObj.html(path);
             window.L.open('tip')('正在加载', false);
             $.post(
@@ -508,7 +508,7 @@ var toolObj = {
             if( (temp = path.lastIndexOf('/')) > -1 )    //读取上级目录
             {
                 window.L.open('tip')('正在加载', false);
-                temp > 0 && (path = path.substr(0, temp));
+                temp > 0 && (path = path.slice(0, temp));
                 urlBarObj.html(path);
                 $.post(
                     OF_URL + '/index.php?c=of_base_error_tool&a=response',
@@ -582,7 +582,7 @@ var toolObj = {
             //延迟执行单击(给双击留反映时间)
             toolObj.clickTr.timeout = setTimeout(function () {
                 //同步加载日志
-                if (temp.substr(0, 1) === '{') {
+                if (temp.slice(0, 1) === '{') {
                     temp = L.json(temp);
                     temp.a = 'getLogDetaile';
 

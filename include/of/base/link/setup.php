@@ -5,10 +5,8 @@
  */
 //插件配置文件
 $addin = of::config('_of.link.addin');
-$addin['pConfig'] = isset($addin['pConfig']) ?
-    ROOT_DIR . $addin['pConfig'] : OF_DIR . '/addin/config.php';
-$addin['jConfig'] = isset($addin['jConfig']) ?
-    ROOT_URL . $addin['jConfig'] : OF_URL . '/addin/config.js';
+$addin['pConfig'] = ROOT_DIR . (isset($addin['pConfig']) ? $addin['pConfig'] : '/include/application/config.php');
+$addin['jConfig'] = ROOT_URL . (isset($addin['jConfig']) ? $addin['jConfig'] : '/include/application/config.js');
 
 //输出控制监听
 of::event('of::halt', array('asCall' => 'L::buffer', 'params' => array(true, true)));

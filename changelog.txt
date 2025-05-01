@@ -1,3 +1,57 @@
+版本: 278
+作者: Edgar
+日期: 2025年5月01日 08:26:55
+信息:
+说明: + 消息队列配置cNum可单独指定分布系统并发
+      + 支持"await L.ajax(xxx) + ''"获取响应值
+      + Swoole启动参数,支持conf:{json格式}配置
+      + 计划任务与消息队列的控制台展示统计信息
+      + 框架配置_of.rootDir设置null,可自动计算
+      - 配置_of.ofDir决定框架目录,不再自动计算
+      - 第三方插件迁到了"/include/application"
+      - L.type(xxx, false)改成基础数据类型判断
+      - 模板引擎模板中使用__FILE__返回html路径
+      * Swoole修复"(new xx)::yy"写法报错的问题
+      * Swoole修复加载相对路径代码文件错误问题
+      * Swoole修复调度面向过程文件加载两次问题
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/config/config.php
+已修改 : /trunk/demo/ctrl/PageExtension.php
+已修改 : /trunk/demo/tool/codeNav/index.php
+已修改 : /trunk/demo/tool/htmlLoad/code/load.js
+已修改 : /trunk/demo/view/html/htmlTpl.html
+已修改 : /trunk/demo/view/nav/nav.js
+已修改 : /trunk/demo/view/tpl/ctrl/index/viewTest.tpl.php
+已修改 : /trunk/include/of/accy/db/mssqlPdo.php
+已修改 : /trunk/include/of/accy/db/mysqlPdo.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/polar.php
+已修改 : /trunk/include/of/accy/db/tidb.php
+已修改 : /trunk/include/of/att/com/com/paging/main.js
+已修改 : /trunk/include/of/att/language/language.js
+已修改 : /trunk/include/of/att/link/L.js
+已修改 : /trunk/include/of/att/sso/js/main.js
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/jsLog.php
+已修改 : /trunk/include/of/base/error/tool.php
+已修改 : /trunk/include/of/base/extension/baseClass.php
+已修改 : /trunk/include/of/base/extension/tool.php
+已修改 : /trunk/include/of/base/htmlTpl/engine.php
+已修改 : /trunk/include/of/base/language/tool.php
+已修改 : /trunk/include/of/base/link/codeNav.php
+已修改 : /trunk/include/of/base/link/loadUrl.php
+已修改 : /trunk/include/of/base/link/setup.php
+已修改 : /trunk/include/of/base/test/tool.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/db.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/license.txt
+已修改 : /trunk/swoole.php
+重命名 : /trunk/include/application/* (从 /trunk/include/of/addin/*)
+
 版本: 276
 作者: Edgar
 日期: 2024年12月1日 14:39:20

@@ -97,7 +97,7 @@ window.L.extension.jsErrorLog || !function () {
         if (arguments[4]) {
             //[需查找的信息, 被查找的信息]
             temp = [
-                info.substr(info.indexOf(':') + 1),
+                info.slice(info.indexOf(':') + 1),
                 arguments[4].stack
             ];
             //js回溯中包含错误信息 ? 使用回溯信息 : 使用错误信息 + 回溯信息

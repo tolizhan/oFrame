@@ -1,21 +1,5 @@
-/**
- * 描述 : L.open 使用的配置文件
- * 结构 : {
- *      插件键 : {
- *          "path"  : 插件根目录
- *          "list"  : 加载的列表 {
- *              js或css地址 : false=不调用, 方法=加载后回调函数,
- *              ...
- *          },
- *          "ready" : 方法=加载js列表前调用
- *          "init"  : 方法=加载完成后初始化
- *      }
- *  }
- * 注明 : 
- *      方法调用通用参数 : (调用参数, 当前配置, 插件名), this=指定的window
- * 作者 : Edgar.lee
- */
-config = {
+//兼容旧版配置
+typeof config === 'string' && (config = ROOT_URL + '/include/application', config = {
     /**
      * 描述 : 日期插件
      * 参数 : 可选 {
@@ -28,7 +12,7 @@ config = {
      * 作者 : Edgar.lee
      */
     'wDate' : {
-        'path'  : OF_URL + '/addin/WDatePicker',
+        'path'  : config + '/WDatePicker',
         'list'  : {
             '/WdatePicker.js' : false
         },
@@ -72,7 +56,7 @@ config = {
      * 作者 : Edgar.lee
      */
     'zTree' : {
-        'path'  : OF_URL + '/addin/zTree',
+        'path'  : config + '/zTree',
         'list'  : {
             '/js/jquery.ztree.core.js' : false,
             '/style/zTreeStyle.css'    : false
@@ -100,7 +84,7 @@ config = {
      * 作者 : Edgar.lee
      */
     'eCharts' : {
-        'path'  : OF_URL + '/addin/echarts',
+        'path'  : config + '/echarts',
         'list'  : {
             '/echarts.js' : false
         },
@@ -117,84 +101,56 @@ config = {
                 return this.echarts;
             }
         }
-    },
-
-    /**
-     * 描述 : 上传组件
-     * 作者 : Edgar.lee
-     */
-    'oUpload' : {
-        'path'  : OF_URL + '/addin/oUpload',
-        'list'  : {
-            '/oUpload.css' : false,
-            '/oUpload.js'  : false
-        },
-        'init'  : function (p) {
-            if (p) {
-                //返回图表实例
-                return this.oUpload(p);
-            } else {
-                //返回图表类
-                return this.oUpload;
-            }
-        }
-    },
-
-    /**
-     * 描述 : 数据填充工具
-     * 作者 : Edgar.lee
-     */
-    'oFill' : {
-        'path'  : OF_URL + '/addin/oFill',
-        'list'  : {
-            '/oFill.js'  : false
-        },
-        'init'  : function (p) {
-            return this.oFill;
-        }
     }
-};
+});
 
 /**
- * 描述 : 磁盘管理, 弹出层, 提示, 上传, 富文本
+ * 描述 : 弹出层, 提示
  * 返回 :
  *      调用方法
  * 作者 : Edgar.lee
  */
-config.oFM = config.oDialogDiv = config.tip = config.upload = config.oEditor = {
-    'path'  : OF_URL + '/addin/oFileManager',
+config.oDialogDiv = config.tip = {
+    'path'  : OF_URL + '/addin/oDialog',
     'list'  : {
         '/js/mouseDrag.js'          : false,
         '/js/oDialogDiv.js'         : false,
-        '/style/oDialogDiv.css'     : false,
-        '/js/jsCalloFileManager.js' : function () {
-            this.oFileManagerMainDir = OF_URL.substr(ROOT_URL.length) + '/addin/oFileManager';
-            this.oFileManager.oFileManagerMainDir = OF_URL + '/addin/oFileManager';
-        }
+        '/style/oDialogDiv.css'     : false
     },
-    'ready' : function (p, c, n) {
-        switch (n) {
-            case 'oEditor' :
-                c.list['/include/oEditor/oEditor.js'] = false;
-                break;
-            case 'upload'  :
-                c.list['/include/uploadify/css/uploadify.css'] = false;
-                c.list['/include/uploadify/scripts/jsCalloEditorUploadify.js'] = false;
-                c.list['/include/uploadify/scripts/swfobject.js'] = false;
-                c.list['/include/uploadify/scripts/jqueryUploadify.js'] = false;
-                break;
+    'ready' : function (p, c) {
+        if (!window.jQuery) {
+            var temp = {};
+            temp['_' + OF_URL + '/att/link/jquery.js'] = false;
+            c.list = L.each(temp, c.list);
         }
     },
     'init'  : function (p, c, n) {
         switch (n) {
-            case 'oFM'   :
-                return this.oFileManager;
-            case 'upload':
-                return this.jsCalloEditorUploadify;
             case 'tip'   :
                 return this.oDialogDiv.tip;
             default      :
                 return this[n];
         }
     }
-}
+};
+
+/**
+ * 描述 : 上传组件
+ * 作者 : Edgar.lee
+ */
+config.oUpload = {
+    'path'  : OF_URL + '/addin/oUpload',
+    'list'  : {
+        '/oUpload.css' : false,
+        '/oUpload.js'  : false
+    },
+    'init'  : function (p) {
+        if (p) {
+            //返回图表实例
+            return this.oUpload(p);
+        } else {
+            //返回图表类
+            return this.oUpload;
+        }
+    }
+};

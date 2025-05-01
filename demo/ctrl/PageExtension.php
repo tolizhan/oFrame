@@ -1,14 +1,14 @@
 <?php
 //encoding=utf-8
 /*
-* 描述 : 演示扩展安装于运行的过程,第一次运行安装相应的扩展,第二次运行加载的扩展
-* 方法 : 所有可用方法都在 setupExtension 类中的静态类
-*      installation    : 安装/更新指定扩展
-*      userStartPause  : 用户暂停暂停切换指定扩展
-*      uninstall       : 卸载指定扩展
-*      pageUpdate      : 更新指定页面的扩展文件(主要由程序调用)
-*      getAllExtension : 获取所有扩展信息
-*/
+ * 描述 : 演示扩展安装于运行的过程,第一次运行安装相应的扩展,第二次运行加载的扩展
+ * 方法 : 所有可用方法都在 setupExtension 类中的静态类
+ *      installation    : 安装/更新指定扩展
+ *      userStartPause  : 用户暂停暂停切换指定扩展
+ *      uninstall       : 卸载指定扩展
+ *      pageUpdate      : 更新指定页面的扩展文件(主要由程序调用)
+ *      getAllExtension : 获取所有扩展信息
+ */
 class ctrl_pageExtension {
     public function index() {
         $info = of_base_extension_manager::getExtensionInfo();

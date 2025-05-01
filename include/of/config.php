@@ -1,6 +1,6 @@
 <?php
 return array(
-    //用__FILE__表示的站点根目录, 修改substr的第二参数即可
+    //用__FILE__表示的站点根目录, 修改substr的第二参数即可, null=通过磁盘遍历寻找(建议仅框架文件夹为链接时使用)
     'rootDir'     => strtr(substr(__FILE__, 0, -22), '\\', '/'),
     //域名到产品根目录地址, 根路径为空字符串, null=尝试自动计算
     'rootUrl'     => null,
@@ -14,6 +14,8 @@ return array(
     'debug'       => true,
     //可写目录, 上传, 缓存等路径都将写入该文件夹
     'dataDir'     => '/data',
+    //框架目录, 影响OF_DIR和OF_URL, rootDir为null时用来定位ROOT_DIR
+    'ofDir'       => '/include/of',
     //用户群体的系统字符集
     'charset'     => 'GB18030',
     //视图层文件夹结构 {'/img' : 图片, '/js' : 脚本, '/css' : 样式, '/tpl' : 模板}
@@ -131,10 +133,10 @@ return array(
     'link'        => array(
         //集成插件
         'addin' => array(
-            //php扩展配置文件路径, 默认 OF_DIR . '/addin/config.php'
-            //'pConfig' => '/include/of/addin/config.php',
-            //js 扩展配置文件路径, 默认 OF_URL . '/addin/config.js'
-            //'jConfig' => '/include/of/addin/config.js',
+            //php插件配置文件路径
+            //'pConfig' => '/include/application/config.php',
+            //js 插件配置文件路径
+            //'jConfig' => '/include/application/config.js',
         ),
         //视图层相关
         'view'  => array(
@@ -438,7 +440,12 @@ return array(
              *              "keys"   : 消费消息时回调结构 {
              *                  消息键 : 不存在的键将被抛弃 {
              *                      "lots" : 批量消费, 1=单条消费, >1=一次消费最多数量(消息变成一维数组)
-             *                      "cNum" : 并发数量,
+             *                      "cNum" : 并发数量, 数字=每台分布系统相同, 数组=指定不同分布系统并发数 {
+             *                          数字键(分布系统自动排序从0开始小于等于键时生效) : 生效的并发数, 例如:
+             *                          3(首先0-3四台分布系统生效) : 1(这四台分布系统启动一个并发),
+             *                          6(接着4-6三台分布系统生效) : 0(这三台分布系统不启动),
+             *                          7(最后仅7这台分布系统生效) : 2(这台分布系统启动两并发, 之后都不启动)
+             *                      }
              *                      "call" : 回调结构
              *                  }, ...
              *              }

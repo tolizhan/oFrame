@@ -58,6 +58,9 @@ class of_base_htmlTpl_engine {
      * 描述 : 视图回调
      * 参数 :
      *      params : 相对 of_view::path() 的路径
+     * 返回 :
+     *      html扩展名返回of.eval://...协议字符串
+     *      其它扩展名原样返回
      * 作者 : Edgar.lee
      */
     public static function &getHtmlTpl($params) {
@@ -107,7 +110,7 @@ class of_base_htmlTpl_engine {
                 touch($comFile, filemtime($tplFile));
             }
 
-            $tplFile = $comFile;
+            $tplFile = "of.eval://{$tplFile}\n?>" . file_get_contents($comFile);
         }
 
         return $tplFile;

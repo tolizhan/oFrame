@@ -119,20 +119,22 @@ class of_base_com_mq {
      * 作者 : Edgar.lee
      */
     public function index() {
-        //debug 参数
-        $debug = isset($_GET['__OF_DEBUG__']) ?
-            '&__OF_DEBUG__=' . $_GET['__OF_DEBUG__'] : '';
-        //重新加载消息
-        if ($reload = isset($_GET['type']) && $_GET['type'] === 'reload') {
-            header('location: ?c=of_base_com_mq' . $debug);
-        }
+        //路径参数
+        $rUrl = '?c=of_base_com_mq' . (isset($_GET['__OF_DEBUG__']) ? '&__OF_DEBUG__=' . $_GET['__OF_DEBUG__'] : '');
+        //默认排序
+        $sort = isset($_GET['sort']) ? $_GET['sort'] : 'avgRunTime';
+        //加载消息类型
+        $type = isset($_GET['type']) ? $_GET['type'] : '';
+
+        //跳转展示列表
+        $type === 'reload' && header('location: ' . $rUrl);
         //输出运行状态(并尝试开启)
         echo self::state() ? 'running' : 'starting', " ";
 
         if (OF_DEBUG === false) {
             exit("<br>\nAccess denied: production mode.");
         //重启消息队列
-        } else if ($reload) {
+        } else if ($type === 'reload') {
             //读取全局节点列表
             $nodes = of_base_com_kv::get('of_base_com_mq::nodeList', array(), '_ofSelf');
             //遍历发送重置命令
@@ -144,32 +146,49 @@ class of_base_com_mq {
             //永不超时
             ini_set('max_execution_time', 0);
             //显示重启按钮
-            echo '<input type="button" onclick="',
-                'window.location.href=\'?c=of_base_com_mq&type=reload',
-                $debug,
-                '\'" value="Reload the message queue"><pre>';
+            echo '<input type="button" ',
+                    "onclick='window.location.href=\"{$rUrl}&type=reload\"' ",
+                    'value="Reload the message queue">',
+                '<style>a{color: #000;} table{border-collapse: collapse;} pre{width: 0;}</style>';
 
             //显示异常队列池
             if ($list = self::getFailPools(null)) {
-                echo 'Failed queue(', OF_DATA, '/_of/of_base_com_mq/failedMsgs): ',
+                echo '<br>',
+                    'Failed queue(', OF_DATA, '/_of/of_base_com_mq/failedMsgs): ',
                     '<font color="red">/', join(', /', $list), '</font>';
             }
 
             //显示运行中队列
-            echo '<hr>Concurrent Running : ';
+            echo '<hr>';
 
-            //消费超过24小时数量
-            $nums = 0;
             //筛选消息队列任务
             $list = of_base_com_timer::info(1);
+            //当前时间
+            $time = time();
+            //消费超过24小时数量
+            $nums = 0;
+
             foreach ($list as $k => &$v) {
                 if (
                     isset($v['call']['asCall']) &&
                     $v['call']['asCall'] === 'of_base_com_mq::fireQueue'
                 ) {
+                    //汇总列表
+                    $print = array(
+                        //执行并发, 最后启动时间
+                        'concurrent' => 0, 'datetime' => array(0),
+                        //平均时间, 运行次数
+                        'avgRunTime' => 0, 'sumRunCount' => 0,
+                        //最大内存, 汇总内存
+                        'maxMemory' => array(0), 'sumMemory' => 0,
+                        //列表明细
+                        'details' => '',
+                    );
+                    //列表明细
                     $v = array(
                         'fire' => &$v['call']['params'][0]['fire'],
-                        'list' => &$v['list']
+                        'list' => &$v['list'],
+                        'font' => '',
                     );
 
                     //读取消息状态信息
@@ -178,44 +197,100 @@ class of_base_com_mq {
                         $temp = 'of_base_com_timer::data-' . $k . '.' . $kl;
                         $temp = of_base_com_kv::get($temp, array(), '_ofSelf');
                         $index = &$temp['_mq'];
+                        //汇总数据: 计算最大并发
+                        $print['concurrent'] += 1;
 
                         //格式化执行信息
                         if ($index === null) {
+                            //标记列表颜色
+                            $v['font'] = 'style="color: red;"';
+                            //标记运行异常
                             $vl['execInfo'] = '<font color=red>Run for more than 24 hours</font>';
                             //统计超长消费数量
                             $nums += 1;
                         } else {
+                            //队列启动时间
+                            $print['datetime'][] = $vl['datetime'];
+                            //消息执行信息
                             $vl['execInfo'] = &$index;
 
                             //存在执行信息
                             if (isset($index['useMemory'])) {
+                                //汇总数据: 汇总时长
+                                $print['avgRunTime'] += isset($index['duration']) ? $index['duration'] : 0;
+                                //汇总数据: 总运行次数
+                                $print['sumRunCount'] += $index['runCount'];
+                                //汇总数据: 最大内存
+                                $print['maxMemory'][] = $temp = round($index['useMemory'] / 1048576, 2);
+
                                 //内存转化成M单位
-                                $index['useMemory'] = round(
-                                    $index['useMemory'] / 1048576, 2
-                                ) . 'M';
+                                $index['useMemory'] = $temp . 'M';
+                                //方便查询运行中队列
+                                $index['doneTime'] || $index['doneTime'] = '--';
+
                                 //单条消费格式结构
                                 is_array($index['msgId']) && (
                                     isset($index['msgId'][1]) ?
                                         $index['msgId'] = json_encode($index['msgId']) :
                                         $index['msgId'] = &$index['msgId'][0]
                                 );
-                                //方便查询运行中队列
-                                $index['doneTime'] || $index['doneTime'] = '--';
                                 //删除异常消息数据
                                 unset($index['quitData']);
                             }
                         }
                     }
+
+                    //汇总数据: 计算平均时间
+                    $print['avgRunTime'] = $print['sumRunCount'] ? 
+                        round($print['avgRunTime'] / $print['sumRunCount'], 2) : 0;
+                    //汇总数据: 计算汇总内存
+                    $print['sumMemory'] = round(array_sum($print['maxMemory']), 2);
+                    //汇总数据: 计算最大内存
+                    $print['maxMemory'] = max($print['maxMemory']);
+                    //汇总数据: 最晚启动时间
+                    $print['datetime'] = max($print['datetime']);
+                    //汇总数据: 显示打印摘要
+                    $print['queueATag'] = "<a id='{$k}' href='{$rUrl}&sort={$sort}&type={$k}#{$k}' {$v['font']}>" .
+                            ($print['queueName'] = join('.', $v['fire'])) .
+                        '</a>';
+                    //汇总数据: 拼接打印明细
+                    $type === $k && $print['details'] = '<pre>' . print_r($v['list'], true) . '</pre>';
+                    //转存队列信息
+                    $v = $print;
                 } else {
                     unset($list[$k]);
                 }
             }
 
+            //排序打印信息
+            ($temp = array_column($list, $sort)) && array_multisort($temp, SORT_DESC, $list);
             //打印队列信息
             $nums && print_r("<font color=red>Exception({$nums})</font> ");
-            print_r($list);
-
-            echo '</pre>';
+            //汇总并发数量
+            $temp = array_sum(array_column($list, 'concurrent'));
+            echo '<table border="1">',
+                '<tr>',
+                    "<th><a href='{$rUrl}&sort=queueName'>queueName</a></td>",
+                    "<th><a href='{$rUrl}&sort=concurrent'>concurrent($temp)</a></td>",
+                    "<th><a href='{$rUrl}&sort=avgRunTime'>avgRunTime(s)</a></td>",
+                    "<th><a href='{$rUrl}&sort=sumRunCount'>sumRunCount</a></td>",
+                    "<th><a href='{$rUrl}&sort=maxMemory'>maxMemory(M)</a></td>",
+                    "<th><a href='{$rUrl}&sort=sumMemory'>sumMemory(M)</a></td>",
+                    "<th><a href='{$rUrl}&sort=datetime'>lastDatetime</a></td>",
+                '</tr>';
+            foreach ($list as &$v) {
+                echo '<tr>',
+                        "<td>{$v['queueATag']}</td>",
+                        "<td>{$v['concurrent']}</td>",
+                        "<td>{$v['avgRunTime']}</td>",
+                        "<td>{$v['sumRunCount']}</td>",
+                        "<td>{$v['maxMemory']}</td>",
+                        "<td>{$v['sumMemory']}</td>",
+                        "<td>{$v['datetime']}</td>",
+                    "</tr>",
+                    ($v['details'] ? "<tr><td colspan=7>{$v['details']}</td></tr>" : '');
+            }
+            echo '</table>';
         }
     }
 
@@ -458,7 +533,7 @@ class of_base_com_mq {
         $fireEnv = &self::$fireEnv;
 
         //有效回调
-        if ($thisMq['cNum'] > 0 && $call = &$thisMq['call']) {
+        if ($call = &$thisMq['call']) {
             //批量消费数量
             ($data['lots'] = &$thisMq['lots']) < 1 && $data['lots'] = 1;
             //校验文件变动, ture=加载的文件, false=不校验, 字符串=@开头的正则白名单
@@ -467,8 +542,6 @@ class of_base_com_mq {
             $memory = $config['memory'] * 1048576;
             //当前并发ID
             $cCid = $data['this']['cCid'];
-            //重置异常消息数据, 不用直等是为了防止多副本启动时间不同导致无法正常重置
-            $isFix = $cCid % $thisMq['cNum'] === intval($thisMq['cNum'] > 1);
             //可以垃圾回收
             ($isGc = function_exists('gc_enable')) && gc_enable();
             //接收环境变化键名
@@ -496,7 +569,7 @@ class of_base_com_mq {
             //重置自身消息数据
             self::resetPaincMqData(null);
             //重置未启动消息数据
-            $isFix && self::resetPaincMqData(2);
+            isset($nowTask['cNum'][0]) && $cCid === $nowTask['cNum'][0] && self::resetPaincMqData(2);
 
             while (true) {
                 $cmd = of_base_com_kv::get($cKey, array('taskPid' => ''), '_ofSelf');
@@ -565,61 +638,60 @@ class of_base_com_mq {
             //防止self::restoreMsgs恢复时内存溢出
             ini_set('memory_limit', -1);
 
-            //全局节点列表键
-            $listKey = 'of_base_com_mq::nodeList';
-            //加锁全局节点列表
-            of_base_com_data::lock($listKey, 2);
-
             //监听加锁成功
             if (of_base_com_data::lock($lock, 6)) {
-                //已绑定的监听ID
-                $tNum = array(0);
                 //命令配置键名
                 $cKey = 'of_base_com_mq::command::' . md5(of::config('_of.nodeName'));
                 //失败消息列表
                 $fPath = self::$mqDir . '/failedMsgs';
-                //读取全局节点列表
-                $nodes = of_base_com_kv::get($listKey, array(), '_ofSelf');
+                //全局节点列表键
+                $listKey = 'of_base_com_mq::nodeList';
 
-                //读取已启动的监听数据
-                foreach ($nodes as $kt => &$vt) {
-                    //是文件夹 && 不是当前监听
-                    if ($kt !== $nodeId) {
-                        //节点进程锁
-                        $nodeLock = 'of_base_com_mq::nodeLock#' . $kt;
-                        //队列监听未启动
-                        if (of_base_com_data::lock($nodeLock, 6)) {
-                            //解除节点进程锁
-                            of_base_com_data::lock($nodeLock, 3);
-                            //清理未启动队列
-                            unset($nodes[$kt]);
-                        //队列监听已启动
-                        } else {
-                            //已绑定的监听ID
-                            $tNum[] = $vt['tNum'];
-                        }
-                    }
-                }
-
-                //计算最小未绑定的监听ID
-                $tNum = array_diff(range(1, max($tNum) + 1), $tNum);
-                $tNum = reset($tNum);
-                //回写监听参数数据
-                $nodes[$nodeId] = array('tNum' => $tNum);
-
-                //回写全局节点列表(永不过期)
-                of_base_com_kv::set($listKey, $nodes, 0, '_ofSelf');
-                //解锁全局节点列表
-                of_base_com_data::lock($listKey, 3);
-                //安装信号触发器
-                of_base_com_timer::exitSignal();
                 //停止在运行的消息进程
                 of_base_com_kv::del($cKey, '_ofSelf');
+                //安装信号触发器
+                of_base_com_timer::exitSignal();
 
-                //此变量重用做存储队列运行的摘要
-                $nodes = array();
                 //监听标志存在
                 while (!of_base_com_timer::renew()) {
+                    //加锁全局节点列表
+                    of_base_com_data::lock($listKey, 2);
+                    //已绑定的监听ID
+                    $tNum = array(-1);
+                    //读取全局节点列表
+                    $nodes = of_base_com_kv::get($listKey, array(), '_ofSelf');
+
+                    //读取已启动的监听数据
+                    foreach ($nodes as $kt => &$vt) {
+                        //不是当前监听
+                        if ($kt !== $nodeId) {
+                            //节点进程锁
+                            $nodeLock = 'of_base_com_mq::nodeLock#' . $kt;
+                            //队列监听未启动
+                            if (of_base_com_data::lock($nodeLock, 6)) {
+                                //解除节点进程锁
+                                of_base_com_data::lock($nodeLock, 3);
+                                //清理未启动队列
+                                unset($nodes[$kt]);
+                            //队列监听已启动
+                            } else {
+                                //已绑定的监听ID
+                                $tNum[] = $vt['tNum'];
+                            }
+                        }
+                    }
+
+                    //计算最小未绑定的监听ID
+                    $tNum = array_diff(range(0, max($tNum) + 1), $tNum);
+                    $tNum = reset($tNum);
+                    //回写监听参数数据
+                    $nodes[$nodeId] = array('tNum' => $tNum);
+
+                    //回写全局节点列表(永不过期)
+                    of_base_com_kv::set($listKey, $nodes, 0, '_ofSelf');
+                    //解锁全局节点列表
+                    of_base_com_data::lock($listKey, 3);
+
                     //读取命令
                     $cmd = of_base_com_kv::get($cKey, array('taskPid' => ''), '_ofSelf');
                     $cmd['taskPid'] || $cmd['taskPid'] = of_base_com_str::uniqid();
@@ -627,6 +699,8 @@ class of_base_com_mq {
                     of_base_com_kv::set($cKey, $cmd, 86400, '_ofSelf');
                     //加载最新配置文件
                     $config = of::config('_of.com.mq', array(), 4);
+                    //此变量重用做存储队列运行的摘要
+                    $nodes = array();
                     //待回调列表
                     $waitCall = array();
                     //失败队列路径
@@ -647,8 +721,27 @@ class of_base_com_mq {
                                 //可消费
                                 if (!isset($vq['mode']) || $vq['mode']) {
                                     foreach ($vq['keys'] as $kk => &$vk) {
+                                        //按服务器独立并发方式配置
+                                        if (is_array($vk['cNum'])) {
+                                            //获取分布系统最大间隔并发数
+                                            $cMax = $vk['cNum'] ? max($vk['cNum']) : 0;
+                                            //从小到大将配置服务器顺序排序
+                                            ksort($vk['cNum']);
+                                            //遍历配置寻找合适的配置
+                                            foreach ($vk['cNum'] as $k => &$v) {
+                                                if ($tNum <= $k) {
+                                                    $vk['cNum'] = $v;
+                                                    break ;
+                                                }
+                                            }
+                                            //未寻到合适配置 && 不启动
+                                            is_array($vk['cNum']) && $vk['cNum'] = 0;
+                                        } else {
+                                            //获取分布系统最大间隔并发数
+                                            $cMax = $vk['cNum'];
+                                        }
                                         //并发起始进程ID
-                                        $cMin = ($tNum - 1) * $vk['cNum'] + 1;
+                                        $cMin = $tNum * ($cMax < 1000 ? 1000 : $cMax) + 1;
                                         //并发结束进程ID
                                         $cMax = $cMin + $vk['cNum'] - 1;
 
@@ -728,9 +821,6 @@ class of_base_com_mq {
                 of_base_com_kv::del($cKey, '_ofSelf');
                 //关闭锁
                 of_base_com_data::lock($lock, 3);
-            } else {
-                //解锁全局节点列表
-                of_base_com_data::lock($listKey, 3);
             }
         //成功占用监听
         } else if (of_base_com_data::lock($lock, 6)) {
@@ -956,8 +1046,8 @@ class of_base_com_mq {
      * 作者 : Edgar.lee
      */
     protected static function &callback(&$call, &$data) {
-        //运行次数
-        static $count = 0;
+        //消费统计 {"c" : 运行次数, "d" : 累计时长(s), "t" : 开始时间}
+        static $count = array('c' => 0, 'd' => 0, 't' => 0);
         //引用环境
         $fireEnv = &self::$fireEnv;
 
@@ -966,9 +1056,10 @@ class of_base_com_mq {
         //生成并发日志
         $cLog = array(
             'msgId'     => array_keys($data['msgs']),
-            'startTime' => date('Y-m-d H:i:s', time()),
+            'startTime' => date('Y-m-d H:i:s', $count['t'] = time()),
             'doneTime'  => '',
-            'runCount'  => $count += count($data['msgs']),
+            'duration'  => $count['d'],
+            'runCount'  => $count['c'],
             'useMemory' => &$fireEnv['memory'],
             'quitData'  => array(
                 'class' => &$fireEnv['mqClass'],
@@ -1025,6 +1116,10 @@ class of_base_com_mq {
         $fireEnv['mqData'] = &$null;
         //修改并发日志
         $cLog['doneTime'] = date('Y-m-d H:i:s', $time = time());
+        //统计累计时长(s)
+        $cLog['duration'] = $count['d'] += $time - $count['t'];
+        //统计运行次数
+        $cLog['runCount'] = $count['c'] += count($data['msgs']);
         //记录当前内存
         $cLog['useMemory'] = memory_get_usage();
         //清空异常消息
@@ -1054,9 +1149,10 @@ class of_base_com_mq {
             $return === true && $trxs ||
             !is_bool($return) && !is_int($return)
         ) {
-            //克隆回调数组
-            $func = json_decode(json_encode($call), true);
+            //格式回调数组
             if (is_array($call)) {
+                $func = json_decode(json_encode($call), true);
+                //分析回调结构
                 if (isset($call[0])) {
                     $temp = array(&$func[0], &$call[0]);
                 } else if (is_array($call['asCall'])) {
@@ -1064,11 +1160,12 @@ class of_base_com_mq {
                 } else {
                     $temp = array(&$func['asCall'], &$call['asCall']);
                 }
+                //对象转换成易读方式
+                is_object($temp[1]) && $temp[0] = 'new ' . get_class($temp[1]);
             } else {
-                $temp = array(&$func, &$call);
+                //可能是调用对象 __invoke
+                $func = is_object($call) ? 'new ' . get_class($call) : $call;
             }
-            //对象转换成易读方式
-            is_object($temp[1]) && $temp[0] = 'new ' . get_class($temp[1]);
 
             //抛出错误提示
             if ($return === true) {

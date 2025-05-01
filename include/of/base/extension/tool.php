@@ -250,7 +250,7 @@ class of_base_extension_tool {
                         <span>
                             <input class="inputLanguagePage" style="display: none;" type="text" onblur="managerObj.switchLanguage(this);">
                             <select class="selectLanguagePage" onchange="managerObj.switchLanguage(this);">
-                                <option value="0">语言包</option>
+                                <option value="base">语言包</option>
                                 <option value="1">新建</option>
                                 <option value="">2</option>
                             </select>
@@ -495,7 +495,7 @@ L.data('paging.after[]', function () {
             "data"     : {'a' : 'getLanguageDir', 'eKey' : eKey},
             "dataType" : "json",
             "success"  : function (json) {
-                var temp = '<option value="0">语言包</option><option value="1">新建</option>';
+                var temp = '<option value="base">语言包</option><option value="1">新建</option>';
                 $.each(json, function () {
                     temp += '<option value="' +this+ '">' +this+ '</option>';
                 });

@@ -2,7 +2,6 @@
 var L;
 //未初始化 && 初始化
 L === undefined && (L = {
-
     /**
      * 描述 : ajax 请求
      * 参数 :
@@ -91,20 +90,28 @@ L === undefined && (L = {
         temp['CONTENT-TYPE'] || result.ajax.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
         //ajax标识
         temp['X-REQUESTED-WITH'] || result.ajax.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-
-        result.ajax.onreadystatechange = function() {
-            if (result.ajax.readyState === 4) {
-                //网络响应 200 || 本地响应 0
-                if (result.ajax.status === 200 || result.ajax.status === 0) {
-                    result.config.success.call(result.config.context, result.ajax.responseText, result);
-                } else {
-                    result.config.error.call(result.config.context, result);
+        //ajax发送
+        temp = function (resolve, reject) {
+            result.ajax.onreadystatechange = function() {
+                if (result.ajax.readyState === 4) {
+                    //网络响应 200 || 本地响应 0
+                    if (result.ajax.status === 200 || result.ajax.status === 0) {
+                        result = L.each(new String(result.ajax.responseText), result);
+                        result.config.success.call(result.config.context, result.ajax.responseText, result);
+                        resolve && resolve(result);
+                    } else {
+                        result.config.error.call(result.config.context, result);
+                        reject && reject(result);
+                    }
                 }
-            }
-        };
+            };
 
-        try { result.ajax.send(result.config.data.post); } catch(e) {}
-        return result;
+            try { result.ajax.send(result.config.data.post); } catch (e) { reject && reject(result); }
+            return result;
+        }
+
+        //支持Promise ? 合并result的Promise对象 : result对象
+        return typeof Promise === 'function' ? L.each(new Promise(temp), result) : temp();
     },
 
     /**
@@ -117,7 +124,7 @@ L === undefined && (L = {
      */
     'browser'       : {
         //IE
-        'msie'    : /MSIE|Trident/.test(navigator.appVersion),
+        'msie'    : /MSIE|Trident/.test(navigator.userAgent),
         //Firefox
         'mozilla' : (navigator.userAgent.indexOf("Firefox") != -1),
         //Chrome
@@ -216,7 +223,7 @@ L === undefined && (L = {
      *      统计的长度
      * 作者 : Edgar.lee
      */
-    'count'         : function(value, asNum) {
+    'count'         : function (value, asNum) {
         //长度统计, 是否真实长度
         var length = 0, real = asNum ? L.type(asNum) === 'object' : !(asNum = false);
 
@@ -247,7 +254,7 @@ L === undefined && (L = {
      *      设置或查询或删除的数据
      * 作者 : Edgar.lee
      */
-    'data'          : (function(){
+    'data'          : (function () {
         //数据列表
         var data = {};
         return function (name, value, unique) {
@@ -295,9 +302,9 @@ L === undefined && (L = {
      *      arg1遍历方式,返回合并完成的对象
      * 作者 : Edgar.Lee
      */
-    'each'          : (function(){
+    'each'          : (function () {
         //数组方法, 替换方式, 回调方法, 默认回调
-        var arg, type, call, func = function(data, arg){
+        var arg, type, call, func = function (data, arg) {
             for (var i in arg) {
                 //单层合并
                 if (type === undefined) {
@@ -360,8 +367,8 @@ L === undefined && (L = {
 
         //解码
         if (encode === false) {
-            t.innerHTML = ('-' + value).replace(/<br>|\r\n|\r|\n/ig, '\1');
-            return (t.innerText || t.textContent).substr(1).replace(/\x01/ig, '\n');
+            t.innerHTML = ('-' + value).replace(/<br>|\r\n|\r|\n/ig, '\x01');
+            return (t.innerText || t.textContent).slice(1).replace(/\x01/ig, '\n');
         //编码
         } else {
             t[t.innerText === '' ? 'innerText' : 'textContent'] = value;
@@ -605,16 +612,16 @@ L === undefined && (L = {
      * 描述 : json的编码与解码,失败返回undefined
      * 参数 :
      *     value  : 对象=转成字符串, 字符串=转成对象
-     *     encode : true=强制编码成字符串
+     *     encode : 默认=根据类型判断, true=强制编码, false=强制解码
      * 作者 : Edgar.Lee
      */
-    'json'          : (function() {
+    'json'          : (function () {
         var escapable = /[\\\"\x00-\x1f\x7f-\x9f\u00ad\u0600-\u0604\u070f\u17b4\u17b5\u200c-\u200f\u2028-\u202f\u2060-\u206f\ufeff\ufff0-\uffff]/g;
         //特殊字符转换
         var meta = {'\b': '\\b', '\t': '\\t', '\n': '\\n', '\f': '\\f', '\r': '\\r', '"': '\\"', '\\': '\\\\'};
         var quote = function (string) {
             escapable.lastIndex = 0;
-            return escapable.test(string) ? '"' + string.replace(escapable, function(a) {
+            return escapable.test(string) ? '"' + string.replace(escapable, function (a) {
                 var c = meta[a];
                 return typeof c === 'string' ? c: '\\u' + ('0000' + a.charCodeAt(0).toString(16)).slice( - 4)
             }) + '"' : '"' + string + '"'
@@ -622,25 +629,25 @@ L === undefined && (L = {
         var str = function (key, holder) {
             var i, k, v, length, partial, value = holder[key];
 
-            if (value == null) return 'null';
-
-            switch (typeof value) {
+            switch (L.type(value)) {
                 case 'string':
                     return quote(value);
                 case 'number':
                     return isFinite(value) ? String(value) : 'null';
                 case 'boolean':
                     return String(value);
-                case 'object':
+                case 'array':
                     partial = [];
-                    if (L.type(value) === 'array' && L.count(value) === value.length && L.count(value, true) === value.length) {
+                    if (L.count(value) === value.length && L.count(value, true) === value.length) {
                         length = value.length;
                         for (i = 0; i < length; i += 1) {
                             partial[i] = str(i, value) || 'null'
                         }
                         v = partial.length === 0 ? '[]' : '[' + partial.join(',') + ']';
-                        return v
+                        return v;
                     }
+                case 'object':
+                    partial = [];
                     for (k in value) {
                         if (Object.prototype.hasOwnProperty.call(value, k)) {
                             v = str(k, value);
@@ -650,14 +657,16 @@ L === undefined && (L = {
                         }
                     }
                     v = partial.length === 0 ? '{}' : '{' + partial.join(',') + '}';
-                    return v
+                    return v;
+                default:
+                    return 'null';
             }
         }
 
         return function (value, encode) {
             try {
                 //强制编码 || 不是字符串
-                if (encode || typeof value !== 'string') {
+                if (encode || encode === undefined && L.type(value) !== 'string') {
                     return str('', {'': value}).replace(/</g, '\\u003C').replace(/>/g, '\\u003E');
                 //json解码
                 } else {
@@ -686,7 +695,7 @@ L === undefined && (L = {
      */
     'open'          : (function () {
         //已加载的js列表, 可加载的插件, 插件配置文件路径, 同步加载方法
-        var cache = [], config, path, sync = function (url, win) {
+        var cache = [], config, sync = function (url, win) {
             //查找使用的缓存
             var list = L.search(cache, win, 'obj')[0];
             //初始化并读取缓存
@@ -707,9 +716,9 @@ L === undefined && (L = {
                         if (/.*css$/.test(url)) {
                             var div = win.document.createElement("div");
                             //提取url(xxx)
-                            code = code.replace(/url\((\'|\"|)([\w\/\.]*)\1\)/ig, function(){
+                            code = code.replace(/url\((\'|\"|)([\w\/\.]*)\1\)/ig, function () {
                                 //计算出绝对路径
-                                return 'url("' + arguments[2].replace(/^(?:\.\/|\/)*((?:\.\.\/)+|(?!\w+:))/, function(){
+                                return 'url("' + arguments[2].replace(/^(?:\.\/|\/)*((?:\.\.\/)+|(?!\w+:))/, function () {
                                     var regObj = new RegExp('(/[^/]+){' +(arguments[1].length/3 + 1)+ '}$');
                                     return url.replace(regObj, '') + '/';
                                 }) + '")';
@@ -728,23 +737,24 @@ L === undefined && (L = {
         };
 
         //插件配置文件路径
-        path = document.getElementsByTagName('script');
-        path = path.length && path[path.length - 1].getAttribute('addin')
-        path || (path = OF_URL + '/addin/config.js');
+        config = document.getElementsByTagName('script');
+        config = config.length && config[config.length - 1].getAttribute('addin');
+        config || (config = OF_URL + '/addin/config.js');
 
         return function (name, param, win) {
             //运行配置
             var run;
-            config || sync(path, null), win || (win = window);
+            //已初始化插件配置 || 初始化自定义插件配置 && 初始化核心插件配置
+            typeof config === 'string' && sync(config, null) && sync(OF_URL + '/addin/config.js', null);
+            //初始化window
+            win || (win = window);
 
             //插件存在
             if (run = config[name]) {
-                //初始化插件根目录
-                run.path === undefined && (run.path = OF_URL + '/addin');
                 //加载前调用
                 run.ready && run.ready.call(win, param, run, name);
                 for(var i in run.list) {
-                    sync(run.path + i, win) && run.list[i] && run.list[i].call(win, param, run, name);
+                    sync(i.charAt(0) === '_' ? i.slice(1) : run.path + i, win) && run.list[i] && run.list[i].call(win, param, run, name);
                 }
                 //初始化调用
                 return run.init.call(win, param, run, name);
@@ -766,7 +776,7 @@ L === undefined && (L = {
         typeof separ === 'string' || (separ = '&');
 
         //转成对象
-        if (typeof value === 'string') {
+        if (L.type(value) === 'string') {
             math = new RegExp('(?:^|' +separ+ ')((?:(?!' +separ+ ')[^\\[\\]=])+)((?:\\[(?:(?!' +separ+ ')[^\\]=])*\\])*)(?:=((?:(?!' +separ+ ').)*))?', 'g');
             result = {};
 
@@ -779,7 +789,7 @@ L === undefined && (L = {
                 //字符数组
                 if (temp[2]) {
                     //转成实体数组
-                    temp[2] = temp[2].substr(1, temp[2].length - 2).split('][');
+                    temp[2] = temp[2].slice(1, temp[2].length - 1).split('][');
                     //初始键并引用
                     temp.index = L.type(result[temp[1]], true) ? result[temp[1]] : (result[temp[1]] = {});
 
@@ -848,16 +858,15 @@ L === undefined && (L = {
      * 描述 : 获取指定参数的原型,类似于typeof
      * 参数 :
      *      value : 指定获取原型的参数
-     *      type  : true=是数组或对象, false=是否引用传值, null(默认)=返回原型字符串
+     *      type  : true=是数组或对象, false=是基础数据类型, null(默认)=返回原型字符串
      * 作者 : Edgar.lee
      */
-    'type'          : function(value, type){
-        //匹配类型
-        var regex = / (array|object|function|date|regexp|number|boolean|string)/;
-        value = value == null ? 
-            value + '' : (regex.exec(Object.prototype.toString.call(value).toLowerCase()) || [, 'object'])[1];
-
-        return type == null ? value : RegExp(regex.toString().substr(3, type ? 12 : 33)).test(value);
+    'type'          : function (value, type) {
+        //获取原始类型, IE6-IE8 的null与undefined不支持Object.prototype.toString.call
+        value = value == null ? value + '' : / (.*)\]/.exec(Object.prototype.toString.call(value).toLowerCase())[1];
+        return type == null ?
+            value :
+            RegExp(type ? '^(array|object)$' : '^(null|undefined|number|boolean|string|bigint|symbol)$').test(value);
     },
 
     /**
@@ -865,7 +874,7 @@ L === undefined && (L = {
      * 参数 :
      *      obj : 对象=操作的对象(默认=window),字符串=参数下移(代替pos)
      *      pos : 定位字符串,'.'代表对象操作,'[负数或空]'代表从尾部开始的位置
-     *          '[].`'是关键词,使用时前面加'`',如:'m.a`.c'代表m['a.c']
+     *          '[].`'四个字符是关键词,使用时前面加'`',如:'m.a`.c'代表m['a.c']
      *          '[xxx]'的值不存在时创建数组,'.'创建对象
      *          '[]'和'.'对数组和对象均适用,如:window.m = {'c' : []}; L.var('m[c].d', 5); m.c.d === 5;
      *      val : 不写=读取,其它=赋值
@@ -876,7 +885,7 @@ L === undefined && (L = {
      */
     'val'           : function (obj, pos, val) {
         //匹配数据[全部,字段,是否数组模式], 匹配正则
-        var match, regex = /((?:[^\[\].`]|(?:``)*`(?:.|$))*)(])?/g;
+        var match, regex = /((?:[^\[\].`]|(?:``)*`(?:.|$))*)(?:\])?(\[)?/g;
         //obj引用{obj : 当前对象, key : 最后匹配值}
         var index = {};
 
@@ -884,7 +893,7 @@ L === undefined && (L = {
         typeof obj === 'string' && (val = pos, pos = obj, obj = window, ++arguments.length);
         index.obj = obj || (obj = {});
 
-        pos.substr(0, 1) === '[' && (regex.lastIndex = 1);
+        pos.slice(0, 1) === '[' && (regex.lastIndex = 1);
         //读取下一键值
         while (match = regex.exec(pos)) {
             //更新引用对象
@@ -893,7 +902,7 @@ L === undefined && (L = {
             //提取并优化键值
             index.key = match[1].replace(/`(.|\s)/g, '$1');
             //是数组 && (负数 || '')
-            if (match[2] && /^(?:-\d+|)$/.test(index.key)) {
+            if (match[0].slice(match[1].length, match[1].length + 1) === ']' && /^(?:-\d+|)$/.test(index.key)) {
                 //负数或''键值转换成正数键
                 index.key = L.count(index.obj, true) + (index.key ? parseInt(index.key, 10) : 0);
                 index.key < 0 && (index.key = 0);
@@ -904,11 +913,11 @@ L === undefined && (L = {
                 //对象无效
                 if (index.obj[index.key] === undefined) return ;
             } else {
-                //可引用 || 赋值 = (数组 ? [] : {})
-                L.type(index.obj[index.key], false) || (index.obj[index.key] = match[2] ? [] : {});
+                //是标量 && 赋值 = (数组 ? [] : {})
+                L.type(index.obj[index.key], false) && (index.obj[index.key] = match[2] ? [] : {});
             }
 
-            switch (pos.substr(regex.lastIndex, 1)) {
+            switch (pos.slice(regex.lastIndex, regex.lastIndex + 1)) {
                 //(结束 || '[' || '.') && 分析移动一位
                 case '': case '[': case '.': regex.lastIndex += 1;
             }
@@ -931,7 +940,7 @@ L === undefined && (L = {
      *      返回window对象,没找到返回undefined
      * 作者 : Edgar.Lee
      */
-    'window'        : function(node) {
+    'window'        : function (node) {
         return (node.window && node.window === node.window.window && node) || 
             (node = node.ownerDocument || node).defaultView || node.parentWindow;
     },

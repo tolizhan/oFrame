@@ -12,7 +12,7 @@
 
 ## 框架部署
 ### 测试部署
-1. 部署一个php >= 5.2的网络环境 [Swoole环境部署](http://doc.phpof.net/?oFrame/helpManual/swoole.html,oFrame/navigation.html)
+1. 部署一个php >= 5.2的网络环境, [若需Swoole环境另见](http://doc.phpof.net/?oFrame/helpManual/swoole.html,oFrame/navigation.html)
 2. 下载框架代码 https://github.com/tolizhan/oFrame/ 或 https://gitee.com/tolizhan/oFrame/
 3. 解压到任意可访问的路径, 如果是 Linux 创建 /data 文件, 给 -R 可读写权限
 4. 访问框架根目录, 显示界面并且没有红色报错便部署成功
