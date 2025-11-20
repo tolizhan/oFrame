@@ -195,29 +195,42 @@ class of_base_com_disk {
     }
 
     /**
-     * 描述 : 判断文件夹是否为空
+     * 描述 : 判断磁盘路径是否为空
      * 参数 :
-     *      path : 磁盘目录
+     *      path : 磁盘路径
+     *      mode : 对比模式, 0=不对比, 默认3(1|2)=判断文件夹是否为空
      * 返回 :
-     *      true=不存在或空文件夹, false=非空文件夹
+     *      mode为0时 : 1=路径不存在, 2=空文件夹, 4=空文件, 8=非空文件夹, 16=非空文件
+     *      mode非0时 : 返回布尔结果, 如 3时路径不存在或文件夹为空时返回true
      * 作者 : Edgar.lee
      */
-    public static function none($path) {
-        //结果集
-        $result = true;
+    public static function none($path, $mode = 3) {
+        //优化性能, 对比模式 ? 按需判断 : 完全判断
+        $code = $mode ? $mode : 31;
 
-        //文件夹存在 && 打开成功
-        if (is_dir($path) && $hd = opendir($path)) {
-            while (is_string($temp = readdir($hd))) {
-                if (trim($temp, '.')) {
-                    $result = false;
-                    break ;
+        //文件夹存在
+        if (is_dir($path)) {
+            $result = 2;
+            //打开目录成功
+            if ($code & 10 && $hd = opendir($path)) {
+                while (is_string($temp = readdir($hd))) {
+                    if (trim($temp, '.')) {
+                        $result = 8;
+                        break ;
+                    }
                 }
+                closedir($hd);
             }
-            closedir($hd);
+        //文件存在
+        } else if (is_file($path)) {
+            $result = $code & 20 && filesize($path) ? 16 : 4;
+        //路径不存在
+        } else {
+            $result = 1;
         }
 
-        return $result;
+        //比对模式 ? 返回布尔 : 返回结果
+        return $mode ? !!($mode & $result) : $result;
     }
 
     /**
@@ -318,7 +331,7 @@ class of_base_com_disk {
 
         if ($result && $clear) {
             //移除空文件夹
-            while (self::none($sPath = dirname($sPath))) {
+            while (self::none($sPath = dirname($sPath), 2)) {
                 rmdir($sPath) || $result = false;
             }
         }

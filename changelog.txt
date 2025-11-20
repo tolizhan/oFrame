@@ -1,3 +1,61 @@
+版本: 280
+作者: Edgar
+日期: 2025年11月20日 8:52:51
+信息:
+说明: + redis队列使用分布式k-v池时, 可配"自动分槽"
+      + kv-redis分布式配置distributor,可自定义分区
+      + 单点登录新增导出功能与用户集合权限userBale
+      + 每次新加载框架配置时, 触发"of::config"事件
+      + of_accy_com_mq_redis::getMqInfo 可查询主键
+      + of_base_com_disk::none支持判断文件是否为空
+      + of_base_com_timer::info(2)增加主机节点信息
+      + 计划任务控制台中增加主机列表与任务执行时间
+      + 在Swoole的webSocket中,push方法可指定数据帧
+      + Swoole增加默认配置heartbeat_check_interval
+      + 兼容 PHP 8.5, "致命错误"在日志中能看到回溯
+      - 框架配置_of.com中com::paging改成com.paging
+      * 更准确的抛出数据库错误,SQL集单条错误也报错
+      * 修复Swoole特定情况下,WebSocket无法连接问题
+      * 修复Swoole中含静态变量的匿名类语法错误问题
+      * 修复Swoole自定义服务无法触发worker事件问题
+      * Swoole支持枚举自定义方法与全局对象调用方法
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/ctrl/index.php
+已修改 : /trunk/demo/tool/swoole/debug.php
+已修改 : /trunk/include/of/accy/com/data/lock/files.php
+已修改 : /trunk/include/of/accy/com/kv/redis.php
+已修改 : /trunk/include/of/accy/com/mq/redis.php
+已修改 : /trunk/include/of/accy/db/mssqlPdo.php
+已修改 : /trunk/include/of/accy/db/mysql.php
+已修改 : /trunk/include/of/accy/db/mysqlPdo.php
+已修改 : /trunk/include/of/accy/db/mysqli.php
+已修改 : /trunk/include/of/accy/db/polar.php
+已修改 : /trunk/include/of/accy/db/tidb.php
+已修改 : /trunk/include/of/addin/oUpload/oUpload.js
+已修改 : /trunk/include/of/att/link/L.js
+已修改 : /trunk/include/of/att/sso/css/main.css
+已修改 : /trunk/include/of/att/sso/img/main/download1.png
+已修改 : /trunk/include/of/att/sso/js/main.js
+已修改 : /trunk/include/of/att/sso/res/importTpl.csv
+已修改 : /trunk/include/of/att/sso/tpl/main.tpl.php
+已修改 : /trunk/include/of/base/com/com.php
+已修改 : /trunk/include/of/base/com/data.php
+已修改 : /trunk/include/of/base/com/disk.php
+已修改 : /trunk/include/of/base/com/kv.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/str.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已修改 : /trunk/include/of/base/link/codeNav.php
+已修改 : /trunk/include/of/base/link/response.php
+已修改 : /trunk/include/of/base/sso/db/data.sql
+已修改 : /trunk/include/of/base/sso/main.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/swoole.php
+
 版本: 278
 作者: Edgar
 日期: 2025年5月01日 08:26:55

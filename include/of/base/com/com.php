@@ -1,6 +1,6 @@
 <?php
 /**
- * 描述 : 工具组件封装
+ * 描述 : 提供前后端交互封装
  * 作者 : Edgar.lee
  */
 class of_base_com_com {
@@ -144,7 +144,7 @@ class of_base_com_com {
                 'dbPool' => 'default',
                 'items'  => null,
                 'params' => array(),
-                'size'   => of::config('_of.com.com::paging.size', 10),
+                'size'   => of::config('_of.com.com.paging.size', 10),
 
                 'action' => null,
                 'attr'   => '',
@@ -327,6 +327,7 @@ class of_base_com_com {
         } else {
             //POST 请求
             if ($config === null) {
+                L::session();
                 //复制post数据
                 $post = $_POST;
                 $config = $post['method'] = stripslashes($post['method']);
@@ -344,7 +345,7 @@ class of_base_com_com {
                 //框架内部分页
                 preg_match('@^of_\w+::\w+Paging$@', $config) || (
                     //权向验证读取
-                    ($temp = of::config('_of.com.com::paging.check', '@paging$@i')) &&
+                    ($temp = of::config('_of.com.com.paging.check', '@paging$@i')) &&
                     //是数组 ? 回调验证 : 正则验证
                     (isset($temp[0]) && $temp[0] === '@' ? preg_match($temp, $config) : of::callFunc($temp, $config))
                 )
@@ -532,7 +533,7 @@ class of_base_com_com {
                 unset($global['attr'], $global['conf']);
             //无权限调用
             } else {
-                throw new Exception('"_of.com.com::paging.check" Permission denied');
+                throw new Exception('"_of.com.com.paging.check" Permission denied');
             }
 
             return $result;
@@ -577,7 +578,6 @@ class of_base_com_com {
         //生成验证码图片
         } else {
             header("Content-type: image/png");
-            L::session();
 
             //图像宽度
             $width = isset($_GET['width']) ? $_GET['width'] : 60;
@@ -639,8 +639,8 @@ class of_base_com_com {
 
             //发送到浏览器
             imagepng($im);
-            //销毁图像
-            imagedestroy($im);
+            //销毁图像, php>=8.5 imagedestroy()作废
+            unset($im);
         }
     }
 

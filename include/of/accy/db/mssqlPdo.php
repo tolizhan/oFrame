@@ -53,7 +53,10 @@ class of_accy_db_mssqlPdo extends of_db {
     protected function _error() {
         //事务回滚动作
         static $rollback = null;
-        $error = $this->connection->errorInfo() + array(2 => '');
+        //选择错误源
+        $error = $this->query ? $this->query : $this->connection;
+        //获取错误信息
+        $error = $error->errorInfo() + array(2 => '');
 
         return array('code' => $error[1], 'info' => $error[2], 'note' => &$note);
     }
@@ -112,7 +115,7 @@ class of_accy_db_mssqlPdo extends of_db {
      * 作者 : Edgar.lee
      */
     protected function &_fetch() {
-        ($result = $this->query->fetch()) || $result = array();
+        $result = $this->query->fetch();
         return $result;
     }
 
@@ -130,12 +133,11 @@ class of_accy_db_mssqlPdo extends of_db {
      * 作者 : Edgar.lee
      */
     protected function &_moreResults() {
-        $result = array();
-
         do {
             $result[] = &$this->_fetchAll();
         } while ($this->query->nextRowset());
 
+        trim($this->query->errorCode(), '0') && $result = false;
         return $result;
     }
 

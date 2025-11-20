@@ -52,14 +52,7 @@
  *              }
  *          }
  *      }
- *      键值结构 : 已"of_base_com_mq::"为前缀的键名
- *          "nodeList" : 完整分布式节点(永不过期), 记录不同"_of.nodeName"节点, 失效时定期清理 {
- *              节点ID : 节点信息 {
- *                  "tNum" : 队列位置,
- *              }, ...
- *          }
  *      加锁逻辑 : 已"of_base_com_mq::"为前缀
- *          "nodeList" : 当新插入或清理节点时加独享锁
  *          nodeLock#节点ID : 节点进程, 启动时独享锁
  *          daemon#节点ID : 守护进程, 启动时独享锁
 
@@ -136,10 +129,10 @@ class of_base_com_mq {
         //重启消息队列
         } else if ($type === 'reload') {
             //读取全局节点列表
-            $nodes = of_base_com_kv::get('of_base_com_mq::nodeList', array(), '_ofSelf');
+            $nodes = of_base_com_timer::info(2);
             //遍历发送重置命令
             foreach ($nodes as $kt => &$vt) {
-                of_base_com_kv::del('of_base_com_mq::command::' . basename($kt), '_ofSelf');
+                of_base_com_kv::del('of_base_com_mq::command::' . $kt, '_ofSelf');
             }
         //展示并发列表
         } else {
@@ -163,8 +156,6 @@ class of_base_com_mq {
 
             //筛选消息队列任务
             $list = of_base_com_timer::info(1);
-            //当前时间
-            $time = time();
             //消费超过24小时数量
             $nums = 0;
 
@@ -193,6 +184,11 @@ class of_base_com_mq {
 
                     //读取消息状态信息
                     foreach ($v['list'] as $kl => &$vl) {
+                        //任务启动时间
+                        $vl['datetime'] = date('Y-m-d H:i:s', $vl['timestamp'] = $vl['time']);
+                        //格式化时间戳
+                        unset($vl['time']);
+
                         //为节省磁盘性能不用 of_base_com_timer::data(true, array($kl), '/' . $k);
                         $temp = 'of_base_com_timer::data-' . $k . '.' . $kl;
                         $temp = of_base_com_kv::get($temp, array(), '_ofSelf');
@@ -241,7 +237,7 @@ class of_base_com_mq {
                     }
 
                     //汇总数据: 计算平均时间
-                    $print['avgRunTime'] = $print['sumRunCount'] ? 
+                    $print['avgRunTime'] = $print['sumRunCount'] ?
                         round($print['avgRunTime'] / $print['sumRunCount'], 2) : 0;
                     //汇总数据: 计算汇总内存
                     $print['sumMemory'] = round(array_sum($print['maxMemory']), 2);
@@ -263,11 +259,11 @@ class of_base_com_mq {
             }
 
             //排序打印信息
-            ($temp = array_column($list, $sort)) && array_multisort($temp, SORT_DESC, $list);
+            ($temp = self::getColumn($list, $sort)) && array_multisort($temp, SORT_DESC, $list);
             //打印队列信息
             $nums && print_r("<font color=red>Exception({$nums})</font> ");
             //汇总并发数量
-            $temp = array_sum(array_column($list, 'concurrent'));
+            $temp = array_sum(self::getColumn($list, 'concurrent'));
             echo '<table border="1">',
                 '<tr>',
                     "<th><a href='{$rUrl}&sort=queueName'>queueName</a></td>",
@@ -569,7 +565,7 @@ class of_base_com_mq {
             //重置自身消息数据
             self::resetPaincMqData(null);
             //重置未启动消息数据
-            isset($nowTask['cNum'][0]) && $cCid === $nowTask['cNum'][0] && self::resetPaincMqData(2);
+            $cCid === $nowTask['cNum'][0] && self::resetPaincMqData(2);
 
             while (true) {
                 $cmd = of_base_com_kv::get($cKey, array('taskPid' => ''), '_ofSelf');
@@ -641,11 +637,11 @@ class of_base_com_mq {
             //监听加锁成功
             if (of_base_com_data::lock($lock, 6)) {
                 //命令配置键名
-                $cKey = 'of_base_com_mq::command::' . md5(of::config('_of.nodeName'));
+                $cKey = 'of_base_com_mq::command::' . $nodeId;
                 //失败消息列表
                 $fPath = self::$mqDir . '/failedMsgs';
-                //全局节点列表键
-                $listKey = 'of_base_com_mq::nodeList';
+                //获取节点位置尝试次数
+                $count = 5;
 
                 //停止在运行的消息进程
                 of_base_com_kv::del($cKey, '_ofSelf');
@@ -654,43 +650,32 @@ class of_base_com_mq {
 
                 //监听标志存在
                 while (!of_base_com_timer::renew()) {
-                    //加锁全局节点列表
-                    of_base_com_data::lock($listKey, 2);
-                    //已绑定的监听ID
-                    $tNum = array(-1);
-                    //读取全局节点列表
-                    $nodes = of_base_com_kv::get($listKey, array(), '_ofSelf');
-
-                    //读取已启动的监听数据
-                    foreach ($nodes as $kt => &$vt) {
-                        //不是当前监听
-                        if ($kt !== $nodeId) {
-                            //节点进程锁
-                            $nodeLock = 'of_base_com_mq::nodeLock#' . $kt;
-                            //队列监听未启动
-                            if (of_base_com_data::lock($nodeLock, 6)) {
-                                //解除节点进程锁
-                                of_base_com_data::lock($nodeLock, 3);
-                                //清理未启动队列
-                                unset($nodes[$kt]);
-                            //队列监听已启动
-                            } else {
-                                //已绑定的监听ID
-                                $tNum[] = $vt['tNum'];
-                            }
+                    //循环尝试获取节点位置
+                    do {
+                        //获取节点信息
+                        $nodes = of_base_com_timer::info(2);
+                        //当前节点已启动
+                        if (isset($nodes[$nodeId])) {
+                            //以后不再尝试
+                            $count = 0;
+                            //获取当前在节点列表的位置
+                            $tNum = $nodes[$nodeId]['nodeSort'];
+                            //执行启动队列动作
+                            break ;
+                        //没有更多尝试次数
+                        } else if (--$count < 0) {
+                            //执行退出动作
+                            break 2;
+                        //可以稍后尝试
+                        } else {
+                            //30秒后重试
+                            sleep(30);
+                            //检查退出信号
+                            of_base_com_timer::exitSignal();
+                            //重新检查代码文件变动
+                            continue 2;
                         }
-                    }
-
-                    //计算最小未绑定的监听ID
-                    $tNum = array_diff(range(0, max($tNum) + 1), $tNum);
-                    $tNum = reset($tNum);
-                    //回写监听参数数据
-                    $nodes[$nodeId] = array('tNum' => $tNum);
-
-                    //回写全局节点列表(永不过期)
-                    of_base_com_kv::set($listKey, $nodes, 0, '_ofSelf');
-                    //解锁全局节点列表
-                    of_base_com_data::lock($listKey, 3);
+                    } while (true);
 
                     //读取命令
                     $cmd = of_base_com_kv::get($cKey, array('taskPid' => ''), '_ofSelf');
@@ -1406,7 +1391,7 @@ class of_base_com_mq {
             //遍历队列列表
             foreach ($list as $k => &$v) {
                 //是队列文件夹 && 存在失败消息
-                if ($vd && !of_base_com_disk::none($k)) {
+                if ($v && !of_base_com_disk::none($k)) {
                     //读取消息池名称
                     $result[] = basename($kd);
                     continue 2;
@@ -1415,6 +1400,16 @@ class of_base_com_mq {
         }
 
         return $result;
+    }
+
+    /**
+     * 描述 : 返回数组中指定列值, 实现php<5.5的array_column方法
+     * 作者 : Edgar.lee
+     */
+    private static function getColumn($d, $a) {
+        $r = array();
+        foreach ($d as $k => &$v) is_array($v) && array_key_exists($a, $v) && $r[] = $v[$a];
+        return $r;
     }
 
     /**

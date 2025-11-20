@@ -22,13 +22,17 @@ class of_base_com_kv {
      * 描述 : 初始化方法,仅可通过self::inst()实例化
      * 作者 : Edgar.lee
      */
-    final public function __construct(&$key = '', &$params = null) {
+    final public function __construct(&$key = '') {
         //初始化连接实例
         if (isset(self::$instList[$key]['allowInst'])) {
+            //引用实例数据
+            $index = &self::$instList[$key];
             //移除允许实力标识
-            unset(self::$instList[$key]['allowInst']);
+            unset($index['allowInst']);
+            //实例化类
+            $index['inst'] = $this;
             //连接参数
-            $this->params = $params;
+            $this->params = $index['pool']['params'];
             //初始化连接
             $this->_connect();
         //实例化不是自身类
@@ -51,8 +55,11 @@ class of_base_com_kv {
     final public static function pool($key, $pool = null) {
         //引用实例列表
         $instList = &self::$instList;
+        //初始化连接
+        ($inst = $pool === true) && $pool = null;
 
-        if (empty($instList[$key]['inst'])) {
+        //连接池未配置
+        if (empty($instList[$key])) {
             if ($pool === null) {
                 //引用数据库配置
                 $config = &self::$config;
@@ -86,9 +93,10 @@ class of_base_com_kv {
             $instList[$key] = array('pool' => &$pool);
             //实例类名
             $instList[$key]['allowInst'] = 'of_accy_com_kv_' . $pool['adapter'];
-            //实例化类
-            $instList[$key]['inst'] = new $instList[$key]['allowInst']($key, $pool['params']);
         }
+
+        //需实例化 && 未实例化 && 实例化类
+        $inst && empty($instList[$key]['inst']) && new $instList[$key]['allowInst']($key);
 
         return $instList[$key]['pool'];
     }
@@ -115,7 +123,7 @@ class of_base_com_kv {
     final public static function add($name, $value = '', $time = 86400, $pool = 'default', $retry = 0) {
         $json = true;
         is_array($name) && extract($name, EXTR_REFS);
-        self::pool($pool);
+        self::pool($pool, true);
 
         $json && $value = &of_base_com_data::json($value);
         $index = &self::$instList[$pool]['inst'];
@@ -144,7 +152,7 @@ class of_base_com_kv {
      * 作者 : Edgar.lee
      */
     final public static function del($name, $pool = 'default') {
-        self::pool($pool);
+        self::pool($pool, true);
         return self::$instList[$pool]['inst']->_del($name);
     }
 
@@ -168,7 +176,7 @@ class of_base_com_kv {
     final public static function set($name, $value = '', $time = 86400, $pool = 'default') {
         $json = true;
         is_array($name) && extract($name, EXTR_REFS);
-        self::pool($pool);
+        self::pool($pool, true);
 
         $json && $value = &of_base_com_data::json($value);
         return self::$instList[$pool]['inst']->_set($name, $value, $time);
@@ -192,7 +200,7 @@ class of_base_com_kv {
     final public static function get($name, $default = false, $pool = 'default') {
         $json = true;
         is_array($name) && extract($name, EXTR_REFS);
-        self::pool($pool);
+        self::pool($pool, true);
 
         if (($value = self::$instList[$pool]['inst']->_get($name)) === false) {
             $value = &$default;
@@ -212,7 +220,7 @@ class of_base_com_kv {
      * 作者 : Edgar.lee
      */
     final public static function link($pool = 'default') {
-        self::pool($pool);
+        self::pool($pool, true);
         return self::$instList[$pool]['inst']->_link();
     }
 

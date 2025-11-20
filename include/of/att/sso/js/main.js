@@ -1,10 +1,10 @@
 /**
  * 描述 : 权限主页交互脚本
- * 注明 : 
+ * 注明 :
  *      各分页的参数结构 : {
  *          "search"  : 搜索条件
  *          "select"  : {
- *              选中的复选框ID : 对应的分页数据 {}, 
+ *              选中的复选框ID : 对应的分页数据 {},
  *              ...
  *          },
  *          "action"  : 操作动作,一次性使用 "del"=批量删除, "ice"=批量冻结
@@ -128,10 +128,10 @@ var ofBaseSsoMain = {
     /**
      * 描述 : 操作指定类型的分页
      * 参数 :
-     *      type : 分页类型, "user"=用户分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
+     *      type : 分页类型, "user"=用户分页, "bale"=集合分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
      *      mode : 操作模式, 默认=搜索, 其它=分页操作
      * 返回 :
-     *      
+     *
      * 作者 : Edgar.lee
      */
     'paging' : function (type, mode) {
@@ -143,10 +143,10 @@ var ofBaseSsoMain = {
     /**
      * 描述 : 搜索分页
      * 参数 :
-     *      type  : 分页类型, "user"=用户分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
+     *      type  : 分页类型, "user"=用户分页, "bale"=集合分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
      *      event : 触发事件
      * 返回 :
-     *      
+     *
      * 作者 : Edgar.lee
      */
     'search' : function (type, event) {
@@ -159,7 +159,7 @@ var ofBaseSsoMain = {
     /**
      * 描述 : 分页跳转
      * 参数 :
-     *      type  : 分页类型, "user"=用户分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
+     *      type  : 分页类型, "user"=用户分页, "bale"=集合分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
      *      event : 操作的事件
      * 作者 : Edgar.lee
      */
@@ -175,7 +175,7 @@ var ofBaseSsoMain = {
     /**
      * 描述 : 选中分页条目
      * 参数 :
-     *      type : 分页类型, "user"=用户分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
+     *      type : 分页类型, "user"=用户分页, "bale"=集合分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
      *      key  : 选中的条目ID
      * 作者 : Edgar.lee
      */
@@ -186,7 +186,7 @@ var ofBaseSsoMain = {
         var temp, node = L.event().target;
 
         //点击复选框
-        if( node.tagName === 'INPUT' ) {
+        if (node.tagName === 'INPUT') {
             //初始化选中列表
             (temp = paging.paging()).select || (temp.select = {});
             //添加或删除选中
@@ -194,7 +194,7 @@ var ofBaseSsoMain = {
             //替换不刷新
             paging.paging(temp, false);
 
-            if( 
+            if(
                 //复选框关联所属分页
                 (temp = ofBaseSsoMain.state.editBlock[type].linkBox) &&
                 //所属分页有选项
@@ -202,7 +202,7 @@ var ofBaseSsoMain = {
             ) {
                 //重新设置节点
                 ofBaseSsoMain.state.selNode = {
-                    'type' : temp, 
+                    'type' : temp,
                     'key'  : ofBaseSsoMain.state.editBlock[temp].selItem.key
                 };
                 //激活对应分页修改
@@ -210,8 +210,8 @@ var ofBaseSsoMain = {
             }
         } else {
             do {
-                if( node.tagName === 'TR' ) {
-                    if( ofBaseSsoMain.state.editBlock[type].selItem ) {
+                if (node.tagName === 'TR') {
+                    if (ofBaseSsoMain.state.editBlock[type].selItem) {
                         //清空背景色
                         ofBaseSsoMain.state.editBlock[type].selItem.node.style.backgroundColor = '';
                     }
@@ -232,7 +232,7 @@ var ofBaseSsoMain = {
                     ofBaseSsoMain.linkage(type);
                     break;
                 }
-            } while( node = node.parentNode );
+            } while (node = node.parentNode);
         }
     },
 
@@ -288,7 +288,7 @@ var ofBaseSsoMain = {
                 //分页数据
                 mode = document.getElementById(type + 'Paging').data[selNode.key];
 
-                if( 
+                if(
                     //需要判断权限范围
                     (temp = ofBaseSsoMain.permit[selNode.type + 'Mod'].range) &&
                     //不在匹配范围
@@ -384,7 +384,7 @@ var ofBaseSsoMain = {
     /**
      * 描述 : 分页批量操作
      * 参数 :
-     *      type : 分页类型, "user"=用户分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
+     *      type : 分页类型, "user"=用户分页, "bale"=集合分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
      *      mode : 操作模式, "del"=删除, "ice"=冻结
      * 作者 : Edgar.lee
      */
@@ -410,8 +410,8 @@ var ofBaseSsoMain = {
             }
         }
 
-        if( window.confirm(filte.name.length ? 
-                '是否继续? 您没有权限操作如下数据 : "' + filte.name.join('","') + '"' : 
+        if( window.confirm(filte.name.length ?
+                '是否继续? 您没有权限操作如下数据 : "' + filte.name.join('","') + '"' :
                 '确认操作勾选项吗?'
         )) {
             //所有复选框
@@ -427,7 +427,7 @@ var ofBaseSsoMain = {
     /**
      * 描述 : 联动操作
      * 参数 :
-     *      type : 分页类型, "user"=用户分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
+     *      type : 分页类型, "user"=用户分页, "bale"=集合分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
      * 作者 : Edgar.lee
      */
     'linkage' : function (type) {
@@ -436,7 +436,7 @@ var ofBaseSsoMain = {
         var selNode = ofBaseSsoMain.state.selNode;
         var params = {};
 
-        if( editBlock[type].linkage.length ) {
+        if (editBlock[type].linkage.length) {
             for(var i in editBlock) {
                 params[i] = editBlock[i].selItem ? editBlock[i].selItem.key : '';
             }
@@ -541,11 +541,35 @@ var ofBaseSsoMain = {
     },
 
     /**
-     * 描述 : 
+     * 描述 : 当前模式是否为授权模式
      * 作者 : Edgar.lee
      */
     'isAuth' : function (type) {
         return type === 'user' || document.getElementById('mainModelBox').checked
+    },
+
+    /**
+     * 描述 : 分页导出功能
+     * 参数 :
+     *      type : 分页类型, "user"=用户分页, "bale"=集合分页, "realm"=系统分页, "pack"=角色分页, "func"=功能分页
+     * 作者 : Edgar.lee
+     */
+    'export' : function (type) {
+        if (window.confirm('勾选导出指定数据, 不勾选导出所有数据, 是否导出?')) {
+            var frag = document.createElement('div');
+            var temp = document.getElementById(type + 'Paging').paging().select;
+            //仅传ID列表
+            for(var i in temp) temp[i] = temp[i].id;
+
+            //创建表单
+            frag.innerHTML = 't' + '<form action="?c=of_base_sso_main&a=export&type=' + type + '" method="post">' +
+                '<input type="hidden" name="list" value="' + L.entity(L.json(temp), true) + '">' +
+            '</form>';
+            //提交表达
+            document.body.appendChild(frag = frag.childNodes[1]).submit();
+            //移除表单
+            document.body.removeChild(frag);
+        }
     },
 
     /**
@@ -555,7 +579,7 @@ var ofBaseSsoMain = {
     'import' : function () {
         if( arguments[3] ) {
             ofBaseSsoMain.tipBar('正在导入...', false);
-            L.ajax(OF_URL + '/index.php?c=of_base_sso_main&a=tplImport', {
+            L.ajax(OF_URL + '/index.php?c=of_base_sso_main&a=import', {
                 'post' : {'path' : arguments[3]}
             }, function (data) {
                 if( data === 'done' ) {
@@ -580,7 +604,7 @@ var ofBaseSsoMain = {
      *      attr : 需要修改的属性名称
      *      data : 修改属性名的数据
      * 返回 :
-     *      
+     *
      * 作者 : Edgar.lee
      */
     'getObj' : function (obj, name, val, attr, data) {

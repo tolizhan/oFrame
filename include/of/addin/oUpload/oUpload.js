@@ -483,7 +483,7 @@ var oUpload = (function () {
             L.event(params.node, 'click', function () {
                 var index = html5.list[file.id].files;
                 //正在上传 禁止选择
-                for(var i in index) if( index[i].ajax ) return ;
+                for (var i in index) if (index[i].ajax) return;
                 file.click();
             });
             //拖拽文件移动
@@ -494,7 +494,7 @@ var oUpload = (function () {
             //拖拽文件释放
             L.event(params.node, 'drop', function (e) {
                 //读取上传文件列表
-                file.files = e.event.dataTransfer.files
+                file.files = e.event.dataTransfer.files;
                 //触发选择文件完成
                 html5.onSel({'target' : file});
                 //关闭事件默认动作, 防止打开文件

@@ -220,9 +220,12 @@ class of_accy_db_tidb extends of_db {
      * 作者 : Edgar.lee
      */
     protected function &_fetch() {
-        $query = mysqli_store_result($this->connection);
-        ($result = mysqli_fetch_assoc($query)) || $result = array();
-        mysqli_free_result($query);
+        if ($query = mysqli_store_result($this->connection)) {
+            ($result = mysqli_fetch_assoc($query)) || $result = array();
+            mysqli_free_result($query);
+        } else {
+            $result = false;
+        }
 
         return $result;
     }
@@ -232,13 +235,15 @@ class of_accy_db_tidb extends of_db {
      * 作者 : Edgar.lee
      */
     protected function &_fetchAll() {
-        $result = array();
-
         if ($query = mysqli_store_result($this->connection)) {
+            $result = array();
+
             while ($row = mysqli_fetch_assoc($query)) {
                 $result[] = $row;
             }
             mysqli_free_result($query);
+        } else {
+            $result = false;
         }
 
         return $result;
@@ -255,6 +260,7 @@ class of_accy_db_tidb extends of_db {
             mysqli_more_results($this->connection) &&
             mysqli_next_result($this->connection)
         );
+        mysqli_errno($this->connection) && $result = false;
 
         return $result;
     }
@@ -301,6 +307,9 @@ class of_accy_db_tidb extends of_db {
      * 作者 : Edgar.lee
      */
     public static function setNote($obj, $dba, &$sql = null) {
+        //数据库连接参数存在地址, null=未启动, str=已启动
+        static $pMd5 = null;
+
         //开启锁超时日志
         if ($obj->params['errorTrace'][0]) {
             try {
@@ -318,15 +327,17 @@ class of_accy_db_tidb extends of_db {
                     $temp = 'of_accy_db_tidb::trace-' . $obj->dbVar['linkMark'];
                     of_base_com_kv::set($temp, array_slice(debug_backtrace(0), 2), 3600, '_ofSelf');
                     //开启超时监听
-                    $pMd5 = md5("{$obj->params['user']}@{$obj->params['host']}:{$obj->params['port']}");
-                    of_base_com_kv::set('of_accy_db_tidb::pool-' . $pMd5, $obj->params, 3600, '_ofSelf');
-                    of_base_com_timer::task(array(
-                        'call' => array(
-                            'asCall' => 'of_accy_db_tidb::listenLockTimeout',
-                            'params' => array($pMd5, $dba)
-                        ),
-                        'cNum' => 1
-                    ));
+                    if (!$pMd5) {
+                        $pMd5 = md5("{$obj->params['user']}@{$obj->params['host']}:{$obj->params['port']}");
+                        of_base_com_kv::set('of_accy_db_tidb::pool-' . $pMd5, $obj->params, 3600, '_ofSelf');
+                        of_base_com_timer::task(array(
+                            'call' => array(
+                                'asCall' => 'of_accy_db_tidb::listenLockTimeout',
+                                'params' => array($pMd5, $dba)
+                            ),
+                            'cNum' => 1
+                        ));
+                    }
                 //记录加锁SQL
                 } else if (
                     //事务已开启

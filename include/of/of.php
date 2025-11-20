@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200278);
+define('OF_VERSION', 200280);
 
 /**
  * 描述 : 控制层核心
@@ -149,7 +149,7 @@ class of {
      */
     public static function config($name = null, $default = null, $action = 0) {
         //缓存配置, 动态配置
-        static $memory = array('cache' => array(), 'claim' => false);
+        static $memory = array('cache' => null, 'claim' => null);
         //功能操作别名
         static $aAlias = array('off' => 0, 'dir' => 1, 'url' => 2);
 
@@ -158,14 +158,10 @@ class of {
 
         //本次使用实时配置
         if ($action & 4) {
-            $claim = false;
             //加载最新配置文件
             $of = self::safeLoad(OF_DIR . '/config.php');
             $of['config'] = isset($of['config']) ? (array)$of['config'] : array();
-            empty($of['config'][0]) || $config = self::safeLoad(
-                ROOT_DIR . $of['config'][0],
-                array('of' => &$of)
-            );
+            empty($of['config'][0]) || $config = self::safeLoad(ROOT_DIR . $of['config'][0], array('of' => &$of));
             $config['_of'] = &self::arrayReplaceRecursive($of, $config['_of']);
         //使用缓存配置
         } else {
@@ -175,12 +171,26 @@ class of {
             $config = &self::$config;
         }
 
+        //读取of::config事件列表
+        $event = &self::event('of::config', null);
+        //触发 of::config 事件, (读取实时配置 || 事件有变化)
+        if ($action & 4 || $event['change'] && !$event['change'] = false) {
+            //事件触发参数
+            $params = array('config' => &$config);
+            //遍历触发事件
+            foreach ($event['list'] as $k => &$v) {
+                ($action & 4 || $v['change'] && !$v['change'] = false) && self::callFunc($v['event'], $params);
+            }
+            //重置事件缓存
+            $cache = null;
+        }
+
         //有缓存
         if (isset($cache[$name][$action])) {
             $default = &$cache[$name][$action];
         } else {
             //初始化动态配置
-            if ($claim === false) {
+            if (!isset($claim)) {
                 $claim = $config['_of']['config'];
                 unset($claim[0]);
                 ksort($claim);

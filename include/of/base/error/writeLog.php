@@ -90,12 +90,15 @@ class of_base_error_writeLog {
                 $backtrace['info'] = ini_get('error_prepend_string') .
                     $backtrace['message'] .
                     ini_get('error_append_string');
-                $backtrace['backtrace'] = array();
+
+                //php >= 8.5 可以读取回溯数据
+                $backtrace['backtrace'] = isset($backtrace['trace']) ? $backtrace['trace'] : array();
+                unset($backtrace['message'], $backtrace['trace']);
+
                 $backtrace = array(
                     'errorType'   => 'phpError',
                     'environment' => $backtrace
                 );
-                unset($backtrace['message']);
             } else {
                 return ;
             }
@@ -257,7 +260,7 @@ class of_base_error_writeLog {
         if (OF_DEBUG && empty($index['memo']) && $printStr) {
             //打印日志
             echo '<pre style="color:#F00; font-weight:bold; margin: 0px;">',
-                $printStr, 
+                $printStr,
             ". Timestamp : {$logData['time']}</pre>";
         }
 

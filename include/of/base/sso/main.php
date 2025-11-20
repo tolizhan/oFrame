@@ -46,18 +46,18 @@ class of_base_sso_main extends of_base_sso_api {
             switch ($params['action']) {
                 //删除操作
                 case 'del':
-                    $sql = "DELETE FROM 
-                        `_of_sso_user_attr` 
+                    $sql = "DELETE FROM
+                        `_of_sso_user_attr`
                     WHERE
                         `id` IN ({$inStr})";
                     break;
                 //冻结操作
                 case 'ice':
-                    $sql = "UPDATE 
-                        `_of_sso_user_attr` 
-                    SET 
+                    $sql = "UPDATE
+                        `_of_sso_user_attr`
+                    SET
                         `state` = IF(`state` <> '0', '0', '1')
-                    WHERE 
+                    WHERE
                         `id` IN ({$inStr})";
                     break;
             }
@@ -67,7 +67,7 @@ class of_base_sso_main extends of_base_sso_api {
         if (!empty($params['save'])) {
             $sets = array();
             $id = &$params['save']['id'];
-            empty($params['save']['answer']) || $params['save']['find'] = strlen($params['save']['question']) . 
+            empty($params['save']['answer']) || $params['save']['find'] = strlen($params['save']['question']) .
                 '_' . $params['save']['question'] . md5($params['save']['answer']);
             unset($params['save']['id'], $params['save']['question'], $params['save']['answer']);
             if (empty($params['save']['pwd'])) {
@@ -119,7 +119,7 @@ class of_base_sso_main extends of_base_sso_api {
 
                     $sql = "INSERT IGNORE INTO `_of_sso_user_pack` (
                         `realmId`, `packId`, `userId`
-                    ) SELECT 
+                    ) SELECT
                         `realmId`, `id`, '{$id}'
                     FROM
                         `_of_sso_realm_pack`
@@ -142,7 +142,7 @@ class of_base_sso_main extends of_base_sso_api {
 
                     $sql = "INSERT IGNORE INTO `_of_sso_user_bale` (
                         `baleId`, `userId`
-                    ) SELECT 
+                    ) SELECT
                         `id`, '{$id}'
                     FROM
                         `_of_sso_bale_attr`
@@ -156,23 +156,23 @@ class of_base_sso_main extends of_base_sso_api {
         //一次性使用
         unset($params['action'], $params['save'], $params['linksel']);
 
-        $sql = "SELECT 
+        $sql = "SELECT
             `id`, `name`, `nick`, `notes`, '' `pwd`, '' `answer`,
             SUBSTR(`find`, POSITION('_' IN `find`) + 1, SUBSTR(`find`, 1, POSITION('_' IN `find`) - 1)) `question`,
             IF(`state`, '', '<img src=\"" .OF_URL. "/att/sso/img/main/iceState.png\">') `_state`,
             IF(FIND_IN_SET(`id`, '{$inStr}'), 0, 1) `sort`
-        FROM 
+        FROM
             `_of_sso_user_attr`";
 
         //查询数据
         if (!empty($params['search'])) {
-            $sql .= " WHERE 
-                INSTR(`name`, '{$params['search']}')
-            OR  INSTR(`nick`, '{$params['search']}')
-            OR  INSTR(`notes`, '{$params['search']}')";
+            $temp = trim($params['search'], '*');
+            $sql .= " WHERE
+                INSTR(`name`, '{$temp}')
+            OR  INSTR(`nick`, '{$temp}')";
 
-            //添加选中项
-            //$inStr && $sql .= " OR `id` IN ({$inStr})";
+            //搜索备注信息
+            $params['search'] === $temp || $sql .= " OR INSTR(`notes`, '{$temp}')";
         }
 
         //开始排序
@@ -203,18 +203,18 @@ class of_base_sso_main extends of_base_sso_api {
             switch ($params['action']) {
                 //删除操作
                 case 'del':
-                    $sql = "DELETE FROM 
-                        `_of_sso_bale_attr` 
+                    $sql = "DELETE FROM
+                        `_of_sso_bale_attr`
                     WHERE
                         `id` IN ({$inStr})";
                     break;
                 //冻结操作
                 case 'ice':
-                    $sql = "UPDATE 
-                        `_of_sso_bale_attr` 
-                    SET 
+                    $sql = "UPDATE
+                        `_of_sso_bale_attr`
+                    SET
                         `state` = IF(`state` <> '0', '0', '1')
-                    WHERE 
+                    WHERE
                         `id` IN ({$inStr})";
                     break;
             }
@@ -268,7 +268,7 @@ class of_base_sso_main extends of_base_sso_api {
 
                     $sql = "INSERT IGNORE INTO `_of_sso_bale_pack` (
                         `realmId`, `baleId`, `packId`
-                    ) SELECT 
+                    ) SELECT
                         `realmId`, '{$id}', `id`
                     FROM
                         `_of_sso_realm_pack`
@@ -304,22 +304,22 @@ class of_base_sso_main extends of_base_sso_api {
             $inStr = empty($params['select']) ? '' : join(',', array_keys($params['select']));
         }
 
-        $sql = "SELECT 
+        $sql = "SELECT
             `id`, `name`, `lable`, `notes`,
             IF(`state`, '', '<img src=\"" .OF_URL. "/att/sso/img/main/iceState.png\">') `_state`,
             IF(FIND_IN_SET(`id`, '{$inStr}'), 0, 1) `sort`
-        FROM 
+        FROM
             `_of_sso_bale_attr`";
 
         //查询数据
         if (!empty($params['search'])) {
-            $sql .= " WHERE 
-                INSTR(`name`, '{$params['search']}')
-            OR  INSTR(`lable`, '{$params['search']}')
-            OR  INSTR(`notes`, '{$params['search']}')";
+            $temp = trim($params['search'], '*');
+            $sql .= " WHERE
+                INSTR(`name`, '{$temp}')
+            OR  INSTR(`lable`, '{$temp}')";
 
-            //添加选中项
-            //$inStr && $sql .= " OR `id` IN ({$inStr})";
+            //搜索备注信息
+            $params['search'] === $temp || $sql .= " OR INSTR(`notes`, '{$temp}')";
         }
 
         //开始排序
@@ -350,18 +350,18 @@ class of_base_sso_main extends of_base_sso_api {
             switch ($params['action']) {
                 //删除操作
                 case 'del':
-                    $sql = "DELETE FROM 
-                        `_of_sso_realm_attr` 
+                    $sql = "DELETE FROM
+                        `_of_sso_realm_attr`
                     WHERE
                         `id` IN ({$inStr})";
                     break;
                 //冻结操作
                 case 'ice':
-                    $sql = "UPDATE 
-                        `_of_sso_realm_attr` 
-                    SET 
+                    $sql = "UPDATE
+                        `_of_sso_realm_attr`
+                    SET
                         `state` = IF(`state` <> '0', '0', '1')
-                    WHERE 
+                    WHERE
                         `id` IN ({$inStr})";
                     break;
             }
@@ -444,22 +444,22 @@ class of_base_sso_main extends of_base_sso_api {
             $inStr = empty($params['select']) ? '' : join(',', array_keys($params['select']));
         }
 
-        $sql = "SELECT 
+        $sql = "SELECT
             `id`, `name`, `pwd`, `lable`, `notes`, `trust`,
             IF(`state`, '', '<img src=\"" .OF_URL. "/att/sso/img/main/iceState.png\">') `_state`,
             IF(FIND_IN_SET(`id`, '{$inStr}'), 0, 1) `sort`
-        FROM 
+        FROM
             `_of_sso_realm_attr`";
 
         //查询数据
         if (!empty($params['search'])) {
-            $sql .= " WHERE 
-                INSTR(`name`, '{$params['search']}')
-            OR  INSTR(`lable`, '{$params['search']}')
-            OR  INSTR(`notes`, '{$params['search']}')";
+            $temp = trim($params['search'], '*');
+            $sql .= " WHERE
+                INSTR(`name`, '{$temp}')
+            OR  INSTR(`lable`, '{$temp}')";
 
-            //添加选中项
-            //$inStr && $sql .= " OR `id` IN ({$inStr})";
+            //搜索备注信息
+            $params['search'] === $temp || $sql .= " OR INSTR(`notes`, '{$temp}')";
         }
 
         //开始排序
@@ -490,18 +490,18 @@ class of_base_sso_main extends of_base_sso_api {
             switch ($params['action']) {
                 //删除操作
                 case 'del':
-                    $sql = "DELETE FROM 
-                        `_of_sso_realm_pack` 
+                    $sql = "DELETE FROM
+                        `_of_sso_realm_pack`
                     WHERE
                         `id` IN ({$inStr})";
                     break;
                 //冻结操作
                 case 'ice':
-                    $sql = "UPDATE 
-                        `_of_sso_realm_pack` 
-                    SET 
+                    $sql = "UPDATE
+                        `_of_sso_realm_pack`
+                    SET
                         `state` = IF(`state` <> '0', '0', '1')
-                    WHERE 
+                    WHERE
                         `id` IN ({$inStr})";
                     break;
             }
@@ -554,7 +554,7 @@ class of_base_sso_main extends of_base_sso_api {
 
                     $sql = "INSERT IGNORE INTO `_of_sso_pack_func` (
                         `realmId`, `packId`, `funcId`
-                    ) SELECT 
+                    ) SELECT
                         `realmId`, '{$id}', `id`
                     FROM
                         `_of_sso_realm_func`
@@ -616,11 +616,11 @@ class of_base_sso_main extends of_base_sso_api {
                 $inStr = empty($params['select']) ? '' : join(',', array_keys($params['select']));
             }
 
-            $sql = "SELECT 
+            $sql = "SELECT
                 `id`, `name`, `lable`, `data`,
                 IF(`state`, '', '<img src=\"" .OF_URL. "/att/sso/img/main/iceState.png\">') `_state`,
                 IF(FIND_IN_SET(`id`, '{$inStr}'), 0, 1) `sort`
-            FROM 
+            FROM
                 `_of_sso_realm_pack`
             WHERE
                 `realmId` = '{$params['linkage']['realm']}'";
@@ -665,18 +665,18 @@ class of_base_sso_main extends of_base_sso_api {
             switch ($params['action']) {
                 //删除操作
                 case 'del':
-                    $sql = "DELETE FROM 
-                        `_of_sso_realm_func` 
+                    $sql = "DELETE FROM
+                        `_of_sso_realm_func`
                     WHERE
                         `id` IN ({$inStr})";
                     break;
                 //冻结操作
                 case 'ice':
-                    $sql = "UPDATE 
-                        `_of_sso_realm_func` 
-                    SET 
+                    $sql = "UPDATE
+                        `_of_sso_realm_func`
+                    SET
                         `state` = IF(`state` <> '0', '0', '1')
-                    WHERE 
+                    WHERE
                         `id` IN ({$inStr})";
                     break;
             }
@@ -739,11 +739,11 @@ class of_base_sso_main extends of_base_sso_api {
                 $inStr = empty($params['select']) ? '' : join(',', array_keys($params['select']));
             }
 
-            $sql = "SELECT 
+            $sql = "SELECT
                 `id`, `name`, `lable`, `data`,
                 IF(`state`, '', '<img src=\"" .OF_URL. "/att/sso/img/main/iceState.png\">') `_state`,
                 IF(FIND_IN_SET(`id`, '{$inStr}'), 0, 1) `sort`
-            FROM 
+            FROM
                 `_of_sso_realm_func`
             WHERE
                 `realmId` = '{$params['linkage']['realm']}'";
@@ -805,10 +805,309 @@ class of_base_sso_main extends of_base_sso_api {
     }
 
     /**
+     * 描述 : 导出数据
+     * 作者 : Edgar.lee
+     */
+    public static function export() {
+        if (empty($_GET['type'])) return ;
+        //永不超时
+        ini_set('max_execution_time', 0);
+        //内存不限制
+        ini_set('memory_limit', -1);
+
+        //解析数据
+        $wait[$_GET['type']] = of_base_com_data::json($_POST['list'], 2);
+
+        //下载CSV
+        of_base_com_csv::download(array(
+           array('类型 site', '状态 (0=冻结, 1=启用)', '账号', '密码', '简称', '对接 (1=跳转对接, 3=接口对接)', '备注'),
+           array('类型 func', '状态 (0=冻结, 1=启用)', '系统', '键值', '名称', '数据 (不同系统不同结构)', ''),
+           array('类型 pack', '状态 (0=冻结, 1=启用)', '系统', '键值', '名称', '数据 (不同系统不同结构)', ''),
+           array('类型 bale', '状态 (0=冻结, 1=启用)', '包键', '包名', '备注', '', ''),
+           array('类型 user', '状态 (0=冻结, 1=启用)', '帐号', '密码', '昵称', '问题', '回答', '备注'),
+           array('类型 packFunc', '状态 (1=启用, 3=删除)', '角色', '功能', '系统', '', ''),
+           array('类型 balePack', '状态 (1=启用, 3=删除)', '包键', '角色', '系统', '', ''),
+           array('类型 userPack', '状态 (1=启用, 3=删除)', '用户', '角色', '系统', '', ''),
+           array('类型 userBale', '状态 (1=启用, 3=删除)', '用户', '集合', '', '', ''),
+           array('', '', '主键')
+        ));
+
+        while ($key = key($wait)) {
+            //关联列表
+            $list = array();
+            //弹出第一项
+            $val = array_shift($wait);
+
+            switch ($key) {
+                //导出领域数据
+                case 'realm':
+                    //查询领域数据
+                    $sql = $val ? 'WHERE `_of_sso_realm_attr`.`id` IN (\'' . join('\', \'', $val) . '\')' : '';
+                    $sql = "SELECT
+                        `id`, `state`, `name`, `pwd`, `lable`, `trust`, `notes`
+                    FROM
+                        `_of_sso_realm_attr` {$sql}";
+                    $data = of_db::sql($sql, self::$config['dbPool']);
+
+                    //导出领域数据
+                    foreach ($data as $k => &$v) {
+                        //记录关联列表
+                        $list[$v['id']] = $v['id'];
+
+                        //下载CSV
+                        of_base_com_csv::download(array(
+                           'site', $v['state'], $v['name'], $v['pwd'], $v['lable'], $v['trust'], $v['notes']
+                        ));
+                    }
+
+                    //需要导出关联数据
+                    if ($list) {
+                        //系统功能关联导出, 系统角色关联导出
+                        $wait += array('func' => array(), 'pack' => array());
+                        //导出系统功能关联
+                        $wait['func'] += $list;
+                        //导出系统角色关联
+                        $wait['pack'] += $list;
+                    }
+                    break;
+                //导出系统功能
+                case 'func':
+                    //查询系统功能数据
+                    $sql = $_GET['type'] === 'func' ? 'id' : 'realmId';
+                    $sql = $val ? "WHERE `_of_sso_realm_func`.`{$sql}` IN ('" . join('\', \'', $val) . '\')' : '';
+                    $sql = "SELECT
+                        `_of_sso_realm_func`.`state`, `_of_sso_realm_attr`.`name` `realm`,
+                        `_of_sso_realm_func`.`name`, `_of_sso_realm_func`.`lable`,
+                        `_of_sso_realm_func`.`data`
+                    FROM
+                        `_of_sso_realm_func`
+                            LEFT JOIN `_of_sso_realm_attr` ON
+                                `_of_sso_realm_attr`.`id` = `_of_sso_realm_func`.`realmId`
+                    {$sql}";
+                    $data = of_db::sql($sql, self::$config['dbPool']);
+
+                    //导出系统功能数据
+                    foreach ($data as $k => &$v) {
+                        //下载CSV
+                        of_base_com_csv::download(array(
+                           'func', $v['state'], $v['realm'], $v['name'], $v['lable'], $v['data']
+                        ));
+                    }
+                    break;
+                //导出系统角色
+                case 'pack':
+                    //查询系统角色数据
+                    $sql = $_GET['type'] === 'pack' ? 'id' : 'realmId';
+                    $sql = $val ? "WHERE `_of_sso_realm_pack`.`{$sql}` IN ('" . join('\', \'', $val) . '\')' : '';
+                    $sql = "SELECT
+                         `_of_sso_realm_pack`.`id`, `_of_sso_realm_pack`.`state`, `_of_sso_realm_attr`.`name` `realm`,
+                        `_of_sso_realm_pack`.`name`, `_of_sso_realm_pack`.`lable`, `_of_sso_realm_pack`.`data`
+                    FROM
+                        `_of_sso_realm_pack`
+                            LEFT JOIN `_of_sso_realm_attr` ON
+                                `_of_sso_realm_attr`.`id` = `_of_sso_realm_pack`.`realmId`
+                    {$sql}";
+                    $data = of_db::sql($sql, self::$config['dbPool']);
+
+                    //导出系统角色数据
+                    foreach ($data as $k => &$v) {
+                        //记录关联列表
+                        $list[$v['id']] = $v['id'];
+
+                        //下载CSV
+                        of_base_com_csv::download(array(
+                           'pack', $v['state'], $v['realm'], $v['name'], $v['lable'], $v['data']
+                        ));
+                    }
+
+                    //需要导出关联数据
+                    if ($list) {
+                        //导出角色绑定功能
+                        $wait += array('packFunc' => array());
+                        //导出角色绑定功能
+                        $wait['packFunc'] += $list;
+                    }
+                    break;
+                //导出角色绑定功能
+                case 'packFunc':
+                    //查询角色绑定功能数据
+                    $sql = $val ? 'WHERE `_of_sso_pack_func`.`packId` IN (\'' . join('\', \'', $val) . '\')' : '';
+                    $sql = "SELECT
+                        `_of_sso_realm_pack`.`name` `pack`,
+                        `_of_sso_realm_func`.`name` `func`,
+                        `_of_sso_realm_attr`.`name` `realm`
+                    FROM
+                        `_of_sso_pack_func`
+                            LEFT JOIN `_of_sso_realm_pack` ON
+                                `_of_sso_realm_pack`.`id` = `_of_sso_pack_func`.`packId`
+                            LEFT JOIN `_of_sso_realm_func` ON
+                                `_of_sso_realm_func`.`id` = `_of_sso_pack_func`.`funcId`
+                            LEFT JOIN `_of_sso_realm_attr` ON
+                                `_of_sso_realm_attr`.`id` = `_of_sso_pack_func`.`realmId`
+                    {$sql}";
+                    $data = of_db::sql($sql, self::$config['dbPool']);
+
+                    //导出系统角色数据
+                    foreach ($data as $k => &$v) {
+                        //下载CSV
+                        of_base_com_csv::download(array(
+                           'packFunc', '1', $v['pack'], $v['func'], $v['realm']
+                        ));
+                    }
+                    break;
+
+                //导出集合数据
+                case 'bale':
+                    //查询领域数据
+                    $sql = $val ? 'WHERE `_of_sso_bale_attr`.`id` IN (\'' . join('\', \'', $val) . '\')' : '';
+                    $sql = "SELECT
+                        `id`, `state`, `name`, `lable`, `notes`
+                    FROM
+                        `_of_sso_bale_attr` {$sql}";
+                    $data = of_db::sql($sql, self::$config['dbPool']);
+
+                    //导出领域数据
+                    foreach ($data as $k => &$v) {
+                        //记录关联列表
+                        $list[$v['id']] = $v['id'];
+
+                        //下载CSV
+                        of_base_com_csv::download(array(
+                           'bale', $v['state'], $v['name'], $v['lable'], $v['notes']
+                        ));
+                    }
+
+                    //需要导出关联数据
+                    if ($list) {
+                        //导出集合绑角色
+                        $wait += array('balePack' => array());
+                        //导出集合绑角色
+                        $wait['balePack'] += $list;
+                    }
+                    break;
+                //导出集合绑角色
+                case 'balePack':
+                    //查询集合绑角色数据
+                    $sql = $val ? 'WHERE `_of_sso_bale_pack`.`baleId` IN (\'' . join('\', \'', $val) . '\')' : '';
+                    $sql = "SELECT
+                        `_of_sso_bale_attr`.`name` `bale`,
+                        `_of_sso_realm_pack`.`name` `pack`,
+                        `_of_sso_realm_attr`.`name` `realm`
+                    FROM
+                        `_of_sso_bale_pack`
+                            LEFT JOIN `_of_sso_bale_attr` ON
+                                `_of_sso_bale_attr`.`id` = `_of_sso_bale_pack`.`baleId`
+                            LEFT JOIN `_of_sso_realm_pack` ON
+                                `_of_sso_realm_pack`.`id` = `_of_sso_bale_pack`.`packId`
+                            LEFT JOIN `_of_sso_realm_attr` ON
+                                `_of_sso_realm_attr`.`id` = `_of_sso_bale_pack`.`realmId`
+                    {$sql}";
+                    $data = of_db::sql($sql, self::$config['dbPool']);
+
+                    //导出系统角色数据
+                    foreach ($data as $k => &$v) {
+                        //下载CSV
+                        of_base_com_csv::download(array(
+                           'balePack', '1', $v['bale'], $v['pack'], $v['realm']
+                        ));
+                    }
+                    break;
+
+                //导出用户数据
+                case 'user':
+                    //查询用户数据
+                    $sql = $val ? 'WHERE `_of_sso_user_attr`.`id` IN (\'' . join('\', \'', $val) . '\')' : '';
+                    $sql = "SELECT
+                        `id`, `name`, `pwd`, `state`, `nick`, `notes`, `find`
+                    FROM
+                        `_of_sso_user_attr` {$sql}";
+                    $data = of_db::sql($sql, self::$config['dbPool']);
+
+                    //导出用户数据
+                    foreach ($data as $k => &$v) {
+                        //记录关联列表
+                        $list[$v['id']] = $v['id'];
+
+                        //解码找回问题
+                        $temp = ($temp = explode('_', trim($v['find']), 2)) && isset($temp[1]) ?
+                            array(substr($temp[1], 0, $temp[0]), substr($temp[1], $temp[0])) : array('', '');
+
+                        //下载CSV
+                        of_base_com_csv::download(array(
+                           'user', $v['state'], $v['name'], $v['pwd'], $v['nick'], $temp[0], $temp[1], $v['notes']
+                        ));
+                    }
+
+                    //需要导出关联数据
+                    if ($list) {
+                        //用户关联导出, 用户绑定角色 和 用户绑定集合
+                        $wait += array('userPack' => array(), 'userBale' => array());
+                        //导出用户绑定角色
+                        $wait['userPack'] += $list;
+                        //导出用户绑定集合
+                        $wait['userBale'] += $list;
+                    }
+                    break;
+                //导出用户绑定角色
+                case 'userPack':
+                    //查询用户数据
+                    $sql = $val ? 'WHERE `_of_sso_user_pack`.`userId` IN (\'' . join('\', \'', $val) . '\')' : '';
+                    $sql = "SELECT
+                        `_of_sso_realm_attr`.`name` `realm`,
+                        `_of_sso_realm_pack`.`name` `pack`,
+                        `_of_sso_user_attr`.`name` `user`
+                    FROM
+                        `_of_sso_user_pack`
+                            LEFT JOIN `_of_sso_realm_attr` ON
+                                `_of_sso_realm_attr`.`id` = `_of_sso_user_pack`.`realmId`
+                            LEFT JOIN `_of_sso_realm_pack` ON
+                                `_of_sso_realm_pack`.`id` = `_of_sso_user_pack`.`packId`
+                            LEFT JOIN `_of_sso_user_attr` ON
+                                `_of_sso_user_attr`.`id` = `_of_sso_user_pack`.`userId`
+                    {$sql}";
+                    $data = of_db::sql($sql, self::$config['dbPool']);
+
+                    //导出用户绑定角色
+                    foreach ($data as $k => &$v) {
+                        //下载CSV
+                        of_base_com_csv::download(array(
+                           'userPack', '1', $v['user'], $v['pack'], $v['realm']
+                        ));
+                    }
+                    break;
+                //导出用户绑定集合
+                case 'userBale':
+                    //查询用户数据
+                    $sql = $val ? 'WHERE `_of_sso_user_bale`.`userId` IN (\'' . join('\', \'', $val) . '\')' : '';
+                    $sql = "SELECT
+                        `_of_sso_bale_attr`.`name` `bale`,
+                        `_of_sso_user_attr`.`name` `user`
+                    FROM
+                        `_of_sso_user_bale`
+                            LEFT JOIN `_of_sso_bale_attr` ON
+                                `_of_sso_bale_attr`.`id` = `_of_sso_user_bale`.`baleId`
+                            LEFT JOIN `_of_sso_user_attr` ON
+                                `_of_sso_user_attr`.`id` = `_of_sso_user_bale`.`userId`
+                    {$sql}";
+                    $data = of_db::sql($sql, self::$config['dbPool']);
+
+                    //导出用户绑定角色
+                    foreach ($data as $k => &$v) {
+                        //下载CSV
+                        of_base_com_csv::download(array(
+                           'userBale', '1', $v['user'], $v['bale']
+                        ));
+                    }
+                    break;
+            }
+        }
+    }
+
+    /**
      * 描述 : 模版导入
      * 作者 : Edgar.lee
      */
-    public static function tplImport() {
+    public static function import() {
         if (is_file($path = ROOT_DIR . OF_DATA . $_POST['path'])) {
             //清空错误日志
             of::work('error', false);
@@ -830,17 +1129,29 @@ class of_base_sso_main extends of_base_sso_api {
                     isset($index['funcAdd']) && isset($index['funcMod']) && isset($index['funcIce']),
                     'funcAdd funcMod funcIce'
                 ),
+                'bale' => array(
+                    isset($index['baleAdd']) && isset($index['baleMod']) && isset($index['baleIce']),
+                    'baleAdd baleMod baleIce'
+                ),
                 'user' => array(
                     isset($index['userAdd']) && isset($index['userMod']) && isset($index['userIce']),
                     'userAdd userMod userIce'
                 ),
-                'bind' => array(
+                'packFunc' => array(
                     isset($index['packFunc']),
                     'packFunc'
                 ),
-                'role' => array(
+                'balePack' => array(
+                    isset($index['balePack']),
+                    'balePack'
+                ),
+                'userPack' => array(
                     isset($index['userPack']),
                     'userPack'
+                ),
+                'userBale' => array(
+                    isset($index['userBale']),
+                    'userBale'
                 )
             );
             //错误提示
@@ -907,6 +1218,19 @@ class of_base_sso_main extends of_base_sso_api {
                             `data` = VALUES(`data`)";
                         of_db::sql($sql, self::$config['dbPool']);
                         break;
+                    //导入集合
+                    case 'bale':
+                        $data[1] = (int)$data[1];
+                        $sql = "INSERT INTO `_of_sso_bale_attr` (
+                            `name`, `lable`, `state`, `notes`
+                        ) VALUES (
+                            '{$data[2]}', '{$data[3]}', '{$data[1]}', '{$data[4]}'
+                        ) ON DUPLICATE KEY UPDATE
+                            `state` = VALUES(`state`),
+                            `lable` = VALUES(`lable`),
+                            `notes` = VALUES(`notes`)";
+                        of_db::sql($sql, self::$config['dbPool']);
+                        break;
                     //导入用户
                     case 'user':
                         preg_match('@^[a-z0-9]{32}$@', $data[3]) || $data[3] = md5($data[3]);
@@ -924,35 +1248,121 @@ class of_base_sso_main extends of_base_sso_api {
                             `notes` = VALUES(`notes`)";
                         of_db::sql($sql, self::$config['dbPool']);
                         break;
-                    //角色关系
-                    case 'bind':
-                        $sql = "INSERT IGNORE INTO `_of_sso_pack_func` (
-                            `realmId`, `packId`, `funcId`
-                        ) SELECT
-                            `_of_sso_realm_attr`.`id`, `_of_sso_realm_pack`.`id`, `_of_sso_realm_func`.`id`
-                        FROM
-                            `_of_sso_realm_attr`, `_of_sso_realm_pack`, `_of_sso_realm_func`
-                        WHERE
-                            `_of_sso_realm_attr`.`name` = '{$data[1]}'
-                        AND `_of_sso_realm_pack`.`realmId` = `_of_sso_realm_attr`.`id`
-                        AND `_of_sso_realm_pack`.`name` = '{$data[2]}'
-                        AND `_of_sso_realm_func`.`realmId` = `_of_sso_realm_attr`.`id`
-                        AND `_of_sso_realm_func`.`name` = '{$data[3]}'";
+                    //角色功能
+                    case 'packFunc':
+                        //删除绑定
+                        if ($data[1] === '3') {
+                            $sql = "DELETE `_of_sso_pack_func` FROM
+                                `_of_sso_pack_func`, `_of_sso_realm_attr`, `_of_sso_realm_pack`, `_of_sso_realm_func`
+                            WHERE
+                                `_of_sso_realm_attr`.`name` = '{$data[4]}'
+                            AND `_of_sso_realm_pack`.`realmId` = `_of_sso_realm_attr`.`id`
+                            AND `_of_sso_realm_pack`.`name` = '{$data[2]}'
+                            AND `_of_sso_realm_func`.`realmId` = `_of_sso_realm_attr`.`id`
+                            AND `_of_sso_realm_func`.`name` = '{$data[3]}'
+                            AND `_of_sso_pack_func`.`realmId` = `_of_sso_realm_attr`.`id`
+                            AND `_of_sso_pack_func`.`packId` = `_of_sso_realm_pack`.`id`
+                            AND `_of_sso_pack_func`.`funcId` = `_of_sso_realm_func`.`id`";
+                        //添加绑定
+                        } else {
+                            $sql = "INSERT IGNORE INTO `_of_sso_pack_func` (
+                                `realmId`, `packId`, `funcId`
+                            ) SELECT
+                                `_of_sso_realm_attr`.`id`, `_of_sso_realm_pack`.`id`, `_of_sso_realm_func`.`id`
+                            FROM
+                                `_of_sso_realm_attr`, `_of_sso_realm_pack`, `_of_sso_realm_func`
+                            WHERE
+                                `_of_sso_realm_attr`.`name` = '{$data[4]}'
+                            AND `_of_sso_realm_pack`.`realmId` = `_of_sso_realm_attr`.`id`
+                            AND `_of_sso_realm_pack`.`name` = '{$data[2]}'
+                            AND `_of_sso_realm_func`.`realmId` = `_of_sso_realm_attr`.`id`
+                            AND `_of_sso_realm_func`.`name` = '{$data[3]}'";
+                        }
                         of_db::sql($sql, self::$config['dbPool']);
                         break;
-                    //权限关系
-                    case 'role':
-                        $sql = "INSERT IGNORE INTO `_of_sso_user_pack` (
-                            `realmId`, `packId`, `userId`
-                        ) SELECT
-                            `_of_sso_realm_attr`.`id`, `_of_sso_realm_pack`.`id`, `_of_sso_user_attr`.`id`
-                        FROM
-                            `_of_sso_realm_attr`, `_of_sso_realm_pack`, `_of_sso_user_attr`
-                        WHERE
-                            `_of_sso_realm_attr`.`name` = '{$data[1]}'
-                        AND `_of_sso_realm_pack`.`realmId` = `_of_sso_realm_attr`.`id`
-                        AND `_of_sso_realm_pack`.`name` = '{$data[2]}'
-                        AND `_of_sso_user_attr`.`name` = '{$data[3]}'";
+                    //集合角色
+                    case 'balePack':
+                        //删除绑定
+                        if ($data[1] === '3') {
+                            $sql = "DELETE `_of_sso_bale_pack` FROM
+                                `_of_sso_bale_pack`, `_of_sso_realm_attr`, `_of_sso_bale_attr`, `_of_sso_realm_pack`
+                            WHERE
+                                `_of_sso_realm_attr`.`name` = '{$data[4]}'
+                            AND `_of_sso_bale_attr`.`name` = '{$data[2]}'
+                            AND `_of_sso_realm_pack`.`realmId` = `_of_sso_realm_attr`.`id`
+                            AND `_of_sso_realm_pack`.`name` = '{$data[3]}'
+                            AND `_of_sso_bale_pack`.`realmId` = `_of_sso_realm_attr`.`id`
+                            AND `_of_sso_bale_pack`.`baleId` = `_of_sso_bale_attr`.`id`
+                            AND `_of_sso_bale_pack`.`packId` = `_of_sso_realm_pack`.`id`";
+                        //添加绑定
+                        } else {
+                            $sql = "INSERT IGNORE INTO `_of_sso_bale_pack` (
+                                `realmId`, `baleId`, `packId`
+                            ) SELECT
+                                `_of_sso_realm_attr`.`id`, `_of_sso_bale_attr`.`id`, `_of_sso_realm_pack`.`id`
+                            FROM
+                                `_of_sso_realm_attr`, `_of_sso_bale_attr`, `_of_sso_realm_pack`
+                            WHERE
+                                `_of_sso_realm_attr`.`name` = '{$data[4]}'
+                            AND `_of_sso_bale_attr`.`name` = '{$data[2]}'
+                            AND `_of_sso_realm_pack`.`realmId` = `_of_sso_realm_attr`.`id`
+                            AND `_of_sso_realm_pack`.`name` = '{$data[3]}'";
+                        }
+                        of_db::sql($sql, self::$config['dbPool']);
+                        break;
+                    //用户角色
+                    case 'userPack':
+                        //删除绑定
+                        if ($data[1] === '3') {
+                            $sql = "DELETE `_of_sso_user_pack` FROM
+                                `_of_sso_user_pack`, `_of_sso_realm_attr`, `_of_sso_realm_pack`, `_of_sso_user_attr`
+                            WHERE
+                                `_of_sso_realm_attr`.`name` = '{$data[4]}'
+                            AND `_of_sso_realm_pack`.`realmId` = `_of_sso_realm_attr`.`id`
+                            AND `_of_sso_realm_pack`.`name` = '{$data[3]}'
+                            AND `_of_sso_user_attr`.`name` = '{$data[2]}'
+                            AND `_of_sso_user_pack`.`realmId` = `_of_sso_realm_attr`.`id`
+                            AND `_of_sso_user_pack`.`packId` = `_of_sso_realm_pack`.`id`
+                            AND `_of_sso_user_pack`.`userId` = `_of_sso_user_attr`.`id`";
+                        //添加绑定
+                        } else {
+                            $sql = "INSERT IGNORE INTO `_of_sso_user_pack` (
+                                `realmId`, `packId`, `userId`
+                            ) SELECT
+                                `_of_sso_realm_attr`.`id`, `_of_sso_realm_pack`.`id`, `_of_sso_user_attr`.`id`
+                            FROM
+                                `_of_sso_realm_attr`, `_of_sso_realm_pack`, `_of_sso_user_attr`
+                            WHERE
+                                `_of_sso_realm_attr`.`name` = '{$data[4]}'
+                            AND `_of_sso_realm_pack`.`realmId` = `_of_sso_realm_attr`.`id`
+                            AND `_of_sso_realm_pack`.`name` = '{$data[3]}'
+                            AND `_of_sso_user_attr`.`name` = '{$data[2]}'";
+                        }
+                        of_db::sql($sql, self::$config['dbPool']);
+                        break;
+                    //用户集合
+                    case 'userBale':
+                        //删除绑定
+                        if ($data[1] === '3') {
+                            $sql = "DELETE `_of_sso_user_bale` FROM
+                                `_of_sso_user_bale`, `_of_sso_bale_attr`, `_of_sso_user_attr`
+                            WHERE
+                                `_of_sso_bale_attr`.`name` = '{$data[3]}'
+                            AND `_of_sso_user_attr`.`name` = '{$data[2]}'
+                            AND `_of_sso_user_bale`.`baleId` = `_of_sso_bale_attr`.`id`
+                            AND `_of_sso_user_bale`.`userId` = `_of_sso_user_attr`.`id`";
+                        //添加绑定
+                        } else {
+                            $sql = "INSERT IGNORE INTO `_of_sso_user_bale` (
+                                `baleId`, `userId`
+                            ) SELECT
+                                `_of_sso_bale_attr`.`id`, `_of_sso_user_attr`.`id`
+                            FROM
+                                `_of_sso_bale_attr`, `_of_sso_user_attr`
+                            WHERE
+                                `_of_sso_bale_attr`.`name` = '{$data[3]}'
+                            AND `_of_sso_user_attr`.`name` = '{$data[2]}'";
+                        }
                         of_db::sql($sql, self::$config['dbPool']);
                         break;
                 }
@@ -984,7 +1394,7 @@ class of_base_sso_main extends of_base_sso_api {
             TABLE_NAME `name`            /*表名*/
         FROM
             information_schema.`TABLES`
-        WHERE 
+        WHERE
             TABLE_SCHEMA = DATABASE()    /*数据库名*/
         AND TABLE_TYPE = "BASE TABLE"    /*表类型*/
         AND TABLE_NAME = "_of_sso_user_attr"';
@@ -1007,7 +1417,7 @@ class of_base_sso_main extends of_base_sso_api {
                         TABLE_NAME `name`            /*表名*/
                     FROM
                         information_schema.`TABLES`
-                    WHERE 
+                    WHERE
                         TABLE_SCHEMA = DATABASE()    /*数据库名*/
                     AND TABLE_TYPE = "BASE TABLE"    /*表类型*/
                     AND TABLE_NAME = "_of_sso_user"';
@@ -1052,7 +1462,7 @@ class of_base_sso_main extends of_base_sso_api {
 
                     $temp = of_base_tool_mysqlSync::init(array(
                         'callDb'  => array(
-                            'asCall' => 'of_db::sql', 
+                            'asCall' => 'of_db::sql',
                             'params' => array('_' => null, self::$config['dbPool'])
                         ),
                         'matches' => array(
@@ -1091,14 +1501,14 @@ class of_base_sso_main extends of_base_sso_api {
                 //找回操作
                 if ($_POST['type'] === 'find') {
                     $md5 = md5($_POST['pwd']);
-                    $sql = "UPDATE 
-                        `_of_sso_user_attr` 
-                    SET 
+                    $sql = "UPDATE
+                        `_of_sso_user_attr`
+                    SET
                         `time` = IF(`pwd` = '{$md5}', `time`, NOW()),
                         `pwd`  = '{$md5}',
                         `find` = '{$temp}',
                         `nick` = '{$_POST['nick']}'
-                    WHERE 
+                    WHERE
                         `name` = '{$_POST['name']}'
                     AND (
                             `pwd` = MD5('{$_POST['pwd']}')
@@ -1182,9 +1592,9 @@ class of_base_sso_main extends of_base_sso_api {
             };
         }
 
-        $sql = "SELECT 
-            `name` 
-        FROM 
+        $sql = "SELECT
+            `name`
+        FROM
             `_of_sso_realm_attr`
         WHERE
             `id` = '1'";

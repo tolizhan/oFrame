@@ -354,7 +354,7 @@ class of_base_com_str {
      *          布尔   = 显示前缀, true=显示, false=隐藏
      *          字符串 = 时间结构, 用"\"转义, 默认"ymdHis", 如: "\y\m\dymd-"
      *      minLen : 自增值最小长度, prefix不为空时有效, 默认3
-     * 返回 : 
+     * 返回 :
      *      prefix 为假时返回 32位小写字母
      *      prefix 为真时返回 大写prefix + 两位年月日时分秒时间结构 + minLen计数
      * 作者 : Edgar.lee

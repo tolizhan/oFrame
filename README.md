@@ -7,13 +7,13 @@
 它包含完整的[错误日志](http://doc.phpof.net/?oFrame/helpManual/error.html,oFrame/navigation.html), 丰富的[扩展接口](http://doc.phpof.net/?oFrame/FAQ/baseExtends.html,oFrame/navigation.html)<br>
 它的理念是易部署, 易扩展, [易伸缩](http://doc.phpof.net/?oFrame/FAQ/issue.html,oFrame/navigation.html,scaling)
 
-手册地址 http://doc.phpof.net/ 或 wiki<br>
+手册地址 [phpof](http://doc.phpof.net/) 或 [deepwiki](https://deepwiki.com/tolizhan/oFrame) 或 wiki<br>
 问题反馈 tolizhan@qq.com
 
 ## 框架部署
 ### 测试部署
 1. 部署一个php >= 5.2的网络环境, [若需Swoole环境另见](http://doc.phpof.net/?oFrame/helpManual/swoole.html,oFrame/navigation.html)
-2. 下载框架代码 https://github.com/tolizhan/oFrame/ 或 https://gitee.com/tolizhan/oFrame/
+2. 下载框架代码 [github](https://github.com/tolizhan/oFrame/) 或 [gitee](https://gitee.com/tolizhan/oFrame/)
 3. 解压到任意可访问的路径, 如果是 Linux 创建 /data 文件, 给 -R 可读写权限
 4. 访问框架根目录, 显示界面并且没有红色报错便部署成功
 
@@ -39,7 +39,7 @@
 ### 框架升级
 1. 用新版框架替换旧版不包含配置的全部文件 (注意删除新版中不存在的文件)
 2. 查看旧版到新版本号的 [变更日志](changelog.txt)
-3. 按照日志说明中"-"开头的变化从低到高版升级当前系统
+3. 按照日志说明中"-"开头的不兼容点, 从低到高版升级当前系统
 
 ### 入门顺序
 0. [开发规范](http://doc.phpof.net/?codingStandard/htmlCssJsPhpMysql/general.html,codingStandard/navigation.html)

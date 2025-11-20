@@ -45,11 +45,13 @@ namespace {
                 //定义协程默认状态, 定义抢占调度设置
                 'SWOOLE_HOOK_FULL' => 0, 'SWOOLE_SCHEDULER' => true,
                 //相对命名空间 xx\yy (314), 绝对命名空间 \xx\yy (312)
-                'T_NAME_QUALIFIED' => 0, 'T_NAME_FULLY_QUALIFIED' => 0, 
+                'T_NAME_QUALIFIED' => 0, 'T_NAME_FULLY_QUALIFIED' => 0,
                 //自身命名空间 namespace\xxx (313), 只读关键词 readonly (363)
                 'T_NAME_RELATIVE' => 0, 'T_READONLY' => 0,
                 //注解"#[" (387), 箭头函数 fn (343)
-                'T_ATTRIBUTE' => 0, 'T_FN' => 0
+                'T_ATTRIBUTE' => 0, 'T_FN' => 0,
+                //枚举 enum (375)
+                'T_ENUM' => 0
             ) as $k => $v)  defined($k) || define($k, $v);
 
             //默认系统配置

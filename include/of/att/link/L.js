@@ -876,7 +876,7 @@ L === undefined && (L = {
      *      pos : 定位字符串,'.'代表对象操作,'[负数或空]'代表从尾部开始的位置
      *          '[].`'四个字符是关键词,使用时前面加'`',如:'m.a`.c'代表m['a.c']
      *          '[xxx]'的值不存在时创建数组,'.'创建对象
-     *          '[]'和'.'对数组和对象均适用,如:window.m = {'c' : []}; L.var('m[c].d', 5); m.c.d === 5;
+     *          '[]'和'.'对数组和对象均适用,如:window.m = {'c' : []}; L.val('m[c].d', 5); m.c.d === 5;
      *      val : 不写=读取,其它=赋值
      * 返回 :
      *      读取时,返回读取数据,失败返回undefined
@@ -945,9 +945,9 @@ L === undefined && (L = {
             (node = node.ownerDocument || node).defaultView || node.parentWindow;
     },
 
-    /*
-    * 描述 : 依赖于此对象的自定义扩展
-    * 作者 : Edgar.Lee
-    */
+    /**
+     * 描述 : 依赖于此对象的自定义扩展
+     * 作者 : Edgar.Lee
+     */
     'extension'  : {}
 });

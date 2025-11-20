@@ -5,7 +5,7 @@
  */
 class of_accy_com_data_lock_files {
     /**
-     * 描述 : 
+     * 描述 : 文件锁操作
      * 参数 :
      *      name : 锁通道标识
      *      lock : 文件加锁方式 1=共享锁, 2=独享锁, 3=解除锁, 4=非堵塞(LOCK_NB)
@@ -50,7 +50,7 @@ class of_accy_com_data_lock_files {
             }
         }
 
-        //更新修改时间
+        //清空锁文件标记
         ftruncate($data['lock'], 0);
         return $result;
     }
@@ -82,13 +82,15 @@ class of_accy_com_data_lock_files {
                             //无加锁 && 删除过期锁, 同步删除有打开连接的锁会报错
                             flock(fopen($path, 'a'), LOCK_EX | LOCK_NB) && @unlink($path);
                         //支持异步删除 && 尝试加锁成功
-                        } else if (flock($fp = fopen($path, 'a'), LOCK_EX | LOCK_NB)) {
+                        } else if (flock($fp = fopen($path, 'c+'), LOCK_EX | LOCK_NB)) {
                             //windows环境php >= 7.3 打开已删除文件报错"无权限"问题
                             $isWin && rename($path, $path .= '_');
                             //清除过期锁
                             @unlink($path);
                             //标记已删除, 异步删除时可能其它待加锁的连接已打开
                             fwrite($fp, '1');
+                            //防止网络磁盘掉包
+                            fseek($fp, -1, SEEK_CUR) || fread($fp, 1);
                         }
                         //解锁并关闭连接
                         unset($fp);

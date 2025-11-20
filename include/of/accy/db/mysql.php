@@ -234,7 +234,7 @@ class of_accy_db_mysql extends of_db {
      * 作者 : Edgar.lee
      */
     protected function _query(&$sql) {
-        $this->query = false;
+        $this->query = array();
 
         //可能为多段 SQL, 需要拆分
         if (strpos($sql, ';')) {
@@ -306,6 +306,8 @@ class of_accy_db_mysql extends of_db {
                     $this->query[] = $temp;
                 //执行失败
                 } else {
+                    //一个失败, 返回失败
+                    $this->query = false;
                     //后续流程停止执行
                     break ;
                 }

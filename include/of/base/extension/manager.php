@@ -671,7 +671,7 @@ class of_base_extension_manager {
             }
         }
 
-        return (boolean)$returnBool;
+        return (bool)$returnBool;
     }
 }
 

@@ -45,8 +45,12 @@ class of_accy_com_kv_redis extends of_base_com_kv {
                     'consistent' => true,
                     'persistent' => $params['persistent'],
                     'auth'       => $params['auth']
+                ) + (isset($params['distributor']) ?
+                    //自定义分区, 新建一个对象是为了解决, 常驻内存下, 脚本结束连接不断开的问题
+                    array('distributor' => array(new _RedisArray($null, $params), 'distributor')) :
+                    array()
                 ));
-                $this->link = new _RedisArray($redis, $params['host']);
+                $this->link = new _RedisArray($redis, $params);
                 //选择数据库 || 连接失败
                 if (!$this->link->select($params['db'])) throw new Exception('Failed to connection.');
                 break;
@@ -257,6 +261,10 @@ class _RedisArray {
     private $redis = null;
     //主机列表, _hosts()
     private $hosts = null;
+    //分区回调方法, 同框架回调结构
+    private $distr = null;
+    //配置参数
+    private $param = array();
     //分布式事务开启状态, -2未开启, >-2命令数
     private $multi = -2;
     //分布式事务命令列表 {节点名 : [[方法, 参数, 位置], ...], ...}
@@ -266,9 +274,11 @@ class _RedisArray {
      * 描述 : 构造函数
      * 作者 : Edgar.lee
      */
-    public function __construct(&$redis, &$hosts) {
+    public function __construct(&$redis, &$param) {
         $this->redis = &$redis;
-        $this->hosts = &$hosts;
+        $this->hosts = &$param['host'];
+        $this->param = &$param;
+        $this->distr = &$param['distributor'];
     }
 
     /**
@@ -282,11 +292,32 @@ class _RedisArray {
         $result = array();
         //批量操作
         foreach ($this->hosts as &$hv) {
-            //单主机redis对象
-            $result[$hv] = $redis->_instance($hv)->select($db);
+            //单主机redis对象获取成功
+            if ($result[$hv] = $redis->_instance($hv)) {
+                //连接授权, 兼容低版本
+                $result[$hv]->auth($this->param['auth']);
+                //切换数据库
+                $result[$hv] = $result[$hv]->select($db);
+            }
         }
         //返回结果集
         return $result;
+    }
+
+    /**
+     * 描述 : 自定义分区回调
+     * 作者 : Edgar.lee
+     */
+    public function distributor($name) {
+        if (
+            is_int($temp = of::callFunc($this->distr, array('name' => $name, 'host' => $this->hosts))) &&
+            isset($this->hosts[$temp])
+        ) {
+            return $temp;
+        } else {
+            trigger_error('Message queue distribution function return error: ' . $name);
+            exit;
+        }
     }
 
     /**

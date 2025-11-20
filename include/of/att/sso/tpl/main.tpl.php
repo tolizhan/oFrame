@@ -24,15 +24,15 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
         </tr>
         <tr>
             <th class="user" colspan="3">
-                <input id="userSearchInput" class="of_sso-main_thead_search_input" type="search" placeholder="搜索" onkeyup="ofBaseSsoMain.search('user', event)">
+                <input id="userSearchInput" class="of_sso-main_thead_search_input" type="search" placeholder="搜索, 以*结尾搜索备注" onkeyup="ofBaseSsoMain.search('user', event)">
                 <a class="of_sso-main_thead_search_button" onclick="ofBaseSsoMain.search('user'); return false;">&nbsp;</a>
             </th>
             <th colspan="3">
-                <input id="baleSearchInput" class="of_sso-main_thead_search_input" type="search" placeholder="搜索" onkeyup="ofBaseSsoMain.search('bale', event)">
+                <input id="baleSearchInput" class="of_sso-main_thead_search_input" type="search" placeholder="搜索, 以*结尾搜索备注" onkeyup="ofBaseSsoMain.search('bale', event)">
                 <a class="of_sso-main_thead_search_button" onclick="ofBaseSsoMain.search('bale'); return false;">&nbsp;</a>
             </th>
             <th colspan="3">
-                <input id="realmSearchInput" class="of_sso-main_thead_search_input" type="search" placeholder="搜索" onkeyup="ofBaseSsoMain.search('realm', event)">
+                <input id="realmSearchInput" class="of_sso-main_thead_search_input" type="search" placeholder="搜索, 以*结尾搜索备注" onkeyup="ofBaseSsoMain.search('realm', event)">
                 <a class="of_sso-main_thead_search_button" onclick="ofBaseSsoMain.search('realm'); return false;">&nbsp;</a>
             </th>
             <th colspan="3">
@@ -50,7 +50,7 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
             <th class="user">账号</th>
             <th><input type="checkbox" value="" onclick="ofBaseSsoMain.allBox('bale', this.checked)"></th>
             <th>包名</th>
-            <th>键值</th>
+            <th>包键</th>
             <th><input type="checkbox" value="" onclick="ofBaseSsoMain.allBox('realm', this.checked)"></th>
             <th>简称</th>
             <th>账号</th>
@@ -165,6 +165,7 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
                 <a class="of_sso-main_tfoot_func_add" onclick="ofBaseSsoMain.edit(true, 'user'); return false;">&nbsp;</a>
                 <a class="of_sso-main_tfoot_func_del" onclick="ofBaseSsoMain.action('user', 'del'); return false;">&nbsp;</a>
                 <a class="of_sso-main_tfoot_func_ice" onclick="ofBaseSsoMain.action('user', 'ice'); return false;">&nbsp;</a>
+                <a class="of_sso-main_tfoot_func_dl" onclick="ofBaseSsoMain['export']('user'); return false;">&nbsp;</a>
             </td>
             <td colspan="3">
                 <a class="of_sso-main_tfoot_func_next" onclick="ofBaseSsoMain.paging('bale', '+1'); return false;">&gt;</a>
@@ -173,6 +174,7 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
                 <a class="of_sso-main_tfoot_func_add edit none" onclick="ofBaseSsoMain.edit(true, 'bale'); return false;">&nbsp;</a>
                 <a class="of_sso-main_tfoot_func_del edit none" onclick="ofBaseSsoMain.action('bale', 'del'); return false;">&nbsp;</a>
                 <a class="of_sso-main_tfoot_func_ice edit none" onclick="ofBaseSsoMain.action('bale', 'ice'); return false;">&nbsp;</a>
+                <a class="of_sso-main_tfoot_func_dl edit none" onclick="ofBaseSsoMain['export']('bale'); return false;">&nbsp;</a>
             </td>
             <td colspan="3">
                 <a class="of_sso-main_tfoot_func_next" onclick="ofBaseSsoMain.paging('realm', '+1'); return false;">&gt;</a>
@@ -181,6 +183,7 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
                 <a class="of_sso-main_tfoot_func_add edit none" onclick="ofBaseSsoMain.edit(true, 'realm'); return false;">&nbsp;</a>
                 <a class="of_sso-main_tfoot_func_del edit none" onclick="ofBaseSsoMain.action('realm', 'del'); return false;">&nbsp;</a>
                 <a class="of_sso-main_tfoot_func_ice edit none" onclick="ofBaseSsoMain.action('realm', 'ice'); return false;">&nbsp;</a>
+                <a class="of_sso-main_tfoot_func_dl edit none" onclick="ofBaseSsoMain['export']('realm'); return false;">&nbsp;</a>
             </td>
             <td colspan="3">
                 <a class="of_sso-main_tfoot_func_next" onclick="ofBaseSsoMain.paging('pack', '+1'); return false;">&gt;</a>
@@ -189,6 +192,7 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
                 <a class="of_sso-main_tfoot_func_add edit none" onclick="ofBaseSsoMain.edit(true, 'pack'); return false;">&nbsp;</a>
                 <a class="of_sso-main_tfoot_func_del edit none" onclick="ofBaseSsoMain.action('pack', 'del'); return false;">&nbsp;</a>
                 <a class="of_sso-main_tfoot_func_ice edit none" onclick="ofBaseSsoMain.action('pack', 'ice'); return false;">&nbsp;</a>
+                <a class="of_sso-main_tfoot_func_dl edit none" onclick="ofBaseSsoMain['export']('pack'); return false;">&nbsp;</a>
             </td>
             <td class="edit none" colspan="3">
                 <a class="of_sso-main_tfoot_func_next" onclick="ofBaseSsoMain.paging('func', '+1'); return false;">&gt;</a>
@@ -197,6 +201,7 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
                 <a class="of_sso-main_tfoot_func_add" onclick="ofBaseSsoMain.edit(true, 'func'); return false;">&nbsp;</a>
                 <a class="of_sso-main_tfoot_func_del" onclick="ofBaseSsoMain.action('func', 'del'); return false;">&nbsp;</a>
                 <a class="of_sso-main_tfoot_func_ice" onclick="ofBaseSsoMain.action('func', 'ice'); return false;">&nbsp;</a>
+                <a class="of_sso-main_tfoot_func_dl" onclick="ofBaseSsoMain['export']('func'); return false;">&nbsp;</a>
             </td>
         </tr>
         <tr class="of_sso-main_tfoot_tip">
@@ -209,7 +214,7 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
                 <input id="mainTplImport" class="of_sso-main_tfoot_import" type="button" value="导入">
                 <input class="of_sso-main_tfoot_logout" type="button" value="退出" onclick="location.href=OF_URL + '/index.php?c=of_base_sso_main&a=logoutMain';">
                 <input class="of_sso-main_tfoot_save" type="button" value="保存" onclick="ofBaseSsoMain.save();">
-                <span id="mainTipBar"></span>
+                <span id="mainTipBar">提示: 点击列表项可切换操作区, 点击复选框不会切换操作区</span>
             </td>
         </tr>
         <tr class="of_sso-main_tfoot_data">
@@ -225,7 +230,7 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
                 </div>
                 <div id="baleEdit" style="display: none;">
                     <input name="id" type="hidden">
-                    <label>键值 : <input name="name" type="text"></label>
+                    <label>包键 : <input name="name" type="text"></label>
                     <label>包名 : <input name="lable" type="text"></label>
                     <label>备注 : <textarea name="notes"></textarea></label>
                 </div>
@@ -235,7 +240,7 @@ echo '<script>var ofBaseSsoMain = ' .of_base_com_data::json($_SESSION['_of']['of
                     <label>密码 : <input name="pwd" type="text"></label>
                     <label>简称 : <input name="lable" type="text"></label>
                     <label>
-                        对接 : 
+                        对接 :
                         <select name="trust">
                             <option value="1">仅前台对接 (可操作当前用户和系统的数据)</option>
                             <option value="3">前后台对接 (还可通过帐号密码操作用户数据)</option>

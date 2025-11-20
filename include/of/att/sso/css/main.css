@@ -15,10 +15,12 @@ html, body{ height: 100%; margin: 0px; overflow: hidden;}
 .of_sso-main_tfoot_func_add{background: url("../img/main/add1.png"); width: 29px; height: 29px; display: inline-block; margin-left: 5px;}
 .of_sso-main_tfoot_func_del{background: url("../img/main/del1.png"); width: 29px; height: 29px; display: inline-block; margin-left: 5px;}
 .of_sso-main_tfoot_func_ice{background: url("../img/main/ice1.png"); width: 29px; height: 29px; display: inline-block; margin-left: 5px;}
+.of_sso-main_tfoot_func_dl{background: url("../img/main/download1.png"); width: 29px; height: 29px; display: inline-block; margin-left: 5px;}
 .of_sso-main_tfoot_func_prev{line-height:29px; width:10px; float:right; color:#FFF; margin-left:0px; margin-right:5px; display: inline-block;}
 .of_sso-main_tfoot_func_jump{float:right; margin-top:4px; height:21px; padding:4px 0px; border:0px; padding:0px; color:#969696; background-color:#fff; width:40px; display: inline-block;}
 .of_sso-main_tfoot_func_next{line-height:29px; width:10px; float:right; color:#FFF; margin-left:5px; margin-right:5px; display: inline-block;}
 .of_sso-main_tfoot_tip{text-align: center;}
+.of_sso-main_tfoot_tip #mainTipBar{color: red;}
 .of_sso-main_tfoot_model, .of_sso-main_tfoot_import, .of_sso-main_tfoot_tpl{float:left; margin-left:5px; padding: 1px 6px;}
 .of_sso-main_tfoot_logout{float:right; margin-right:5px; padding: 1px 6px;}
 .of_sso-main_tfoot_save{float:right; margin-right:5px; padding: 1px 6px;}

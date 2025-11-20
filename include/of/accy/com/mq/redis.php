@@ -33,13 +33,17 @@ class of_accy_com_mq_redis extends of_base_com_mq {
      * 描述 : 获取redis消息队列运行信息
      * 参数 :
      *      params : {
-     *          "match"   :o正则匹配队列标识, 以@开头, 默认false不过滤
+     *          "match"   :o正则匹配队列标识, 以@开头匹配"队列池.队列名.消息键"结构, 默认false不过滤
      *          "mqSlot"  :o过滤队列分槽列表, 默认false=全部消息(消费分槽), true=升级中的(生产与消费分槽差集)
      *          "total"   :o是否统计消息总数, 默认false不统计, true=统计
      *          "overdue" :o是否统计可消费数, 默认false不统计, true=统计
      *          "failNo"  :o是否统计失败总数, 默认false不统计, true=统计
      *          "failed"  :o读取最大失败消息, 默认0不查询, >0为最大长度
      *          "recent"  :o读取即将消费消息, 默认0不查询, >0为最大长度
+     *          "msgList" :o读取消息主键列表, 默认[]不额外查询, 额外查询结构 {
+     *              队列标识(队列池.队列名.消息键) : [消息主键, ...],
+     *              ....
+     *          }
      *      }
      * 返回 :
      *      {
@@ -87,22 +91,47 @@ class of_accy_com_mq_redis extends of_base_com_mq {
         $params += array(
             'match' => false, 'mqSlot' => false, 'total' => false,
             'overdue' => false, 'failNo' => false, 'failed' => 0,
-            'recent' => 0
+            'recent' => 0, 'msgList' => array()
         );
         //当期时间戳
         $time = time();
+
+        //仅设置消息主键列表 && 则仅匹配对应消息队列
+        if (
+            $params['msgList'] && !$params['match'] && !$params['mqSlot'] &&
+            !$params['total'] && !$params['overdue'] && !$params['failNo'] &&
+            !$params['failed'] && !$params['recent']
+        ) {
+            $params['match'] = '@^(?:' . join('|', array_map('preg_quote', array_keys($params['msgList']))) . ')$@';
+        }
 
         //遍历队列池
         foreach ($config as $kp => &$vp) {
             //提取redis队列
             if ($vp['adapter'] !== 'redis') continue;
 
-            //初始化虚拟机
-            ($vHost = &$vp['params']['vHost']) || $vHost = '';
-            //读取redis对象
-            $redis = of_base_com_kv::link($vp['params']['kvPool']);
             //加载队列表配置
             of_base_com_mq::getQueueConfig($vp['queues'], $kp);
+            //初始化虚拟机
+            ($vHost = &$vp['params']['vHost']) || $vHost = '';
+            //读取KV连接池配置
+            $kvPool = of_base_com_kv::pool($vp['params']['kvPool']);
+
+            //自动分槽, 生产分槽为空 && 在分布式kv-redis模式下
+            if (empty($vp['params']['mqSlot'][0]) && $kvPool['params']['type'] === 'distributed') {
+                //指定自动分区回调
+                $kvPool['params']['distributor'] = array(
+                    'asCall' => 'of_accy_com_mq_redis::distributor',
+                    'params' => array($temp = count($kvPool['params']['host']))
+                );
+                //生成生产分槽, 消费分槽配置
+                $vp['params']['mqSlot'][0] = $vp['params']['mqSlot'][1] = range(0, $temp - 1);
+            }
+
+            //复制kv连接配置
+            of_base_com_kv::pool($redis = 'of_accy_com_mq_redis::' . $vp['params']['kvPool'], $kvPool);
+            //读取redis对象
+            $redis = of_base_com_kv::link($redis);
 
             //遍历队列表
             foreach ($vp['queues'] as $kq => &$vq) {
@@ -199,12 +228,60 @@ class of_accy_com_mq_redis extends of_base_com_mq {
                                 }
                             }
                         }
+
+                        //读取消息主键列表
+                        if (isset($params['msgList'][$qMark])) {
+                            foreach ($params['msgList'][$qMark] as &$v) {
+                                //未读取过
+                                if (!isset($index['msgList'][$v])) {
+                                    //消息数据集
+                                    $mark = "of_accy_com_mq_redis::data::{{$name}.{$v}}";
+                                    //获取消息属性失败
+                                    if (!$index['msgList'][$v] = $redis->hGetAll($mark)) {
+                                        //即将过期的无效列表
+                                        unset($index['msgList'][$v]);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
 
         return $result;
+    }
+
+    /**
+     * 描述 : 消息队列自动分区回调
+     * 作者 : Edgar.lee
+     */
+    public static function distributor($count, &$param) {
+        if (preg_match('@\{(.*)\}@', $param['name'], $match)) {
+            if (is_numeric($match[1])) {
+                return (int)$match[1];
+            } else {
+                return self::getSlot(md5($match[1]), $count);
+            }
+        } else {
+            trigger_error('Message queue auto-partition callback key error: ' . $param['name']);
+            exit;
+        }
+    }
+
+    /**
+     * 描述 : 获取分区
+     * 作者 : Edgar.lee
+     */
+    private static function &getSlot($nMd5, $total) {
+        //计算分槽归属, 公式: hash(i) = hash(i-1) << 5(33) + ord(str[i])
+        $slot = 5381;
+        //md5目的均匀散列, <<5防止叠加干扰(2+1=1+2), 0x7FFFFFFF使32与64位结果相同
+        for ($i = 0; $i < 32; ++$i) $slot += ($slot << 5 & 0x7FFFFFFF) + ord($nMd5[$i]);
+        //取模, 0x7FFFFFFF为32位最大值
+        $slot = ($slot & 0x7FFFFFFF) % $total;
+
+        return $slot;
     }
 
     /**
@@ -216,13 +293,28 @@ class of_accy_com_mq_redis extends of_base_com_mq {
 
         //设置虚拟机
         isset($params['params']['vHost']) && $this->vHost = $params['params']['vHost'];
+        //获取redis-kv配置文件
+        $kvPool = of_base_com_kv::pool($params['params']['kvPool']);
         //防止生产节点配置错误导致数据丢失
         $index = &$params['params']['mqSlot'];
-        empty($index[0]) && $index[0] = array(0);
-        empty($index[1]) && $index[1] = $index[0];
+        //自动分槽, 生产分槽为空 && 在分布式kv-redis模式下
+        if (empty($index[0]) && $kvPool['params']['type'] === 'distributed') {
+            //指定自动分区回调
+            $kvPool['params']['distributor'] = array(
+                'asCall' => 'of_accy_com_mq_redis::distributor',
+                'params' => array($temp = count($kvPool['params']['host']))
+            );
+            //生成生产分槽, 消费分槽配置
+            $index[0] = $index[1] = range(0, $temp - 1);
+        //手动分槽
+        } else {
+            empty($index[0]) && $index[0] = array(0);
+            empty($index[1]) && $index[1] = $index[0];
+        }
+
         //复制连接, 不用随机值是防止在多次工作中redis连接数爆掉
         $this->kvPool = 'of_accy_com_mq_redis::' . $fire['pool'];
-        of_base_com_kv::pool($this->kvPool, of_base_com_kv::pool($params['params']['kvPool']));
+        of_base_com_kv::pool($this->kvPool, $kvPool);
     }
 
     /**
@@ -793,16 +885,10 @@ class of_accy_com_mq_redis extends of_base_com_mq {
      * 作者 : Edgar.lee
      */
     private function setMqSort(&$name, &$msgId, &$time) {
-        //计算分槽归属, 公式: hash(i) = hash(i-1) << 5(33) + ord(str[i])
-        $slot = 5381;
         //引用分槽配置
         $slotList = &$this->params['params']['mqSlot'][0];
-        //生产总分槽数
-        $total = count($slotList);
-        //md5目的均匀散列, <<5防止叠加干扰(2+1=1+2), 0x7FFFFFFF使32与64位结果相同
-        for ($i = 0, $j = md5($msgId); $i < 32; ++$i) $slot += ($slot << 5 & 0x7FFFFFFF) + ord($j[$i]);
-        //取模, 0x7FFFFFFF为32位最大值
-        $slot = ($slot & 0x7FFFFFFF) % $total;
+        //计算消息分区
+        $slot = self::getSlot(md5($msgId), $total = count($slotList));
 
         //组合队列槽名
         $slot = $name . '.{' . $slotList[$slot] . '}';

@@ -99,7 +99,7 @@ class ctrl_index extends L {
             of_base_com_net::request(
                 //请求一个地址
                 ROOT_URL . '/index.php?c=ctrl_index&a=index',
-                null, 
+                null,
                 array('asCall' => array($this, __FUNCTION__))
             );
             echo '5s 钟后会在 "' . ROOT_DIR . OF_DATA . '/asynTest.txt" 目录中创建一个文件';
@@ -140,7 +140,7 @@ class ctrl_index extends L {
             $data = of_base_com_timer::data(array('params' => $params));
             //记录到日志
             file_put_contents(
-                ROOT_DIR . OF_DATA . '/mqTest.txt', 
+                ROOT_DIR . OF_DATA . '/mqTest.txt',
                 time() . print_r($data, true),
                 FILE_APPEND | LOCK_EX
             );

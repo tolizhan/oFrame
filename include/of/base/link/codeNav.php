@@ -261,7 +261,7 @@ namespace {
 
     class L {
         /**
-         * 描述 : 工具组件封装
+         * 描述 : 提供前后端交互封装
          * 作者 : Edgar.lee
          */
         public of_base_com_com $_com;
@@ -451,14 +451,7 @@ namespace {
          *              }
          *          }
          *      }
-         *      键值结构 : 已"of_base_com_mq::"为前缀的键名
-         *          "nodeList" : 完整分布式节点(永不过期), 记录不同"_of.nodeName"节点, 失效时定期清理 {
-         *              节点ID : 节点信息 {
-         *                  "tNum" : 队列位置,
-         *              }, ...
-         *          }
          *      加锁逻辑 : 已"of_base_com_mq::"为前缀
-         *          "nodeList" : 当新插入或清理节点时加独享锁
          *          nodeLock#节点ID : 节点进程, 启动时独享锁
          *          daemon#节点ID : 守护进程, 启动时独享锁
          *      磁盘结构 : {
@@ -503,9 +496,14 @@ namespace {
          *      键值结构 : 已"of_base_com_timer::"为前缀的键名
          *          "nodeList" : 完整分布式节点(永不过期), 记录不同"_of.nodeName"节点, 失效时定期清理 {
          *              节点ID : 节点信息 {
-         *                  "time" : 创建时间
+         *                  "nodeAddr" : 节点IP地址
+         *                  "nodeTime" : 启动时间, 若出现与部署时间差距较大, 可能是当前主机的系统异常重启
+         *                  "nodeSort" : 在返回列表中的位置, 从0开始
+         *                  "sortTime" : 排序时间, 每次nodeSort变更时更新, 若出现与nodeTime差距较大, 可能是前面节点的主机的系统异常重启
+         *                  "prevSort" : 列表位置变更前的位置, 未变更为-1, 若出现比nodeSort小的情况, 可能是_ofSelf的K-V被第三方改写的问题
          *              }, ...
          *          }
+         *          "nodeSync" : 分布式节点同步时间戳(30分钟过期), 每隔30s更新下nodeList并更新nodeSync时间
          *          "taskList" : 完整任务列表(永不过期), 停用的定期清理 {
          *              任务ID : 未来扩展 {},
          *              ...
@@ -807,13 +805,13 @@ namespace {
         /**
          * 描述 : 输出缓冲控制
          * 参数 :
-         *      mode : (false)true=永久缓冲,false=关闭缓冲,null=清除缓冲,字符串=添加缓存内容
-         *      pool : (null)null=使用上次级别,字符串=对应缓冲池
+         *      mode : true=永久缓冲,false=关闭缓冲,null=清除缓冲,字符串=添加缓存内容
+         *      pool : null=使用上次级别,字符串=对应缓冲池
          * 返回 :
          *      mode=true              : 保存并返回在服务器中的缓存内容
          *      mode=false             : 保存并返回在服务器中的缓存内容, 同时输出pool缓冲池的内容
          *      mode=字符串            : 保存mode内容并返回在服务器中的缓存内容
-         *      mode=null              : 返回并清空缓冲内容
+         *      mode=null              : 返回并清空缓冲池内容
          *      mode=null,pool=false时 : 返回当期状态 {
          *          "mode" : 缓存状态,bool
          *          "pool" : 当前缓存池
@@ -877,7 +875,7 @@ namespace {
          *          布尔   = 显示前缀, true=显示, false=隐藏
          *          字符串 = 时间结构, 用"\"转义, 默认"ymdHis", 如: "\y\m\dymd-"
          *      minLen : 自增值最小长度, prefix不为空时有效, 默认3
-         * 返回 : 
+         * 返回 :
          *      prefix 为假时返回 32位小写字母
          *      prefix 为真时返回 大写prefix + 两位年月日时分秒时间结构 + minLen计数
          * 作者 : Edgar.lee
