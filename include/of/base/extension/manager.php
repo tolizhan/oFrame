@@ -493,7 +493,7 @@ class of_base_extension_manager {
             isset($config['config']['update'][$callParam['position']]) && 
             of_base_extension_match::callExtension($name, $config['config']['update'][$callParam['position']], array(&$callParam));
         } catch (Exception $e) {
-            of::event('of::error', true, $e);
+            of::error($e);
         }
 
         return $callParam['state'];

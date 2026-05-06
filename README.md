@@ -7,7 +7,7 @@
 它包含完整的[错误日志](http://doc.phpof.net/?oFrame/helpManual/error.html,oFrame/navigation.html), 丰富的[扩展接口](http://doc.phpof.net/?oFrame/FAQ/baseExtends.html,oFrame/navigation.html)<br>
 它的理念是易部署, 易扩展, [易伸缩](http://doc.phpof.net/?oFrame/FAQ/issue.html,oFrame/navigation.html,scaling)
 
-手册地址 [phpof](http://doc.phpof.net/) 或 [deepwiki](https://deepwiki.com/tolizhan/oFrame) 或 wiki<br>
+手册地址 [phpof](http://doc.phpof.net/) 或 wiki 或 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/tolizhan/oFrame)<br>
 问题反馈 tolizhan@qq.com
 
 ## 框架部署

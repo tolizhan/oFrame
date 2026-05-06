@@ -112,7 +112,7 @@ class of_base_extension_match {
                         }
                     }
                 } catch (Exception $e) {
-                    of::event('of::error', true, $e);
+                    of::error($e);
                 }
             }
         }
@@ -192,7 +192,7 @@ class of_base_extension_match {
                             self::callExtension($eKey, $v['asCall'], array(&$params, &$v['params']));
                         }
                     } catch (Exception $e) {
-                        of::event('of::error', true, $e);
+                        of::error($e);
                     }
                 }
             }

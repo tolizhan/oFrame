@@ -68,8 +68,10 @@ class of_base_com_timer {
         //文件锁路径
         empty($config['path']) && $config['path'] = OF_DATA . '/_of/of_base_com_timer';
         $config['path'] = of::formatPath($config['path'], ROOT_DIR);
-        //异步回调方法
-        $config['forkFn'] = 'of_accy_com_timer_' . $config['fork']['adapter'] . '::fork';
+        //异步触发方法
+        $config['forkFire'] = 'of_accy_com_timer_' . $config['fork']['adapter'] . '::fork';
+        //异步存储方法
+        $config['forkData'] = 'of_accy_com_timer_' . $config['fork']['adapter'] . '::data';
 
         //初始 动态任务 配置
         ($index = &$config['task']) || $index = array();
@@ -86,13 +88,63 @@ class of_base_com_timer {
      * 作者 : Edgar.lee
      */
     public function index() {
-        echo self::state() ? 'running' : 'starting',
-            "<br>\n<style>a{color: #000;} table{border-collapse: collapse;} pre{width: 0;}</style>";
         //永不超时
         ini_set('max_execution_time', 0);
 
         if (OF_DEBUG === false) {
-            exit('Access denied: production mode.');
+            //输出运行状态(并尝试开启)
+            echo self::state() ? 'running' : 'starting';
+            exit('<br>\nAccess denied: production mode.');
+        //查看跟踪日志
+        } else if (isset($_GET['type']) && $_GET['type'] === 'traceLogs') {
+            //获取消息ID
+            if ($mark = isset($_GET['mark']) ? stripslashes(trim($_GET['mark'])) : '') {
+                //计算日志列表
+                $list = explode(' ', $mark, 2);
+                //是范围日志
+                if (isset($list[1])) {
+                    $mark = $list[0] . '.';
+                    //解析范围
+                    $list = json_decode($list[1], true);
+                    //是数字 && 生成数字范围[1, n]
+                    is_array($list) || $list = range(1, $list);
+                //是单个日志
+                } else {
+                    $list = array('');
+                }
+
+                //生成日志界面
+                echo '<style>',
+                        'span {overflow: auto; height: 90%; position: fixed; _position: absolute; right: 10px;}',
+                        'div {border: 1px solid #000;}',
+                    '</style><span id="menu">';
+
+                //输出日志菜单
+                foreach ($list as &$v) {
+                    //日志读取成功
+                    if ($temp = of_base_com_kv::get('of_base_com_timer::logs#' . $mark . $v, array(), '_ofSelf')) {
+                        //日志转码
+                        $temp = array(
+                            'debug' => htmlspecialchars(print_r($temp['debug'], true), ENT_QUOTES, 'UTF-8'),
+                            'trace' => htmlspecialchars($temp['trace'], ENT_QUOTES, 'UTF-8'),
+                        );
+                        //生成日志菜单
+                        echo "<div onclick='show(this);' debug='{$temp["debug"]}' trace='{$temp["trace"]}'>log {$v}</div>";
+                    }
+                }
+
+                //生成日志界面
+                echo '</span>',//<pre id="logs"></pre>',
+                    'debug:<hr><pre id="debug"></pre><br>',
+                    'trace:<hr><pre id="trace"></pre>',
+                    '<script>',
+                        'function show(node) {',
+                            'document.getElementById("debug").innerText = node.getAttribute("debug");',
+                            'document.getElementById("trace").innerText = node.getAttribute("trace");',
+                        '};',
+                        'document.getElementById("menu").childNodes[0].click()',
+                    '</script>';
+            }
         } else {
             //路径参数
             $rUrl = '?c=of_base_com_timer' . (isset($_GET['__OF_DEBUG__']) ? '&__OF_DEBUG__=' . $_GET['__OF_DEBUG__'] : '');
@@ -104,6 +156,21 @@ class of_base_com_timer {
             $list = array();
             //当前时间戳
             $time = time();
+
+            echo '<style>',
+                    'a {color: #000;}',
+                    'table {border-collapse: collapse;}',
+                    'pre {width: 0;}',
+                    'span {overflow: auto; height: 90%; position: fixed; _position: absolute; right: 10px;}',
+                '</style>',
+                '<script>',
+                    'function show() {',
+                        "window.open('{$rUrl}&type=traceLogs&mark=' + document.getElementById('mark').value, '_blank');",
+                    '};',
+                '</script>',
+                '<span><input type="text" id="mark" placeholder="Fill in the mark"><button onclick="show()">traceLogs</button></span>',
+                self::state() ? 'running' : 'starting',
+                '<br>';
 
             //获取并发任务
             if ($info = self::info(1)) {
@@ -192,11 +259,13 @@ class of_base_com_timer {
                     '</tr>';
                 //格式化节点列表
                 foreach ($info as $k => &$v) {
+                    //警告重点显示
+                    $temp = $v['warning'] === 'Yes' ? 'style="background-color: red;"' : '';
                     echo '<tr>',
                             "<td>{$v['nodeAddr']}</td>",
                             "<td>{$v['prevSort']}</td>",
                             "<td>{$v['nodeSort']}</td>",
-                            "<td>{$v['warning']}</td>",
+                            "<td {$temp}>{$v['warning']}</td>",
                             "<td>{$v['duration']}</td>",
                             "<td>{$v['nodeTime']}</td>",
                             "<td>{$v['sortTime']}</td>",
@@ -211,7 +280,7 @@ class of_base_com_timer {
                 foreach ($list as $k => &$v) {
                     //任务详细信息
                     $v['data'] = $mark === ($temp = md5($k)) ?
-                        '<tr><td colspan=5><pre>' . print_r($v, true) . '</pre></td></tr>' : '';
+                        '<tr><td colspan=6><pre>' . print_r($v, true) . '</pre></td></tr>' : '';
                     //并发唯一标识
                     $v['mark'] = $temp;
                     //获取最后执行时间
@@ -222,6 +291,15 @@ class of_base_com_timer {
                     $v['cNum'] = empty($v['cNum']) ? '' : $v['cNum'];
                     //编码任务名称
                     $v['info'] = htmlspecialchars($k, ENT_QUOTES, 'UTF-8');
+                    //显示日志链接
+                    if (isset($v['logs']['mark']) || $v['cNum'] && !empty($v['logs'])) {
+                        //设置了调试标识 ? 使用设置的标识 : 否则使用回调方法摘要 + 并发数量
+                        $temp = isset($v['logs']['mark']) ?
+                            $v['logs']['mark'] : of_base_com_data::digest($v['call']) . ' ' . $v['cNum'];
+                        $v['logs'] = "<a target='_blank' href='{$rUrl}&type=traceLogs&mark={$temp}'>logs {$v['cNum']}</a>";
+                    } else {
+                        $v['logs'] = '';
+                    }
 
                     //格式回调数组
                     if (is_array($index = &$v['call'])) {
@@ -257,6 +335,7 @@ class of_base_com_timer {
                         "<th><a href='{$rUrl}&sort=cNum'>concurrent<a></td>",
                         "<th><a href='{$rUrl}&sort=last'>lastExecTime<a></td>",
                         "<th><a href='{$rUrl}&sort=info'>cronInfo<a></td>",
+                        "<th><a href='{$rUrl}&sort=logs'>traceLogs<a></td>",
                     '</tr>';
                 //打印计划任务表格体
                 foreach ($list as $k => &$v) {
@@ -267,6 +346,7 @@ class of_base_com_timer {
                         "<td>{$v['cNum']}</td>",
                         "<td>{$v['last']}</td>",
                         "<td>{$v['info']}</td>",
+                        "<td>{$v['logs']}</td>",
                     "</tr>", $v['data'];
                 }
                 //打印计划任务表格尾
@@ -410,18 +490,29 @@ class of_base_com_timer {
      *          "time" : 执行时间, 五年内秒数=xx后秒执行, 其它=指定时间
      *          "cNum" : 并发数量, 0=不设置, n=最大值, []=指定并发ID(最小值1)
      *          "try"  : 尝试相隔秒数, 默认[], 如:[60, 100, ...]
+     *          "logs" : 调试日志, 默认关闭, 参考self::log(null)的data参数设置, 数字=设置"data.mode"参数
 
      *          #单子任务, taskObj返回任务对象
      *          "call" : 框架标准的回调
+     *          "logs" : 调试日志, 默认关闭, 设置时须指定mark {
+     *              "mark" : 调试标识, 确保同一时间为唯一值,
+     *              ...
+     *          }
 
      *          #多子任务, taskObj返回 {任务标识 : 任务对象, ...}
      *          "list" : 任务列表 {任务标识 : 框架回调结构, ...}
      *          "cNum" : 最大并行任务数量
+     *          "logs" : 调试日志, 默认关闭, 设置时须指定mark {
+     *              "mark" : 调试标识, 确保同一时间为唯一值, 单个子任务的调试标识为 "调试标识.任务标识",
+     *              ...
+     *          }
      *      }
      *     &taskObj : 任务对象, 指定时为任务模式
      * 作者 : Edgar.lee
      */
     public static function task($params, &$taskObj = -234567890) {
+        //引用配置
+        $config = &self::$config;
         //格式化
         $params += array('time' => 0, 'cNum' => 0, 'try' => array());
 
@@ -479,11 +570,11 @@ class of_base_com_timer {
                 $taskObj[$k]->taskMark = $mark;
 
                 //设置任务状态
-                of_base_com_kv::set('of_base_com_timer::taskMark#' . $mark, array(
+                call_user_func($config['forkData'], $mark, array(
                     //100=准备, 150=启动(data存储进程ID), 200=完成(data存储数据), 400=异常
                     'code' => 100,
                     'data' => serialize($v)
-                ), 86400, '_ofSelf');
+                ));
             }
 
             //生成队列容器
@@ -492,7 +583,8 @@ class of_base_com_timer {
                     'asCall' => 'of_base_com_timer::taskBindBox',
                     'params' => array(array(
                         'list' => &$data,
-                        'cNum' => $params['cNum']
+                        'cNum' => $params['cNum'],
+                        'logs' => &$params['logs']
                     ))
                 )
             )), array('type' => 16));
@@ -506,14 +598,14 @@ class of_base_com_timer {
             $taskObj->taskMark = $mark;
 
             //设置任务状态
-            of_base_com_kv::set('of_base_com_timer::taskMark#' . $mark, array(
+            call_user_func($config['forkData'], $mark, array(
                 //100=准备, 150=启动(data存储进程ID), 200=完成(data存储数据), 400=异常
                 'code' => 100
-            ), 86400, '_ofSelf');
+            ));
 
             //直接触发
             self::fireCalls(
-                array(array('call' => &$params['call'])),
+                array(array('call' => &$params['call'], 'logs' => &$params['logs'])),
                 array('mark' => $mark, 'type' => 8)
             );
         }
@@ -849,7 +941,7 @@ class of_base_com_timer {
                 //读取全部进程 || (读取停止 ? 进程停止 : 进程运行)
                 if ($filt || ($filt === null ? !$isRun : $isRun)) {
                     //数据键名
-                    $dKey = 'of_base_com_timer::data-' . $call . '.' . $v;
+                    $dKey = 'of_base_com_timer::data#' . $call . '.' . $v;
                     //引用进程结果
                     $index = &$result['info'][$v];
                     //进程运行状态
@@ -964,6 +1056,8 @@ class of_base_com_timer {
             'try'  => &$call['try'],
             'this' => $cArg
         );
+        //引用配置
+        $config = &self::$config;
 
         //启用并发
         if (isset($cArg['cMd5'])) {
@@ -1037,29 +1131,36 @@ class of_base_com_timer {
             }
         //数据回传
         } else if (isset($cArg['mark'])) {
-            of_base_com_kv::set('of_base_com_timer::taskMark#' . $cArg['mark'], array(
+            call_user_func($config['forkData'], $cArg['mark'], array(
                 //100=准备, 150=启动(data存储进程ID), 200=完成(data存储数据), 400=异常
                 'code' => 150,
                 'data' => getmygid()
-            ), 86400, '_ofSelf');
+            ));
             //注入异常
             of::event('of::halt', 'of_base_com_timer::ofHalt');
         }
 
         //触发回调执行
         if ($params) {
+            //日记记录开启
+            if ($index = &$call['logs']) {
+                //日志参数转换
+                is_int($index) && $index = array('mode' => $index);
+                //启动日志调试
+                self::log(null, $index);
+            }
             //调用任务
             $result = of::callFunc($call['call'], $params);
 
             //返回任务结果
             if (isset($cArg['mark'])) {
-                of_base_com_kv::set('of_base_com_timer::taskMark#' . $cArg['mark'], array(
+                call_user_func($config['forkData'], $cArg['mark'], array(
                     //100=准备, 150=启动(data存储进程ID), 200=完成(data存储数据), 400=异常
                     'code' => 200,
                     'data' => array(
                         'result' => $result
                     )
-                ), 86400, '_ofSelf');
+                ));
                 //标记回调成功
                 self::$nowTask['cArg']['mark'] = '';
             //回调失败
@@ -1089,6 +1190,8 @@ class of_base_com_timer {
      * 作者 : Edgar.lee
      */
     public static function taskBindBox($params) {
+        //引用配置
+        $config = &self::$config;
         //最大并行数无效 && 并行数设置为1
         $cNum = $params['cNum'] < 1 ? 1 :  $params['cNum'];
         //待处理列表
@@ -1097,14 +1200,21 @@ class of_base_com_timer {
         $list = array();
         //回传标识
         $mark = array_shift($wait);
+        //调试日志根标识
+        $asId = isset($params['logs']['mark']) ? $params['logs']['mark'] : null;
 
         do {
             while ($cNum) {
                 //解析回调方法
-                $call = of_base_com_kv::get('of_base_com_timer::taskMark#' . $mark, array(), '_ofSelf');
+                $call = call_user_func($config['forkData'], $mark, true);
                 $call = unserialize($call['data']);
+                //添加调试日志标识
+                $asId && $params['logs']['mark'] = $asId . '.' . $mark;
                 //生成队列容器
-                self::fireCalls(array(array('call' => &$call)), array('mark' => $mark));
+                self::fireCalls(
+                    array(array('call' => &$call, 'logs' => &$params['logs'])),
+                    array('mark' => $mark, 'type' => 8)
+                );
 
                 //创建任务跟踪对象
                 $list[$mark] = new self;
@@ -1162,13 +1272,130 @@ class of_base_com_timer {
     public static function ofHalt() {
         //出现异常
         if ($mark = &self::$nowTask['cArg']['mark']) {
-            of_base_com_kv::set('of_base_com_timer::taskMark#' . $mark, array(
+            call_user_func(self::$config['forkData'], $mark, array(
                 //100=准备, 150=启动(data存储进程ID), 200=完成(data存储数据), 400=异常
                 'code' => 400
-            ), 86400, '_ofSelf');
+            ));
             //抛出错误, 任务回调异常
             trigger_error('The task exits abnormally: ' . print_r(self::$nowTask['call'], true));
         }
+    }
+
+    /**
+     * 描述 : 记录调试信息
+     * 参数 :
+     *     #开启调试日志
+     *      name : 固定null
+     *      data : 调试参数, {
+     *          "mark" : 调试标识, 指定唯一字符串, 并发任务下默认为 "{$cArg['cMd5']}.{$cArg['cCid']}"
+     *          "addr" : 服务器IP, 默认 $_SERVER['SERVER_ADDR']
+     *          "mode" : 调试模式, 默认 1=自动日志, 2=回溯日志, 3=1|2日志
+     *          "size" : 调用深度, 默认 1 - count(debug_backtrace()), 会截取trace后几位的回溯
+     *          "call" : 日志回调, 每次添加日志时回回调, 默认 null, 回调参数结构 {
+     *              "name" : 调试名称, 本次调用的名称, 一个字符串, "."为用户定义, "_"为系统定义, 其它为自动日志
+     *              "logs" :&调试日志 {
+     *                  "debug" : 调试数据 {
+     *                      调试名称 : 每次调用将对应名称记录移到日志最后 {
+     *                          "count"   : 调用次数, 每次调用相同名称会累加, 1=首次调用
+     *                          "memory"  : 内存占用, 示例: 2M
+     *                          "timeout" : 执行超时, ini_get('max_execution_time')
+     *                          "logTime" : 日志时间, 示例: 2018-01-01 00:00:00
+     *                          "logData" : 日志数据, 建议是数组
+     *                      }, ...
+     *                  }
+     *                  "trace" : 调用回溯 {}
+     *              }
+     *          }
+     *      }
+     *
+     *     #记录调试日志
+     *      name : 调试名称,
+     *          str=用户级, 每次调用将对应名称前面加"."
+     *          arr=系统级[调试名称], 原样记录, 可作特定功能使用, 建议前缀使用"_"
+     *      data : 调试数据, 建议是数组, 会记录到对应名称的日志中
+     * 返回 :
+     *      开启中返回调试标识, 未开启或二次开启返回null
+     * 作者 : Edgar.lee
+     */
+    public static function log($name, $data = array()) {
+        static $logs, $conf;
+
+        //开启调试
+        if ($name === null) {
+            //未指定调试名称
+            if (!$index = &$data['mark']) {
+                //引用并发参数
+                $cArg = &self::$nowTask['cArg'];
+                //指定调试名称
+                isset($cArg['cMd5']) && isset($cArg['cCid']) && $index = $cArg['cMd5'] . '.' . $cArg['cCid'];
+            }
+
+            //未开启调试 && 已指定调试名称
+            if ($logs === null && $index) {
+                //补全默认配置
+                $conf = $data += array(
+                    'addr' => &$_SERVER['SERVER_ADDR'],
+                    'mode' => 1,
+                    'size' => 1 - count(debug_backtrace()),
+                    'call' => null
+                );
+                //记录初始日志
+                $name = array('_init');
+                unset($data['call']);
+
+                //开启自动调试
+                if ($data['mode'] & 1) {
+                    of::event($temp = 'of::halt', array('asCall' => __METHOD__, 'params' => array(array($temp))));
+                    of::event($temp = 'of::error', array('asCall' => __METHOD__, 'params' => array(array($temp))));
+                    of::event($temp = 'of_db::before', array('asCall' => __METHOD__, 'params' => array(array($temp))));
+                    of::event($temp = 'of_db::after', array('asCall' => __METHOD__, 'params' => array(array($temp))));
+                    of::event($temp = 'of_base_com_net::before', array('asCall' => __METHOD__, 'params' => array(array($temp))));
+                    of::event($temp = 'of_base_com_net::after', array('asCall' => __METHOD__, 'params' => array(array($temp))));
+                }
+            } else {
+                return ;
+            }
+        //日志未开启
+        } elseif ($logs === null) {
+            return ;
+        }
+
+        //获取回溯跟踪
+        $logs['trace'] = $conf['mode'] & 2 ? debug_backtrace(0) : array();
+
+        //自动调试
+        if (is_array($name)) {
+            $name = $name[0];
+            //php < 5.5 时 call_user_func_array 会多一个回溯, 且无 file, line 信息
+            $name[0] === '_' || array_splice($logs['trace'], 0, isset($logs['trace'][0]['file']) ? 3 : 4);
+            //删除结果, 防止日志过大
+            unset($data['result']);
+        //手动调试
+        } else {
+            $name = '.' . $name;
+        }
+
+        //整理日志数据, 将最新数据挪到最后
+        $index = &$logs['debug'][$name];
+        unset($logs['debug'][$name]);
+        ($logs['debug'][$name] = &$index) || $index = array('count' => 0);
+        $index['count'] += 1;
+        $index['memory'] = round(memory_get_usage() / 1048576, 2) . 'M';
+        $index['timeout'] = ini_get('max_execution_time');
+        $index['logTime'] = date('Y-m-d H:i:s');
+        $index['logData'] = &$data;
+        //整理跟踪数据
+        array_splice($logs['trace'], $conf['size']);
+        foreach ($logs['trace'] as &$v) unset($v['args']);
+
+        //触发日志回调
+        isset($conf['call']) && of::callFunc($conf['call'], array('name' => $name, 'logs' => &$logs));
+        //格式化追踪日志
+        $logs['trace'] = print_r($logs['trace'], true);
+        //记录监听数据
+        of_base_com_kv::set("of_base_com_timer::logs#{$conf['mark']}", $logs, 86400, '_ofSelf');
+        //返回调试名称
+        return $conf['mark'];
     }
 
     /**
@@ -1182,16 +1409,19 @@ class of_base_com_timer {
      * 作者 : Edgar.lee
      */
     public function result($wait = 86400) {
+        //引用配置
+        $config = &self::$config;
+        //引用任务标识
         $result = &$this->taskMark;
 
         //读取任务返回数据
         if (is_string($result)) {
             //任务标识
-            $mark = 'of_base_com_timer::taskMark#' . $result;
+            $mark = $result;
 
             do {
                 //读取任务数据, 100=准备, 150=启动(data存储进程ID), 200=完成(data存储数据), 400=异常
-                $data = of_base_com_kv::get($mark, array('code' => 400), '_ofSelf');
+                ($data = call_user_func($config['forkData'], $mark, true)) || $data = array('code' => 400);
 
                 //任务执行完成
                 if ($data['code'] === 200) {
@@ -1217,7 +1447,7 @@ class of_base_com_timer {
             } while (true);
 
             //任务继续执行 || 测试任务状态 || 删除任务标识
-            is_string($result) || $this->testOnly || of_base_com_kv::del($mark, '_ofSelf');
+            is_string($result) || $this->testOnly || call_user_func($config['forkData'], $mark, false);
         }
 
         return $result;
@@ -1355,7 +1585,7 @@ class of_base_com_timer {
                     $task = of_base_com_disk::file($fp, true, true);
                 //任务读取失败
                 } catch (Exception $e) {
-                    of::event('of::error', true, $e);
+                    of::error($e);
                     $task = array();
                 }
 
@@ -1393,7 +1623,7 @@ class of_base_com_timer {
                         $task = of_base_com_disk::file($fp, true, true);
                     //任务读取失败
                     } catch (Exception $e) {
-                        of::event('of::error', true, $e);
+                        of::error($e);
                         $task = array();
                     }
 
@@ -1700,7 +1930,7 @@ class of_base_com_timer {
             //单计划
             if (empty($v['cNum'])) {
                 //触发任务
-                call_user_func($config['forkFn'], array(
+                call_user_func($config['forkFire'], array(
                     'asCall' => 'of_base_com_timer::taskCall',
                     'params' => array(
                         $v + array('time' => 0, 'cNum' => 0, 'try' => array()),
@@ -1723,7 +1953,7 @@ class of_base_com_timer {
                             //释放并发锁
                             of_base_com_data::lock("{$taskLock}#{$cNum}", 3);
                             //触发任务
-                            call_user_func($config['forkFn'], array(
+                            call_user_func($config['forkFire'], array(
                                 'asCall' => 'of_base_com_timer::taskCall',
                                 'params' => array(
                                     &$v, array('cMd5' => $cMd5, 'cCid' => $cNum) + $cArg

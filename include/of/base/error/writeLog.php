@@ -29,30 +29,20 @@ class of_base_error_writeLog {
         );
         self::$config['jsLog'] && of_view::head('head', '<script src="' .OF_URL. '/index.php?a=jsErrScript&c=of_base_error_jsLog"></script>');
 
-        //删除代码错误
-        of::event('of::error', false, 'of::saveError');
         //删除致命错误
-        of::event('of::halt', false, 'of::saveError');
+        of::event('of::halt', false, 'of::error');
         //删除 SQL错误
-        of::event('of_db::error', false, 'of::saveError');
+        of::event('of_db::error', false, 'of::error');
         //监听系统错误
         set_error_handler('of_base_error_writeLog::phpLog');
         //监听系统异常
         set_exception_handler('of_base_error_writeLog::phpLog');
-        //监听代码错误
-        of::event('of::error', 'of_base_error_writeLog::phpLog');
+        //接管错误回调
+        of::error('of_base_error_writeLog::phpLog', true);
         //监听致命错误
         of::event('of::halt', 'of_base_error_writeLog::phpLog');
         //监听 SQL错误
         of::event('of_db::error', 'of_base_error_writeLog::sqlLog');
-    }
-
-    /**
-     * 描述 : 获取最后一次错误
-     * 作者 : Edgar.lee
-     */
-    public static function lastError($clean = false) {
-        return of::work('error', !$clean);
     }
 
     /**
@@ -125,7 +115,8 @@ class of_base_error_writeLog {
             $errTrace = debug_backtrace(0);
             //代码错误
             if (is_array($errno)) {
-                array_splice($errTrace, 0, 2);
+                //php < 5.5 时 call_user_func_array 会多一个回溯, 且无 file, line 信息
+                array_splice($errTrace, 0, isset($errTrace[0]['file']) ? 2 : 3);
                 $error = $errno + array(
                     'code' => E_USER_NOTICE,
                     'info' => 'Unknown error',
@@ -247,7 +238,11 @@ class of_base_error_writeLog {
         //引用错误主体
         $error = &$logData['environment'];
         //记录错误
-        $error['uuid'] = of::saveError($error, false);
+        $error['uuid'] = of::error(array(
+            'memo' => isset($error['memo']) ? $error['memo'] : false, 'type' => $error['type'],
+            'code' => $error['code'], 'info' => $error['info'],
+            'file' => $error['file'], 'line' => $error['line']
+        ), false);
         //配置引用
         $config = &self::$config;
         //系统时区时间对象

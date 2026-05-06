@@ -4,10 +4,32 @@
  * 说明 :
  *      方法集成归类
  *          协议封装 : stream_open stream_stat stream_read stream_eof stream_set_option
- *          变量隔离 : __construct __set offsetGet shareVar varMaps $_GLOBAL_SCOPE_
- *          协程隔离 : loadClass loadEnv reinit clear fork errCtrl autoClass dispatch checkExit
- *          服务支撑 : data task health serial yield sentry getBitSize request start test webSocket
- *          代码重写 : codeParser codeKey codeHard
+ *          变量隔离 : __construct __destruct __set offsetUnset offsetExists offsetSet offsetGet shareVar varMaps
+ *          协程隔离 : dispatch loadClass checkExit onEcho loadEnv reinit clear fork errCtrl autoClass
+ *          服务支撑 : data task health time serial yield sentry getBitSize request webSocket server start
+ *          代码重写 : codeParser codeKey codeExp codeHard
+
+ *      内部保留变量
+ *          _ENV_mapVar : 映射 $_ENV 变量
+ *          _SERVER_mapVar : 映射 $_SERVER 变量
+ *          _GET_mapVar : 映射 $_GET 变量
+ *          _POST_mapVar : 映射 $_POST 变量
+ *          _COOKIE_mapVar : 映射 $_COOKIE 变量
+ *          _REQUEST_mapVar : 映射 $_REQUEST 变量
+ *          _FILES_mapVar : 映射 $_FILES 变量
+ *          _SESSION_mapVar : 映射 $_SESSION 变量
+ *          GLOBALS_mapVar : 映射 $_GLOBALS 变量
+ *          _FUNC_mapVar : 协程空间内部函数调用对象, 用来接管方法 或 操作对应空间功能
+ *          _TEMP_mapVar : 临时变量数组, 用来存储临时变量
+ *          _GLOBAL_SCOPE_ : 全局空间标记, 若脚本位置在$GLOBALS位置, 则该值存在
+ *          _CLOSURE_SCOPE_ : 闭包静态变量空间区分, 在闭包静态变量位置插入该变量, 每个闭包该值存不同对象
+
+ *      内部对象类型
+ *          协议封装对象 : 通过stream_wrapper_register注册的对象, 用来改写编译的代码
+ *          类静态变量对象 : 存在每个类的静态变量中, 起到不同协程见的隔离作用
+ *          闭包静态变量对象 : 存在_CLOSURE_SCOPE_变量中, 当闭包销毁时联动析构清理隔离变量
+ *          接管方法对象 : 存在_FUNC_mapVar变量中, 用来接管方法 或 操作对应空间功能
+ *          Socket对象 : 存储webSocket实现所需的相关信息, 如连接描述符或回调方法
 
  *      已接管会话方法
  *          session_start : 启动新会话或者重用现有会话
@@ -94,6 +116,29 @@
  *          memory_get_usage : 返回分配给 PHP 的内存量
  *          get_included_files : 返回被 include 和 require 文件名的 array
  *          get_required_files : 别名 get_included_files()
+ *          get_defined_vars : 返回由所有已定义变量所组成的数组
+
+ *      服务基础信息($bases)结构 : loadEnv 方法初始化 {
+ *          "cInfo" : 类信息列表, {
+ *              空间类名 : {
+ *                  "cIndex" : 类名索引, strtr(空间类名, '\\', '_'),
+ *                  "parent" : 父类名, false = 无父类名
+ *                  "pIndex" : 父类名索引, false = 无父类名
+ *              },
+ *              ...
+ *          }
+ *          "inits" : 初始化回调母版 {
+ *              strtr(空间类名, '\\', '_') : {
+ *                  回调方法(class::init) => 回调参数 [],
+ *                  ...
+ *              },
+ *              ...
+ *          }
+ *          "sData" : 进程内共享数据 {
+ *              数据名称 : [共享数据, 过期时间],
+ *              ...
+ *          }
+ *      }
 
  *      协程隔离列表($attrs)结构 : loadEnv 方法初始化 {
  *          协程ID : {
@@ -103,7 +148,7 @@
  *                      4=在错误中errCtrl()
  *                      8=被动退出checkExit()
  *                  "pCid"    : 父协程ID, 网络请求为0, 异步任务>0,
- *                  "init"    : 初始化回调列表, 同self:$inits结构
+ *                  "init"    : 初始化回调列表, 同self::$bases['inits']结构
  *                  "exeTime" : 协程超时时间 [超时秒数, 设置时间 + 超时秒数],
  *                  "memory"  : 限制内存[设置最大内存量, 转换的int数据, 上次检查时间, 上次内存大小, 是否为常规协程]
  *                  "tzIds"   : 时区标识符[&生效时区, 配置时区, 生效时区对象]
@@ -126,6 +171,10 @@
  *                  回调方法,
  *                  ...
  *              ]
+ *              "aInit" : 异步初始化任务, 在self::$incNo为0时执行 {
+ *                  类名索引 : 类名索引,
+ *                  ...
+ *              }
  *              "error" : 错误处理数据 {
  *                  "level" : 错误等级 [当前等级, @符压入上次等级, ...]
  *                  "last"  : 最后一次错误
@@ -211,6 +260,9 @@ class swoole implements ArrayAccess {
     //全局静态数据, {静态键 : 静态值, ...}
     private $gAttr;
 
+    //闭包方法标识  #闭包静态变量对象
+    private $cMark;
+
     //协程隔离ID    #接管方法对象
     private $space = 0;
     //标准输入字符串
@@ -219,16 +271,18 @@ class swoole implements ArrayAccess {
     private $swRes;
     //动态变量映射列表, 当读取协程内存时, memoryGetUsage方法会使用
     private $vMaps = null;
+    //首次输出的位置, '文件:行数', ''=无输出
+    private $print = '';
 
     //连接描述符    #Socket对象
     private $objFd;
     //连接描述符映射{描述符 : {"serv" : 服务, "requ" : 请求, "resp" : 响应, "call" : 回调"open info done"}, ...}
     private static $fdMap = array();
 
+    //服务基础信息
+    private static $bases = array('cInfo' => array(), 'inits' => array(), 'sData' => array());
     //协程隔离列表
     private static $attrs = array();
-    //初始化回调母版 {strtr(class, '\\', '_') : {class::init => class::init, ...}, ...}
-    private static $inits = array();
     //工作是否开始退出
     private static $isEnd = false;
     //串行嵌套层级
@@ -378,6 +432,18 @@ class swoole implements ArrayAccess {
     }
 
     /**
+     * 描述 : 注意析构时self::$attrs[space]可能已不存在
+     * 作者 : Edgar.lee
+     */
+    public function __destruct() {
+        //是闭包方法对象
+        if ($this->cMark) {
+            //闭包销毁时联动清理隔离变量
+            unset(self::$attrs[$this->space]['share'][$this->cMark]);
+        }
+    }
+
+    /**
      * 描述 : include开始与结束, @符结束, stream配置资源时回调
      * 作者 : Edgar.lee
      */
@@ -385,7 +451,7 @@ class swoole implements ArrayAccess {
         switch ($key) {
             //开关串行化, true=增加层级, false=减少层级
             case 'serial':
-                self::serial(!!$val);
+                self::serial(!!$val, $this->space);
                 break;
             //恢复错误级别
             case 'errOff':
@@ -465,6 +531,8 @@ class swoole implements ArrayAccess {
      * 作者 : Edgar.lee
      */
     public function &shareVar($list, $site = '') {
+        //匿名方法静态变量隔离唯一值
+        static $uuid = 0;
         //返回结果集
         $result = array();
 
@@ -479,6 +547,19 @@ class swoole implements ArrayAccess {
             }
         //静态变量
         } else {
+            //匿名方法中的静态变量
+            if (isset($list['_CLOSURE_SCOPE_'])) {
+                //未初始化闭包标识
+                if ($list['_CLOSURE_SCOPE_'] === 0) {
+                    $list['_CLOSURE_SCOPE_'] = new self;
+                    $list['_CLOSURE_SCOPE_']->space = $this->space;
+                    $list['_CLOSURE_SCOPE_']->cMark = $site . ' #' . ++$uuid;
+                }
+                //确定变量位置
+                $site = $list['_CLOSURE_SCOPE_']->cMark;
+                //不作为静态变量, 仅作为闭包标识
+                unset($list['_CLOSURE_SCOPE_']);
+            }
             //引用隔离位置的变量
             ($index = &self::$attrs[$this->space]['share'][$site]) || $index = array();
             //遍历变量列表
@@ -1246,6 +1327,17 @@ class swoole implements ArrayAccess {
         } else if (is_object($info)) {
             //发送头信息
             foreach ($heads as $k => &$v) $info->header($k, join(', ', $v));
+        //没有头信息, 输出响应体时会发送头信息并清除头信息列表
+        } else if (!$heads) {
+            //读取代码行数
+            $temp = $this->debugBacktrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+            //生成错误
+            self::errCtrl(
+                E_WARNING,
+                "Cannot modify header information - headers already sent by (output started at {$this->print})",
+                $temp[0]['file'] ?? __FILE__,
+                $temp[0]['line'] ?? __LINE__
+            );
         //发送状态
         } else if (preg_match('@^http/[^ ]+ +(\d+)\s+(.*)@i', $info, $match)) {
             $this->swRes->status($match[1], $match[2]);
@@ -1492,7 +1584,7 @@ class swoole implements ArrayAccess {
                 //无效数据
                 } else {
                     //读取代码行数
-                    $temp = $this->debugBacktrace();
+                    $temp = $this->debugBacktrace(DEBUG_BACKTRACE_IGNORE_ARGS);
                     //生成协程超时错误
                     self::errCtrl(
                         E_WARNING,
@@ -1751,6 +1843,22 @@ class swoole implements ArrayAccess {
     }
 
     /**
+     * 描述 : 接管 get_defined_vars
+     * 作者 : Edgar.lee
+     */
+    public function getDefinedVars($vars) {
+        //过滤内部变量列表
+        unset(
+            $vars['_ENV_mapVar'], $vars['_SERVER_mapVar'], $vars['_GET_mapVar'],
+            $vars['_POST_mapVar'], $vars['_COOKIE_mapVar'], $vars['_REQUEST_mapVar'],
+            $vars['_FILES_mapVar'], $vars['_SESSION_mapVar'], $vars['GLOBALS_mapVar'],
+            $vars['_FUNC_mapVar'], $vars['_GLOBAL_SCOPE_'], $vars['_CLOSURE_SCOPE_'],
+            $vars['_TEMP_mapVar']
+        );
+        return $vars;
+    }
+
+    /**
      * 描述 : 接管 file_get_contents
      * 作者 : Edgar.lee
      */
@@ -1914,7 +2022,7 @@ class swoole implements ArrayAccess {
                     'asCall' => 'of::loadClass',
                     'params' => array($params['class'])
                 ));
-                //类不存在, 可能是过程写法文件
+                //类不存在, 可能是面向过程写法文件
                 if (!class_exists($params['class'], false)) {
                     //防止二次加载文件, 初始化时调了"of::loadClass", 而框架判断类不存在时, 会再次调用
                     $params['class'] = 'of';
@@ -1928,10 +2036,41 @@ class swoole implements ArrayAccess {
     }
 
     /**
+     * 描述 : 主动加载类
+     *      spl_autoload_register回调中禁止加载相同类, 导致并发协程出现类不存在问题
+     * 作者 : Edgar.lee
+     */
+    public function loadClass($class, $isNew = false) {
+        if (is_string($class)) {
+            //类已存在 || 尝试加载类
+            class_exists($class, false) || self::autoClass($class, false);
+
+            //存在待初始化列表
+            if ($init = &self::$attrs[$this->space]['state']['init']) {
+                //引用并初始化类信息
+                ($cInfo = &self::$bases['cInfo'][$class]) === null && $cInfo = array(
+                    'cIndex' => strtr($class, '\\', '_'),
+                    'parent' => $temp = get_parent_class($class),
+                    'pIndex' => $temp ? strtr($temp, '\\', '_') : false
+                );
+
+                //存在父类 && 父类存在初始化回调 && 递归初始化父类
+                $cInfo['pIndex'] && isset($init[$cInfo['pIndex']]) && self::loadClass($cInfo['parent']);
+
+                //存在类初始化回调
+                isset($init[$cInfo['cIndex']]) && self::reinit($cInfo['cIndex']);
+            }
+        }
+
+        //返回类
+        return $isNew ? $this : $class;
+    }
+
+    /**
      * 描述 : 检查是否退出协程
      * 作者 : Edgar.lee
      */
-    public function checkExit($mode = 7) {
+    private function checkExit($mode = 7) {
         //刷新内存使用量, 0=可以刷新, 其它=正在刷新
         static $refresh = 0;
         //待刷新内存的协程列表[协程ID, ...]
@@ -1966,7 +2105,7 @@ class swoole implements ArrayAccess {
             //标记被动退出
             $state['code'] |= 8;
             //读取代码行数
-            $temp = $this->debugBacktrace();
+            $temp = $this->debugBacktrace(DEBUG_BACKTRACE_IGNORE_ARGS);
             //生成协程超时错误
             self::errCtrl(
                 E_ERROR,
@@ -1999,7 +2138,7 @@ class swoole implements ArrayAccess {
                         //标记被动退出
                         $state['code'] |= 8;
                         //读取代码行数
-                        $temp = $this->debugBacktrace();
+                        $temp = $this->debugBacktrace(DEBUG_BACKTRACE_IGNORE_ARGS);
                         //生成协程超时错误
                         self::errCtrl(
                             E_ERROR,
@@ -2022,29 +2161,29 @@ class swoole implements ArrayAccess {
     }
 
     /**
-     * 描述 : 主动加载类
-     *      spl_autoload_register回调中禁止加载相同类, 导致并发协程出现类不存在问题
+     * 描述 : 拦截输出, 输出响应头
      * 作者 : Edgar.lee
      */
-    public function loadClass($class, $isNew = false) {
-        if (is_string($class)) {
-            //类已存在 || 尝试加载类
-            class_exists($class, false) || self::autoClass($class, false);
+    private function onEcho($buffer) {
+        //有响应头
+        if ($heads = &self::$attrs[$this->space]['heads']) {
+            //发送响应头
+            $this->header($this->swRes);
+            //标记响应头已发送
+            $heads = array();
 
-            if (
-                //存在待初始化列表
-                ($init = &self::$attrs[$this->space]['state']['init']) &&
-                //存在类初始化回调
-                isset($init[$name = strtr($class, '\\', '_')])
-            ) {
-                $index = &$init[$name];
-                unset($init[$name]);
-                foreach ($index as &$v) self::reinit($v);
-            }
+            //读取代码行数
+            $temp = $this->debugBacktrace(DEBUG_BACKTRACE_IGNORE_ARGS)[0] + array('file' => '', 'line' => '');
+            //记录首次输出的位置
+            $this->print = "{$temp['file']}:{$temp['line']}";
         }
 
-        //返回类
-        return $isNew ? $this : $class;
+        //有响应对象 && 非功能操作 && 发送响应体
+        $this->swRes && isset($buffer[0]) && $this->swRes->write($buffer);
+        //有响应对象 && 非功能操作 && 不设置buffer_output_size的替代或结合方案(分块影响gzip压缩比)
+        //$this->swRes && isset($buffer[0]) && array_map(array($this->swRes, 'write'), str_split($buffer, 1048576));
+        //返回空字符串
+        return '';
     }
 
     /**
@@ -2065,7 +2204,9 @@ class swoole implements ArrayAccess {
             //清理空间数据
             Co::defer('swoole::clear');
             //捕获所有输出
-            ob_start();
+            ob_start(array($func = new self, 'onEcho'), 1);
+            //设置协程ID
+            $func->space = $space;
 
             //网络请求
             if ($isObj = is_object($requ)) {
@@ -2096,11 +2237,10 @@ class swoole implements ArrayAccess {
                     '_COOKIE_mapVar' => $requ->cookie ?? array(),
                     '_FILES_mapVar' => $requ->files ?? array(),
                     '_SESSION_mapVar' => array(),
-                    '_FUNC_mapVar' => new self
+                    '_FUNC_mapVar' => $func
                 );
 
                 //初始化接管方法对象
-                $result['_FUNC_mapVar']->space = $space;
                 $result['_FUNC_mapVar']->input = $resp ? $requ->rawContent() : '';
                 $result['_FUNC_mapVar']->swRes = $resp;
                 //合并_REQUEST超全局变量
@@ -2148,10 +2288,8 @@ class swoole implements ArrayAccess {
                     '_COOKIE_mapVar' => array(),
                     '_FILES_mapVar' => array(),
                     '_SESSION_mapVar' => array(),
-                    '_FUNC_mapVar' => new self
+                    '_FUNC_mapVar' => $func
                 );
-                //初始化接管方法对象
-                $result['_FUNC_mapVar']->space = $space;
             }
 
             //当前时间
@@ -2175,6 +2313,7 @@ class swoole implements ArrayAccess {
             self::$attrs[$space] = array(
                 'super' => &$result,
                 'autoC' => array(),
+                'aInit' => array(),
                 'error' => array(
                     'level' => array(E_ALL),
                     'last'  => null,
@@ -2196,7 +2335,7 @@ class swoole implements ArrayAccess {
                 'state' => array(
                     'code'    => 0,
                     'pCid'    => 0,
-                    'init'    => self::$inits,
+                    'init'    => self::$bases['inits'],
                     'exeTime' => array($temp = $GLOBALS['phpIni']['max_execution_time'], $time + $temp),
                     'memory'  => array($temp = $GLOBALS['phpIni']['memory_limit'], $temp, $time, 1048576, 1),
                     'tzIds'   => array(&$zone, &$zone, new DateTimeZone($zone))
@@ -2230,47 +2369,54 @@ class swoole implements ArrayAccess {
      * 描述 : 重新初始回调
      * 参数 :
      *      call : 注册初始化方法, class::init
+     *      type : 是否触发自定义重新初始化回调
      * 作者 : Edgar.lee
      */
-    public static function reinit($call = 'of::init') {
-        //初始化调用列表 {class::init => strtr(class, '\\', '_'), ...}
-        static $calls = array();
+    public static function reinit($call = 'of', $type = true) {
+        //协程ID
+        $space = Co::getCid();
 
         //初始化方法已注册
-        if (isset($calls[$call])) {
-            //引用协程状态
-            $state = &self::$attrs[Co::getCid()]['state'];
-            //删除初始化回调列表
-            unset($state['init'][$calls[$call]][$call]);
-            //完成初始化回调
-            call_user_func($call);
-            //框架加载完成
-            if ($call === 'of::init') {
-                //触发自定义重新初始化
-                foreach ($GLOBALS['system']['reinit'] as &$v) of::callFunc($v);
+        if ($type) {
+            //引用协程初始化回调列表
+            $init = &self::$attrs[$space]['state']['init'];
+            //存在类初始化回调
+            if (isset($init[$call])) {
+                //引用类初始化回调列表
+                $index = &$init[$call];
+                //删除类初始化回调
+                unset($init[$call]);
+                //完成类初始化回调
+                foreach ($index as $k => &$v) call_user_func_array($k, $v);
+
+                //框架加载完成
+                if ($call === 'of') {
+                    //触发自定义重新初始化
+                    foreach ($GLOBALS['system']['reinit'] as &$v) of::callFunc($v);
+                }
             }
         //首次注册, 在所有已初始的的协程中执行
         } else {
+            //类名索引
+            $cIndex = strtr(strstr($call, '::', true), '\\', '_');
+
             //禁用协程
-            self::serial(true);
+            self::serial(true, $space);
             //未被并行的协程初始, 初始化其它已初始化过的协程
-            if (!isset($calls[$call])) {
-                //记录回调列表
-                $calls[$call] = $name = strtr(strstr($call, '::', true), '\\', '_');
+            if (($index = &self::$bases['inits'][$cIndex][$call]) === null) {
                 //记录回调母版
-                self::$inits[$name][$call] = $call;
+                $index = array();
 
                 //遍历所有协程空间
                 foreach (self::$attrs as $k => &$v) {
                     //追加初始回调
-                    $v['state']['init'][$name][$call] = $call;
+                    $v['state']['init'][$cIndex][$call] = array();
                 }
-
-                //当前空间初始化回调
-                self::reinit($call);
             }
+            //异步初始化任务
+            self::$attrs[$space]['aInit'][$cIndex] = $cIndex;
             //启用协程
-            self::serial(false);
+            self::serial(false, $space);
         }
     }
 
@@ -2310,10 +2456,10 @@ class swoole implements ArrayAccess {
             self::errCtrl(false, __FUNCTION__);
         //协程资源释放
         } else {
-            //关闭串行化
-            self::serial(0);
             //协程ID
             $space = Co::getCid();
+            //关闭串行化
+            self::serial(0, $space);
             //引用功能映射对象
             $index = &self::$attrs[$space]['super']['_FUNC_mapVar'];
             //恢复响应中的请求计数
@@ -2321,11 +2467,9 @@ class swoole implements ArrayAccess {
 
             //网络请求
             if ($index->swRes) {
-                //发送响应头信息
-                $index->header($index->swRes);
                 //完结输出缓存
                 for ($i = ob_get_level(); --$i;) ob_end_flush();
-                //响应输出信息
+                //响应输出信息, 当调用ob_get_clean方法时, 触发的onEcho方法会发送响应头
                 $index->swRes->end(ob_get_clean());
             //沙盒环境
             } else {
@@ -2343,140 +2487,6 @@ class swoole implements ArrayAccess {
                     //释放内存给进程
                     gc_collect_cycles();
                 } catch (Throwable $e) {
-                }
-            }
-        }
-    }
-
-    /**
-     * 描述 : 进程内共享数据
-     * 参数 :
-     *      name : 数据名称
-     *      data : 初始数据, 默认[]
-     * 返回 :
-     *      引用返回, 默认空数组
-     * 作者 : Edgar.lee
-     */
-    public static function &data($name, $data = array()) {
-        static $list = array();
-        $list += array($name => &$data);
-        return $list[$name];
-    }
-
-    /**
-     * 描述 : 异步任务执行器
-     * 作者 : Edgar.lee
-     */
-    public static function task($pPid) {
-        //引用协程列表
-        $attrs = &self::$attrs;
-        //可执行任务数
-        $count = SWOOLE_MAX_REQUEST;
-        //唯一ID计数
-        $uuid = 0;
-        //任务列表 [任务ID, ...]
-        $list = array();
-        //任务目录
-        $task = $GLOBALS['system']['shmDir'] . '/task';
-
-        //尝试获取监听服务权限
-        for ($i = 0; $i < 10; ++$i) {
-            //尝试成功
-            if (flock($work = fopen("{$GLOBALS['system']['shmDir']}/taskServ{$i}.lock", 'c+'), 6)) {
-                break ;
-            //尝试失败
-            } else {
-                $work = null;
-            }
-        }
-
-        //已获取到服务权限
-        if ($work) {
-            //关闭内存检查与工作周期时间
-            $GLOBALS['system']['memory'] = $GLOBALS['system']['cycle'] = 0;
-            //等待获取消费权
-            flock($lock = fopen($GLOBALS['system']['shmDir'] . '/taskWatch.lock', 'c+'), 2);
-        //未获取到服务权限
-        } else {
-            return ;
-        }
-
-        //读取并执行任务
-        do {
-            //按修改时间先到后取前N个
-            $data = trim(stream_get_contents(popen("ls -tr '{$task}' | head -{$count}", 'r'), 65536));
-            //读取到任务数据列表, 切割出任务文件名
-            $data = $data ? explode("\n", $data) : array();
-
-            //任务存在
-            if ($data) {
-                //遍历执行任务
-                foreach ($data as &$v) {
-                    //任务文件绝对路径
-                    $k = $task . '/'. $v;
-                    //读取回调任务数据
-                    $v = file_get_contents($k);
-                    //执行计数
-                    --$count;
-                    //删除任务
-                    unlink($k);
-                }
-                //任务溢出
-                if ($count < 1) break ;
-                //遍历任务
-                foreach ($data as $k => &$v) {
-                    //创建任务协程
-                    self::fork(unserialize($v), 1, array('space' => &$list[++$uuid], 'sTask' => true));
-                    //移除待办任务
-                    unset($data[$k]);
-                }
-            //服务已停止(父进程不存在)
-            } else if (!Swoole\Process::kill($pPid, 0)) {
-                break ;
-            }
-
-            //稍后继续
-            usleep(5000);
-            //清理执行完成的任务, 删除(协程已启动 && 执行完成)协程ID
-            foreach ($list as $k => &$v) if ($v && !isset($attrs[$v])) unset($list[$k]);
-        //有执行任务的空间
-        } while (($count = SWOOLE_MAX_REQUEST - count($list)) > 0);
-
-        //释放工作锁
-        flock($work, 3);
-        //释放消费权
-        flock($lock, 3);
-        //无更多任务 || 新启动任务执行器
-        of_base_com_disk::none($task) || self::fork(array('asCall' => 'swoole::task', 'params' => array($pPid)), 2);
-        //遍历并执行剩余任务
-        foreach ($data as &$v) self::fork(unserialize($v), 1, array('space' => &$list[++$uuid]));
-
-        //等待所有任务执行完成, 结束任务执行器进程
-        while ($list) {
-            //协程执行时间
-            sleep(10);
-            //清理执行完成的任务, 删除(协程已启动 && 执行完成)协程ID
-            foreach ($list as $k => &$v) if ($v && !isset($attrs[$v])) unset($list[$k]);
-        }
-    }
-
-    /**
-     * 描述 : 健康检查执行器
-     * 作者 : Edgar.lee
-     */
-    public static function health($pPid) {
-        //健康检查网址
-        if ($temp = $GLOBALS['system']['health']) {
-            //开启健康检查
-            while (true) {
-                //每10s执行一次
-                sleep(10);
-                //任务进程未结束 && 主进程未结束
-                if (!self::$isEnd && Swoole\Process::kill($pPid, 0)) {
-                    //发送健康检查
-                    @file_get_contents($temp);
-                } else {
-                    break ;
                 }
             }
         }
@@ -2649,7 +2659,7 @@ class swoole implements ArrayAccess {
                         //移除自身及未拦截的捕捉列表
                         array_splice($eData['catch'], 0, $k + 1);
                         //恢复包含文件层级(恢复前有值 && 恢复后无值 && 重写设置协程)
-                        self::$incNo === $v['iNum'] || self::serial($v['iNum']);
+                        self::$incNo === $v['iNum'] || self::serial($v['iNum'], $space);
                         //恢复完成
                         break ;
                     }
@@ -2704,21 +2714,172 @@ class swoole implements ArrayAccess {
     }
 
     /**
+     * 描述 : 进程内共享数据
+     * 参数 :
+     *      name : 数据名称
+     *      data : 初始数据, 默认[]=创建(data首次默认值, time每次都生效), true=读取, false=删除
+     *      time : 过期时间, data为数组时生效, 默认86400=一天有效, 0=永不过期
+     * 返回 :
+     *      数据存在 ? &返回数据 : 返回null
+     * 作者 : Edgar.lee
+     */
+    public static function &data($name, $data = array(), $time = 86400) {
+        //引用共享数据
+        $list = &self::$bases['sData'];
+
+        //移除数据, 删除 || 数据不存在 || (设置过期 && 已经过期)
+        if ($data === false || (!$index = &$list[$name]) || $index[1] && $index[1] < self::$nTime) {
+            unset($list[$name], $index);
+        }
+
+        //初始化数据
+        if (is_array($data)) {
+            $list += array($name => array(&$data, 0));
+            $index = &$list[$name];
+            $index[1] = $time ? self::time() + $time : 0;
+        }
+
+        //数据存在 ? 返回数据 : 返回null
+        return $index[0];
+    }
+
+    /**
+     * 描述 : 异步任务执行器
+     * 作者 : Edgar.lee
+     */
+    public static function task($pPid) {
+        //引用协程列表
+        $attrs = &self::$attrs;
+        //可执行任务数
+        $count = SWOOLE_MAX_REQUEST;
+        //唯一ID计数
+        $uuid = 0;
+        //任务列表 [任务ID, ...]
+        $list = array();
+        //任务目录
+        $task = $GLOBALS['system']['shmDir'] . '/task';
+
+        //尝试获取监听服务权限
+        for ($i = 0; $i < 10; ++$i) {
+            //尝试成功
+            if (flock($work = fopen("{$GLOBALS['system']['shmDir']}/taskServ{$i}.lock", 'c+'), 6)) {
+                break ;
+            //尝试失败
+            } else {
+                $work = null;
+            }
+        }
+
+        //已获取到服务权限
+        if ($work) {
+            //关闭内存检查与工作周期时间
+            $GLOBALS['system']['memory'] = $GLOBALS['system']['cycle'] = 0;
+            //等待获取消费权
+            flock($lock = fopen($GLOBALS['system']['shmDir'] . '/taskWatch.lock', 'c+'), 2);
+        //未获取到服务权限
+        } else {
+            return ;
+        }
+
+        //读取并执行任务
+        do {
+            //按修改时间先到后取前N个
+            $data = trim(stream_get_contents(popen("ls -tr '{$task}' | head -{$count}", 'r'), 65536));
+            //读取到任务数据列表, 切割出任务文件名
+            $data = $data ? explode("\n", $data) : array();
+
+            //任务存在
+            if ($data) {
+                //遍历执行任务
+                foreach ($data as &$v) {
+                    //任务文件绝对路径
+                    $k = $task . '/'. $v;
+                    //读取回调任务数据
+                    $v = file_get_contents($k);
+                    //执行计数
+                    --$count;
+                    //删除任务
+                    unlink($k);
+                }
+                //任务溢出
+                if ($count < 1) break ;
+                //遍历任务
+                foreach ($data as $k => &$v) {
+                    //创建任务协程
+                    self::fork(unserialize($v), 1, array('space' => &$list[++$uuid], 'sTask' => true));
+                    //移除待办任务
+                    unset($data[$k]);
+                }
+            //服务已停止(父进程不存在)
+            } else if (!Swoole\Process::kill($pPid, 0)) {
+                break ;
+            }
+
+            //稍后继续
+            usleep(5000);
+            //清理执行完成的任务, 删除(协程已启动 && 执行完成)协程ID
+            foreach ($list as $k => &$v) if ($v && !isset($attrs[$v])) unset($list[$k]);
+        //有执行任务的空间
+        } while (($count = SWOOLE_MAX_REQUEST - count($list)) > 0);
+
+        //释放工作锁
+        flock($work, 3);
+        //释放消费权
+        flock($lock, 3);
+        //无更多任务 || 新启动任务执行器
+        of_base_com_disk::none($task) || self::fork(array('asCall' => 'swoole::task', 'params' => array($pPid)), 2);
+        //遍历并执行剩余任务
+        foreach ($data as &$v) self::fork(unserialize($v), 1, array('space' => &$list[++$uuid]));
+
+        //等待所有任务执行完成, 结束任务执行器进程
+        while ($list) {
+            //协程执行时间
+            sleep(10);
+            //清理执行完成的任务, 删除(协程已启动 && 执行完成)协程ID
+            foreach ($list as $k => &$v) if ($v && !isset($attrs[$v])) unset($list[$k]);
+        }
+    }
+
+    /**
+     * 描述 : 健康检查执行器
+     * 作者 : Edgar.lee
+     */
+    public static function health($pPid) {
+        //健康检查网址
+        if ($temp = $GLOBALS['system']['health']) {
+            //开启健康检查
+            while (true) {
+                //每10s执行一次
+                sleep(10);
+                //任务进程未结束 && 主进程未结束
+                if (!self::$isEnd && Swoole\Process::kill($pPid, 0)) {
+                    //发送健康检查
+                    @file_get_contents($temp);
+                } else {
+                    break ;
+                }
+            }
+        }
+    }
+
+    /**
      * 描述 : 自动加载类
      * 作者 : Edgar.lee
      */
     private static function autoClass($class, $serial = true) {
+        //协程ID
+        $space = Co::getCid();
         //开启串行化, 尽量降低在回调中无法寻找同类的问题
-        $serial && self::serial(true);
+        $serial && self::serial(true, $space);
         //引用自动加载类
-        foreach (self::$attrs[Co::getCid()]['autoC'] as &$v) {
+        foreach (self::$attrs[$space]['autoC'] as &$v) {
             //触发加载回调
             call_user_func($v, $class);
             //类加载成功
             if (class_exists($class, false)) break;
         }
         //关闭串行化
-        $serial && self::serial(false);
+        $serial && self::serial(false, $space);
     }
 
     /**
@@ -2733,39 +2894,48 @@ class swoole implements ArrayAccess {
     /**
      * 描述 : 开关串行化
      * 参数 :
-     *      type : 是否开启串行, true=开启, false=禁用, int=恢复到指定层级
+     *      sMode : 串行模式, true=开启, false=禁用, int=恢复到指定层级
+     *      space : 协程ID, 用于指定协程的串行化
      * 返回 :
      *      返回操作前串行层次
      * 作者 : Edgar.lee
      */
-    private static function serial($type) {
+    private static function serial($sMode, $space) {
         //引用串行化层级
         $incNo = &self::$incNo;
         //返回操作前串行层次
         $result = $incNo;
 
         //禁用协程
-        if ($type) {
+        if ($sMode) {
             //未禁用协程
             if ($incNo === 0) {
                 //关闭抢占式调度
                 SWOOLE_SCHEDULER && Co::disableScheduler();
                 //临时关闭协程(防止类加载不全, spl_autoload_register回调报错等问题)
-                Swoole\Runtime::enableCoroutine(false);
+                Swoole\Runtime::enableCoroutine(0);
             }
             //非数字 ? 增加包含层次 : 设置指定值
-            $type === true ? ++$incNo : $incNo = $type;
+            $sMode === true ? ++$incNo : $incNo = $sMode;
         //恢复协程
         } else {
             //是数字 && 串行状态 && 准备关闭串行
-            $type === 0 && $incNo && $incNo = 1;
+            $sMode === 0 && $incNo && $incNo = 1;
 
             //串行状态 && 可以关闭串行
             if ($incNo && --$incNo === 0) {
                 //开启函数协程化
-                Swoole\Runtime::enableCoroutine(true, SWOOLE_HOOK_FULL);
+                Swoole\Runtime::enableCoroutine(SWOOLE_HOOK_FULL);
                 //开启抢占式调度
                 SWOOLE_SCHEDULER && Co::enableScheduler();
+            }
+
+            //异步初始化任务
+            if ($incNo === 0 && $aInit = self::$attrs[$space]['aInit']) {
+                //重置初始化队列
+                self::$attrs[$space]['aInit'] = array();
+                //异步初始化任务
+                foreach ($aInit as &$v) self::reinit($v);
             }
 
             //引用状态信息
@@ -2802,11 +2972,11 @@ class swoole implements ArrayAccess {
         self::$yield[$type][$space] = array('state' => true, 'data' => &$data, 'result' => &$reslut);
 
         //标记有待办任务且守望者停止 && 恢复守望者
-        $incNo = (self::$yield['state']['code'] |= 2) === 2 ? self::serial(0) : 0;
+        $incNo = (self::$yield['state']['code'] |= 2) === 2 ? self::serial(0, $space) : 0;
         //挂起协程
         Co::yield();
         //恢复串行状态
-        $incNo && self::serial($incNo);
+        $incNo && self::serial($incNo, $space);
 
         //移除当前任务
         unset(self::$yield[$type][$space]);
@@ -2823,6 +2993,8 @@ class swoole implements ArrayAccess {
     private static function sentry($serv, $mCid) {
         //健康及退出检查
         go(function () use (&$serv, &$mCid) {
+            //引用共享数据
+            $sData = &self::$bases['sData'];
             //引用进程最大内存
             $memory = &$GLOBALS['system']['memory'];
             //引用工作周期时间
@@ -2867,6 +3039,12 @@ class swoole implements ArrayAccess {
                         //编译内存 > 1G && 重启工作进程
                         memory_get_usage() - $temp > $memory && $serv->stop($serv->worker_id, true);
                     }
+                }
+
+                //清理过期的共享数据
+                foreach ($sData as $k => &$v) {
+                    //设置过期 && 已经过期
+                    if ($v[1] && $v[1] < self::$nTime) unset($sData[$k]);
                 }
             } while (!self::$isEnd);
 
@@ -3025,7 +3203,7 @@ class swoole implements ArrayAccess {
      *          "mark" : 处理块唯一标识
      *      }, ...}
      *      硬缓存代码处理($hard) : 将无法一次编译的代码放到方法中执行, 解决php每次编译文件均占用内存问题 {
-     *          "isOn" : 是否需要缓存, 0=不需要, 1=需要
+     *          "isOn" : 是否需要缓存, 0=不需要, 1=需要, 仅在全局类型下可能生效
      *          "save" : "life"记忆点, 识别到匹配的"}"或结尾时插入缓存代码
      *          "cPos" : 缓存代码起始位置
      *      }
@@ -3101,7 +3279,7 @@ class swoole implements ArrayAccess {
             'register_shutdown_function' => 'registerShutdownFunction', 'class_alias' => 'classAlias',
             'memory_get_usage' => 'memoryGetUsage', 'get_included_files' => 'getIncludedFiles',
             'get_required_files' => 'getIncludedFiles', 'call_user_func_array' => 'callable',
-            'call_user_func' => 'callable',
+            'call_user_func' => 'callable', 'get_defined_vars' => 'getDefinedVars'
         );
         //唯一ID计数
         static $uuid = 0;
@@ -3538,6 +3716,14 @@ class swoole implements ArrayAccess {
                                     'len' => 1,
                                     'str' => "(\$_FUNC_mapVar->callable = "
                                 );
+                            //接管get_defined_vars
+                            } else if ($func[$lf] === 'getDefinedVars') {
+                                $wait[] = array(
+                                    //在"("之前调用更安全
+                                    'pos' => $kPos,
+                                    'len' => $kLen + $data['eLen'],
+                                    'str' => "\$_FUNC_mapVar->getDefinedVars(get_defined_vars()"
+                                );
                             //接管指定方法, \方法名
                             } else if ($temp['text'] === '\\') {
                                 $wait[] = array(
@@ -3615,7 +3801,7 @@ class swoole implements ArrayAccess {
                                     //当前位置到类名长度 + 2(::) + 到init长度 + 到(长度
                                     'len' => $data['eLen'] + 2 + $temp['eLen'] + $temp['right']['eLen'],
                                     //获取命名含空间的类名::init
-                                    'str' => "\swoole::reinit({$data['name']} . '::{$temp['text']}'"
+                                    'str' => "\swoole::reinit({$data['name']} . '::{$temp['text']}', false"
                                 );
                             //主动加载类(非"xxx::class" && 非(new xxx)::yy)
                             } else if ($temp['text'] !== 'class' && strpos($data['name'], 'new ') === false) {
@@ -3803,11 +3989,22 @@ class swoole implements ArrayAccess {
                         }
                         //在全局或方法中 && 有共享变量
                         if ($self['type'] & 3 && $self['varList']) {
+                            //在方法中 && 匿名函数
+                            if ($self['type'] & 2 && !$self['name']) {
+                                //改写静态或全局的变量列表, 区分每个不同的匿名方法
+                                $wait[] = array(
+                                    'pos' => $kPos,
+                                    'len' => 0,
+                                    'str' => ', $_CLOSURE_SCOPE_ = 0'
+                                );
+                                //静态变量中增加 $_CLOSURE_SCOPE_
+                                $self['varList']['_CLOSURE_SCOPE_'] = '\'_CLOSURE_SCOPE_\' => &$_CLOSURE_SCOPE_';
+                            }
                             //改写静态或全局的变量列表
                             $wait[] = array(
-                                'pos' => $kPos,
-                                'len' => $kLen,
-                                'str' => '; extract($_FUNC_mapVar->shareVar(array(' .
+                                'pos' => $kPos + 1,
+                                'len' => 0,
+                                'str' => ' extract($_FUNC_mapVar->shareVar(array(' .
                                     join(', ', $self['varList']) .
                                 '), ' . ($self['isStatic'] ? '__METHOD__' : 'false') . '), EXTR_REFS);'
                             );
@@ -4026,8 +4223,10 @@ class swoole implements ArrayAccess {
      * 作者 : Edgar.lee
      */
     private static function codeHard(&$wait, &$hard, $kPos, $pStr = '') {
+        //硬缓存方法名唯一值
+        static $uuid = 0;
         //硬缓存随机方法名
-        $temp = '_' . uniqid();
+        $temp = '_swooleCodeHardCache_' . ++$uuid;
         //插入硬缓存起始代码
         $wait[] = array(
             'pos' => $hard['cPos'],
@@ -4035,20 +4234,32 @@ class swoole implements ArrayAccess {
             'str' => '/*!swoole rewrite: start!*/' .
                 '$_FUNC_mapVar->serial = true;' .
                 "if (!function_exists(__NAMESPACE__ . '\\{$temp}')) {" .
-                'function ' . $temp . '(&$_) {' .
-                    'extract($_, EXTR_REFS);' .
-                    'unset($_);'
+                'function ' . $temp . '(&$_TEMP_mapVar) {' .
+                    //方法外部变量引用到方法内部
+                    'extract($_TEMP_mapVar, EXTR_REFS);' .
+                    'try {'
         );
         //插入硬缓存结束代码
         $wait[] = array(
             'pos' => $kPos,
             'len' => 0,
-            'str' => $pStr . '}}$_FUNC_mapVar->serial = false;/*!swoole rewrite: end!*/' .
-                'unset($_);' .
-                '$_ = array(get_defined_vars());' .
-                'foreach ($_[0] as $_[1] => &$_[2]) $_[0][$_[1]] = &${$_[1]};' .
-                'if (($_ = ' . $temp . '($_[0])) !== null) {return $_;}' .
-                'unset($_);'
+            'str' => $pStr .
+                    '} finally {' .
+                        //方法内部变量引用到方法外部
+                        '$_TEMP_mapVar = array($_FUNC_mapVar->getDefinedVars(get_defined_vars()));' .
+                        'foreach ($_TEMP_mapVar[0] as $_TEMP_mapVar[1] => &$_TEMP_mapVar[2]) $_TEMP_mapVar[0][$_TEMP_mapVar[1]] = &${$_TEMP_mapVar[1]};' .
+                        '$_TEMP_mapVar = $_TEMP_mapVar[0];' .
+                    '}' .
+                '}}$_FUNC_mapVar->serial = false;/*!swoole rewrite: end!*/' .
+                //准备引用到方法内部到变量
+                '$_TEMP_mapVar = array(get_defined_vars());' .
+                'unset($_TEMP_mapVar[0][\'_TEMP_mapVar\']);' .
+                'foreach ($_TEMP_mapVar[0] as $_TEMP_mapVar[1] => &$_TEMP_mapVar[2]) $_TEMP_mapVar[0][$_TEMP_mapVar[1]] = &${$_TEMP_mapVar[1]};' .
+                //调用方法传递引用变量
+                '$_TEMP_mapVar[1] = ' . $temp . '($_TEMP_mapVar[0]);' .
+                //方法内部变量引用到方法外部
+                'extract($_TEMP_mapVar[0], EXTR_REFS);' .
+                'if ($_TEMP_mapVar[1] !== null) {return $_TEMP_mapVar[1];}'
         );
         //重置硬缓存
         $hard = array('save' => 1, 'cPos' => $kPos, 'isOn' => 0);
@@ -4297,12 +4508,8 @@ class swoole implements ArrayAccess {
         } else if (is_file($temp = __DIR__ . '/demo/tool/swoole/debug.php')) {
             //加载调试代码(Co类名)
             require_once $temp;
-            //初始化接管方法对象
-            $temp = new self;
-            //初始化接管方法对象
-            $temp->swRes = new Co;
             //执行调试
-            Co::debug($temp, __DIR__, self::$debug);
+            Co::debug(__DIR__, self::$debug);
         }
 
         //退出服务
@@ -4343,7 +4550,7 @@ class swoole implements ArrayAccess {
                 'hook_flags' => null, 'worker_num' => swoole_cpu_num(),
                 'max_wait_time' => 86400, 'log_level' => SWOOLE_LOG_WARNING,
                 'package_max_length' => self::getBitSize(ini_get('post_max_size')),
-                'heartbeat_check_interval' => 43200
+                'heartbeat_check_interval' => 43200, 'buffer_output_size' => PHP_INT_MAX
             ),
             'phpIni' => array(
                 'max_execution_time' => 30, 'memory_limit' => ini_get('memory_limit'),

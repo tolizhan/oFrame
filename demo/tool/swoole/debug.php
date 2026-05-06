@@ -10,11 +10,11 @@ namespace {
          * 描述 : 代码调试
          * 作者 : Edgar.lee
          */
-        public static function debug($fnObj, $path, &$debug) {
+        public static function debug($path, &$debug) {
             //测试文件不存在
             if (!is_file($path .= '/test.php')) exit('文件不存在: ' . strtr($path, '\\', '/'));
             //配置环境
-            extract(Co::mockEnv($fnObj), EXTR_REFS);
+            extract(Co::mockEnv(), EXTR_REFS);
             //标记全局空间
             $_GLOBAL_SCOPE_ = 1;
             //打印编译代码
@@ -30,15 +30,15 @@ namespace {
          * 描述 : 配置环境
          * 作者 : Edgar.lee
          */
-        public static function &mockEnv($fnObj) {
-            //关闭默认输出缓存
-            ob_get_level() && ob_get_clean();
+        public static function &mockEnv() {
             //设置标识时区, 用来判断是否需要更改协程时区
             date_default_timezone_set('GMT-0');
             //注册结束执行
             //register_shutdown_function('swoole::clear', true);
             //注册清理空间
             //register_shutdown_function('swoole::clear', false);
+            //判断php版本是否小于8.1
+            $lt81 = version_compare(PHP_VERSION, '8.1.0', '<');
 
             //兼容常量
             foreach (array(
@@ -79,8 +79,35 @@ namespace {
 
             //生成超全局变量
             $attr = &swoole::loadEnv($_SERVER);
-            //初始化接管方法对象
-            $attr['_FUNC_mapVar'] = $fnObj;
+            //关闭默认输出缓存
+            ob_get_clean();
+
+            //初始化接管方法的响应对象(仅调试模式下使用)
+            $temp = new ReflectionClass($attr['_FUNC_mapVar']);
+            //获取响应属性
+            $temp = $temp->getProperty('swRes');
+            //设置为可访问, php 8.1 默认生效 8.5 开始弃用
+            $lt81 && $temp->setAccessible(true);
+            //修改响应属性
+            $temp->setValue($attr['_FUNC_mapVar'], new Co);
+
+            //初始化响应头默认值
+            $temp = new ReflectionClass('swoole');
+            //获取响应属性
+            $temp = $temp->getProperty('attrs');
+            //设置为可访问, php 8.1 默认生效 8.5 开始弃用
+            $lt81 && $temp->setAccessible(true);
+            //获取attrs数据
+            $data = $temp->getValue();
+            //恢复响应头
+            $data[0]['heads'] = array(
+                'content-type' => array(
+                    'text/html; charset=UTF-8'
+                )
+            );
+            //修改响应属性
+            $temp->setValue(null, $data);
+
             //临时代码
             foreach ($super as $k => &$v) $attr["{$k}_mapVar"] = &$v;
             //返回超全局变量
@@ -100,6 +127,12 @@ namespace {
          * 作者 : Edgar.lee
          */
         public static function end($text) {
+            //初始化接管方法的响应对象(仅调试模式下使用)
+            $temp = new ReflectionClass($fObj = swoole::loadEnv()['_FUNC_mapVar']);
+            $temp = $temp->getMethod('onEcho');
+            version_compare(PHP_VERSION, '8.1.0', '<') && $temp->setAccessible(true);
+            $temp->invoke($fObj, '');
+
             echo $text;
         }
 
@@ -116,7 +149,7 @@ namespace {
          * 作者 : Edgar.lee
          */
         public function header($key, $value) {
-            header($key . ': ' . $value);
+            @header($key . ': ' . $value);
         }
 
         /**

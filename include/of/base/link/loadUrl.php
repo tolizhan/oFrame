@@ -38,7 +38,10 @@ if (isset($_GET['url']) && preg_match('@^http(?:s?)://@i', $_GET['url'])) {
     )));
 
     //请求成功
-    if (isset($http_response_header)) {
+    if (function_exists('http_get_last_response_headers') ?
+        $http_response_header = http_get_last_response_headers() :
+        isset($http_response_header)
+    ) {
         //响应头信息
         foreach ($http_response_header as &$v) {
             preg_match($preg, $v) && header($v);

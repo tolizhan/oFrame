@@ -30,7 +30,7 @@ class ctrl_index extends L {
             trigger_error('产生一个错误');
             //无错误返回 null, 否则返回 {"code" : 编码, "info" : 错误, "file" : 路径, "line" : 行数, ...}
             echo '是否产生错误: ', of::work('error') ? '是' : '否', "<br>\n";
-            //清除当前工作错误
+            //清除当前工作错误, of::error(bool)等同of::work('error',bool)
             of::work('error', false);
 
             //添加延迟调用到工作结束前(依然在事务中)

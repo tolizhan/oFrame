@@ -1,3 +1,37 @@
+版本: 282
+作者: Edgar
+日期: 2026年5月6日 17:04:02
+信息:
+说明: + of_base_com_timer::log() 更方便的调试方式
+      + 计划任务配置"logs"项,控制台可查看最后日志
+      + 消息队列配置"logs"项,控制台可查看最后日志
+      + 消息队列控制台增加最长时间"maxRunTime(s)"
+      + of::error(bool)等同of::work('error',bool)
+      + swoole::data() 新增"读取,删除,过期"的设置
+      + Swoole支持 get_defined_vars与闭包静态变量
+      - Swoole 改为即时输出, 首次输出会发送响应头
+      - 自定义错误改成of::error(array|object)写法
+      - 移除of_base_error_writeLog::lastError方法
+      * 完善Swoole初始化类逻辑,会同步初始化继承类
+      * 优化Swoole调度性能,异步的子任务直接用协程
+----
+已修改 : /trunk/changelog.txt
+已修改 : /trunk/demo/ctrl/index.php
+已修改 : /trunk/demo/tool/swoole/debug.php
+已修改 : /trunk/include/of/accy/com/kv/redis.php
+已修改 : /trunk/include/of/accy/com/timer/default.php
+已修改 : /trunk/include/of/accy/com/timer/swoole.php
+已修改 : /trunk/include/of/base/com/mq.php
+已修改 : /trunk/include/of/base/com/timer.php
+已修改 : /trunk/include/of/base/error/writeLog.php
+已修改 : /trunk/include/of/base/extension/manager.php
+已修改 : /trunk/include/of/base/extension/match.php
+已修改 : /trunk/include/of/base/language/packs.php
+已修改 : /trunk/include/of/base/link/loadUrl.php
+已修改 : /trunk/include/of/config.php
+已修改 : /trunk/include/of/of.php
+已修改 : /trunk/swoole.php
+
 版本: 280
 作者: Edgar
 日期: 2025年11月20日 8:52:51

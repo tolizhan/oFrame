@@ -160,7 +160,7 @@ class of_base_language_packs {
                 }
             //匹配失败提示, 开发模式报错, 其它模式备注
             } else {
-                of::event('of::error', true, array(
+                of::error(array(
                     'memo' => !OF_DEBUG,
                     'info' => 'Translation matching "_of.language.match" failed: ' . $string,
                     'file' => __FILE__,

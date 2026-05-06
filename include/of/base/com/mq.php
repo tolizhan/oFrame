@@ -112,22 +112,25 @@ class of_base_com_mq {
      * 作者 : Edgar.lee
      */
     public function index() {
+        //调试参数
+        $temp = isset($_GET['__OF_DEBUG__']) ? '&__OF_DEBUG__=' . $_GET['__OF_DEBUG__'] : '';
         //路径参数
-        $rUrl = '?c=of_base_com_mq' . (isset($_GET['__OF_DEBUG__']) ? '&__OF_DEBUG__=' . $_GET['__OF_DEBUG__'] : '');
+        $rUrl = '?c=of_base_com_mq' . $temp;
+        //跟踪路径
+        $tUrl = "?c=of_base_com_timer{$temp}&type=traceLogs&mark=";
         //默认排序
         $sort = isset($_GET['sort']) ? $_GET['sort'] : 'avgRunTime';
         //加载消息类型
         $type = isset($_GET['type']) ? $_GET['type'] : '';
 
-        //跳转展示列表
-        $type === 'reload' && header('location: ' . $rUrl);
-        //输出运行状态(并尝试开启)
-        echo self::state() ? 'running' : 'starting', " ";
-
         if (OF_DEBUG === false) {
+            //输出运行状态(并尝试开启)
+            echo self::state() ? 'running' : 'starting';
             exit("<br>\nAccess denied: production mode.");
         //重启消息队列
         } else if ($type === 'reload') {
+            //跳转展示列表
+            header('location: ' . $rUrl);
             //读取全局节点列表
             $nodes = of_base_com_timer::info(2);
             //遍历发送重置命令
@@ -138,6 +141,8 @@ class of_base_com_mq {
         } else {
             //永不超时
             ini_set('max_execution_time', 0);
+            //输出运行状态(并尝试开启)
+            echo self::state() ? 'running' : 'starting', " ";
             //显示重启按钮
             echo '<input type="button" ',
                     "onclick='window.location.href=\"{$rUrl}&type=reload\"' ",
@@ -156,6 +161,8 @@ class of_base_com_mq {
 
             //筛选消息队列任务
             $list = of_base_com_timer::info(1);
+            //当前时间
+            $time = time();
             //消费超过24小时数量
             $nums = 0;
 
@@ -168,12 +175,12 @@ class of_base_com_mq {
                     $print = array(
                         //执行并发, 最后启动时间
                         'concurrent' => 0, 'datetime' => array(0),
-                        //平均时间, 运行次数
-                        'avgRunTime' => 0, 'sumRunCount' => 0,
-                        //最大内存, 汇总内存
-                        'maxMemory' => array(0), 'sumMemory' => 0,
-                        //列表明细
-                        'details' => '',
+                        //平均时间, 最长时间
+                        'avgRunTime' => 0, 'maxRunTime' => 0,
+                        //汇总内存, 最大内存
+                        'sumMemory' => 0, 'maxMemory' => array(0),
+                        //运行次数, 列表明细
+                        'sumRunCount' => 0, 'details' => '',
                     );
                     //列表明细
                     $v = array(
@@ -190,7 +197,7 @@ class of_base_com_mq {
                         unset($vl['time']);
 
                         //为节省磁盘性能不用 of_base_com_timer::data(true, array($kl), '/' . $k);
-                        $temp = 'of_base_com_timer::data-' . $k . '.' . $kl;
+                        $temp = 'of_base_com_timer::data#' . $k . '.' . $kl;
                         $temp = of_base_com_kv::get($temp, array(), '_ofSelf');
                         $index = &$temp['_mq'];
                         //汇总数据: 计算最大并发
@@ -212,8 +219,13 @@ class of_base_com_mq {
 
                             //存在执行信息
                             if (isset($index['useMemory'])) {
-                                //汇总数据: 汇总时长
+                                //汇总数据: 平均运行时长
                                 $print['avgRunTime'] += isset($index['duration']) ? $index['duration'] : 0;
+                                //汇总数据: 最长运行时间
+                                $print['maxRunTime'] = max(
+                                    ($index['doneTime'] ? strtotime($index['doneTime']) : $time) - strtotime($index['startTime']),
+                                    $print['maxRunTime']
+                                );
                                 //汇总数据: 总运行次数
                                 $print['sumRunCount'] += $index['runCount'];
                                 //汇总数据: 最大内存
@@ -223,6 +235,10 @@ class of_base_com_mq {
                                 $index['useMemory'] = $temp . 'M';
                                 //方便查询运行中队列
                                 $index['doneTime'] || $index['doneTime'] = '--';
+
+                                //存在调试信息 && 单独窗口查看
+                                isset($index['traceLogs']) &&
+                                    $index['traceLogs'] = "<a target='_blank' href='{$tUrl}{$index['traceLogs']}'>more...</a>";
 
                                 //单条消费格式结构
                                 is_array($index['msgId']) && (
@@ -269,6 +285,7 @@ class of_base_com_mq {
                     "<th><a href='{$rUrl}&sort=queueName'>queueName</a></td>",
                     "<th><a href='{$rUrl}&sort=concurrent'>concurrent($temp)</a></td>",
                     "<th><a href='{$rUrl}&sort=avgRunTime'>avgRunTime(s)</a></td>",
+                    "<th><a href='{$rUrl}&sort=maxRunTime'>maxRunTime(s)</a></td>",
                     "<th><a href='{$rUrl}&sort=sumRunCount'>sumRunCount</a></td>",
                     "<th><a href='{$rUrl}&sort=maxMemory'>maxMemory(M)</a></td>",
                     "<th><a href='{$rUrl}&sort=sumMemory'>sumMemory(M)</a></td>",
@@ -279,12 +296,13 @@ class of_base_com_mq {
                         "<td>{$v['queueATag']}</td>",
                         "<td>{$v['concurrent']}</td>",
                         "<td>{$v['avgRunTime']}</td>",
+                        "<td>{$v['maxRunTime']}</td>",
                         "<td>{$v['sumRunCount']}</td>",
                         "<td>{$v['maxMemory']}</td>",
                         "<td>{$v['sumMemory']}</td>",
                         "<td>{$v['datetime']}</td>",
                     "</tr>",
-                    ($v['details'] ? "<tr><td colspan=7>{$v['details']}</td></tr>" : '');
+                    ($v['details'] ? "<tr><td colspan=8>{$v['details']}</td></tr>" : '');
             }
             echo '</table>';
         }
@@ -552,6 +570,8 @@ class of_base_com_mq {
                 'memory'   => 1048576,
                 //时区
                 'timezone' => date_default_timezone_get(),
+                //当前队列配置
+                'mgConf'   => &$thisMq,
                 //当前消息数据
                 'mqData'   => null,
                 //处理消息的类名
@@ -566,6 +586,12 @@ class of_base_com_mq {
             self::resetPaincMqData(null);
             //重置未启动消息数据
             $cCid === $nowTask['cNum'][0] && self::resetPaincMqData(2);
+
+            //日记记录开启 && 启动日志调试
+            empty($thisMq['logs']) || of_base_com_timer::log(null, array(
+                'call' => 'of_base_com_mq::trace',
+                'mode' => $thisMq['logs']
+            ));
 
             while (true) {
                 $cmd = of_base_com_kv::get($cKey, array('taskPid' => ''), '_ofSelf');
@@ -596,7 +622,7 @@ class of_base_com_mq {
                         $isGc && gc_collect_cycles();
                         //检查内存 && 未释放内存过高
                         if ($memory && $fireEnv['memory'] > $memory) {
-                            of::event('of::error', true, array(
+                            of::error(array(
                                 'type' => "{$data['key']}.{$data['queue']}.{$data['pool']}",
                                 'code' => E_USER_ERROR,
                                 'info' => 'MQ auto reload: (M)Unreleased memory takes up ' .
@@ -998,12 +1024,39 @@ class of_base_com_mq {
             //重置当前并发数据
             of_base_com_timer::data(array('_mq' => array()));
             //记录异常日志
-            of::event('of::error', true, array(
+            of::error(array(
                 'type' => "{$index['key']}.{$index['queue']}.{$index['pool']}",
                 'code' => E_USER_ERROR,
                 'info' => 'MQ auto reload: (Q)Callback function "exit" unexpectedly. - ' .
                     print_r($index, true)
             ));
+        }
+    }
+
+    /**
+     * 描述 : 消息队列消费跟踪回调
+     * 参数 :
+     *      params : 调试数据, 参考 of_base_com_timer::log 方法 call 参数结构
+     * 作者 : Edgar.lee
+     */
+    public static function trace($params) {
+        //引用环境
+        $fireEnv = &self::$fireEnv;
+        //日记记录未开启 || 未在消费回调中
+        if (empty($fireEnv['mgConf']['logs']) || empty($fireEnv['mqData'])) return ;
+
+        //非系统级操作
+        if ($params['name'][0] !== '_') {
+            //保持_mq运行数据kv有效期
+            of_base_com_timer::data(array());
+        //开始新消费周期
+        } else if ($params['name'] === '_start') {
+            //引用调试日志
+            $index = &$params['logs']['debug'];
+            //重置周期日志
+            $index['_start']['count'] = 1;
+            //重置调试日志
+            $index = array('_init'  => &$index['_init'], '_start' => &$index['_start']);
         }
     }
 
@@ -1051,6 +1104,8 @@ class of_base_com_mq {
                 'data'  => &$data
             )
         );
+        //记录跟踪日志, 消费开始
+        empty($fireEnv['mgConf']['logs']) || $cLog['traceLogs'] = of_base_com_timer::log(array('_start'));
         //记录监听数据
         of_base_com_timer::data(array('_mq' => &$cLog));
 
@@ -1077,7 +1132,7 @@ class of_base_com_mq {
             $result = &of::callFunc($call, $data);
         } catch (Exception $e) {
             $result = false;
-            of::event('of::error', true, $e);
+            of::error($e);
         }
 
         //回滚未结束事务
@@ -1109,6 +1164,8 @@ class of_base_com_mq {
         $cLog['useMemory'] = memory_get_usage();
         //清空异常消息
         unset($cLog['quitData']);
+        //记录跟踪日志, 消费结束
+        empty($fireEnv['mgConf']['logs']) || of_base_com_timer::log(array('_done'));
         //记录监听数据
         of_base_com_timer::data(array('_mq' => &$cLog));
 
@@ -1158,7 +1215,7 @@ class of_base_com_mq {
             } else {
                 $temp = 'Failed to consume message from queue: ' . var_export($result, true);
             }
-            of::event('of::error', true, array(
+            of::error(array(
                 'type' => "{$data['key']}.{$data['queue']}.{$data['pool']}",
                 'code' => E_USER_WARNING,
                 'info' => "{$temp}\n\n" .

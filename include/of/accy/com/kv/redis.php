@@ -159,7 +159,7 @@ class of_accy_com_kv_redis extends of_base_com_kv {
                 $this->check = false;
             } catch (Exception $e) {
                 $this->check = true;
-                of::event('of::error', true, $e);
+                of::error($e);
             }
         }
 

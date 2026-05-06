@@ -1,6 +1,6 @@
 <?php
 //版本号
-define('OF_VERSION', 200280);
+define('OF_VERSION', 200282);
 
 /**
  * 描述 : 控制层核心
@@ -67,15 +67,13 @@ class of {
         //防止禁用错误
         error_reporting(E_ALL);
         //监听系统错误
-        set_error_handler('of::saveError');
+        set_error_handler('of::error');
         //监听系统异常
-        set_exception_handler('of::saveError');
+        set_exception_handler('of::error');
         //监听致命错误
-        self::event('of::halt', 'of::saveError');
-        //监听代码错误
-        self::event('of::error', 'of::saveError');
+        self::event('of::halt', 'of::error');
         //监听 SQL错误
-        self::event('of_db::error', 'of::saveError');
+        self::event('of_db::error', 'of::error');
 
         //预先加载类
         if (isset(self::$config['_of']['preloaded'])) {
@@ -286,9 +284,9 @@ class of {
                             $result[$k] = null;
                             $result[$k] = &self::callFunc($v['event'], $params);
                         } catch (Exception $e) {
-                            self::event('of::error', true, $e);
+                            self::error($e);
                         } catch (Error $e) {
-                            self::event('of::error', true, $e);
+                            self::error($e);
                         }
                         $v['isExec'] = true;
                     }
@@ -677,10 +675,10 @@ class of {
                         self::callFunc($temp, array('isOk' => $code && !$iwErr[0], 'wuid' => $index['wuid']));
                     } catch (Exception $e) {
                         //记录异常
-                        self::event('of::error', true, $e);
+                        self::error($e);
                     } catch (Error $e) {
                         //记录异常
-                        self::event('of::error', true, $e);
+                        self::error($e);
                     }
                 }
             }
@@ -743,10 +741,10 @@ class of {
                             self::callFunc($temp, array('isOk' => $isOk, 'wuid' => $index['wuid']));
                         } catch (Exception $e) {
                             //记录异常
-                            self::event('of::error', true, $e);
+                            self::error($e);
                         } catch (Error $e) {
                             //记录异常
-                            self::event('of::error', true, $e);
+                            self::error($e);
                         }
                     }
                 }
@@ -847,7 +845,7 @@ class of {
                     );
                 //其它常规异常
                 } else {
-                    self::event('of::error', true, $code);
+                    self::error($code);
                     $result = array(
                         'code' => 500,
                         'info' => L::getText('An internal error occurred', array('key' => __METHOD__)),
@@ -875,24 +873,51 @@ class of {
     /**
      * 描述 : 记录最后一次错误
      * 参数 :
-     *     &code : 错误编码, 接收"异常对象,数组格式,错误编码,null"格式
-     *      info : 错误信息, 为false时直接存储code数组格式(不显示错误信息)
-     *      file : 文件路径
-     *      line : 文件行数
+     *     #自定义错误(布尔|对象|数组)
+     *      data : 默认true=读取错误, false=删除错误, 对象=异常对象, 数组=指定错误 {
+     *           "memo" : 作备忘录, 默认 false=正常抛出错误, true=不算错误仅存日志, str=相当{"memo":true,"type":str}
+     *           "type" : 错误类型, 字符串类型, 默认 自动判断
+     *           "code" : 错误代码, 默认 E_USER_NOTICE
+     *           "info" : 错误描述, 默认 "Unknown error"
+     *           "file" : 文件路径, 默认 代码触发文件
+     *           "line" : 错误行数, 默认 代码触发行数
+     *      }
+     *
+     *     #接管错误处理(xxx, 布尔)
+     *      data :
+     *          info=true时, 接管错误, 传框架回调结构, 接收"指定错误|异常对象|null结束"参数
+     *              还可以通过重新设置'of::halt', 'of_db::error'及内置错误异常来更深入处理错误
+     *          info=false时, 直接存储错误, 符合自定义错误数组格式
+     *              通过接管错误回调处理后, 调用of::error(自定义错误数组格式, false)
+     *      info : true=接管错误处理, false=直接存储错误
      * 作者 : Edgar.lee
      */
-    public static function saveError($code = null, $info = null, $file = null, $line = null) {
-        //直接存储
-        if ($info === false) {
-            $error = &$code;
+    public static function error($data = true, $info = null, $file = null, $line = null) {
+        //接管错误回调
+        static $call = null;
+
+        //读取或删除错误
+        if (is_bool($data)) {
+            return of::work('error', $data);
+        //直接存储错误
+        } else if ($info === false) {
+            $error = &$data;
+        //接管错误回调
+        } else if ($info === true) {
+            $call = $data;
+        //调用错误回调
+        } else if ($call) {
+            of::callFunc($call, $data);
         //致命错误
-        } else if ($code === null) {
+        } else if ($data === null) {
             //开发显示原生错误, 防止 of::halt 回调中出现致命错误
             OF_DEBUG && ini_set('display_errors', true);
 
             //非 trigger_error('')
             if (($temp = error_get_last()) && isset($temp['message'][0])) {
                 $error = array(
+                    'memo' => false,
+                    'type' => 'fatalError',
                     'code' => &$temp['type'],
                     'info' => ini_get('error_prepend_string') .
                         $temp['message'] .
@@ -902,57 +927,72 @@ class of {
                 );
             }
         //系统异常
-        } else if (is_object($code)) {
+        } else if (is_object($data)) {
             $error = array(
-                //异常代码
-                'code' => $code->getCode(),
-                //异常消息
-                'info' => $code->getMessage(),
-                //异常文件
-                'file' => $code->getFile(),
-                //异常行
-                'line' => $code->getLine(),
+                'memo' => false, 'type' => 'exception',
+                'code' => $data->getCode(), 'info' => $data->getMessage(),
+                'file' => $data->getFile(), 'line' => $data->getLine(),
             );
         //系统错误启动(php >= 8 "@"最大设置4437) && 不是过期函数
-        } else if (error_reporting() & ~4437 && $code !== 8192) {
-            //代码错误 ? 补全信息 : 系统错误
-            $error = is_array($code) ? $code + array(
-                'code' => E_USER_NOTICE, 'info' => 'Unknown error', 'file' => '', 'line' => 0
-            ) : array(
-                'code' => &$code, 'info' => &$info, 'file' => &$file, 'line' => &$line
-            );
+        } else if (error_reporting() & ~4437 && $data !== 8192) {
+            //数组格式错误
+            if (is_array($data)) {
+                //提取标准结构错误信息
+                $data += $temp = array(
+                    'memo' => false, 'type' => isset($data['sql']) ? 'sqlError' : 'customize',
+                    'code' => E_USER_NOTICE, 'info' => 'Unknown error',
+                    'file' => '', 'line' => 0
+                );
+                $error = array_intersect_key($data, $temp);
+            //代码类型错误
+            } else {
+                $temp = array(
+                    'memo' => false, 'type' => 'phpError',
+                    'code' => &$data, 'info' => &$info,
+                    'file' => &$file, 'line' => &$line
+                );
+                $call ? of::callFunc($call, $temp) : $error = $temp;
+            }
         //"@"错误 || 过期函数
         } else {
             //@trigger_error('') 返回 false, php 标准错误处理会接收
             return isset($info[0]);
         }
 
-        //发生错误 && 不是备忘录
-        if (isset($error) && empty($error['memo'])) {
-            //关联上一次错误
-            $_SERVER['_of']['error'] = self::$lastErr;
-            //记录最后一次错误
-            self::$lastErr = self::$workErr[0] = array(
-                'code' => &$error['code'], 'info' => &$error['info'],
-                'file' => &$error['file'], 'line' => &$error['line'],
-                'uuid' => uniqid()
-            );
+        //发生错误
+        if (isset($error)) {
+            //添加错误标识
+            $error['uuid'] = uniqid();
+            //备忘录整理
+            if (is_string($error['memo'])) {
+                $error['type'] = $error['memo'];
+                $error['memo'] = true;
+            }
 
-            //非直接存储
-            if ($info !== false) {
-                //格式化文件路径
-                $error['file'] = strtr(substr($error['file'], strlen(ROOT_DIR)), '\\', '/');
-                //开发模式, 打印日志
-                if (OF_DEBUG) {
-                    $info = htmlentities($error['info'], ENT_QUOTES, 'UTF-8');
-                    echo '<pre style="color:#F00; font-weight:bold; margin: 0px;">',
-                        "[{$error['code']}] : \"{$info}\" in {$error['file']} on line {$error['line']}",
-                        '. Timestamp : ', time(), '</pre>';
+            //不是备忘录
+            if (!$error['memo']) {
+                //关联上一次错误
+                $_SERVER['_of']['error'] = self::$lastErr;
+                //记录最后一次错误
+                self::$lastErr = self::$workErr[0] = $error;
+                //非直接存储
+                if ($info !== false) {
+                    //格式化文件路径
+                    $error['file'] = strtr(substr($error['file'], strlen(ROOT_DIR)), '\\', '/');
+                    //开发模式, 打印日志
+                    if (OF_DEBUG) {
+                        $info = htmlentities($error['info'], ENT_QUOTES, 'UTF-8');
+                        echo '<pre style="color:#F00; font-weight:bold; margin: 0px;">',
+                            "[{$error['type']}.{$error['code']}] : \"{$info}\" in {$error['file']} on line {$error['line']}",
+                            '. Timestamp : ', time(), '</pre>';
+                    }
                 }
             }
 
+            //触发of::error事件
+            self::event('of::error', true, $error);
             //返回错误标识
-            return self::$lastErr['uuid'];
+            return $error['uuid'];
         }
     }
 
@@ -1434,7 +1474,7 @@ class of {
                 //是语法错误 ? 返回错误 : 错误日志
                 $e instanceof ParseError ?
                     $result = array('info' => $e->getMessage(), 'line' => $e->getLine()) :
-                    self::event('of::error', true, $e);
+                    self::error($e);
                 //执行结果false
                 $data = false;
             }
