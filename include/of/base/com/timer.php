@@ -24,6 +24,7 @@
  *          taskInfo#任务ID : 单个任务信息(30天过期), 定期清理或延期 {
  *              "list" : 并发列表 {
  *                  并发数字 : {
+ *                      "addr" : 服务器IP
  *                      "time" : 启动时间
  *                  }, ...
  *              }
@@ -117,31 +118,40 @@ class of_base_com_timer {
                 echo '<style>',
                         'span {overflow: auto; height: 90%; position: fixed; _position: absolute; right: 10px;}',
                         'div {border: 1px solid #000;}',
+                        'a {color: #000;}',
                     '</style><span id="menu">';
 
                 //输出日志菜单
-                foreach ($list as &$v) {
+                foreach ($list as $k => &$v) {
                     //日志读取成功
                     if ($temp = of_base_com_kv::get('of_base_com_timer::logs#' . $mark . $v, array(), '_ofSelf')) {
                         //日志转码
                         $temp = array(
-                            'debug' => htmlspecialchars(print_r($temp['debug'], true), ENT_QUOTES, 'UTF-8'),
+                            'debug' => htmlspecialchars(print_r(array_reverse($temp['debug']), true), ENT_QUOTES, 'UTF-8'),
                             'trace' => htmlspecialchars($temp['trace'], ENT_QUOTES, 'UTF-8'),
                         );
                         //生成日志菜单
                         echo "<div onclick='show(this);' debug='{$temp["debug"]}' trace='{$temp["trace"]}'>log {$v}</div>";
+                    } else {
+                        unset($list[$k]);
                     }
                 }
+            }
 
+            //无日志
+            if (empty($list)) {
+                echo '</span>No logs found.';
+            //有日志
+            } else {
                 //生成日志界面
-                echo '</span>',//<pre id="logs"></pre>',
-                    'debug:<hr><pre id="debug"></pre><br>',
-                    'trace:<hr><pre id="trace"></pre>',
+                echo '</span>',
+                    'debug: <a href="#trace">↓trace</a><hr><pre id="debug"></pre><br>',
+                    'trace: <a href="#debug">↑debug</a><hr><pre id="trace"></pre>',
                     '<script>',
                         'function show(node) {',
                             'document.getElementById("debug").innerText = node.getAttribute("debug");',
                             'document.getElementById("trace").innerText = node.getAttribute("trace");',
-                        '};',
+                        '}',
                         'document.getElementById("menu").childNodes[0].click()',
                     '</script>';
             }
@@ -159,16 +169,19 @@ class of_base_com_timer {
 
             echo '<style>',
                     'a {color: #000;}',
-                    'table {border-collapse: collapse;}',
                     'pre {width: 0;}',
-                    'span {overflow: auto; height: 90%; position: fixed; _position: absolute; right: 10px;}',
+                    'span {position: fixed; _position: absolute; right: 10px;}',
+                    'table {border-collapse: collapse;}',
                 '</style>',
                 '<script>',
                     'function show() {',
                         "window.open('{$rUrl}&type=traceLogs&mark=' + document.getElementById('mark').value, '_blank');",
                     '};',
                 '</script>',
-                '<span><input type="text" id="mark" placeholder="Fill in the mark"><button onclick="show()">traceLogs</button></span>',
+                '<span>',
+                    '<input onkeydown="event.keyCode === 13 && show()" id="mark" placeholder="Fill in the mark">',
+                    '<button onclick="show()">traceLogs</button>',
+                '</span>',
                 self::state() ? 'running' : 'starting',
                 '<br>';
 
@@ -193,16 +206,13 @@ class of_base_com_timer {
                     //统计分类数据
                     foreach ($v['list'] as &$vl) {
                         //任务启动时间
-                        $vl['datetime'] = date('Y-m-d H:i:s', $vl['timestamp'] = $vl['time']);
-                        //格式化时间戳
-                        unset($vl['time']);
-
+                        $vl['date'] = date('Y-m-d H:i:s', $vl['time']);
                         //统计执行并发
                         $list[$func]['concurrent'] += 1;
                         //统计最长时间
-                        $list[$func]['maxRunTime'] = max($time - $vl['timestamp'], $list[$func]['maxRunTime']);
+                        $list[$func]['maxRunTime'] = max($time - $vl['time'], $list[$func]['maxRunTime']);
                         //最后启动时间
-                        $list[$func]['datetime'] = max($vl['datetime'], $list[$func]['datetime']);
+                        $list[$func]['datetime'] = max($vl['date'], $list[$func]['datetime']);
                     }
                 }
 
@@ -334,8 +344,8 @@ class of_base_com_timer {
                         "<th><a href='{$rUrl}&sort=time'>cronTime<a></td>",
                         "<th><a href='{$rUrl}&sort=cNum'>concurrent<a></td>",
                         "<th><a href='{$rUrl}&sort=last'>lastExecTime<a></td>",
-                        "<th><a href='{$rUrl}&sort=info'>cronInfo<a></td>",
                         "<th><a href='{$rUrl}&sort=logs'>traceLogs<a></td>",
+                        "<th><a href='{$rUrl}&sort=info'>cronInfo<a></td>",
                     '</tr>';
                 //打印计划任务表格体
                 foreach ($list as $k => &$v) {
@@ -345,8 +355,8 @@ class of_base_com_timer {
                         "<td>{$v['time']}</td>",
                         "<td>{$v['cNum']}</td>",
                         "<td>{$v['last']}</td>",
-                        "<td>{$v['info']}</td>",
                         "<td>{$v['logs']}</td>",
+                        "<td>{$v['info']}</td>",
                     "</tr>", $v['data'];
                 }
                 //打印计划任务表格尾
@@ -641,6 +651,7 @@ class of_base_com_timer {
      *              "call" : 统一回调结构
      *              "list" : 运行的任务列表 {
      *                  运行的序号 : {
+     *                      "addr" : 运行的服务器IP
      *                      "time" : 任务启动时间戳
      *                  }
      *              }
@@ -1118,7 +1129,10 @@ class of_base_com_timer {
                 //读取消息
                 $temp = of_base_com_kv::get($taskInfoKey, array(), '_ofSelf');
                 //记录并发数字
-                $temp['list'][$cArg['cCid']]['time'] = time();
+                $temp['list'][$cArg['cCid']] = array(
+                    'addr' => &$_SERVER['SERVER_ADDR'],
+                    'time' => time()
+                );
                 //按运行序号排序
                 ksort($temp['list']);
                 //更新信息

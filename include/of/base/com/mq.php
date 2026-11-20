@@ -192,10 +192,7 @@ class of_base_com_mq {
                     //读取消息状态信息
                     foreach ($v['list'] as $kl => &$vl) {
                         //任务启动时间
-                        $vl['datetime'] = date('Y-m-d H:i:s', $vl['timestamp'] = $vl['time']);
-                        //格式化时间戳
-                        unset($vl['time']);
-
+                        $vl['date'] = date('Y-m-d H:i:s', $vl['time']);
                         //为节省磁盘性能不用 of_base_com_timer::data(true, array($kl), '/' . $k);
                         $temp = 'of_base_com_timer::data#' . $k . '.' . $kl;
                         $temp = of_base_com_kv::get($temp, array(), '_ofSelf');
@@ -208,14 +205,14 @@ class of_base_com_mq {
                             //标记列表颜色
                             $v['font'] = 'style="color: red;"';
                             //标记运行异常
-                            $vl['execInfo'] = '<font color=red>Run for more than 24 hours</font>';
+                            $vl['info'] = '<font color=red>Run for more than 24 hours</font>';
                             //统计超长消费数量
                             $nums += 1;
                         } else {
                             //队列启动时间
-                            $print['datetime'][] = $vl['datetime'];
+                            $print['datetime'][] = $vl['date'];
                             //消息执行信息
-                            $vl['execInfo'] = &$index;
+                            $vl['info'] = &$index;
 
                             //存在执行信息
                             if (isset($index['useMemory'])) {

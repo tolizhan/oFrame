@@ -60,7 +60,7 @@ class of_base_sso_tool {
             if (isset($_COOKIE['of_base_sso']['ticket'][$space])) {
                 $tool['ticket'] = $_COOKIE['of_base_sso']['ticket'][$space];
                 //删除票据
-                setcookie(rawurlencode('of_base_sso[ticket][' .$space. ']'), null, null, null);
+                setcookie(rawurlencode('of_base_sso[ticket][' .$space. ']'), '', 1, '');
             } else {
                 //计算服务端路径
                 $temp = of_base_sso_api::getUrl($config['url'], array(

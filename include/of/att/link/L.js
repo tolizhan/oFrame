@@ -35,6 +35,9 @@ L === undefined && (L = {
                 'data'    : {},
                 //指定方法回调的this对象
                 'context' : window
+            },
+            'toString' : function () {
+                return result.toString.code === 200 ? result.ajax.responseText : '';
             }
         }
         //初始默认方法
@@ -96,17 +99,17 @@ L === undefined && (L = {
                 if (result.ajax.readyState === 4) {
                     //网络响应 200 || 本地响应 0
                     if (result.ajax.status === 200 || result.ajax.status === 0) {
-                        result = L.each(new String(result.ajax.responseText), result);
+                        //成功状态为200, 其它为失败
+                        result.toString.code = 200;
                         result.config.success.call(result.config.context, result.ajax.responseText, result);
-                        resolve && resolve(result);
                     } else {
                         result.config.error.call(result.config.context, result);
-                        reject && reject(result);
                     }
+                    resolve && resolve(result);
                 }
             };
 
-            try { result.ajax.send(result.config.data.post); } catch (e) { reject && reject(result); }
+            try { result.ajax.send(result.config.data.post); } catch (e) { resolve && resolve(result); }
             return result;
         }
 

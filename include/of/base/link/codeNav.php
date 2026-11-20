@@ -514,6 +514,7 @@ namespace {
          *          taskInfo#任务ID : 单个任务信息(30天过期), 定期清理或延期 {
          *              "list" : 并发列表 {
          *                  并发数字 : {
+         *                      "addr" : 服务器IP
          *                      "time" : 启动时间
          *                  }, ...
          *              }
@@ -787,7 +788,7 @@ namespace {
          *     &httpOnly : 仅能通过http协议访问,如js等禁止访问,false(默认)=不限制,true=限制访问
          * 作者 : Edgar.lee
          */
-        public static function cookie($name, $value = null, $expire = null, $path = '', $domain = null, $secure = false, $httpOnly = false) {
+        public static function cookie($name, $value = null, $expire = 0, $path = '', $domain = '', $secure = false, $httpOnly = false) {
             return of_base_link_response::cookie($name, $value, $expire, $path, $domain, $secure, $httpOnly);
         }
 

@@ -152,7 +152,7 @@ class of_base_error_toolBaseClass {
             fseek($fpData, 15);
             //当无索引文件时通过日志数据进行计数及读取数据
             while ($curPage === null || $curSize > $line) {
-                $pos = base_convert($fpData, 36, 10);
+                $pos = base_convert(ftell($fpData), 36, 10);
                 if ($temp = fgets($fpData)) {
                     if ($curPage !== null && $curPage <= $line && $curSize > $line) {
                         $data[$line] = @unserialize(strtr($temp, array("+\1+" => "\n")));

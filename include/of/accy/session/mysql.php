@@ -12,12 +12,27 @@
  */
 class of_accy_session_mysql extends of_base_session_base {
 
-    protected static function _read(&$sessionId, &$data) {
+    protected static function _open() {
         of_db::pool(
             'of_accy_session_mysql', 
             of_db::pool(of::config('_of.session.params.dbPool', 'default'))
         );
+    }
 
+    protected static function _validateId(&$sessionId) {
+        self::_open();
+
+        $sql = "SELECT
+            `hash`
+        FROM
+            `_of_base_session`
+        WHERE
+            `hash` = '{$sessionId}'
+        LIMIT 1";
+        return !!of_db::sql($sql, 'of_accy_session_mysql');
+    }
+
+    protected static function _read(&$sessionId, &$data) {
         //设置锁超时30天
         of_db::sql('SET @@innodb_lock_wait_timeout = 2592000', 'of_accy_session_mysql');
 
@@ -75,9 +90,6 @@ class of_accy_session_mysql extends of_base_session_base {
         WHERE 
             `time` < '{$maxlifetime}'";
         of_db::sql($sql, 'of_accy_session_mysql');
-    }
-
-    protected static function _open() {
     }
 
     protected static function _close() {

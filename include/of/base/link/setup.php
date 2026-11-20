@@ -84,7 +84,7 @@ of::link('&post', '$key = null, $default = null', 'return of::getArrData(array(&
  */
 of::link(
     'cookie',
-    '$name, $value = null, $expire = null, $path = \'\', $domain = null, $secure = false, $httpOnly = false', 
+    '$name, $value = null, $expire = 0, $path = \'\', $domain = \'\', $secure = false, $httpOnly = false', 
     'return of_base_link_response::cookie($name, $value, $expire, $path, $domain, $secure, $httpOnly);'
 );
 

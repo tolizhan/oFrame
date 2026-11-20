@@ -84,11 +84,15 @@ class of_base_link_response {
      * 作者 : Edgar.lee
      */
     public static function cookie(
-        &$name, &$value = null, &$expire = null, &$path = '', 
-        &$domain = null, &$secure = false, &$httpOnly = false
+        &$name, &$value = null, &$expire = 0, &$path = '', 
+        &$domain = '', &$secure = false, &$httpOnly = false
     ) {
+        //删除cookie
+        if ($value === null) {
+            $value = '';
+            $expire = 1;
         //设定有效时间
-        if (is_numeric($expire)) {
+        } else if (is_numeric($expire)) {
             $expire += $_SERVER['REQUEST_TIME'];
         //设定过期日期
         } else if ($expire !== null) {

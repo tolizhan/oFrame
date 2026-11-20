@@ -2180,8 +2180,6 @@ class swoole implements ArrayAccess {
 
         //有响应对象 && 非功能操作 && 发送响应体
         $this->swRes && isset($buffer[0]) && $this->swRes->write($buffer);
-        //有响应对象 && 非功能操作 && 不设置buffer_output_size的替代或结合方案(分块影响gzip压缩比)
-        //$this->swRes && isset($buffer[0]) && array_map(array($this->swRes, 'write'), str_split($buffer, 1048576));
         //返回空字符串
         return '';
     }
@@ -3189,6 +3187,7 @@ class swoole implements ArrayAccess {
      *      代码树列表($tree) : [{
      *          "type" : 类型(1=g全局, 2=a方法, 4=c类, 8=i接口, 16=t复用, 32=e枚举),
      *          "life" : 生命周期, 每个"{"+1, 每个"}"-1, 为0时弹出, 每进入一层方法名后的"("中-1
+     *          "sign" : 运算标记, 通过位运算得方式存储标记信息, 1=匿名方法完成静态空间绑定
      *          "name" : 结构名字, 仅类有值
      *          "uuid" : 代码块唯一编码
      *          "isStatic" : 是否进入静态变量, 0=未进入, 1=已进入
@@ -3226,7 +3225,7 @@ class swoole implements ArrayAccess {
         static $cMode = array(T_WHITESPACE => 1, T_ABSTRACT => 1, T_FINAL => 1, T_READONLY => 1);
         //默认树结构
         static $strur = array(
-            'type' => 1, 'life' => 0,
+            'type' => 1, 'life' => 0, 'sign' => 0,
             'isStatic' => 0, 'isGlobal' => 0, 'isQuotes' => 0, 'isNewObj' => 0,
             'varList' => array(), 'name' => '', 'uuid' => ''
         );
@@ -3358,28 +3357,48 @@ class swoole implements ArrayAccess {
                     case T_CONST:
                         //在全局中
                         if ($self['type'] === 1 && self::codeKey($keys, $kk, -1, $data, 1) !== T_USE) {
-                            //分号的长度
-                            $temp = 1;
-                            //寻找";"或"{"位置
+                            //删除const关键词+后面一个" "
+                            $wait[] = array('pos' => $kPos, 'len' => $kLen + 1, 'str' => '');
+                            //临时数据 [关键词起始位置, 常量键数据, 常量键前","数据]
+                            $data = array($kPos + $kLen);
+
+                            //寻找关键词位置
                             for ($i = $kk; ++$i;) {
                                 if ($keys[$i][0] === ';') {
-                                    //更新缓存位置, 当前代码位置 + 关键词长度 + 目标位置
-                                    $hard['cPos'] = $kPos + $kLen + $temp;
-                                    //调用$_FUNC_mapVar->define方法定义常量
-                                    $wait[] = array(
-                                        'pos' => $hard['cPos'] - 1,
-                                        'len' => 0,
-                                        'str' => ')'
-                                    );
+                                    //更新缓存位置, 计算";"之后的位置
+                                    $hard['cPos'] = $data[0] + 1;
+                                    //结束$_FUNC_mapVar->define方法定义常量
+                                    $wait[] = array('pos' => $hard['cPos'] - 1, 'len' => 1, 'str' => ');');
+                                    //结束常量定义
                                     break ;
                                 } else {
-                                    //调用$_FUNC_mapVar->define方法定义常量
-                                    $keys[$i][0] === '=' && $wait[] = array(
-                                        'pos' => $kPos,
-                                        'len' => $kLen + $temp,
-                                        'str' => '$_FUNC_mapVar->define(__NAMESPACE__ . \'\\' . self::codeKey($keys, $kk, 1) . '\', '
-                                    );
-                                    $temp += isset($keys[$i][2]) ? strlen($keys[$i][1]) : 1;
+                                    if ($keys[$i][0] === '=') {
+                                        //获取常量键数据
+                                        self::codeKey($keys, $i, -1, $data[1]);
+
+                                        //判断前置是",", 结束上一个常量定义
+                                        if (self::codeKey($keys, $data[1]['ePos'], -1, $data[2]) === ',') {
+                                            $wait[] = array(
+                                                //常量前面","之前的位置
+                                                'pos' => $data[0] - $data[1]['eLen'] - $data[2]['eLen'],
+                                                //","关键词的长度
+                                                'len' => $data[2]['eLen'],
+                                                'str' => '); '
+                                            );
+                                        }
+
+                                        //插入常量定义开始代码
+                                        $wait[] = array(
+                                            //常量键起始位置
+                                            'pos' => $data[0] - $data[1]['eLen'],
+                                            //常量键起始位置到"="之后的长度
+                                            'len' => $data[1]['eLen'] + 1,
+                                            //开始$_FUNC_mapVar->define方法定义常量
+                                            'str' => "\$_FUNC_mapVar->define(__NAMESPACE__ . '\\{$data[1]['text']}',"
+                                        );
+                                    }
+                                    //计算下一关键词起始位置
+                                    $data[0] += isset($keys[$i][2]) ? strlen($keys[$i][1]) : 1;
                                 }
                             }
                         }
@@ -3989,8 +4008,8 @@ class swoole implements ArrayAccess {
                         }
                         //在全局或方法中 && 有共享变量
                         if ($self['type'] & 3 && $self['varList']) {
-                            //在方法中 && 匿名函数
-                            if ($self['type'] & 2 && !$self['name']) {
+                            //在方法中 && 匿名函数 && 在静态变量中 && 已初始化静态空间
+                            if ($self['type'] & 2 && !$self['name'] && $self['isStatic'] && !($self['sign'] & 1)) {
                                 //改写静态或全局的变量列表, 区分每个不同的匿名方法
                                 $wait[] = array(
                                     'pos' => $kPos,
@@ -3999,6 +4018,8 @@ class swoole implements ArrayAccess {
                                 );
                                 //静态变量中增加 $_CLOSURE_SCOPE_
                                 $self['varList']['_CLOSURE_SCOPE_'] = '\'_CLOSURE_SCOPE_\' => &$_CLOSURE_SCOPE_';
+                                //初始化静态空间标记
+                                $self['sign'] |= 1;
                             }
                             //改写静态或全局的变量列表
                             $wait[] = array(

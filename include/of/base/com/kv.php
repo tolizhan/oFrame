@@ -194,7 +194,7 @@ class of_base_com_kv {
      *      default : (false)默认值
      *      pool    : ('default') 连接池
      * 返回 :
-     *      false=指定键名已存在, true=成功创建
+     *      kv值
      * 作者 : Edgar.lee
      */
     final public static function get($name, $default = false, $pool = 'default') {

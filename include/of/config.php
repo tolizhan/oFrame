@@ -1,6 +1,6 @@
 <?php
 return array(
-    //用__FILE__表示的站点根目录, 修改substr的第二参数即可, null=通过磁盘遍历寻找(建议仅框架文件夹为链接时使用)
+    //用__FILE__表示的站点根目录, 修改substr的第三参数即可, null=通过磁盘遍历寻找(建议仅框架文件夹为链接时使用)
     'rootDir'     => strtr(substr(__FILE__, 0, -22), '\\', '/'),
     //域名到产品根目录地址, 根路径为空字符串, null=尝试自动计算
     'rootUrl'     => null,
@@ -169,6 +169,8 @@ return array(
         'adapter'     => 'files',
         //禁止 js 读取 session_id
         'httpOnly'    => true,
+        //设置严格会话模式, true=当客户端指定的会话ID不存在时会替换新的
+        'strictMode'  => true,
         //正则匹配"调度类名::方法名"判断是否自动开启, 默认""=不自动开启, 以"@"开头的字符串=正则匹配
         'autoStart'   => '@^(?!(serv|of)(_|\b))@',
         //最大生存时间(分钟)
@@ -212,7 +214,7 @@ return array(
          *                  }, ...
          *              },
          *              "ipList"   : 验证IP列表, 支持IP v4 v6, 字符串=指定配置路径(结构同数组), 数组={
-         *                  "blocklist" :o黑名单, 在范围内会被拦截 [
+         *                  "blocklist" :o黑名单, 在范围内会被拦截, 优先级高于白名单 [
          *                      字符串=为固定IP,
          *                      [小IP, 大IP]=IP范围,
          *                      ...

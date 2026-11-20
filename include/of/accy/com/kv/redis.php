@@ -35,7 +35,7 @@ class of_accy_com_kv_redis extends of_base_com_kv {
                 break;
             //集群模式
             case 'cluster':
-                $redis = new RedisCluster(null, $params['host'], null, null, $params['persistent'], $params['auth']);
+                $redis = new RedisCluster(null, $params['host'], 3, 3, $params['persistent'], $params['auth']);
                 $this->link = new _RedisCluster($redis);
                 break;
             //分布模式

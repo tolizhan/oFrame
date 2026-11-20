@@ -7,9 +7,19 @@ class of_accy_session_files extends of_base_session_base {
     //加锁的文件路径源
     private static $fpl = null;
 
+    protected static function _open() {
+    }
+
+    protected static function _validateId(&$sessionId) {
+        //session存储路径
+        $temp = of::config('_of.session.params.path', OF_DATA . '/_of/of_accy_session_files', 1);
+        //验证session文件是否存在
+        return is_file($temp . '/' . $sessionId . '.php');
+    }
+
     protected static function _read(&$sessionId, &$data) {
         //session存储路径
-        $temp = of::config('_of.session.params.path', OF_DATA . '/_of/of_accy_session_files', 'dir');
+        $temp = of::config('_of.session.params.path', OF_DATA . '/_of/of_accy_session_files', 1);
         $temp .= '/' . $sessionId . '.php';
 
         self::$fpl = of_base_com_disk::file($temp, null, null);
@@ -34,7 +44,7 @@ class of_accy_session_files extends of_base_session_base {
 
     protected static function _gc($maxlifetime) {
         //SESSION磁盘存储路径
-        $dir = of::config('_of.session.params.path', OF_DATA . '/_of/of_accy_session_files', 'dir');
+        $dir = of::config('_of.session.params.path', OF_DATA . '/_of/of_accy_session_files', 1);
         //过期时间戳
         $timestamp = $_SERVER['REQUEST_TIME'] - $maxlifetime;
 
@@ -57,8 +67,6 @@ class of_accy_session_files extends of_base_session_base {
         }
     }
 
-    protected static function _open() {
-    }
     protected static function _close() {
     }
 }

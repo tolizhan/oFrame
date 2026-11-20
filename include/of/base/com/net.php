@@ -18,8 +18,6 @@
 class of_base_com_net {
     //默认请求参数
     public static $params = null;
-    //静态cookie
-    private static $cookie = array();
     //配置文件
     private static $config = null;
 
@@ -87,14 +85,17 @@ class of_base_com_net {
      *          "timeout" : 超时时间(10s),
      *              数字=连接超时
      *              数组=[连接超时(10), 响应超时(default_socket_timeout)],
-     *          "context" : 配置上下文, 默认={
-     *              "proxy" : 代理配置 {
+     *          "context" : 配置上下文 {
+     *              "cookie" : 前面响应的cookie数据, 一个引用变量, 如: &$cookie
+     *                  每次响应的cookie自动添加, 可配置到下次请求中, 通过 of_base_com_net::cookie() 方法可调整该值
+     *              "proxy"  : 代理配置 {
      *                  "addr" : 代理地址, tcp://xxx:port
      *                  "user" : 用户密码, user:password
      *                  "mode" : 代理方式, 0=直连, 1=隧道
      *              },
-     *              "ssl" : 关闭 ssl 证书验证 {
+     *              "ssl"    : 默认关闭 ssl 证书验证 {
      *                  "verify_peer_name" : false
+     *                  "verify_peer" : false
      *              }
      *          }
      *          "save"    : 将响应体保存到磁盘, 下文件更省内存, 设置后方法返回的response为""
@@ -111,7 +112,6 @@ class of_base_com_net {
      *      异步请求参数结构($data) : {
      *          含同步请求结构 : 数组结构均转成字符串
      *          "mode"         : 回调函数
-     *          "staticCookie" : 所有请求过程中记忆的cookie
      *      }
      * 作者 : Edgar.lee
      */
@@ -164,9 +164,8 @@ class of_base_com_net {
             //读取post数据
             $data = unserialize($data);
             $mode = &$data['mode'];
-            self::$cookie = &$data['staticCookie'];
             $_SERVER['REMOTE_ADDR'] = &$data['remoteAddr'];
-            unset($data['staticCookie'], $data['remoteAddr'], $data['mode']);
+            unset($data['remoteAddr'], $data['mode']);
 
             //OF_URL 的无参数地址无需请求
             if ($data['url'] && (
@@ -263,14 +262,14 @@ class of_base_com_net {
                         'name'   => &$temp[0],
                         'value'  => &$temp[1],
                         'encode' => false
-                    ));
+                    ), $data['context']['cookie']);
                 }
             }
             //读取cookie
             $data['cookie'] = self::cookie(array(
                 'domain' => &$index['host'],
                 'path'   => of_base_com_str::realpath('/' . $index['path'] . 'a/../')
-            ));
+            ), $data['context']['cookie']);
             //当前是否发生错误(true=没错误)
             $noErr = !of::work('error');
         //准备二次请求
@@ -279,8 +278,6 @@ class of_base_com_net {
             $data['mode'] = $mode;
             //保存请求网址
             $data['url'] = $url;
-            //静态cookie
-            $data['staticCookie'] = &self::$cookie;
             //记录当前IP地址
             $data['remoteAddr'] = &$_SERVER['SERVER_ADDR'];
             //操作系统类型(WINNT:windows, Darwin:mac, 其它:linux)
@@ -468,7 +465,7 @@ class of_base_com_net {
                 //发生附件报文
                 foreach ($data['file'] as $k => &$v) {
                     //初始化文件名
-                    empty($v['file']) && $v['file'] = isset($v['path']) ? 
+                    empty($v['file']) && $v['file'] = isset($v['path']) ?
                         pathinfo($v['path'], PATHINFO_BASENAME) :
                         'file' . $k . '.bin';
                     //初始化附件类型
@@ -635,28 +632,29 @@ class of_base_com_net {
 
                 //删除临时文件
                 isset($gzipTempFile) && unlink($gzipTempFile);
+                //提取cookie列表
+                preg_match_all('@^Set-Cookie: ([^=\s]+)=(.*?)(?:;.*)?\r$@mi', $res['header'], $match, PREG_SET_ORDER);
+                //解析cookie属性
+                foreach ($match as &$v) {
+                    $v[0] = substr($v[0], 0, -1);
+                    preg_match('@expires=(.*?)(?:;|$)@i', $v[0], $v['expires']);
+                    preg_match('@path=(.*?)(?:;|$)@i', $v[0], $v['path']);
+                    preg_match('@domain=(.*?)(?:;|$)@i', $v[0], $v['domain']);
+
+                    //记忆cookie
+                    self::cookie(array(
+                        'domain'  => isset($v['domain'][1]) ? $v['domain'][1] : $data['pUrl']['host'],
+                        'path'    => isset($v['path'][1]) ?
+                            $v['path'][1] : of_base_com_str::realpath('/' . $data['pUrl']['path'] . 'a/../'),
+                        'name'    => &$v[1],
+                        'value'   => &$v[2],
+                        'expires' => &$v['expires'][1],
+                        'encode'  => false
+                    ), $data['context']['cookie']);
+                }
 
                 //请求成功
                 if (preg_match('/.* (\d+) .*/', $res['header'], $temp) && $temp[1] < 400) {
-                    preg_match_all('@^Set-Cookie: ([^=\s]+)=(.*?)(?:;.*)?\r$@mi', $res['header'], $match, PREG_SET_ORDER);
-                    //提取cookie
-                    foreach ($match as &$v) {
-                        $v[0] = substr($v[0], 0, -1);
-                        preg_match('@expires=(.*?)(?:;|$)@i', $v[0], $v['expires']);
-                        preg_match('@path=(.*?)(?:;|$)@i', $v[0], $v['path']);
-                        preg_match('@domain=(.*?)(?:;|$)@i', $v[0], $v['domain']);
-
-                        //记忆cookie
-                        self::cookie(array(
-                            'domain'  => isset($v['domain'][1]) ? $v['domain'][1] : $data['pUrl']['host'],
-                            'path'    => isset($v['path'][1]) ?
-                                $v['path'][1] : of_base_com_str::realpath('/' . $data['pUrl']['path'] . 'a/../'),
-                            'name'    => &$v[1],
-                            'value'   => &$v[2],
-                            'expires' => &$v['expires'][1],
-                            'encode'  => false
-                        ));
-                    }
                     $res['state'] = true;
                 //状态码错误
                 } else {
@@ -726,13 +724,13 @@ class of_base_com_net {
         }
 
         is_array($result) && $result = join($result);
-        return $result; 
+        return $result;
     }
 
     /**
      * 描述 : 设置读取请求站的cookie
      * 参数 :
-     *      config : {
+     *      config : cookie配置 {
      *          "domain" :*指定权限域名
      *          "path"   :*指定有效路径
      *          "name"   : empty=读取有效cookie, 字符串=设置cookie
@@ -740,10 +738,7 @@ class of_base_com_net {
      *          "expire" : empty(默认)=不过期, value的过期时间格式
      *          "encode" : 是否对value进行 RFC 1738 编码,默认=true
      *      }
-     * 返回 :
-     *      
-     * 注明 :
-     *      列表结构(cookie) : {
+     *     &cookie : 上下文cookie列表 {
      *          反转的域名 : {
      *              有效路径 : {
      *                  cookie键 : {
@@ -753,11 +748,13 @@ class of_base_com_net {
      *              }
      *          }
      *      }
+     * 返回 :
+     *      读取时返回cookie格式字符串, 否则返回null
      * 作者 : Edgar.lee
      */
-    public static function cookie($config) {
+    public static function cookie($config, &$cookie) {
         //引用cookie
-        $cookie = &self::$cookie;
+        $cookie || $cookie = array();
 
         //是数组 && 域名有效 && 路径有效
         if (is_array($config) && isset($config['domain']) && isset($config['path'])) {

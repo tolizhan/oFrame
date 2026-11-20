@@ -27,7 +27,9 @@ class of_accy_db_mysqlPdo extends of_db {
                     //长连接
                     PDO::ATTR_PERSISTENT => !!$params['persistent'],
                     //关闭错误
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_SILENT
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_SILENT,
+                    //响应结果除null的外均为字符串格式
+                    PDO::ATTR_STRINGIFY_FETCHES => true
                 )
             );
 

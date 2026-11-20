@@ -1,13 +1,13 @@
 # orange-framework 模块化轻量级php框架
 
-框架本身是套解决方案, 兼容全浏览器及[php5.2~8.4.x](http://doc.phpof.net/?oFrame/FAQ/namespace.html,oFrame/navigation.html)<br>
+框架本身是套解决方案, 兼容全浏览器及[php5.2~8.6.x](http://doc.phpof.net/?oFrame/FAQ/namespace.html,oFrame/navigation.html)<br>
 它基于MVCS, 同时[支持多种设计模式](http://doc.phpof.net/?oFrame/FAQ/architect.html,oFrame/navigation.html)<br>
 它拥有简洁的[开发方式](http://doc.phpof.net/?oFrame/helpManual/controller.html,oFrame/navigation.html,work), 简单的[模板引擎](http://doc.phpof.net/?oFrame/helpManual/htmlTpl.html,oFrame/navigation.html)<br>
 它支持原生的[异步操作](http://doc.phpof.net/?oFrame/components/timer.html,oFrame/navigation.html), 分布式[消息队列](http://doc.phpof.net/?oFrame/components/mq.html,oFrame/navigation.html)<br>
 它包含完整的[错误日志](http://doc.phpof.net/?oFrame/helpManual/error.html,oFrame/navigation.html), 丰富的[扩展接口](http://doc.phpof.net/?oFrame/FAQ/baseExtends.html,oFrame/navigation.html)<br>
 它的理念是易部署, 易扩展, [易伸缩](http://doc.phpof.net/?oFrame/FAQ/issue.html,oFrame/navigation.html,scaling)
 
-手册地址 [phpof](http://doc.phpof.net/) 或 wiki 或 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/tolizhan/oFrame)<br>
+手册地址 [phpof](http://doc.phpof.net/) 或 wiki 或 <a href="https://deepwiki.com/tolizhan/oFrame"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a><br>
 问题反馈 tolizhan@qq.com
 
 ## 框架部署
@@ -21,14 +21,14 @@
 0. 打开框架配置/include/of/config.php
 1. 修改config键值为null 目的是删除 demo 对框架的重写
 2. 修改debug键值, 生产环境一个要改为"字符串"密码, 防止生产环境敏感信息泄漏
-3. 修改db键值连接一个数据库
+3. 修改db键值连接一个数据库, 建议K-V使用非files方式
 4. 根据实际需求开关 preloaded 中对应的模块
 5. 删除/demo文件夹
-6. 若为分布式架构, 将各节点/data文件夹挂载到同一个目录, K-V使用非files方式
-7. 若为分布式架构, 将/data文件夹共享
-8. 如没特殊需求, 以下两点可忽略
-9. 框架可放在任意路径下,也可以改名,这里我们确定在"/include/of"
-10. 修改rootDir键值为strtr(substr(\_\_FILE\_\_, 0, -22), '\\\\', '/') 目的是定义磁盘根路径到 "/include/of"
+6. 若为分布式架构, 将各节点/data文件夹挂载到同一个共享目录
+7. 如没特殊需求, 以下项可忽略
+8. 框架可放在任意路径下, 如果改名, 需同步修改ofDir键值, 这里我们确定在"/include/of"
+9. 修改rootDir键值为strtr(substr(\_\_FILE\_\_, 0, -22), '\\\\', '/') 目的是定义磁盘根路径到 "/include/of"
+10. 修改rootUrl键值 若rootDir为挂载路径, 将导致rootUrl自动计算出错, 此时需要指定
 
 ### 系统访问
 1. URL格式可以通过系统入口定制<br>

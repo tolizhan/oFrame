@@ -85,24 +85,25 @@ class of_accy_com_kv_files extends of_base_com_kv {
      * 作者 : Edgar.lee
      */
     protected function _get(&$name) {
-        $path = $this->params['path'] . '/' . md5($name) . '.php';
-        //当前时间戳
-        $time = time();
-        //打开共享锁
-        $fp = of_base_com_disk::file($path, null, false);
+        if ($result = is_file($path = $this->params['path'] . '/' . md5($name) . '.php')) {
+            //当前时间戳
+            $time = time();
+            //打开共享锁
+            $fp = of_base_com_disk::file($path, null, false);
 
-        //存在 && 有效(永久有效 || 尚未失效)
-        if (
-            $result = filesize($path) && 
-            (($temp = filemtime($path)) === 0 || $temp >= $time)
-        ) {
-            $result = of_base_com_disk::file($fp, false, true);
+            //有效(永久有效 || 尚未失效)
+            if (($temp = filemtime($path)) === 0 || $temp >= $time) {
+                $result = of_base_com_disk::file($fp, false, true);
+            } else {
+                $result = false;
+            }
+
+            //连接解锁
+            flock($fp, LOCK_UN);
+            //关闭连接
+            fclose($fp);
         }
 
-        //连接解锁
-        flock($fp, LOCK_UN);
-        //关闭连接
-        fclose($fp);
         return $result;
     }
 
